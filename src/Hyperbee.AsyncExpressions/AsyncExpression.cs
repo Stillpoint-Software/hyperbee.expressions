@@ -117,7 +117,7 @@ public class AsyncExpression : Expression
             }
 
             result = null;
-            return true;
+            return false;
         }
 
         private static MethodInfo MakeGenericExecuteAsyncMethod( Type typeArg )
