@@ -5,17 +5,17 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
-[DebuggerDisplay("{_body}")]
-[DebuggerTypeProxy(typeof(AsyncExpressionProxy))]
+[DebuggerDisplay( "{_body}" )]
+[DebuggerTypeProxy( typeof(AsyncExpressionProxy) )]
 public class AsyncExpression : Expression
 {
     private readonly Expression _body;
     private Expression _visitedBody;
     private bool _isVisited;
 
-    internal AsyncExpression(Expression body)
+    internal AsyncExpression( Expression body )
     {
-        ArgumentNullException.ThrowIfNull(body, nameof(body));
+        ArgumentNullException.ThrowIfNull( body, nameof(body) );
 
         _body = body;
     }
@@ -24,10 +24,10 @@ public class AsyncExpression : Expression
 
     public override Type Type => _body.Type;
 
-    internal static Task<T> ExecuteAsync<T>(Expression body, ParameterExpression[] parameterExpressions, params object[] parameters)
+    internal static Task<T> ExecuteAsync<T>( Expression body, ParameterExpression[] parameterExpressions, params object[] parameters )
     {
         var builder = AsyncTaskMethodBuilder<T>.Create();
-        var stateMachine = new StateMachine<T>(ref builder, body, parameterExpressions, parameters);
+        var stateMachine = new StateMachine<T>( ref builder, body, parameterExpressions, parameters );
         stateMachine.MoveNext();
         return stateMachine.Task;
     }
@@ -36,7 +36,7 @@ public class AsyncExpression : Expression
 
     public override Expression Reduce()
     {
-        if (!_isVisited)
+        if ( !_isVisited )
             ApplyVisitor();
 
         return _visitedBody;
@@ -44,94 +44,85 @@ public class AsyncExpression : Expression
 
     private void ApplyVisitor()
     {
-        if (_isVisited)
+        if ( _isVisited )
             return;
 
         _isVisited = true;
-
-        var visitor = new AsyncVisitor(_body);
-        _visitedBody = visitor.Visit(_body);
+        _visitedBody = new AsyncVisitor( _body ).Visit();
     }
 
     internal class AsyncVisitor : ExpressionVisitor
     {
         private readonly Expression _body;
-        public List<ParameterExpression> VisitedParameters { get; } = [];
+        private readonly List<ParameterExpression> _visitedParameters = [];
 
-        public AsyncVisitor(Expression body)
+        private static MethodInfo GenericExecuteAsync => typeof(AsyncExpression)
+            .GetMethod( nameof(ExecuteAsync), BindingFlags.Static | BindingFlags.NonPublic );
+
+        public AsyncVisitor( Expression body )
         {
             _body = body;
         }
 
-        protected override Expression VisitParameter(ParameterExpression node)
+        public Expression Visit()
         {
-            // Add parameter if it's not already included
-            if (!VisitedParameters.Contains(node))
-            {
-                VisitedParameters.Add(node);
-            }
-
-            return base.VisitParameter(node);
+            return Visit( _body );
         }
 
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitParameter( ParameterExpression node )
         {
-            // Visit each argument to process any nested parameters
-            foreach (var argument in node.Arguments)
-            {
-                Visit(argument);
-            }
+            if ( !_visitedParameters.Contains( node ) )
+                _visitedParameters.Add( node );
 
-            if (node.Object?.Type == typeof(AsyncExpression))
-            {
-                return node;
-            }
-
-            // If the method call is async, transform it
-            if (typeof(Task).IsAssignableFrom(node.Type))
-            {
-                var executeMethod = typeof(AsyncExpression)
-                    .GetMethod(nameof(ExecuteAsync), BindingFlags.Static | BindingFlags.NonPublic, [typeof(Expression), typeof(ParameterExpression[]), typeof(object[])])!
-                    .MakeGenericMethod(node.Type.GetGenericArguments()[0]);
-
-                var arguments = VisitedParameters.Select(p => Convert(p, typeof(object))).Cast<Expression>().ToArray();
-                var argArray = NewArrayInit(typeof(object), arguments);
-
-                //return ExecuteAsyncExpression(node.Type.GetGenericArguments()[0], _body, VisitedParameters.ToArray(), arguments);
-                return Call(executeMethod!, [Constant(_body), Constant(VisitedParameters.ToArray()), argArray]);
-            }
-
-            return base.VisitMethodCall(node);
+            return base.VisitParameter( node );
         }
 
-        protected override Expression VisitInvocation(InvocationExpression node)
+        protected override Expression VisitMethodCall( MethodCallExpression node )
         {
             // Visit each argument to process any nested parameters
-            foreach (var argument in node.Arguments)
+            foreach ( var argument in node.Arguments )
             {
-                Visit(argument);
+                Visit( argument );
             }
 
-            if (node.Type == typeof(AsyncExpression))
-            {
+            if ( node.Object?.Type == typeof(AsyncExpression) )
                 return node;
-            }
 
-            // If the invocation is async, transform it
-            if (typeof(Task).IsAssignableFrom(node.Type))
+            if ( typeof(Task).IsAssignableFrom( node.Type ) )
             {
-                var executeMethod = typeof(AsyncExpression)
-                    .GetMethod(nameof(ExecuteAsync), BindingFlags.Static | BindingFlags.NonPublic, [typeof(Expression), typeof(ParameterExpression[]), typeof(object[])])!
-                    .MakeGenericMethod(node.Type.GetGenericArguments()[0]);
-
-                var arguments = node.Arguments.Select(a => Convert(a, typeof(object))).ToArray();
-                var argArray = NewArrayInit(typeof(object), arguments);
+                var executeMethod = GenericExecuteAsync!.MakeGenericMethod( node.Type.GetGenericArguments()[0] );
+                var arguments = _visitedParameters.Select( p => Convert( p, typeof(object) ) ).Cast<Expression>().ToArray();
+                var argArray = NewArrayInit( typeof(object), arguments );
 
                 //return ExecuteAsyncExpression(node.Type.GetGenericArguments()[0], _body, VisitedParameters.ToArray(), arguments);
-                return Call(executeMethod!, [Constant(_body), Constant(VisitedParameters.ToArray()), argArray]);
+                return Call( executeMethod!, [Constant( _body ), Constant( _visitedParameters.ToArray() ), argArray] );
             }
 
-            return base.VisitInvocation(node);
+            return base.VisitMethodCall( node );
+        }
+
+        protected override Expression VisitInvocation( InvocationExpression node )
+        {
+            // Visit each argument to process any nested parameters
+            foreach ( var argument in node.Arguments )
+            {
+                Visit( argument );
+            }
+
+            if ( node.Type == typeof(AsyncExpression) )
+                return node;
+
+            if ( typeof(Task).IsAssignableFrom( node.Type ) )
+            {
+                var executeMethod = GenericExecuteAsync!.MakeGenericMethod( node.Type.GetGenericArguments()[0] );
+                var arguments = node.Arguments.Select( a => Convert( a, typeof(object) ) ).Cast<Expression>().ToArray();
+                var argArray = NewArrayInit( typeof(object), arguments );
+
+                //return ExecuteAsyncExpression(node.Type.GetGenericArguments()[0], _body, VisitedParameters.ToArray(), arguments);
+                return Call( executeMethod!, [Constant( _body ), Constant( _visitedParameters.ToArray() ), argArray] );
+            }
+
+            return base.VisitInvocation( node );
         }
     }
     /*
@@ -193,7 +184,7 @@ public class AsyncExpression : Expression
         private readonly object[] _parameters;
         private readonly ParameterExpression[] _parameterExpressions;
 
-        public StateMachine(ref AsyncTaskMethodBuilder<T> builder, Expression body, ParameterExpression[] parameterExpressions, object[] parameters)
+        public StateMachine( ref AsyncTaskMethodBuilder<T> builder, Expression body, ParameterExpression[] parameterExpressions, object[] parameters )
         {
             _builder = builder; // critical: this makes a copy of builder
             _body = body;
@@ -201,7 +192,7 @@ public class AsyncExpression : Expression
             _parameters = parameters;
             _state = -1;
 
-            SetStateMachine(this);
+            SetStateMachine( this );
         }
 
         public Task<T> Task => _builder.Task;
@@ -212,24 +203,24 @@ public class AsyncExpression : Expression
             {
                 ConfiguredTaskAwaitable<T>.ConfiguredTaskAwaiter awaiter;
 
-                if (_state != 0)
+                if ( _state != 0 )
                 {
                     // Initial state: compile the expression and execute it
 
-                    var delegateType = GetDelegateType(_parameterExpressions.Select(p => p.Type).Concat([typeof(Task<T>)]).ToArray());
-                    var lambda = Lambda(delegateType, _body, _parameterExpressions);
+                    var delegateType = GetDelegateType( _parameterExpressions.Select( p => p.Type ).Concat( [typeof(Task<T>)] ).ToArray() );
+                    var lambda = Lambda( delegateType, _body, _parameterExpressions );
                     var compiledLambda = lambda.Compile();
-                    var task = compiledLambda.DynamicInvoke(_parameters);
+                    var task = compiledLambda.DynamicInvoke( _parameters );
 
-                    awaiter = ((Task<T>)task!).ConfigureAwait(false).GetAwaiter();
+                    awaiter = ((Task<T>) task!).ConfigureAwait( false ).GetAwaiter();
 
-                    if (!awaiter.IsCompleted)
+                    if ( !awaiter.IsCompleted )
                     {
                         _state = 0;
                         _awaiter = awaiter;
 
                         // Schedule a continuation
-                        _builder.AwaitUnsafeOnCompleted(ref awaiter, ref this);
+                        _builder.AwaitUnsafeOnCompleted( ref awaiter, ref this );
                         return;
                     }
                 }
@@ -244,64 +235,52 @@ public class AsyncExpression : Expression
                 // Final state: success
                 var result = awaiter.GetResult();
                 _state = -2;
-                _builder.SetResult(result);
+                _builder.SetResult( result );
             }
-            catch (Exception ex)
+            catch ( Exception ex )
             {
                 // Final state: error
                 _state = -2;
-                _builder.SetException(ex);
+                _builder.SetException( ex );
             }
         }
 
-        public void SetStateMachine(IAsyncStateMachine stateMachine)
+        public void SetStateMachine( IAsyncStateMachine stateMachine )
         {
-            _builder.SetStateMachine(stateMachine);
+            _builder.SetStateMachine( stateMachine );
         }
     }
 
-    public class AsyncExpressionProxy(AsyncExpression node)
+    private static bool IsAsync( Type returnType )
+    {
+        return returnType == typeof(Task) ||
+               (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>)) ||
+               (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
+    }
+
+    public class AsyncExpressionProxy( AsyncExpression node )
     {
         public Expression Body => node._body;
     }
 
-    public static AsyncExpression CallAsync(MethodInfo methodInfo, params Expression[] arguments)
+    public static AsyncExpression CallAsync( MethodInfo methodInfo, params Expression[] arguments )
     {
-        if (!IsAsyncMethod(methodInfo))
-            throw new ArgumentException("The specified method is not an async.", nameof(methodInfo));
+        if ( !IsAsync( methodInfo.ReturnType ) )
+            throw new ArgumentException( "The specified method is not an async.", nameof(methodInfo) );
 
-        return new AsyncExpression(Call(methodInfo, arguments));
-
-        static bool IsAsyncMethod(MethodInfo methodInfo)
-        {
-            var returnType = methodInfo.ReturnType;
-
-            return returnType == typeof(Task) ||
-                   (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>)) ||
-                   (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(ValueTask<>)) ||
-                   methodInfo.GetCustomAttribute<AsyncStateMachineAttribute>() != null;
-        }
+        return new AsyncExpression( Call( methodInfo, arguments ) );
     }
 
-    public static AsyncExpression LambdaAsync(LambdaExpression lambdaExpression, params Expression[] arguments)
+    public static AsyncExpression LambdaAsync( LambdaExpression lambdaExpression, params Expression[] arguments )
     {
-        if (!IsAsyncLambda(lambdaExpression))
-            throw new ArgumentException("The specified lambda is not an async.", nameof(lambdaExpression));
+        if ( !IsAsync( lambdaExpression.ReturnType ) )
+            throw new ArgumentException( "The specified lambda is not an async.", nameof(lambdaExpression) );
 
-        return new AsyncExpression(Invoke(lambdaExpression, arguments));
-
-        static bool IsAsyncLambda(LambdaExpression lambdaExpression)
-        {
-            var returnType = lambdaExpression.ReturnType;
-
-            return returnType == typeof(Task) ||
-                   (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>)) ||
-                   (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
-        }
+        return new AsyncExpression( Invoke( lambdaExpression, arguments ) );
     }
 
-    public static AwaitExpression Await(AsyncExpression asyncExpression, bool configureAwait)
+    public static AwaitExpression Await( AsyncExpression asyncExpression, bool configureAwait )
     {
-        return new AwaitExpression(asyncExpression, configureAwait);
+        return new AwaitExpression( asyncExpression, configureAwait );
     }
 }
