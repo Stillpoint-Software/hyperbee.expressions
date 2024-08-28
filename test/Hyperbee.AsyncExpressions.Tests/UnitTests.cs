@@ -52,57 +52,57 @@ public class AsyncExpressionUnitTests
         return typeof(AsyncExpressionUnitTests).GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic)!;
     }
 
-    private static AsyncExpression GetAsyncExpression( ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments )
+    private static AsyncExpression GetAsyncExpression(ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments)
     {
-        switch ( kind )
+        switch (kind)
         {
             case ExpressionKind.Lambda:
-                var (lambdaExpression, parameters) = GetLambdaExpression( methodInfo, arguments );
-                return AsyncExpression.LambdaAsync( lambdaExpression, parameters );  
+                var (lambdaExpression, parameters) = GetLambdaExpression(methodInfo, arguments);
+                return AsyncExpression.LambdaAsync(lambdaExpression, parameters);
 
             case ExpressionKind.Method:
-                return AsyncExpression.CallAsync( methodInfo, arguments );
+                return AsyncExpression.CallAsync(methodInfo, arguments);
 
             default:
-                throw new ArgumentOutOfRangeException( nameof(kind) );
+                throw new ArgumentOutOfRangeException(nameof(kind));
         }
     }
 
 
-    private static (LambdaExpression Lambda, Expression[] Parameters) GetLambdaExpression( MethodInfo methodInfo, params Expression[] arguments )
+    private static (LambdaExpression Lambda, Expression[] Parameters) GetLambdaExpression(MethodInfo methodInfo, params Expression[] arguments)
     {
-        if ( methodInfo.GetParameters().Length != arguments.Length )
+        if (methodInfo.GetParameters().Length != arguments.Length)
         {
-            throw new ArgumentException( "Number of arguments does not match the number of method parameters." );
+            throw new ArgumentException("Number of arguments does not match the number of method parameters.");
         }
 
         var visitor = new ParametersVisitor();
 
-        foreach ( var argument in arguments )
+        foreach (var argument in arguments)
         {
-            visitor.Visit( argument );
+            visitor.Visit(argument);
         }
 
         var parameterExpressions = visitor.VisitedParameters.ToArray();
 
-        var callExpression = Expression.Call( methodInfo, arguments );
-        var lambdaExpression = Expression.Lambda( callExpression, parameterExpressions );
+        var callExpression = Expression.Call(methodInfo, arguments);
+        var lambdaExpression = Expression.Lambda(callExpression, parameterExpressions);
 
-        return (lambdaExpression, parameterExpressions.Cast<Expression>().ToArray() );
+        return (lambdaExpression, parameterExpressions.Cast<Expression>().ToArray());
     }
 
     public class ParametersVisitor : ExpressionVisitor
     {
         public List<ParameterExpression> VisitedParameters { get; } = [];
 
-        protected override Expression VisitParameter( ParameterExpression node )
+        protected override Expression VisitParameter(ParameterExpression node)
         {
-            if ( !VisitedParameters.Contains( node ) )
+            if (!VisitedParameters.Contains(node))
             {
-                VisitedParameters.Add( node );
+                VisitedParameters.Add(node);
             }
 
-            return base.VisitParameter( node );
+            return base.VisitParameter(node);
         }
     }
 
@@ -111,7 +111,7 @@ public class AsyncExpressionUnitTests
     [DataRow(ExpressionKind.Method)]
     public void TestAsyncExpression_NoParameters(ExpressionKind kind)
     {
-        var methodInfo = GetMethodInfo( nameof(GetNumberAsync) );
+        var methodInfo = GetMethodInfo(nameof(GetNumberAsync));
 
         var asyncExpression = GetAsyncExpression(kind, methodInfo!);
         var awaitExpression = AsyncExpression.Await(asyncExpression, configureAwait: false);
@@ -128,7 +128,7 @@ public class AsyncExpressionUnitTests
     [DataRow(ExpressionKind.Method)]
     public void TestAsyncExpression_WithParameters(ExpressionKind kind)
     {
-        var methodInfo = GetMethodInfo( nameof(AddThreeNumbersAsync) );
+        var methodInfo = GetMethodInfo(nameof(AddThreeNumbersAsync));
 
         var paramExpr1 = Expression.Parameter(typeof(int), "a");
         var paramExpr2 = Expression.Parameter(typeof(int), "b");
@@ -193,30 +193,30 @@ public class AsyncExpressionUnitTests
     }
 
     [DataTestMethod]
-    [DataRow( ExpressionKind.Lambda )]
-    [DataRow( ExpressionKind.Method )]
-    public void TestAsyncExpression_AsParameter( ExpressionKind kind )
+    [DataRow(ExpressionKind.Lambda)]
+    [DataRow(ExpressionKind.Method)]
+    public void TestAsyncExpression_AsParameter(ExpressionKind kind)
     {
         // var result = await SayHelloAsync( await AddTwoNumbersAsync( 10, 32 ) );
 
-        var addTwoNumbersMethod = GetMethodInfo( nameof(AddTwoNumbersAsync) );
-        var sayHelloMethod = GetMethodInfo( nameof(SayHelloAsync) );
+        var addTwoNumbersMethod = GetMethodInfo(nameof(AddTwoNumbersAsync));
+        var sayHelloMethod = GetMethodInfo(nameof(SayHelloAsync));
 
-        var paramA = Expression.Parameter( typeof(int), "a" );
-        var paramB = Expression.Parameter( typeof(int), "b" );
+        var paramA = Expression.Parameter(typeof(int), "a");
+        var paramB = Expression.Parameter(typeof(int), "b");
 
-        var asyncExpressionAdd = GetAsyncExpression( kind, addTwoNumbersMethod, paramA, paramB );
-        var awaitExpressionAdd = AsyncExpression.Await( asyncExpressionAdd, configureAwait: false );
+        var asyncExpressionAdd = GetAsyncExpression(kind, addTwoNumbersMethod, paramA, paramB);
+        var awaitExpressionAdd = AsyncExpression.Await(asyncExpressionAdd, configureAwait: false);
 
-        var asyncExpressionSayHello = GetAsyncExpression( kind, sayHelloMethod, awaitExpressionAdd );
-        var awaitExpressionSayHello = AsyncExpression.Await( asyncExpressionSayHello, configureAwait: false );
+        var asyncExpressionSayHello = GetAsyncExpression(kind, sayHelloMethod, awaitExpressionAdd);
+        var awaitExpressionSayHello = AsyncExpression.Await(asyncExpressionSayHello, configureAwait: false);
 
-        var lambda = Expression.Lambda<Func<int, int, string>>( awaitExpressionSayHello, paramA, paramB );
+        var lambda = Expression.Lambda<Func<int, int, string>>(awaitExpressionSayHello, paramA, paramB);
         var compiledLambda = lambda.Compile();
 
-        var result = compiledLambda( 10, 32 );
+        var result = compiledLambda(10, 32);
 
-        Assert.AreEqual( "Hello 42", result, "The result should be 'Hello 42'." );
+        Assert.AreEqual("Hello 42", result, "The result should be 'Hello 42'.");
     }
 
     [DataTestMethod]
