@@ -105,14 +105,14 @@ public class AsyncExpression : Expression
 
             if ( typeof(Task).IsAssignableFrom( node.Type ) )
             {
-                var executeMethod = MakeGenericExecuteAsyncMethod( node.Type.GetGenericArguments()[0] );
+                var executeAsyncMethod = MakeGenericExecuteAsyncMethod( node.Type.GetGenericArguments()[0] );
 
                 // MethodCallExpression and InvocationExpression have different argument structures
                 var argItems = node is MethodCallExpression ? (IEnumerable<Expression>) _visitedParameters : arguments; 
                 var argArray = NewArrayInit( typeof(object), ConvertArguments( argItems ) );
 
                 //return ExecuteAsyncExpression(node.Type.GetGenericArguments()[0], _body, VisitedParameters.ToArray(), arguments);
-                result = Call( executeMethod!, [Constant( _body ), Constant( _visitedParameters.ToArray() ), argArray] );
+                result = Call( executeAsyncMethod!, [Constant( _body ), Constant( _visitedParameters.ToArray() ), argArray] );
                 return true;
             }
 
@@ -213,10 +213,19 @@ public class AsyncExpression : Expression
                 {
                     // Initial state: compile the expression and execute it
 
+                    //var delegateType = GetDelegateType( _parameterExpressions.Select( p => p.Type ).Concat( [typeof(Task<T>)] ).ToArray() );
+                    //var lambda = Lambda( delegateType, _body, _parameterExpressions );
+                    //var compiledLambda = lambda.Compile();
+                    //var task = compiledLambda.DynamicInvoke( _parameters );
+
                     var delegateType = GetDelegateType( _parameterExpressions.Select( p => p.Type ).Concat( [typeof(Task<T>)] ).ToArray() );
-                    var lambda = Lambda( delegateType, _body, _parameterExpressions );
-                    var compiledLambda = lambda.Compile();
-                    var task = compiledLambda.DynamicInvoke( _parameters );
+                    var bodyLambda = Lambda( delegateType, _body, _parameterExpressions );
+
+                    var parameterExpressions = _parameters.Select( Constant ).Cast<Expression>().ToArray();
+                    var invocationExpression = Invoke( bodyLambda, parameterExpressions );
+
+                    var invocationLambda = Lambda<Func<Task<T>>>( invocationExpression ).Compile();
+                    var task = invocationLambda();
 
                     awaiter = ((Task<T>) task!).ConfigureAwait( false ).GetAwaiter();
 
