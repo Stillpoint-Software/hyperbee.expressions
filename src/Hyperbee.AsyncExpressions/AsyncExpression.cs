@@ -2,7 +2,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Xml.Linq;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -38,18 +37,12 @@ public class AsyncExpression : Expression
     public override Expression Reduce()
     {
         if ( !_isVisited )
-            ApplyVisitor();
+        {
+            _isVisited = true;
+            _visitedBody = new AsyncVisitor( _body ).Visit();
+        }
 
         return _visitedBody;
-    }
-
-    private void ApplyVisitor()
-    {
-        if ( _isVisited )
-            return;
-
-        _isVisited = true;
-        _visitedBody = new AsyncVisitor( _body ).Visit();
     }
 
     internal class AsyncVisitor : ExpressionVisitor
@@ -134,9 +127,10 @@ public class AsyncExpression : Expression
 
         private static Expression[] ConvertArguments( IEnumerable<Expression> expressions )
         {
-            return expressions.Select( e => Convert( e, typeof(object) ) ).Cast<Expression>().ToArray();
+            return expressions.Select( x => Convert( x, typeof(object) ) ).Cast<Expression>().ToArray();
         }
     }
+
     /*
     public static Expression ExecuteAsyncExpression(Type resultType, Expression body, ParameterExpression[] parameterExpressions, params Expression[] parameters)
     {
