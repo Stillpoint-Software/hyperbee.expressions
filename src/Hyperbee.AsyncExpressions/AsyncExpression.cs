@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -79,50 +80,61 @@ public class AsyncExpression : Expression
 
         protected override Expression VisitMethodCall( MethodCallExpression node )
         {
-            // Visit each argument to process any nested parameters
-            foreach ( var argument in node.Arguments )
-            {
-                Visit( argument );
-            }
-
-            if ( node.Object?.Type == typeof(AsyncExpression) )
-                return node;
-
-            if ( typeof(Task).IsAssignableFrom( node.Type ) )
-            {
-                var executeMethod = GenericExecuteAsync!.MakeGenericMethod( node.Type.GetGenericArguments()[0] );
-                var arguments = _visitedParameters.Select( p => Convert( p, typeof(object) ) ).Cast<Expression>().ToArray();
-                var argArray = NewArrayInit( typeof(object), arguments );
-
-                //return ExecuteAsyncExpression(node.Type.GetGenericArguments()[0], _body, VisitedParameters.ToArray(), arguments);
-                return Call( executeMethod!, [Constant( _body ), Constant( _visitedParameters.ToArray() ), argArray] );
-            }
+            if ( TryProcessCallableNode( node, node.Arguments, out var result ) )
+                return result;
 
             return base.VisitMethodCall( node );
         }
 
         protected override Expression VisitInvocation( InvocationExpression node )
         {
+            if ( TryProcessCallableNode( node, node.Arguments, out var result ) )
+                return result;
+
+            return base.VisitInvocation( node );
+        }
+
+        // Helpers
+
+        public bool TryProcessCallableNode( Expression node, IReadOnlyCollection<Expression> arguments, out Expression result )
+        {
             // Visit each argument to process any nested parameters
-            foreach ( var argument in node.Arguments )
+            foreach ( var argument in arguments )
             {
                 Visit( argument );
             }
 
             if ( node.Type == typeof(AsyncExpression) )
-                return node;
+            {
+                result = node;
+                return true;
+            }
 
             if ( typeof(Task).IsAssignableFrom( node.Type ) )
             {
-                var executeMethod = GenericExecuteAsync!.MakeGenericMethod( node.Type.GetGenericArguments()[0] );
-                var arguments = node.Arguments.Select( a => Convert( a, typeof(object) ) ).Cast<Expression>().ToArray();
-                var argArray = NewArrayInit( typeof(object), arguments );
+                var executeMethod = MakeGenericExecuteAsyncMethod( node.Type.GetGenericArguments()[0] );
+
+                // MethodCallExpression and InvocationExpression have different argument structures
+                var argItems = node is MethodCallExpression ? (IEnumerable<Expression>) _visitedParameters : arguments; 
+                var argArray = NewArrayInit( typeof(object), ConvertArguments( argItems ) );
 
                 //return ExecuteAsyncExpression(node.Type.GetGenericArguments()[0], _body, VisitedParameters.ToArray(), arguments);
-                return Call( executeMethod!, [Constant( _body ), Constant( _visitedParameters.ToArray() ), argArray] );
+                result = Call( executeMethod!, [Constant( _body ), Constant( _visitedParameters.ToArray() ), argArray] );
+                return true;
             }
 
-            return base.VisitInvocation( node );
+            result = null;
+            return true;
+        }
+
+        private static MethodInfo MakeGenericExecuteAsyncMethod( Type typeArg )
+        {
+            return GenericExecuteAsync!.MakeGenericMethod( typeArg );
+        }
+
+        private static Expression[] ConvertArguments( IEnumerable<Expression> expressions )
+        {
+            return expressions.Select( e => Convert( e, typeof(object) ) ).Cast<Expression>().ToArray();
         }
     }
     /*
@@ -269,6 +281,14 @@ public class AsyncExpression : Expression
             throw new ArgumentException( "The specified method is not an async.", nameof(methodInfo) );
 
         return new AsyncExpression( Call( methodInfo, arguments ) );
+    }
+
+    public static AsyncExpression CallAsync( Expression instance, MethodInfo methodInfo, params Expression[] arguments )
+    {
+        if ( !IsAsync( methodInfo.ReturnType ) )
+            throw new ArgumentException( "The specified method is not an async.", nameof(methodInfo) );
+
+        return new AsyncExpression( Call( instance, methodInfo, arguments ) );
     }
 
     public static AsyncExpression LambdaAsync( LambdaExpression lambdaExpression, params Expression[] arguments )
