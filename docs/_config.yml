@@ -1,0 +1,9 @@
+title: Hyperbee.CookieCutter
+description: Documentation for Hyperbee CookieCutter Projects.
+remote_theme: pmarsceill/just-the-docs
+
+# Optional configuration
+search_enabled: true
+aux_links:
+  "GitHub Repository":
+    - "//github.com/Stillpoint-Software/hyperbee.cookiecutter"

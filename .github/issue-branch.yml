@@ -1,0 +1,34 @@
+defaultBranch: 'develop'
+branchName: '${issue.number}:${issue.title,}'
+mode: auto
+gitSafeReplacementChar: '-'
+branches:
+  - label : feature
+    prefix: feature/
+    name: develop
+    prTarget: develop
+    skip: false
+  - label : bug
+    prefix: bugfix/
+    name: develop
+    prTarget: develop
+    skip: false
+  - label : critical
+    prefix: hotfix/
+    name: main
+    prTarget: main
+    skip: false
+  - label : documentation
+    prefix: doc/
+    name: main
+    prTarget: main
+  - label : '*'
+    skip: true
+
+
+prSkipCI: true
+copyIssueDescriptionToPR: true
+copyIssueLabelsToPR: true
+copyIssueAssigneeToPR: true
+openDraftPR: true
+autoCloseIssue: true
