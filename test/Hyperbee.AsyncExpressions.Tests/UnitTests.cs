@@ -335,8 +335,8 @@ public class AsyncExpressionUnitTests
 
         var paramA = Expression.Parameter( typeof( int ), "a" );
 
-        var l1 = AsyncExpression.Await(AsyncExpression.InvokeAsync( incrementExpression, paramA ), false );
-        var l2 = AsyncExpression.Await(AsyncExpression.InvokeAsync( incrementExpression, l1 ), false );
+        var l1 = AsyncExpression.Await( AsyncExpression.InvokeAsync( incrementExpression, paramA ), false );
+        var l2 = AsyncExpression.Await( AsyncExpression.InvokeAsync( incrementExpression, l1 ), false );
         var l3 = AsyncExpression.InvokeAsync( incrementExpression, l2 );
 
         var compiled = Expression.Lambda<Func<int, Task<int>>>( l3, paramA ).Compile();

@@ -12,11 +12,11 @@ public class AsyncInvocationExpression : AsyncInvokeExpression
 }
 public static partial class AsyncExpression
 {
-    public static AsyncInvokeExpression InvokeAsync(LambdaExpression lambdaExpression, params Expression[] arguments)
+    public static AsyncInvokeExpression InvokeAsync( LambdaExpression lambdaExpression, params Expression[] arguments )
     {
-        if (!AsyncInvokeExpression.IsAsync(lambdaExpression.ReturnType))
-            throw new ArgumentException("The specified lambda is not an async.", nameof(lambdaExpression));
+        if ( !AsyncInvokeExpression.IsAsync( lambdaExpression.ReturnType ) )
+            throw new ArgumentException( "The specified lambda is not an async.", nameof( lambdaExpression ) );
 
-        return new AsyncInvokeExpression(Expression.Invoke(lambdaExpression, arguments));
+        return new AsyncInvokeExpression( Expression.Invoke( lambdaExpression, arguments ) );
     }
 }

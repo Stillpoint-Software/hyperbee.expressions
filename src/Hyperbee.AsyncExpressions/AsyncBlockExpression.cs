@@ -14,7 +14,7 @@ public class AsyncBlockExpression : Expression
     private bool _isReduced;
     private static int _stateMachineCounter;
 
-    private static readonly Expression VoidResult = Constant(Task.FromResult(new VoidTaskResult()));
+    private static readonly Expression VoidResult = Constant( Task.FromResult( new VoidTaskResult() ) );
 
     private static MethodInfo GenericGenerateExecuteAsync => typeof( AsyncInvokeExpression )
         .GetMethod( nameof( GenerateExecuteAsyncExpression ), BindingFlags.Static | BindingFlags.NonPublic );
@@ -38,23 +38,23 @@ public class AsyncBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        if (_isReduced)
+        if ( _isReduced )
             return _reducedBody;
 
         _isReduced = true;
 
-        var (type, result) = GetTypeResult(_body);
-        var methodInfo = GenericGenerateExecuteAsync?.MakeGenericMethod(type);
+        var (type, result) = GetTypeResult( _body );
+        var methodInfo = GenericGenerateExecuteAsync?.MakeGenericMethod( type );
 
-        _reducedBody = (Expression)methodInfo!.Invoke(null, [result]);
+        _reducedBody = (Expression) methodInfo!.Invoke( null, [result] );
 
         return _reducedBody!;
     }
 
-    private static (Type Type, Expression Expression) GetTypeResult(Expression expression)
+    private static (Type Type, Expression Expression) GetTypeResult( Expression expression )
     {
-        return expression.Type == typeof(Task)
-            ? (typeof(VoidTaskResult), Block(expression, VoidResult))
+        return expression.Type == typeof( Task )
+            ? (typeof( VoidTaskResult ), Block( expression, VoidResult ))
             : (expression.Type.GetGenericArguments()[0], expression);
     }
 
@@ -73,10 +73,10 @@ public class AsyncBlockExpression : Expression
 
         // Create unique variable names to avoid conflicts
         var id = Interlocked.Increment( ref _stateMachineCounter );
-        var stateMachineVar = Variable( typeof(MultiTaskStateMachine<T> ), $"stateMachine_{id}" );
+        var stateMachineVar = Variable( typeof( MultiTaskStateMachine<T> ), $"stateMachine_{id}" );
 
         // Constructor for state machine
-        var stateMachineCtor = typeof(MultiTaskStateMachine<T> )
+        var stateMachineCtor = typeof( MultiTaskStateMachine<T> )
             .GetConstructor( [typeof( Task<T> )] );
 
         var assignStateMachine = Assign(
@@ -85,11 +85,11 @@ public class AsyncBlockExpression : Expression
         );
 
         // Call MoveNext
-        var moveNextMethod = typeof(MultiTaskStateMachine<T> ).GetMethod( nameof(MultiTaskStateMachine<T>.MoveNext ) );
+        var moveNextMethod = typeof( MultiTaskStateMachine<T> ).GetMethod( nameof( MultiTaskStateMachine<T>.MoveNext ) );
         var moveNextCall = Call( stateMachineVar, moveNextMethod! );
 
         // Return task property
-        var taskProperty = typeof(MultiTaskStateMachine<T> ).GetProperty( nameof(MultiTaskStateMachine<T>.Task ) );
+        var taskProperty = typeof( MultiTaskStateMachine<T> ).GetProperty( nameof( MultiTaskStateMachine<T>.Task ) );
         var returnTask = Property( stateMachineVar, taskProperty! );
 
         // Explicitly use nested blocks to handle variable scoping
@@ -202,11 +202,11 @@ public class AsyncBlockExpression : Expression
     {
         public Expression Body => node._body;
     }
-    
+
     public static AsyncBlockExpression BlockAsync( BlockExpression expression )
     {
         //expression.Expressions.Count..
-    
+
         /*
         {
     
@@ -229,12 +229,12 @@ public class AsyncBlockExpression : Expression
           ...
         }
          */
-    
+
         //var d = Task.Delay( 10 );
         // ...
         //await d;
-    
-    
+
+
         return new AsyncBlockExpression( expression );
     }
 

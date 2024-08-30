@@ -44,8 +44,8 @@ public class AsyncInvokeExpression : Expression
 
         _reducedBody = _body.Type.IsGenericType switch
         {
-            true => GetReduceBody(_body.Type.GetGenericArguments()[0], _body),
-            false => GetReduceBody( typeof(VoidTaskResult), Block( _body, VoidResult ) )
+            true => GetReduceBody( _body.Type.GetGenericArguments()[0], _body ),
+            false => GetReduceBody( typeof( VoidTaskResult ), Block( _body, VoidResult ) )
         };
 
         return _reducedBody;
