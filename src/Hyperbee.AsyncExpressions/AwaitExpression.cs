@@ -69,8 +69,8 @@ public class AwaitExpression : Expression
         return result;
     }
 
-    public static AwaitExpression Await(Expression expression, bool configureAwait)
+    public static AwaitExpression Await( Expression expression, bool configureAwait )
     {
-        return new AwaitExpression(expression, configureAwait);
+        return new AwaitExpression( expression, configureAwait );
     }
 }
