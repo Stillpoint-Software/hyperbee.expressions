@@ -6,24 +6,24 @@ using System.Runtime.CompilerServices;
 namespace Hyperbee.AsyncExpressions;
 
 [DebuggerDisplay( "{_body}" )]
-[DebuggerTypeProxy( typeof( AsyncExpressionProxy ) )]
-public class AsyncInvokeExpression : Expression
+[DebuggerTypeProxy( typeof( AsyncBaseExpressionProxy ) )]
+public abstract class AsyncBaseExpression : Expression
 {
     private readonly Expression _body;
     private Expression _reducedBody;
     private bool _isReduced;
-    private static int _stateMachineCounter;
 
-    private static readonly Expression VoidResult = Constant( Task.FromResult( new VoidTaskResult() ) );
+    private static int __stateMachineCounter;
+    private static readonly Expression TaskVoidResult = Constant( Task.FromResult( new VoidResult() ) );
 
-    private static MethodInfo GenericGenerateExecuteAsync => typeof( AsyncInvokeExpression )
+    private static MethodInfo GenerateExecuteAsyncMethod => typeof( AsyncBaseExpression )
         .GetMethod( nameof( GenerateExecuteAsyncExpression ), BindingFlags.Static | BindingFlags.NonPublic );
 
-    internal AsyncInvokeExpression( Expression body )
+    internal AsyncBaseExpression( Expression body )
     {
         ArgumentNullException.ThrowIfNull( body, nameof( body ) );
 
-        if ( !IsAsync( body.Type ) )
+        if ( !IsTask( body.Type ) )
             throw new ArgumentException( $"The specified {nameof( body )} is not an async.", nameof( body ) );
 
         _body = body;
@@ -44,15 +44,15 @@ public class AsyncInvokeExpression : Expression
 
         _reducedBody = _body.Type.IsGenericType switch
         {
-            true => GetReduceBody( _body.Type.GetGenericArguments()[0], _body ),
-            false => GetReduceBody( typeof( VoidTaskResult ), Block( _body, VoidResult ) )
+            true => GetReducedBody( _body.Type.GetGenericArguments()[0], _body ),
+            false => GetReducedBody( typeof( VoidResult ), Block( _body, TaskVoidResult ) )
         };
 
         return _reducedBody;
 
-        static Expression GetReduceBody( Type type, Expression body )
+        static Expression GetReducedBody( Type type, Expression body )
         {
-            var methodInfo = GenericGenerateExecuteAsync.MakeGenericMethod( type );
+            var methodInfo = GenerateExecuteAsyncMethod.MakeGenericMethod( type );
             return (Expression) methodInfo!.Invoke( null, [body] );
         }
     }
@@ -70,7 +70,7 @@ public class AsyncInvokeExpression : Expression
         */
 
         // Create unique variable names to avoid conflicts
-        var id = Interlocked.Increment( ref _stateMachineCounter );
+        var id = Interlocked.Increment( ref __stateMachineCounter );
         var stateMachineVar = Variable( typeof( StateMachine<T> ), $"stateMachine_{id}" );
 
         // Constructor for state machine
@@ -167,14 +167,14 @@ public class AsyncInvokeExpression : Expression
         }
     }
 
-    internal static bool IsAsync( Type returnType )
+    internal static bool IsTask( Type returnType )
     {
         return returnType == typeof( Task ) ||
                (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof( Task<> )) ||
                (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof( ValueTask<> ));
     }
 
-    public class AsyncExpressionProxy( AsyncInvokeExpression node )
+    public class AsyncBaseExpressionProxy( AsyncBaseExpression node )
     {
         public Expression Body => node._body;
     }

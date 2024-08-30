@@ -3,30 +3,29 @@ using System.Reflection;
 
 namespace Hyperbee.AsyncExpressions;
 
-public class AsyncMethodCallExpression : AsyncInvokeExpression
+public class AsyncMethodCallExpression : AsyncBaseExpression
 {
     internal AsyncMethodCallExpression( MethodCallExpression body ) : base( body )
     {
     }
 }
 
-
 public static partial class AsyncExpression
 {
-    public static AsyncInvokeExpression CallAsync( MethodInfo methodInfo, params Expression[] arguments )
+    public static AsyncBaseExpression CallAsync( MethodInfo methodInfo, params Expression[] arguments )
     {
-        if ( !AsyncInvokeExpression.IsAsync( methodInfo.ReturnType ) )
-            throw new ArgumentException( "The specified method is not an async.", nameof( methodInfo ) );
+        if ( !AsyncBaseExpression.IsTask( methodInfo.ReturnType ) )
+            throw new ArgumentException( "The specified method does not return a Task.", nameof( methodInfo ) );
 
-        return new AsyncInvokeExpression( Expression.Call( methodInfo, arguments ) );
+        return new AsyncMethodCallExpression( Expression.Call( methodInfo, arguments ) );
     }
 
-    public static AsyncInvokeExpression CallAsync( Expression instance, MethodInfo methodInfo,
+    public static AsyncBaseExpression CallAsync( Expression instance, MethodInfo methodInfo,
         params Expression[] arguments )
     {
-        if ( !AsyncInvokeExpression.IsAsync( methodInfo.ReturnType ) )
-            throw new ArgumentException( "The specified method is not an async.", nameof( methodInfo ) );
+        if ( !AsyncBaseExpression.IsTask( methodInfo.ReturnType ) )
+            throw new ArgumentException( "The specified method does not return a Task.", nameof( methodInfo ) );
 
-        return new AsyncInvokeExpression( Expression.Call( instance, methodInfo, arguments ) );
+        return new AsyncMethodCallExpression( Expression.Call( instance, methodInfo, arguments ) );
     }
 }

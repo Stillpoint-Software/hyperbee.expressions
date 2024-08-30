@@ -57,7 +57,7 @@ public class AsyncExpressionUnitTests
         return typeof( AsyncExpressionUnitTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
     }
 
-    private static AsyncInvokeExpression GetAsyncExpression( ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments )
+    private static AsyncBaseExpression GetAsyncExpression( ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments )
     {
         switch ( kind )
         {

@@ -1,22 +1,21 @@
 ﻿using System.Linq.Expressions;
-using System.Reflection;
 
 namespace Hyperbee.AsyncExpressions;
 
-public class AsyncInvocationExpression : AsyncInvokeExpression
+public class AsyncInvocationExpression : AsyncBaseExpression
 {
     internal AsyncInvocationExpression( InvocationExpression body ) : base( body )
     {
     }
-
 }
+
 public static partial class AsyncExpression
 {
-    public static AsyncInvokeExpression InvokeAsync( LambdaExpression lambdaExpression, params Expression[] arguments )
+    public static AsyncBaseExpression InvokeAsync( LambdaExpression lambdaExpression, params Expression[] arguments )
     {
-        if ( !AsyncInvokeExpression.IsAsync( lambdaExpression.ReturnType ) )
-            throw new ArgumentException( "The specified lambda is not an async.", nameof( lambdaExpression ) );
+        if ( !AsyncBaseExpression.IsTask( lambdaExpression.ReturnType ) )
+            throw new ArgumentException( "The specified lambda does not return a Task.", nameof( lambdaExpression ) );
 
-        return new AsyncInvokeExpression( Expression.Invoke( lambdaExpression, arguments ) );
+        return new AsyncInvocationExpression( Expression.Invoke( lambdaExpression, arguments ) );
     }
 }

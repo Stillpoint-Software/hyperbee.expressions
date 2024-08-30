@@ -1,3 +1,3 @@
 ﻿namespace Hyperbee.AsyncExpressions;
 
-internal readonly struct VoidTaskResult;
+internal readonly struct VoidResult;

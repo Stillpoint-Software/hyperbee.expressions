@@ -12,11 +12,11 @@ public class AsyncBlockExpression : Expression
     private readonly Expression _body;
     private Expression _reducedBody;
     private bool _isReduced;
-    private static int _stateMachineCounter;
+    private static int __stateMachineCounter;
 
-    private static readonly Expression VoidResult = Constant( Task.FromResult( new VoidTaskResult() ) );
+    private static readonly Expression VoidResult = Constant( Task.FromResult( new VoidResult() ) );
 
-    private static MethodInfo GenericGenerateExecuteAsync => typeof( AsyncInvokeExpression )
+    private static MethodInfo GenericGenerateExecuteAsync => typeof( AsyncBaseExpression )
         .GetMethod( nameof( GenerateExecuteAsyncExpression ), BindingFlags.Static | BindingFlags.NonPublic );
 
     internal AsyncBlockExpression( Expression body )
@@ -54,7 +54,7 @@ public class AsyncBlockExpression : Expression
     private static (Type Type, Expression Expression) GetTypeResult( Expression expression )
     {
         return expression.Type == typeof( Task )
-            ? (typeof( VoidTaskResult ), Block( expression, VoidResult ))
+            ? (typeof( VoidResult ), Block( expression, VoidResult ))
             : (expression.Type.GetGenericArguments()[0], expression);
     }
 
@@ -72,7 +72,7 @@ public class AsyncBlockExpression : Expression
         */
 
         // Create unique variable names to avoid conflicts
-        var id = Interlocked.Increment( ref _stateMachineCounter );
+        var id = Interlocked.Increment( ref __stateMachineCounter );
         var stateMachineVar = Variable( typeof( MultiTaskStateMachine<T> ), $"stateMachine_{id}" );
 
         // Constructor for state machine

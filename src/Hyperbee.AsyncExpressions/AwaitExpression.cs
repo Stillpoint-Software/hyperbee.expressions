@@ -8,6 +8,14 @@ public class AwaitExpression : Expression
     private readonly Expression _asyncExpression;
     private readonly bool _configureAwait;
 
+    private MethodInfo AwaitTaskMethod => typeof( AwaitExpression )
+        .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
+        .First( x => x.Name == nameof( Await ) && !x.IsGenericMethodDefinition );
+
+    private MethodInfo AwaitTaskTMethod => typeof(AwaitExpression)
+        .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
+        .First( x => x.Name == nameof(Await) && x.IsGenericMethodDefinition );
+
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
         _asyncExpression = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
@@ -20,16 +28,12 @@ public class AwaitExpression : Expression
     {
         get
         {
-            var taskType = _asyncExpression.Type;
-
-            if ( taskType.IsGenericType && taskType.GetGenericTypeDefinition() == typeof( Task<> ) )
+            return _asyncExpression.Type.IsGenericType switch
             {
-                return taskType.GetGenericArguments()[0];
-            }
-
-            return taskType == typeof( Task )
-                ? typeof( void )
-                : throw new InvalidOperationException( "Unsupported type in AwaitExpression." );
+                true when _asyncExpression.Type.GetGenericTypeDefinition() == typeof( Task<> ) => _asyncExpression.Type.GetGenericArguments()[0],
+                false when _asyncExpression.Type == typeof( Task ) => typeof( void ),
+                _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
+            };
         }
     }
 
@@ -37,24 +41,9 @@ public class AwaitExpression : Expression
 
     public override Expression Reduce()
     {
-        if ( Type == typeof( void ) )
-        {
-            var awaitMethod = typeof( AwaitExpression )
-                .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
-                .First( m => m.Name == nameof( Await ) && !m.IsGenericMethodDefinition );
-
-            return Call( awaitMethod!, _asyncExpression, Constant( _configureAwait ) );
-        }
-        else
-        {
-            var awaitMethod = typeof( AwaitExpression )
-                .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
-                .First( m => m.Name == nameof( Await ) && m.IsGenericMethodDefinition );
-
-            var genericAwaitMethod = awaitMethod.MakeGenericMethod( Type );
-
-            return Call( genericAwaitMethod, _asyncExpression, Constant( _configureAwait ) );
-        }
+        return Call( Type == typeof( void ) 
+            ? AwaitTaskMethod 
+            : AwaitTaskTMethod.MakeGenericMethod( Type ), _asyncExpression, Constant( _configureAwait ) );
     }
 
     private static void Await( Task task, bool configureAwait )
@@ -64,11 +53,8 @@ public class AwaitExpression : Expression
 
     private static T Await<T>( Task<T> task, bool configureAwait )
     {
-        var awaiter = task.ConfigureAwait( configureAwait ).GetAwaiter();
-        var result = awaiter.GetResult();
-        return result;
+        return task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
     }
-
 }
 
 public static partial class AsyncExpression
