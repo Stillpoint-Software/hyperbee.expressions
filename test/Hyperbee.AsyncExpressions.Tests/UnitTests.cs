@@ -253,12 +253,11 @@ public class AsyncExpressionUnitTests
     [DataTestMethod]
     [DataRow(ExpressionKind.Lambda)]
     [DataRow(ExpressionKind.Method)]
-    public void TestChainedAwaitExpressions(ExpressionKind kind)
+    public async Task TestScopedAwaitExpressions(ExpressionKind kind)
     {
         var addTwoNumbersMethod = GetMethodInfo(nameof(AddTwoNumbersAsync));
-        var sayHelloMethod = GetMethodInfo(nameof(SayHelloAsync));
 
-        // Create AsyncExpression and AwaitExpression for AddTwoNumbers
+        // Create AsyncExpression for AddTwoNumbers
         var paramA = Expression.Parameter(typeof(int), "a");
         var paramB = Expression.Parameter(typeof(int), "b");
 
@@ -267,25 +266,135 @@ public class AsyncExpressionUnitTests
 
         var resultFromAdd = Expression.Variable(typeof(int), "resultFromAdd");
 
+        // Create the "Hello " + resultFromAdd expression
+        var helloStringExpression = Expression.Constant("Hello ");
+        var resultToStringExpression = Expression.Call(resultFromAdd, typeof(object).GetMethod("ToString", Type.EmptyTypes)!);
+        var helloConcatExpression = Expression.Call(
+            typeof(string).GetMethod("Concat", [typeof(string), typeof(string)])!,
+            helloStringExpression,
+            resultToStringExpression
+        );
+
+        // Wrap the concatenated string in Task.FromResult
+        var taskFromResultMethod = typeof(Task).GetMethod("FromResult")!.MakeGenericMethod(typeof(string));
+        var taskWrappedExpression = Expression.Call(taskFromResultMethod, helloConcatExpression);
+
+        // Combine the expressions in a block
+        var combinedExpression = Expression.Block(
+            [resultFromAdd], // Declare the variable to hold the intermediate result
+            Expression.Assign( resultFromAdd, awaitExpressionAdd ), // Assign result of AddTwoNumbers to resultFromAdd
+            taskWrappedExpression
+        );
+
+        // Compile the nested expression into a lambda and execute it
+        var lambda = Expression.Lambda<Func<int, int, Task<string>>>(combinedExpression, paramA, paramB);
+        var asyncLambda = AsyncExpression.LambdaAsync(lambda, paramA, paramB);
+        var compiledLambda = Expression.Lambda<Func<int, int, Task<string>>>( asyncLambda, paramA, paramB ).Compile();
+
+        var result = await compiledLambda( 32, 10 ); // Execute with parameters 32 and 10
+
+        // Assert the result
+        Assert.AreEqual("Hello 42", result, "The result should be 'Hello 42'.");
+    }
+
+    [TestMethod]
+    public async Task TestMultipleAsyncExpressions_WithDeepNestingAsync()
+    {
+        var incrementExpression = ToExpression( Increment );
+
+        var paramA = Expression.Parameter(typeof(Task<int>), "a");
+
+        // var l1 = Expression.Invoke( incrementExpression, paramA );
+        // var l2 = Expression.Invoke( incrementExpression, l1 );
+        // var l3 = Expression.Invoke( incrementExpression, l2 );
+
+        var l1 = AsyncExpression.LambdaAsync( incrementExpression, paramA );
+        var l2 = AsyncExpression.LambdaAsync( incrementExpression, l1 );
+        var l3 = AsyncExpression.LambdaAsync( incrementExpression, l2 );
+
+        var compiled = Expression.Lambda<Func<Task<int>, Task<int>>>( l3, paramA ).Compile();
+        var expressionResult = await compiled( Task.FromResult( 2 ) );
+
+        var runtimeResult = await Increment( Increment( Increment( Task.FromResult( 2 ) ) ) );
+
+        Assert.AreEqual( runtimeResult, expressionResult );
+
+        return;
+
+        static Expression<Func<Task<int>, Task<int>>> ToExpression( Func<Task<int>, Task<int>> func ) => task => func( task );
+
+        static async Task<int> Increment(Task<int> previousTask)
+        {
+            int previousResult = await previousTask;
+            return previousResult + 1;
+        }
+    }
+
+    [TestMethod]
+    public async Task TestMultipleAsyncExpressions_WithDeepNestingAsyncAwait()
+    {
+        var incrementExpression = ToExpression( Increment );
+
+        var paramA = Expression.Parameter( typeof(int), "a" );
+
+        var l1 = AsyncExpression.Await( AsyncExpression.LambdaAsync( incrementExpression, paramA ), false );
+        var l2 = AsyncExpression.Await( AsyncExpression.LambdaAsync( incrementExpression, l1 ), false );
+        var l3 = AsyncExpression.LambdaAsync( incrementExpression, l2 );
+
+        var compiled = Expression.Lambda<Func<int, Task<int>>>( l3, paramA ).Compile();
+        var expressionResult = await compiled( 2 );
+
+        var runtimeResult = await Increment( await Increment( await Increment( 2 ) ) );
+
+        Assert.AreEqual( runtimeResult, expressionResult );
+
+        return;
+
+        static Expression<Func<int, Task<int>>> ToExpression( Func<int, Task<int>> func ) => task => func( task );
+
+        static async Task<int> Increment( int previous )
+        {
+            await Task.Delay( 10 );
+            return previous + 1;
+        }
+    }
+
+    [DataTestMethod]
+    [DataRow( ExpressionKind.Lambda )]
+    [DataRow( ExpressionKind.Method )]
+    public void TestChainedAwaitExpressions( ExpressionKind kind )
+    {
+        var addTwoNumbersMethod = GetMethodInfo( nameof(AddTwoNumbersAsync) );
+        var sayHelloMethod = GetMethodInfo( nameof(SayHelloAsync) );
+
+        // Create AsyncExpression and AwaitExpression for AddTwoNumbers
+        var paramA = Expression.Parameter( typeof(int), "a" );
+        var paramB = Expression.Parameter( typeof(int), "b" );
+
+        var asyncExpressionAdd = GetAsyncExpression( kind, addTwoNumbersMethod!, paramA, paramB );
+        var awaitExpressionAdd = AsyncExpression.Await( asyncExpressionAdd, configureAwait: false );
+
+        var resultFromAdd = Expression.Variable( typeof(int), "resultFromAdd" );
+
         // Create AsyncExpression and AwaitExpression for SayHello
-        var asyncExpressionSayHello = GetAsyncExpression(kind, sayHelloMethod!, resultFromAdd);
-        var awaitExpressionSayHello = AsyncExpression.Await(asyncExpressionSayHello, configureAwait: false);
+        var asyncExpressionSayHello = GetAsyncExpression( kind, sayHelloMethod!, resultFromAdd );
+        var awaitExpressionSayHello = AsyncExpression.Await( asyncExpressionSayHello, configureAwait: false );
 
         // Combine both expressions in a block
         var combinedExpression = Expression.Block(
-            new[] { resultFromAdd }, // Declare the variable to hold the intermediate result
-            Expression.Assign(resultFromAdd, awaitExpressionAdd), // Assign result of AddTwoNumbers to resultFromAdd
+            [resultFromAdd], // Declare the variable to hold the intermediate result
+            Expression.Assign( resultFromAdd, awaitExpressionAdd ), // Assign result of AddTwoNumbers to resultFromAdd
             awaitExpressionSayHello // Execute SayHello and return its result
         );
 
         // Compile the combined expression into a lambda and execute it
-        var lambda = Expression.Lambda<Func<int, int, string>>(combinedExpression, paramA, paramB);
+        var lambda = Expression.Lambda<Func<int, int, string>>( combinedExpression, paramA, paramB );
         var compiledLambda = lambda.Compile();
 
-        var result = compiledLambda(32, 10); // Execute with parameters 32 and 10
+        var result = compiledLambda( 32, 10 ); // Execute with parameters 32 and 10
 
         // Assert the result
-        Assert.AreEqual("Hello 42", result, "The result should be 'Hello 42'.");
+        Assert.AreEqual( "Hello 42", result, "The result should be 'Hello 42'." );
     }
 
     [DataTestMethod]

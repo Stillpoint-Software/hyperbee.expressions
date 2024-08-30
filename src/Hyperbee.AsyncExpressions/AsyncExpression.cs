@@ -10,194 +10,104 @@ namespace Hyperbee.AsyncExpressions;
 public class AsyncExpression : Expression
 {
     private readonly Expression _body;
-    private Expression _visitedBody;
-    private bool _isVisited;
+    private Expression _reducedBody;
+    private bool _isReduced;
+
+    private static int _stateMachineCounter;
+
+    private static MethodInfo GenericGenerateExecuteAsync => typeof(AsyncExpression)
+        .GetMethod(nameof(GenerateExecuteAsyncExpression), BindingFlags.Static | BindingFlags.NonPublic);
+
+    private static MethodInfo GenericExecuteAsync => typeof(AsyncExpression)
+        .GetMethod( nameof(ExecuteAsync), BindingFlags.Static | BindingFlags.NonPublic );
 
     internal AsyncExpression( Expression body )
     {
         ArgumentNullException.ThrowIfNull( body, nameof(body) );
 
+        if ( !IsAsync( body.Type ) )
+            throw new ArgumentException( $"The specified {nameof(body)} is not an async.", nameof(body) );
+
         _body = body;
     }
+
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     public override Type Type => _body.Type;
 
-    internal static Task<T> ExecuteAsync<T>( Expression body, ParameterExpression[] parameterExpressions, params object[] parameters )
-    {
-        var builder = AsyncTaskMethodBuilder<T>.Create();
-        var stateMachine = new StateMachine<T>( ref builder, body, parameterExpressions, parameters );
-        stateMachine.MoveNext();
-        return stateMachine.Task;
-    }
-
     public override bool CanReduce => true;
 
     public override Expression Reduce()
     {
-        if ( !_isVisited )
+        if ( !_isReduced )
         {
-            _isVisited = true;
-            _visitedBody = new AsyncVisitor( _body ).Visit();
+            _isReduced = true;
+
+            var genericArgumentType = _body.Type.GetGenericArguments()[0];
+            // var methodInfo = GenericGenerateExecuteAsync?.MakeGenericMethod( genericArgumentType );
+            // _reducedBody = (Expression)methodInfo!.Invoke(null, [_body]);
+
+            var methodInfo = GenericExecuteAsync?.MakeGenericMethod( genericArgumentType );
+            _reducedBody = Call( methodInfo, _body );
         }
 
-        return _visitedBody;
+        return _reducedBody;
     }
 
-    internal class AsyncVisitor : ExpressionVisitor
+    internal static Task<T> ExecuteAsync<T>(Task<T> task)
     {
-        private readonly Expression _body;
-        private readonly List<ParameterExpression> _visitedParameters = [];
-
-        private static MethodInfo GenericExecuteAsync => typeof(AsyncExpression)
-            .GetMethod( nameof(ExecuteAsync), BindingFlags.Static | BindingFlags.NonPublic );
-
-        public AsyncVisitor( Expression body )
-        {
-            _body = body;
-        }
-
-        public Expression Visit()
-        {
-            return Visit( _body );
-        }
-
-        protected override Expression VisitParameter( ParameterExpression node )
-        {
-            if ( !_visitedParameters.Contains( node ) )
-                _visitedParameters.Add( node );
-
-            return base.VisitParameter( node );
-        }
-
-        protected override Expression VisitMethodCall( MethodCallExpression node )
-        {
-            if ( TryProcessCallableNode( node, node.Arguments, out var result ) )
-                return result;
-
-            return base.VisitMethodCall( node );
-        }
-
-        protected override Expression VisitInvocation( InvocationExpression node )
-        {
-            if ( TryProcessCallableNode( node, node.Arguments, out var result ) )
-                return result;
-
-            return base.VisitInvocation( node );
-        }
-
-        // Helpers
-
-        public bool TryProcessCallableNode( Expression node, IReadOnlyCollection<Expression> arguments, out Expression result )
-        {
-            // Visit each argument to process any nested parameters
-            foreach ( var argument in arguments )
-            {
-                Visit( argument );
-            }
-
-            if ( node.Type == typeof(AsyncExpression) )
-            {
-                result = node;
-                return true;
-            }
-
-            if ( typeof(Task).IsAssignableFrom( node.Type ) )
-            {
-                var executeAsyncMethod = MakeGenericExecuteAsyncMethod( node.Type.GetGenericArguments()[0] );
-
-                // MethodCallExpression and InvocationExpression have different argument structures
-                var argItems = node is MethodCallExpression ? (IEnumerable<Expression>) _visitedParameters : arguments; 
-                var argArray = NewArrayInit( typeof(object), ConvertArguments( argItems ) );
-
-                //return ExecuteAsyncExpression(node.Type.GetGenericArguments()[0], _body, VisitedParameters.ToArray(), arguments);
-                result = Call( executeAsyncMethod!, [Constant( _body ), Constant( _visitedParameters.ToArray() ), argArray] );
-                return true;
-            }
-
-            result = null;
-            return false;
-        }
-
-        private static MethodInfo MakeGenericExecuteAsyncMethod( Type typeArg )
-        {
-            return GenericExecuteAsync!.MakeGenericMethod( typeArg );
-        }
-
-        private static Expression[] ConvertArguments( IEnumerable<Expression> expressions )
-        {
-            return expressions.Select( x => Convert( x, typeof(object) ) ).Cast<Expression>().ToArray();
-        }
+        var stateMachine = new StateMachine<T>(task);
+        stateMachine.MoveNext();
+        return stateMachine.Task;
     }
 
-    /*
-    public static Expression ExecuteAsyncExpression(Type resultType, Expression body, ParameterExpression[] parameterExpressions, params Expression[] parameters)
+    private static Expression GenerateExecuteAsyncExpression<T>( Expression task )
     {
-        var builderVar = Expression.Variable(typeof(AsyncTaskMethodBuilder<>).MakeGenericType(resultType), "builder_" + Guid.NewGuid().ToString("N"));
-        var stateMachineVar = Expression.Variable(typeof(StateMachine<>).MakeGenericType(resultType), "stateMachine_" + Guid.NewGuid().ToString("N"));
+        // Create unique variable names to avoid conflicts
+        var id = Interlocked.Increment(ref _stateMachineCounter);
+        var stateMachineVar = Variable(typeof(StateMachine<T>), $"stateMachine_{id}");
 
-        var builderCreateMethod = typeof(AsyncTaskMethodBuilder<>)
-            .MakeGenericType(resultType)
-            .GetMethod(nameof(AsyncTaskMethodBuilder<object>.Create));
+        // Constructor for state machine
+        var stateMachineCtor = typeof(StateMachine<T>)
+            .GetConstructor( [typeof(Task<T>)] );
 
-        var assignBuilder = Expression.Assign(builderVar, Expression.Call(builderCreateMethod));
-
-        var stateMachineCtor = typeof(StateMachine<>)
-            .MakeGenericType(resultType)
-            .GetConstructor(new[]
-            {
-                typeof(AsyncTaskMethodBuilder<>).MakeGenericType(resultType).MakeByRefType(),
-                typeof(Expression),
-                typeof(ParameterExpression[]),
-                typeof(object[])
-            });
-
-        var assignStateMachine = Expression.Assign(
+        var assignStateMachine = Assign(
             stateMachineVar,
-            Expression.New(stateMachineCtor, builderVar, Expression.Constant(body), Expression.Constant(parameterExpressions), Expression.NewArrayInit(typeof(object), parameters))
+            New(stateMachineCtor!, task )
         );
 
-        var moveNextMethod = typeof(StateMachine<>)
-            .MakeGenericType(resultType)
-            .GetMethod(nameof(StateMachine<object>.MoveNext));
+        // Call MoveNext
+        var moveNextMethod = typeof(StateMachine<T>).GetMethod(nameof(StateMachine<T>.MoveNext));
+        var moveNextCall = Call(stateMachineVar, moveNextMethod!);
 
-        var moveNextCall = Expression.Call(stateMachineVar, moveNextMethod);
+        // Return task property
+        var taskProperty = typeof(StateMachine<T>).GetProperty(nameof(StateMachine<T>.Task));
+        var returnTask = Property(stateMachineVar, taskProperty!);
 
-        var taskProperty = typeof(StateMachine<>)
-            .MakeGenericType(resultType)
-            .GetProperty(nameof(StateMachine<object>.Task));
-
-        var returnTask = Expression.Property(stateMachineVar, taskProperty);
-
-        // Ensure the block encapsulates all variable declarations and usage
-        return Expression.Block(
-            new[] { builderVar, stateMachineVar }, // Declaring the variables in the block scope
-            assignBuilder,
+        // Explicitly use nested blocks to handle variable scoping
+        var resultBlock = Block(
+            [stateMachineVar],
             assignStateMachine,
             moveNextCall,
             returnTask
         );
-    }*/
 
+        return resultBlock;
+    }
 
     private struct StateMachine<T> : IAsyncStateMachine
     {
+        private readonly Task<T> _task;
         private AsyncTaskMethodBuilder<T> _builder;
-        private readonly Expression _body;
         private int _state;
         private ConfiguredTaskAwaitable<T>.ConfiguredTaskAwaiter _awaiter;
-        private readonly object[] _parameters;
-        private readonly ParameterExpression[] _parameterExpressions;
 
-        public StateMachine( ref AsyncTaskMethodBuilder<T> builder, Expression body, ParameterExpression[] parameterExpressions, object[] parameters )
+        public StateMachine( Task<T> task )
         {
-            _builder = builder; // critical: this makes a copy of builder
-            _body = body;
-            _parameterExpressions = parameterExpressions;
-            _parameters = parameters;
+            _builder = AsyncTaskMethodBuilder<T>.Create();
             _state = -1;
-
+            _task = task;
             SetStateMachine( this );
         }
 
@@ -211,23 +121,9 @@ public class AsyncExpression : Expression
 
                 if ( _state != 0 )
                 {
-                    // Initial state: compile the expression and execute it
+                    // Initial state:
 
-                    //var delegateType = GetDelegateType( _parameterExpressions.Select( p => p.Type ).Concat( [typeof(Task<T>)] ).ToArray() );
-                    //var lambda = Lambda( delegateType, _body, _parameterExpressions );
-                    //var compiledLambda = lambda.Compile();
-                    //var task = compiledLambda.DynamicInvoke( _parameters );
-
-                    var delegateType = GetDelegateType( _parameterExpressions.Select( p => p.Type ).Concat( [typeof(Task<T>)] ).ToArray() );
-                    var bodyLambda = Lambda( delegateType, _body, _parameterExpressions );
-
-                    var parameterExpressions = _parameters.Select( Constant ).Cast<Expression>().ToArray();
-                    var invocationExpression = Invoke( bodyLambda, parameterExpressions );
-
-                    var invocationLambda = Lambda<Func<Task<T>>>( invocationExpression ).Compile();
-                    var task = invocationLambda();
-
-                    awaiter = ((Task<T>) task!).ConfigureAwait( false ).GetAwaiter();
+                    awaiter = _task.ConfigureAwait( false ).GetAwaiter();
 
                     if ( !awaiter.IsCompleted )
                     {
