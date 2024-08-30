@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Hyperbee.AsyncExpressions;
@@ -75,6 +75,6 @@ public static partial class AsyncExpression
 {
     public static AwaitExpression Await(Expression expression, bool configureAwait)
     {
-        return new AwaitExpression(expression, configureAwait);
+        return new AwaitExpression( expression, configureAwait );
     }
 }
