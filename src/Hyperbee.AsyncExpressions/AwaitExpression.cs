@@ -69,6 +69,10 @@ public class AwaitExpression : Expression
         return result;
     }
 
+}
+
+public static partial class AsyncExpression
+{
     public static AwaitExpression Await(Expression expression, bool configureAwait)
     {
         return new AwaitExpression(expression, configureAwait);

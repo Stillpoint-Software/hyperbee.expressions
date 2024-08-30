@@ -31,7 +31,7 @@ public class AsyncInvokeExpression : Expression
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    public override Type Type => _body.Type == typeof( Task ) ? typeof( Task<VoidTaskResult> ) : _body.Type;
+    public override Type Type => _body.Type;
 
     public override bool CanReduce => true;
 
@@ -42,19 +42,19 @@ public class AsyncInvokeExpression : Expression
 
         _isReduced = true;
 
-        var (type, result) = GetTypeResult( _body );
-        var methodInfo = GenericGenerateExecuteAsync?.MakeGenericMethod( type );
+        _reducedBody = _body.Type.IsGenericType switch
+        {
+            true => GetReduceBody(_body.Type.GetGenericArguments()[0], _body),
+            false => GetReduceBody( typeof(VoidTaskResult), Block( _body, VoidResult ) )
+        };
 
-        _reducedBody = (Expression) methodInfo!.Invoke( null, [result] );
+        return _reducedBody;
 
-        return _reducedBody!;
-    }
-
-    private static (Type Type, Expression Expression) GetTypeResult( Expression expression )
-    {
-        return expression.Type == typeof( Task )
-            ? (typeof( VoidTaskResult ), Block( expression, VoidResult ))
-            : (expression.Type.GetGenericArguments()[0], expression);
+        static Expression GetReduceBody( Type type, Expression body )
+        {
+            var methodInfo = GenericGenerateExecuteAsync.MakeGenericMethod( type );
+            return (Expression) methodInfo!.Invoke( null, [body] );
+        }
     }
 
     private static BlockExpression GenerateExecuteAsyncExpression<T>( Expression task )
@@ -167,7 +167,7 @@ public class AsyncInvokeExpression : Expression
         }
     }
 
-    protected static bool IsAsync( Type returnType )
+    internal static bool IsAsync( Type returnType )
     {
         return returnType == typeof( Task ) ||
                (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof( Task<> )) ||

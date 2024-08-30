@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -8,11 +9,14 @@ public class AsyncInvocationExpression : AsyncInvokeExpression
     {
     }
 
-    public static AsyncInvokeExpression InvokeAsync( LambdaExpression lambdaExpression, params Expression[] arguments )
+}
+public static partial class AsyncExpression
+{
+    public static AsyncInvokeExpression InvokeAsync(LambdaExpression lambdaExpression, params Expression[] arguments)
     {
-        if ( !IsAsync( lambdaExpression.ReturnType ) )
-            throw new ArgumentException( "The specified lambda is not an async.", nameof( lambdaExpression ) );
+        if (!AsyncInvokeExpression.IsAsync(lambdaExpression.ReturnType))
+            throw new ArgumentException("The specified lambda is not an async.", nameof(lambdaExpression));
 
-        return new AsyncInvokeExpression( Invoke( lambdaExpression, arguments ) );
+        return new AsyncInvokeExpression(Expression.Invoke(lambdaExpression, arguments));
     }
 }
