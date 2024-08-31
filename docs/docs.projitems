@@ -10,7 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)index.md" />
-    <None Include="$(MSBuildThisFileDirectory)todo.md" />
+    <None Include="$(MSBuildThisFileDirectory).todo.md" />
     <None Include="$(MSBuildThisFileDirectory)_config.yml" />
   </ItemGroup>
 </Project>
