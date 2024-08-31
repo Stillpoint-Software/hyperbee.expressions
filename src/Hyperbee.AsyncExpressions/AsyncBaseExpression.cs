@@ -40,34 +40,34 @@ public abstract class AsyncBaseExpression : Expression
         if ( _isReduced )
             return _reducedBody;
 
+        _reducedBody = ReducedBody( _body );
         _isReduced = true;
-
-        _reducedBody = _body.Type.IsGenericType switch
-        {
-            true => GetReducedBody( _body.Type.GetGenericArguments()[0], _body ),
-            false => GetReducedBody( typeof( VoidResult ), Block( _body, TaskVoidResult ) )
-        };
 
         return _reducedBody;
 
-        static Expression GetReducedBody( Type type, Expression body )
+        static Expression ReducedBody( Expression body )
         {
-            var methodInfo = MakeExecuteAsyncExpressionMethod.MakeGenericMethod( type );
-            return (Expression) methodInfo!.Invoke( null, [body] );
+            var returnType = ReturnType( body );
+            var bodyToUse = BodyToUse( body );
+
+            var methodInfo = MakeExecuteAsyncExpressionMethod.MakeGenericMethod( returnType );
+            return  (Expression) methodInfo.Invoke( null, [bodyToUse] );
         }
+
+        static Type ReturnType( Expression body ) => body.Type.IsGenericType ? body.Type.GetGenericArguments()[0] : typeof(VoidResult);
+        static Expression BodyToUse( Expression body ) => body.Type.IsGenericType ? body : Block( body, TaskVoidResult );
     }
 
     private static BlockExpression MakeExecuteAsyncExpression<T>( Expression task )
     {
-        /* Generate code block:
-
-            internal static Task<T> ExecuteAsync<T>(Task<T> task)
-            {
-               var stateMachine = new StateMachine<T>(task);
-               stateMachine.MoveNext();
-               return stateMachine.Task;
-            }
-        */
+        // Generate code block:
+        //
+        //  internal static Task<T> ExecuteAsync<T>(Task<T> task)
+        //  {
+        //     var stateMachine = new StateMachine<T>(task);
+        //     stateMachine.MoveNext();
+        //     return stateMachine.Task;
+        //  }
 
         // Create unique variable names to avoid conflicts
         var id = Interlocked.Increment( ref __stateMachineCounter );
