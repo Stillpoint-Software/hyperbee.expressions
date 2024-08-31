@@ -14,10 +14,10 @@ public class AsyncBlockExpression : Expression
     private bool _isReduced;
     private static int __stateMachineCounter;
 
-    private static readonly Expression VoidResult = Constant( Task.FromResult( new VoidResult() ) );
+    private static readonly Expression TaskVoidResult = Constant( Task.FromResult( new VoidResult() ) );
 
-    private static MethodInfo GenericGenerateExecuteAsync => typeof( AsyncBaseExpression )
-        .GetMethod( nameof( GenerateExecuteAsyncExpression ), BindingFlags.Static | BindingFlags.NonPublic );
+    private static MethodInfo MakeExecuteAsyncExpressionMethod => typeof( AsyncBaseExpression )
+        .GetMethod( nameof( MakeExecuteAsyncExpression ), BindingFlags.Static | BindingFlags.NonPublic );
 
     internal AsyncBlockExpression( Expression body )
     {
@@ -28,7 +28,6 @@ public class AsyncBlockExpression : Expression
 
         _body = body;
     }
-
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
@@ -44,7 +43,7 @@ public class AsyncBlockExpression : Expression
         _isReduced = true;
 
         var (type, result) = GetTypeResult( _body );
-        var methodInfo = GenericGenerateExecuteAsync?.MakeGenericMethod( type );
+        var methodInfo = MakeExecuteAsyncExpressionMethod?.MakeGenericMethod( type );
 
         _reducedBody = (Expression) methodInfo!.Invoke( null, [result] );
 
@@ -54,12 +53,11 @@ public class AsyncBlockExpression : Expression
     private static (Type Type, Expression Expression) GetTypeResult( Expression expression )
     {
         return expression.Type == typeof( Task )
-            ? (typeof( VoidResult ), Block( expression, VoidResult ))
+            ? (typeof( VoidResult ), Block( expression, TaskVoidResult ))
             : (expression.Type.GetGenericArguments()[0], expression);
     }
 
-
-    private static BlockExpression GenerateExecuteAsyncExpression<T>( Expression task )
+    private static BlockExpression MakeExecuteAsyncExpression<T>( Expression task )
     {
         // Generating code block: 
         /*

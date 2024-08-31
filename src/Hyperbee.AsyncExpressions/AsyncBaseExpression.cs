@@ -16,8 +16,8 @@ public abstract class AsyncBaseExpression : Expression
     private static int __stateMachineCounter;
     private static readonly Expression TaskVoidResult = Constant( Task.FromResult( new VoidResult() ) );
 
-    private static MethodInfo GenerateExecuteAsyncMethod => typeof( AsyncBaseExpression )
-        .GetMethod( nameof( GenerateExecuteAsyncExpression ), BindingFlags.Static | BindingFlags.NonPublic );
+    private static MethodInfo MakeExecuteAsyncExpressionMethod => typeof( AsyncBaseExpression )
+        .GetMethod( nameof( MakeExecuteAsyncExpression ), BindingFlags.Static | BindingFlags.NonPublic );
 
     internal AsyncBaseExpression( Expression body )
     {
@@ -52,21 +52,21 @@ public abstract class AsyncBaseExpression : Expression
 
         static Expression GetReducedBody( Type type, Expression body )
         {
-            var methodInfo = GenerateExecuteAsyncMethod.MakeGenericMethod( type );
+            var methodInfo = MakeExecuteAsyncExpressionMethod.MakeGenericMethod( type );
             return (Expression) methodInfo!.Invoke( null, [body] );
         }
     }
 
-    private static BlockExpression GenerateExecuteAsyncExpression<T>( Expression task )
+    private static BlockExpression MakeExecuteAsyncExpression<T>( Expression task )
     {
-        // Generating code block: 
-        /*
-        internal static Task<T> ExecuteAsync<T>(Task<T> task)
-        {
-           var stateMachine = new StateMachine<T>(task);
-           stateMachine.MoveNext();
-           return stateMachine.Task;
-        }
+        /* Generate code block:
+
+            internal static Task<T> ExecuteAsync<T>(Task<T> task)
+            {
+               var stateMachine = new StateMachine<T>(task);
+               stateMachine.MoveNext();
+               return stateMachine.Task;
+            }
         */
 
         // Create unique variable names to avoid conflicts
@@ -174,8 +174,11 @@ public abstract class AsyncBaseExpression : Expression
                (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof( ValueTask<> ));
     }
 
-    public class AsyncBaseExpressionProxy( AsyncBaseExpression node )
+    private class AsyncBaseExpressionProxy( AsyncBaseExpression node )
     {
         public Expression Body => node._body;
+        public Expression ReducedBody => node._reducedBody;
+        public bool IsReduced => node._isReduced;
+        public Type ReturnType => node.Type;
     }
 }

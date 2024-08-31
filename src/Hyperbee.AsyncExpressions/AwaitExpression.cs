@@ -1,20 +1,30 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Hyperbee.AsyncExpressions;
 
+[DebuggerDisplay( "{_asyncExpression}" )]
+[DebuggerTypeProxy( typeof(AwaitExpressionProxy) )]
 public class AwaitExpression : Expression
 {
     private readonly Expression _asyncExpression;
     private readonly bool _configureAwait;
 
-    private MethodInfo AwaitTaskMethod => typeof( AwaitExpression )
-        .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
-        .First( x => x.Name == nameof( Await ) && !x.IsGenericMethodDefinition );
+    private static MethodInfo AwaitTaskMethod { get; }
 
-    private MethodInfo AwaitTaskTMethod => typeof(AwaitExpression)
-        .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
-        .First( x => x.Name == nameof(Await) && x.IsGenericMethodDefinition );
+    private static MethodInfo AwaitTaskTMethod { get; }
+
+    static AwaitExpression()
+    {
+        var methods = typeof(AwaitExpression)
+            .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
+            .Where( x => x.Name == nameof(Await) )
+            .ToArray();
+
+        AwaitTaskMethod = methods.Single( x => !x.IsGenericMethodDefinition );
+        AwaitTaskTMethod = methods.Single( x => x.IsGenericMethodDefinition );
+    }
 
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
@@ -54,6 +64,12 @@ public class AwaitExpression : Expression
     private static T Await<T>( Task<T> task, bool configureAwait )
     {
         return task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
+    }
+
+    private class AwaitExpressionProxy( AwaitExpression node )
+    {
+        public Expression Target => node._asyncExpression;
+        public Type ReturnType => node.Type;
     }
 }
 
