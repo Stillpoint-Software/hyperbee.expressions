@@ -1,239 +1,90 @@
-﻿using System.Diagnostics;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Runtime.CompilerServices;
+﻿using System.Linq.Expressions;
+using Hyperbee.AsyncExpressions;
 
-namespace Hyperbee.AsyncExpressions;
-
-[DebuggerDisplay( "{_body}" )]
-[DebuggerTypeProxy( typeof( AsyncBlockExpressionProxy ) )]
-public class AsyncBlockExpression : Expression
+public class AsyncBlockExpression : AsyncBaseExpression
 {
-    private readonly Expression _body;
-    private Expression _reducedBody;
-    private bool _isReduced;
-    private static int __stateMachineCounter;
+    private readonly List<Expression> _expressions;
 
-    private static readonly Expression TaskVoidResult = Constant( Task.FromResult( new VoidResult() ) );
-
-    private static MethodInfo MakeExecuteAsyncExpressionMethod => typeof( AsyncBaseExpression )
-        .GetMethod( nameof( MakeExecuteAsyncExpression ), BindingFlags.Static | BindingFlags.NonPublic );
-
-    internal AsyncBlockExpression( Expression body )
+    public AsyncBlockExpression(List<Expression> expressions) : base(null)
     {
-        ArgumentNullException.ThrowIfNull( body, nameof( body ) );
-
-        if ( !IsAsync( body.Type ) )
-            throw new ArgumentException( $"The specified {nameof( body )} is not an async.", nameof( body ) );
-
-        _body = body;
+        _expressions = expressions;
     }
 
-    public override ExpressionType NodeType => ExpressionType.Extension;
-
-    public override Type Type => _body.Type;
-
-    public override bool CanReduce => true;
-
-    public override Expression Reduce()
+    protected override Type GetFinalResultType()
     {
-        if ( _isReduced )
-            return _reducedBody;
-
-        _isReduced = true;
-
-        var (type, result) = GetTypeResult( _body );
-        var methodInfo = MakeExecuteAsyncExpressionMethod?.MakeGenericMethod( type );
-
-        _reducedBody = (Expression) methodInfo!.Invoke( null, [result] );
-
-        return _reducedBody!;
+        // Get the final result type from the last block
+        var (_, finalResultType) = ReduceBlock(_expressions);
+        return finalResultType;
     }
 
-    private static (Type Type, Expression Expression) GetTypeResult( Expression expression )
+    protected override Expression BuildStateMachine<TResult>()
     {
-        return expression.Type == typeof( Task )
-            ? (typeof( VoidResult ), Block( expression, TaskVoidResult ))
-            : (expression.Type.GetGenericArguments()[0], expression);
-    }
+        var (blocks, finalResultType) = ReduceBlock(_expressions);
 
-    private static BlockExpression MakeExecuteAsyncExpression<T>( Expression task )
-    {
-        // Generating code block: 
-        /*
-        internal static Task<T> ExecuteAsync<T>(Task<T> task)
+        var builder = new StateMachineBuilder<TResult>();
+
+        foreach (var block in blocks)
         {
-           var stateMachine = new StateMachine<T>(task);
-           stateMachine.MoveNext();
-           return stateMachine.Task;
-        }
-        */
-
-        // Create unique variable names to avoid conflicts
-        var id = Interlocked.Increment( ref __stateMachineCounter );
-        var stateMachineVar = Variable( typeof( MultiTaskStateMachine<T> ), $"stateMachine_{id}" );
-
-        // Constructor for state machine
-        var stateMachineCtor = typeof( MultiTaskStateMachine<T> )
-            .GetConstructor( [typeof( Task<T> )] );
-
-        var assignStateMachine = Assign(
-            stateMachineVar,
-            New( stateMachineCtor!, task )
-        );
-
-        // Call MoveNext
-        var moveNextMethod = typeof( MultiTaskStateMachine<T> ).GetMethod( nameof( MultiTaskStateMachine<T>.MoveNext ) );
-        var moveNextCall = Call( stateMachineVar, moveNextMethod! );
-
-        // Return task property
-        var taskProperty = typeof( MultiTaskStateMachine<T> ).GetProperty( nameof( MultiTaskStateMachine<T>.Task ) );
-        var returnTask = Property( stateMachineVar, taskProperty! );
-
-        // Explicitly use nested blocks to handle variable scoping
-        var resultBlock = Block(
-            [stateMachineVar],
-            assignStateMachine,
-            moveNextCall,
-            returnTask
-        );
-
-        return resultBlock;
-    }
-
-    private struct MultiTaskStateMachine<T> : IAsyncStateMachine
-    {
-        private readonly Task[] _tasks;
-        private readonly bool _isLastTaskGeneric;
-        private AsyncTaskMethodBuilder<T> _builder;
-        private int _state;
-
-        public MultiTaskStateMachine( Task[] tasks )
-        {
-            _builder = AsyncTaskMethodBuilder<T>.Create();
-            _state = -1;
-            _tasks = tasks;
-
-            // Determine if the last task is generic or not
-            var lastTaskType = tasks[^1].GetType();
-            _isLastTaskGeneric = lastTaskType.IsGenericType && lastTaskType.GetGenericTypeDefinition() == typeof( Task<> );
-
-            SetStateMachine( this );
-        }
-
-        public Task<T> Task => _builder.Task;
-
-        public void MoveNext()
-        {
-            try
+            var lastExpr = block.Expressions.Last();
+            if (IsTask(lastExpr.Type))
             {
-                if ( _state == -1 )
+                if (lastExpr.Type == typeof(Task))
                 {
-                    // Initial state:
-                    _state = 0;
+                    builder.AddTaskBlock(block); // Block with Task
                 }
-
-                if ( _state >= 0 && _state < _tasks.Length )
+                else if (lastExpr.Type.IsGenericType && lastExpr.Type.GetGenericTypeDefinition() == typeof(Task<>))
                 {
-                    var currentTask = _tasks[_state];
-
-                    if ( _state == _tasks.Length - 1 && _isLastTaskGeneric )
-                    {
-                        // Last task is generic
-                        var genericAwaiter = ((Task<T>) currentTask).ConfigureAwait( false ).GetAwaiter();
-                        if ( !genericAwaiter.IsCompleted )
-                        {
-                            _builder.AwaitUnsafeOnCompleted( ref genericAwaiter, ref this );
-                            return;
-                        }
-
-                        // Get the result directly if the task is already completed
-                        var result = genericAwaiter.GetResult();
-                        _state = -2;
-                        _builder.SetResult( result );
-                    }
-                    else
-                    {
-                        // Intermediate non-generic task or last non-generic task
-                        var awaiter = currentTask.ConfigureAwait( false ).GetAwaiter();
-                        if ( !awaiter.IsCompleted )
-                        {
-                            _builder.AwaitUnsafeOnCompleted( ref awaiter, ref this );
-                            return;
-                        }
-
-                        // Continue directly if the task is already completed
-                        awaiter.GetResult();
-                        _state++;
-                        MoveNext();
-                    }
-                }
-                else if ( _state == _tasks.Length && !_isLastTaskGeneric )
-                {
-                    // All tasks completed, last task was non-generic
-                    _state = -2;
-                    _builder.SetResult( default! );
+                    builder.AddTaskResultBlock(block); // Block with Task<TResult>
                 }
             }
-            catch ( Exception ex )
+            else
             {
-                // Final state: error
-                _state = -2;
-                _builder.SetException( ex );
+                builder.AddBlock(block); // Regular code block
             }
         }
 
-        public void SetStateMachine( IAsyncStateMachine stateMachine )
+        return builder.Build();
+    }
+
+    // ReduceBlock method to split the block into sub-blocks
+    private (List<BlockExpression> blocks, Type finalResultType) ReduceBlock(List<Expression> expressions)
+    {
+        var blocks = new List<BlockExpression>();
+        var currentBlock = new List<Expression>();
+        Type finalResultType = typeof(void);
+
+        foreach (var expr in expressions)
         {
-            _builder.SetStateMachine( stateMachine );
-        }
-    }
+            currentBlock.Add(expr);
 
-    private static bool IsAsync( Type returnType )
-    {
-        return returnType == typeof( Task ) ||
-               (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof( Task<> )) ||
-               (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof( ValueTask<> ));
-    }
-
-    public class AsyncBlockExpressionProxy( AsyncBlockExpression node )
-    {
-        public Expression Body => node._body;
-    }
-
-    public static AsyncBlockExpression BlockAsync( BlockExpression expression )
-    {
-        //expression.Expressions.Count..
-
-        /*
-        {
-    
-            var result1 = {
-                [ex1Task]
-                expression1,  //Task  Assign( ex1Task, expression1 )
-                expression2,
-                awaitExpression3 ( expression3 /// Expression ),
-            },
-        
+            if (expr is AwaitExpression)
             {
-              [ex1Task, result1]
-              await( ex1Task,void,T )
+                // Finalize the current block and add it to the list
+                blocks.Add(Expression.Block(currentBlock));
+                currentBlock.Clear();
             }
-    
-            var result3 = {
-                 [result2]
-                 expression4,    
-            }
-          ...
         }
-         */
 
-        //var d = Task.Delay( 10 );
-        // ...
-        //await d;
+        // Add the last block if it exists
+        if (currentBlock.Count > 0)
+        {
+            blocks.Add(Expression.Block(currentBlock));
+            var lastExpr = currentBlock.Last();
 
+            // Determine the final result type from the last expression
+            if (IsTask(lastExpr.Type))
+            {
+                if (lastExpr.Type.IsGenericType)
+                {
+                    finalResultType = lastExpr.Type.GetGenericArguments()[0];
+                }
+                else
+                {
+                    finalResultType = typeof(void); // Task without a result
+                }
+            }
+        }
 
-        return new AsyncBlockExpression( expression );
+        return (blocks, finalResultType);
     }
-
 }
