@@ -11,20 +11,8 @@ public class AwaitExpression : Expression
     private readonly Expression _asyncExpression;
     private readonly bool _configureAwait;
 
-    private static MethodInfo AwaitTaskMethod { get; }
-
-    private static MethodInfo AwaitTaskTMethod { get; }
-
-    static AwaitExpression()
-    {
-        var methods = typeof(AwaitExpression)
-            .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
-            .Where( x => x.Name == nameof(Await) )
-            .ToArray();
-
-        AwaitTaskMethod = methods.Single( x => !x.IsGenericMethodDefinition );
-        AwaitTaskTMethod = methods.Single( x => x.IsGenericMethodDefinition );
-    }
+    private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression).GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
+    private static readonly MethodInfo AwaitResultMethod = typeof(AwaitExpression).GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
 
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
@@ -52,8 +40,8 @@ public class AwaitExpression : Expression
     public override Expression Reduce()
     {
         return Call( Type == typeof( void ) 
-            ? AwaitTaskMethod 
-            : AwaitTaskTMethod.MakeGenericMethod( Type ), _asyncExpression, Constant( _configureAwait ) );
+            ? AwaitMethod 
+            : AwaitResultMethod.MakeGenericMethod( Type ), _asyncExpression, Constant( _configureAwait ) );
     }
 
     private static void Await( Task task, bool configureAwait )
@@ -61,7 +49,7 @@ public class AwaitExpression : Expression
         task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
     }
 
-    private static T Await<T>( Task<T> task, bool configureAwait )
+    private static T AwaitResult<T>( Task<T> task, bool configureAwait )
     {
         return task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
     }

@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using Hyperbee.AsyncExpressions;
 
 public class AsyncBlockExpression : AsyncBaseExpression
@@ -88,3 +88,4 @@ public class AsyncBlockExpression : AsyncBaseExpression
         return (blocks, finalResultType);
     }
 }
+
