@@ -41,7 +41,7 @@ public class AsyncBlockTests
             Expression.Constant(12),
             varExpr);
 
-        var asyncBlock = new AsyncBlockExpression(new Expression[] { assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr1, finalAssignExpr, assertExpr2 });
+        var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr1, finalAssignExpr, assertExpr2 );
 
         // Act
         var reducedExpression = asyncBlock.Reduce() as BlockExpression;
@@ -68,7 +68,7 @@ public class AsyncBlockTests
             Expression.Constant(11),
             varExpr);
 
-        var asyncBlock = new AsyncBlockExpression(new Expression[] { assignExpr1, assignExpr2, assertExpr });
+        var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, assignExpr2, assertExpr );
 
         // Act
         // This should throw an InvalidOperationException due to lack of AwaitExpression
@@ -84,7 +84,7 @@ public class AsyncBlockTests
         var awaitExpr3 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask), false);
         var expr4 = Expression.Constant(4);
 
-        var asyncBlock = new AsyncBlockExpression(new Expression[] { expr1, expr2, awaitExpr3, expr4 });
+        var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4 );
 
         // Act
         var reducedExpression = asyncBlock.Reduce() as BlockExpression;
@@ -106,7 +106,7 @@ public class AsyncBlockTests
             Expression.Constant(5),
             varExpr);
 
-        var asyncBlock = new AsyncBlockExpression(new Expression[] { assignExpr, awaitExpr, assertExpr });
+        var asyncBlock = AsyncExpression.BlockAsync( assignExpr, awaitExpr, assertExpr );
 
         // Act
         var reducedExpression = asyncBlock.Reduce() as BlockExpression;
@@ -134,7 +134,7 @@ public class AsyncBlockTests
             Expression.Constant(3),
             varExpr);
 
-        var asyncBlock = new AsyncBlockExpression(new Expression[] { assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr });
+        var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr );
 
         // Act
         var reducedExpression = asyncBlock.Reduce() as BlockExpression;
@@ -159,14 +159,14 @@ public class AsyncBlockTests
         // Inner async block
         var innerAssign = Expression.Assign(varExpr, Expression.Add(varExpr, Expression.Constant(2)));
         var innerAwait = AsyncExpression.Await(Expression.Constant(Task.CompletedTask), false);
-        var innerBlock = new AsyncBlockExpression(new Expression[] { innerAssign, innerAwait });
+        var innerBlock = AsyncExpression.BlockAsync( innerAssign, innerAwait );
 
         var assertExpr = Expression.Call(
             GetMethod(nameof(AreEqual)),
             Expression.Constant(3),
             varExpr);
 
-        var asyncBlock = new AsyncBlockExpression(new Expression[] { assignExpr1, awaitExpr1, innerBlock, assertExpr });
+        var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, awaitExpr1, innerBlock, assertExpr );
 
         // Act
         var reducedExpression = asyncBlock.Reduce() as BlockExpression;

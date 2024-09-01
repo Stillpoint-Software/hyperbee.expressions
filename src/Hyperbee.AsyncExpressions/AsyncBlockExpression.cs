@@ -1,11 +1,12 @@
-using System.Linq.Expressions;
-using Hyperbee.AsyncExpressions;
+﻿using System.Linq.Expressions;
+
+namespace Hyperbee.AsyncExpressions;
 
 public class AsyncBlockExpression : AsyncBaseExpression
 {
-    private readonly List<Expression> _expressions;
+    private readonly Expression[] _expressions;
 
-    public AsyncBlockExpression(List<Expression> expressions) : base(null)
+    public AsyncBlockExpression( Expression[] expressions) : base(null)
     {
         _expressions = expressions;
     }
@@ -47,7 +48,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
     }
 
     // ReduceBlock method to split the block into sub-blocks
-    private (List<BlockExpression> blocks, Type finalResultType) ReduceBlock(List<Expression> expressions)
+    private (List<BlockExpression> blocks, Type finalResultType) ReduceBlock( Expression[] expressions)
     {
         var blocks = new List<BlockExpression>();
         var currentBlock = new List<Expression>();
@@ -60,7 +61,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
             if (expr is AwaitExpression)
             {
                 // Finalize the current block and add it to the list
-                blocks.Add(Expression.Block(currentBlock));
+                blocks.Add(Block(currentBlock));
                 currentBlock.Clear();
             }
         }
@@ -68,7 +69,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
         // Add the last block if it exists
         if (currentBlock.Count > 0)
         {
-            blocks.Add(Expression.Block(currentBlock));
+            blocks.Add(Block(currentBlock));
             var lastExpr = currentBlock.Last();
 
             // Determine the final result type from the last expression
@@ -89,3 +90,10 @@ public class AsyncBlockExpression : AsyncBaseExpression
     }
 }
 
+public static partial class AsyncExpression
+{
+    public static AsyncBaseExpression BlockAsync( params Expression[] expressions )
+    {
+        return new AsyncBlockExpression( expressions );
+    }
+}
