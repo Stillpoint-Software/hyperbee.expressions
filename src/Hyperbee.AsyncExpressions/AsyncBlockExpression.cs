@@ -74,14 +74,9 @@ public class AsyncBlockExpression : AsyncBaseExpression
             var lastExpr = currentBlockExpressions.Last();
             if ( IsTask( lastExpr.Type ) )
             {
-                if ( lastExpr.Type.IsGenericType )
-                {
-                    finalResultType = lastExpr.Type.GetGenericArguments()[0];
-                }
-                else
-                {
-                    finalResultType = typeof(void); // Task without a result
-                }
+                finalResultType = lastExpr.Type.IsGenericType 
+                    ? lastExpr.Type.GetGenericArguments()[0] 
+                    : typeof(void); // Task without a result
             }
         }
 
