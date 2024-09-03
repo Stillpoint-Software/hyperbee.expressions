@@ -41,87 +41,74 @@ public class StateMachineBuilder<TResult>
 
     public void GenerateMoveNextMethod( BlockExpression reducedBlock )
     {
-        // Section: Initialization
-        // Use variables from reducedBlock to ensure variable scope is managed correctly.
+        // Use variables from reducedBlock
         var variables = reducedBlock.Variables;
 
-        // List to hold all expressions that make up the state machine's body
+        // Define a parameter to represent the instance of the state machine class
+        var stateMachineInstance = Expression.Parameter( _typeBuilder, "stateMachine" );
+
         var bodyExpressions = new List<Expression>
         {
-            // Initialize the AsyncTaskMethodBuilder field
-            Expression.Assign(Expression.Field(Expression.Constant(this), _builderField),
-                Expression.Call(typeof(AsyncTaskMethodBuilder<TResult>), nameof(AsyncTaskMethodBuilder<TResult>.Create), null))
+            Expression.Assign( Expression.Field( stateMachineInstance, _builderField ),
+                Expression.Call( typeof(AsyncTaskMethodBuilder<TResult>), nameof(AsyncTaskMethodBuilder<TResult>.Create), null ) )
         };
 
-        // Section: State Handling
-        // Iterate through each block to define state transitions
         var blocks = reducedBlock.Expressions;
         for ( var i = 0; i < blocks.Count; i++ )
         {
             var blockExpr = blocks[i];
 
-            // Define the types for the ConfiguredTaskAwaitable and its awaiter
-            var configuredTaskAwaitableType = typeof( ConfiguredTaskAwaitable<> ).MakeGenericType( typeof( TResult ) );
+            var configuredTaskAwaitableType = typeof(ConfiguredTaskAwaitable<>).MakeGenericType( typeof(TResult) );
             var configuredTaskAwaiterType = configuredTaskAwaitableType.GetNestedType( "ConfiguredTaskAwaiter" );
 
-            // Define a field to hold the awaiter for this state
             var awaiterField = _typeBuilder.DefineField( $"_awaiter_{i}", configuredTaskAwaiterType!, FieldAttributes.Private );
 
-            // Check if the current state matches
-            var stateCheck = Expression.Equal( Expression.Field( Expression.Constant( this ), _stateField ), Expression.Constant( i ) );
-
-            // Assign the awaiter
+            var stateCheck = Expression.Equal( Expression.Field( stateMachineInstance, _stateField ), Expression.Constant( i ) );
             var assignAwaiter = Expression.Assign(
-                Expression.Field( Expression.Constant( this ), awaiterField ),
+                Expression.Field( stateMachineInstance, awaiterField ),
                 Expression.Call(
-                    Expression.Call( blockExpr, nameof( Task.ConfigureAwait ), null, Expression.Constant( false ) ),
-                    nameof( ConfiguredTaskAwaitable<TResult>.GetAwaiter ), null )
+                    Expression.Call( blockExpr, nameof(Task.ConfigureAwait), null, Expression.Constant( false ) ),
+                    nameof(ConfiguredTaskAwaitable<TResult>.GetAwaiter), null )
             );
 
-            // Create the StateMachineProxy instance and assign it
-            var stateMachineProxy = Expression.New( typeof( StateMachineProxy ).GetConstructor( [typeof( IAsyncStateMachine )] )!, Expression.Constant( this ) );
-            var assignProxy = Expression.Assign( Expression.Field( Expression.Constant( this ), _proxyField ), stateMachineProxy );
+            var stateMachineProxy = Expression.New( typeof(StateMachineProxy).GetConstructor( new[] { typeof(IAsyncStateMachine) } )!, stateMachineInstance );
+            var assignProxy = Expression.Assign( Expression.Field( stateMachineInstance, _proxyField ), stateMachineProxy );
 
-            // Setup continuation with the builder, using the awaiter and the state machine proxy
             var setupContinuation = Expression.Call(
-                Expression.Field( Expression.Constant( this ), _builderField ),
-                nameof( AsyncTaskMethodBuilder<TResult>.AwaitUnsafeOnCompleted ),
-                [configuredTaskAwaiterType, typeof( IAsyncStateMachine )],
-                Expression.Field( Expression.Constant( this ), awaiterField ),
-                Expression.Field( Expression.Constant( this ), _proxyField )
+                Expression.Field( stateMachineInstance, _builderField ),
+                nameof(AsyncTaskMethodBuilder<TResult>.AwaitUnsafeOnCompleted),
+                new Type[] { configuredTaskAwaiterType, typeof(IAsyncStateMachine) },
+                Expression.Field( stateMachineInstance, awaiterField ),
+                Expression.Field( stateMachineInstance, _proxyField )
             );
 
-            // Move to the next state
-            var moveToNextState = Expression.Assign( Expression.Field( Expression.Constant( this ), _stateField ), Expression.Constant( i + 1 ) );
+            var moveToNextState = Expression.Assign( Expression.Field( stateMachineInstance, _stateField ), Expression.Constant( i + 1 ) );
 
-            // Section: State Execution Logic
-            // Check if the task is completed or needs to await
             var ifNotCompleted = Expression.IfThenElse(
-                Expression.IsFalse( Expression.Property( Expression.Field( Expression.Constant( this ), awaiterField ), nameof( TaskAwaiter.IsCompleted ) ) ),
-                Expression.Block( assignAwaiter, assignProxy, setupContinuation, Expression.Return( Expression.Label( typeof( void ) ) ) ),
+                Expression.IsFalse( Expression.Property( Expression.Field( stateMachineInstance, awaiterField ), nameof(TaskAwaiter.IsCompleted) ) ),
+                Expression.Block( assignAwaiter, assignProxy, setupContinuation, Expression.Return( Expression.Label( typeof(void) ) ) ),
                 Expression.Block( assignAwaiter, moveToNextState )
             );
 
-            // Add the state check and logic to the body expressions
             bodyExpressions.Add( Expression.IfThen( stateCheck, ifNotCompleted ) );
         }
 
-        // Section: Final State
-        // Set the final result of the async operation
         var setResult = Expression.Call(
-            Expression.Field( Expression.Constant( this ), _builderField ),
-            nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
+            Expression.Field( stateMachineInstance, _builderField ),
+            nameof(AsyncTaskMethodBuilder<TResult>.SetResult),
             null,
-            Expression.Field( Expression.Constant( this ), _finalResultField )
+            Expression.Field( stateMachineInstance, _finalResultField )
         );
 
         bodyExpressions.Add( setResult );
 
-        // Section: Emit and Compile
-        // Include the variables in the block to maintain their scope and compile the MoveNext method
+        // Include the variables in the block
         var stateMachineBody = Expression.Block( variables, bodyExpressions );
+
+        // Emit the state machine body to the MoveNext method
         EmitCompileToMethod( stateMachineBody, _moveNextMethod );
     }
+
 
     private void EmitCompileToMethod( Expression stateMachineBody, MethodBuilder methodBuilder )
     {

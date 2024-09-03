@@ -7,7 +7,7 @@ public class AsyncMethodCallExpression : AsyncBaseExpression
 {
     private readonly MethodCallExpression _methodCallExpression;
 
-    public AsyncMethodCallExpression( MethodCallExpression methodCallExpression ) : base( null )
+    public AsyncMethodCallExpression( MethodCallExpression methodCallExpression ) : base( [methodCallExpression] )
     {
         _methodCallExpression = methodCallExpression;
     }

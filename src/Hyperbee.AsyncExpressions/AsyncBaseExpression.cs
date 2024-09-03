@@ -10,11 +10,11 @@ namespace Hyperbee.AsyncExpressions;
 [DebuggerTypeProxy( typeof(AsyncBaseExpressionDebuggerProxy) )]
 public abstract class AsyncBaseExpression : Expression
 {
-    protected Expression _body;
+    private readonly Expression[] _body;
     protected bool _isReduced;
     protected Expression _stateMachineBody; 
 
-    protected AsyncBaseExpression( Expression body )
+    protected AsyncBaseExpression( Expression[] body )
     {
         _body = body;
     }
@@ -89,7 +89,7 @@ public abstract class AsyncBaseExpression : Expression
             _node = node;
         }
 
-        public Expression Body => _node._body;
+        public Expression[] Body => _node._body;
         public Expression StateMachineBody => _node._stateMachineBody; 
         public bool IsReduced => _node._isReduced;
         public Type ReturnType => _node.Type;

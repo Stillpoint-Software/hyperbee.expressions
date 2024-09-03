@@ -7,7 +7,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
     private readonly BlockExpression _reducedBlock;
     private readonly Type _finalResultType;
 
-    public AsyncBlockExpression( Expression[] expressions ) : base( null )
+    public AsyncBlockExpression( Expression[] expressions ) : base( expressions )
     {
         if ( expressions == null || expressions.Length == 0 )
         {
@@ -97,7 +97,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
 
 public static partial class AsyncExpression
 {
-    public static AsyncBaseExpression BlockAsync( params Expression[] expressions )
+    public static AsyncBlockExpression BlockAsync( params Expression[] expressions )
     {
         return new AsyncBlockExpression( expressions );
     }

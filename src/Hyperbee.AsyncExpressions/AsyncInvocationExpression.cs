@@ -6,7 +6,7 @@ public class AsyncInvocationExpression : AsyncBaseExpression
 {
     private readonly InvocationExpression _invocationExpression;
 
-    public AsyncInvocationExpression( InvocationExpression invocationExpression ) : base( null )
+    public AsyncInvocationExpression( InvocationExpression invocationExpression ) : base( [invocationExpression] )
     {
         _invocationExpression = invocationExpression;
     }
