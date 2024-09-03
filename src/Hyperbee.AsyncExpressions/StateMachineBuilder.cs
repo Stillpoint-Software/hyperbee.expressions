@@ -55,15 +55,17 @@ public class StateMachineBuilder<TResult>
         };
 
         var blocks = reducedBlock.Expressions;
+
         for ( var i = 0; i < blocks.Count; i++ )
         {
-            var blockExpr = blocks[i];
-            var blockReturnType = blockExpr.Type;
+            var blockExpr = blocks[i] as BlockExpression;
+            var lastExpression = blockExpr?.Expressions.Last();
 
-            if ( AsyncBaseExpression.IsTask( blockReturnType ) )
+            // Check if the last expression is an AwaitExpression
+            if ( lastExpression is AwaitExpression awaitExpr )
             {
-                var awaiterType = blockReturnType.IsGenericType
-                    ? typeof(ConfiguredTaskAwaitable<>).MakeGenericType( blockReturnType.GetGenericArguments()[0] )
+                var awaiterType = awaitExpr.Type.IsGenericType
+                    ? typeof(ConfiguredTaskAwaitable<>).MakeGenericType( awaitExpr.Type.GetGenericArguments()[0] )
                     : typeof(ConfiguredTaskAwaitable);
 
                 var awaiterField = _typeBuilder.DefineField( $"_awaiter_{i}", awaiterType.GetNestedType( "ConfiguredTaskAwaiter" )!, FieldAttributes.Private );
@@ -72,8 +74,9 @@ public class StateMachineBuilder<TResult>
                 var assignAwaiter = Expression.Assign(
                     Expression.Field( stateMachineInstance, awaiterField ),
                     Expression.Call(
-                        Expression.Call( blockExpr, nameof(Task.ConfigureAwait), null, Expression.Constant( false ) ),
-                        awaiterType.GetMethod( "GetAwaiter" )! ) );
+                        Expression.Call( awaitExpr, nameof(Task.ConfigureAwait), null, Expression.Constant( false ) ),
+                        awaiterType.GetMethod( "GetAwaiter" )! )
+                );
 
                 // Generate proxy and continuation setup
                 var stateMachineProxy = Expression.New( typeof(StateMachineProxy).GetConstructor( [typeof(IAsyncStateMachine)] )!, stateMachineInstance );
@@ -84,7 +87,8 @@ public class StateMachineBuilder<TResult>
                     nameof(AsyncTaskMethodBuilder<TResult>.AwaitUnsafeOnCompleted),
                     [awaiterType.GetNestedType( "ConfiguredTaskAwaiter" ), typeof(IAsyncStateMachine)],
                     Expression.Field( stateMachineInstance, awaiterField ),
-                    Expression.Field( stateMachineInstance, _proxyField ) );
+                    Expression.Field( stateMachineInstance, _proxyField )
+                );
 
                 var moveToNextState = Expression.Assign( Expression.Field( stateMachineInstance, _stateField ), Expression.Constant( i + 1 ) );
 
@@ -92,14 +96,15 @@ public class StateMachineBuilder<TResult>
                 var ifNotCompleted = Expression.IfThenElse(
                     Expression.IsFalse( Expression.Property( Expression.Field( stateMachineInstance, awaiterField ), nameof(TaskAwaiter.IsCompleted) ) ),
                     Expression.Block( assignAwaiter, assignProxy, setupContinuation, Expression.Return( Expression.Label( typeof(void) ) ) ),
-                    Expression.Block( assignAwaiter, moveToNextState ) );
+                    Expression.Block( assignAwaiter, moveToNextState )
+                );
 
                 bodyExpressions.Add( Expression.IfThen( Expression.Equal( Expression.Field( stateMachineInstance, _stateField ), Expression.Constant( i ) ), ifNotCompleted ) );
             }
             else
             {
                 // Handle non-awaitable final block
-                var assignFinalResult = Expression.Assign( Expression.Field( stateMachineInstance, _finalResultField ), blockExpr );
+                var assignFinalResult = Expression.Assign( Expression.Field( stateMachineInstance, _finalResultField ), blockExpr! );
                 bodyExpressions.Add( assignFinalResult );
             }
         }
@@ -108,7 +113,8 @@ public class StateMachineBuilder<TResult>
             Expression.Field( stateMachineInstance, _builderField ),
             nameof(AsyncTaskMethodBuilder<TResult>.SetResult),
             null,
-            Expression.Field( stateMachineInstance, _finalResultField ) );
+            Expression.Field( stateMachineInstance, _finalResultField )
+        );
 
         bodyExpressions.Add( setResult );
 
@@ -118,6 +124,7 @@ public class StateMachineBuilder<TResult>
         // Compile to a method using Emit, replacing CompileToMethod
         EmitCompileToMethod( stateMachineBody, _moveNextMethod );
     }
+
 
 
     private void EmitCompileToMethod( Expression stateMachineBody, MethodBuilder methodBuilder )
