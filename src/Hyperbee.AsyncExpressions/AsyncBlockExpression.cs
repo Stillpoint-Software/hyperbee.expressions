@@ -4,78 +4,77 @@ namespace Hyperbee.AsyncExpressions;
 
 public class AsyncBlockExpression : AsyncBaseExpression
 {
-    private readonly Expression[] _expressions;
+    private readonly BlockExpression _reducedBlock;
+    private readonly Type _finalResultType;
 
-    public AsyncBlockExpression( Expression[] expressions) : base(null)
+    public AsyncBlockExpression( Expression[] expressions ) : base( null )
     {
-        _expressions = expressions;
+        if ( expressions == null || expressions.Length == 0 )
+        {
+            throw new ArgumentException( "AsyncBlockExpression must contain at least one expression.", nameof(expressions) );
+        }
+
+        _reducedBlock = ReduceBlock( expressions, out _finalResultType );
     }
 
     protected override Type GetFinalResultType()
     {
-        // Get the final result type from the last block
-        var (_, finalResultType) = ReduceBlock(_expressions);
-        return finalResultType;
+        return _finalResultType;
     }
 
-    protected override Expression BuildStateMachine<TResult>()
+    protected override void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder )
     {
-        var (blocks, finalResultType) = ReduceBlock(_expressions);
+        builder.GenerateMoveNextMethod( _reducedBlock );
+    }
 
-        var builder = new StateMachineBuilder<TResult>();
+    private static BlockExpression ReduceBlock( Expression[] expressions, out Type finalResultType )
+    {
+        var parentBlockExpressions = new List<Expression>();
+        var currentBlockExpressions = new List<Expression>();
+        var awaitEncountered = false;
 
-        foreach (var block in blocks)
+        // Collect all variables declared in the block
+        var variables = new HashSet<ParameterExpression>();
+        finalResultType = typeof(void); // Default to void, adjust if task found
+
+        foreach ( var expr in expressions )
         {
-            var lastExpr = block.Expressions.Last();
-            if (IsTask(lastExpr.Type))
+            if ( expr is AsyncBlockExpression asyncBlock )
             {
-                if (lastExpr.Type == typeof(Task))
-                {
-                    builder.AddTaskBlock(block); // Block with Task
-                }
-                else if (lastExpr.Type.IsGenericType && lastExpr.Type.GetGenericTypeDefinition() == typeof(Task<>))
-                {
-                    builder.AddTaskResultBlock(block); // Block with Task<TResult>
-                }
+                // Recursively reduce the inner async block
+                var reducedInnerBlock = asyncBlock.Reduce();
+                currentBlockExpressions.Add( reducedInnerBlock );
+                continue;
             }
-            else
+
+            currentBlockExpressions.Add( expr );
+
+            switch ( expr )
             {
-                builder.AddBlock(block); // Regular code block
+                case BinaryExpression binaryExpr when binaryExpr.Left is ParameterExpression varExpr:
+                    variables.Add( varExpr );
+                    break;
+                case AwaitExpression:
+                {
+                    awaitEncountered = true;
+                    var currentBlock = Block( currentBlockExpressions );
+                    parentBlockExpressions.Add( currentBlock );
+                    currentBlockExpressions = [];
+                    break;
+                }
             }
         }
 
-        return builder.Build();
-    }
-
-    // ReduceBlock method to split the block into sub-blocks
-    private (List<BlockExpression> blocks, Type finalResultType) ReduceBlock( Expression[] expressions)
-    {
-        var blocks = new List<BlockExpression>();
-        var currentBlock = new List<Expression>();
-        Type finalResultType = typeof(void);
-
-        foreach (var expr in expressions)
+        if ( currentBlockExpressions.Count > 0 )
         {
-            currentBlock.Add(expr);
+            var finalBlock = Block( currentBlockExpressions );
+            parentBlockExpressions.Add( finalBlock );
 
-            if (expr is AwaitExpression)
+            // Update the final result type based on the last expression in the final block
+            var lastExpr = currentBlockExpressions.Last();
+            if ( IsTask( lastExpr.Type ) )
             {
-                // Finalize the current block and add it to the list
-                blocks.Add(Block(currentBlock));
-                currentBlock.Clear();
-            }
-        }
-
-        // Add the last block if it exists
-        if (currentBlock.Count > 0)
-        {
-            blocks.Add(Block(currentBlock));
-            var lastExpr = currentBlock.Last();
-
-            // Determine the final result type from the last expression
-            if (IsTask(lastExpr.Type))
-            {
-                if (lastExpr.Type.IsGenericType)
+                if ( lastExpr.Type.IsGenericType )
                 {
                     finalResultType = lastExpr.Type.GetGenericArguments()[0];
                 }
@@ -86,7 +85,13 @@ public class AsyncBlockExpression : AsyncBaseExpression
             }
         }
 
-        return (blocks, finalResultType);
+        if ( !awaitEncountered )
+        {
+            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one {nameof(AwaitExpression)}." );
+        }
+
+        // Combine all child blocks into a single parent block, with variables declared at the parent level
+        return Block( variables, parentBlockExpressions ); // Declare variables only once at the top level
     }
 }
 
@@ -97,3 +102,4 @@ public static partial class AsyncExpression
         return new AsyncBlockExpression( expressions );
     }
 }
+

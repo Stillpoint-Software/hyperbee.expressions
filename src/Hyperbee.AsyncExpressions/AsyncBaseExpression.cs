@@ -1,6 +1,8 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -23,7 +25,7 @@ public abstract class AsyncBaseExpression : Expression
 
     protected abstract Type GetFinalResultType();
 
-    protected abstract Expression BuildStateMachine<TResult>();
+    protected abstract void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder );
 
     public override Expression Reduce()
     {
@@ -31,15 +33,44 @@ public abstract class AsyncBaseExpression : Expression
             return _stateMachineBody;
 
         var finalResultType = GetFinalResultType();
-        
+        var stateMachineResultType = finalResultType == typeof(void) ? typeof(VoidResult) : finalResultType;
+
         var buildStateMachine = typeof(AsyncBaseExpression)
             .GetMethod( nameof(BuildStateMachine), BindingFlags.NonPublic | BindingFlags.Instance )!
-            .MakeGenericMethod( finalResultType );
+            .MakeGenericMethod( stateMachineResultType );
 
         _stateMachineBody = (Expression) buildStateMachine.Invoke( this, null );
         _isReduced = true;
 
         return _stateMachineBody!;
+    }
+
+    private MethodCallExpression BuildStateMachine<TResult>()
+    {
+        // Create a dynamic assembly and module for the state machine
+        var assemblyName = new AssemblyName( "DynamicStateMachineAssembly" );
+        var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
+        var moduleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
+
+        // Create a state machine builder
+        var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "DynamicStateMachine" );
+
+        // Delegate to the derived class to configure the builder
+        ConfigureStateMachine( stateMachineBuilder );
+
+        // Create the state machine type
+        var stateMachineType = stateMachineBuilder.CreateStateMachineType();
+
+        // Create a proxy expression for handling MoveNext and SetStateMachine calls
+        var proxyConstructor = typeof(StateMachineProxy).GetConstructor( new[] { typeof(IAsyncStateMachine) } );
+        var stateMachineInstance = Expression.New( stateMachineType );
+        var proxyInstance = Expression.New( proxyConstructor!, stateMachineInstance );
+
+        // Build an expression that represents invoking the MoveNext method on the proxy
+        var moveNextMethod = typeof(IAsyncStateMachine).GetMethod( nameof(IAsyncStateMachine.MoveNext) );
+        var moveNextCall = Expression.Call( proxyInstance, moveNextMethod! );
+
+        return moveNextCall;
     }
 
     internal static bool IsTask( Type returnType )

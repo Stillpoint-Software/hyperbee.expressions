@@ -71,7 +71,6 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, assignExpr2, assertExpr );
 
         // Act
-        // This should throw an InvalidOperationException due to lack of AwaitExpression
         asyncBlock.Reduce();
     }
 
