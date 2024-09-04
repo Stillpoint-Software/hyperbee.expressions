@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -28,7 +29,10 @@ public abstract class AsyncBaseExpression : Expression
     private Expression InvokeBuildStateMachine()
     {
         var finalResultType = GetFinalResultType();
-        var buildMethod = GetType().GetMethod( nameof( BuildStateMachine ) )!.MakeGenericMethod( finalResultType );
+        var buildMethod = typeof(AsyncBaseExpression)
+            .GetMethods( BindingFlags.Instance | BindingFlags.NonPublic )
+            .First( m => m.Name == nameof(BuildStateMachine) )
+            .MakeGenericMethod( finalResultType );
         return (Expression) buildMethod.Invoke( this, null );
     }
 

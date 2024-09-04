@@ -46,7 +46,9 @@ public class StateMachineBuilder<TResult>
         // Compile MoveNext lambda and assign to state machine
         var moveNextLambda = CreateMoveNextExpression( _blockSource );
 
-        var constructor = _stateMachineType.GetConstructor( [typeof( Action )] );
+        var lambdaType = typeof( Action<> ).MakeGenericType( _stateMachineType );
+
+        var constructor = _stateMachineType.GetConstructor( [lambdaType] );
         return Expression.New( constructor!, moveNextLambda );
     }
 
@@ -73,7 +75,7 @@ public class StateMachineBuilder<TResult>
         //      {
         //          _moveNextLambda = moveNextLambda;
         //      }
-        //
+        //      public void SetLambda<T>(Action<T> moveNextLambda) { _moveNextLambda = moveNextLambda }
         //      public void MoveNext() => _moveNextLambda(this);
         // }
 
@@ -116,14 +118,25 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Stfld, _moveNextLambdaField ); // this._moveNextLambda = moveNextLambda
         ilGenerator.Emit( OpCodes.Ret );
 
+        var setStateMachineMethod = _typeBuilder.DefineMethod("SetStateMachine", MethodAttributes.Public | MethodAttributes.Virtual, typeof(void), [typeof(IAsyncStateMachine)]);
+        var setStateMachineIlGenerator = setStateMachineMethod.GetILGenerator();
+        setStateMachineIlGenerator.Emit(OpCodes.Ret);
+
         // Define method: public void MoveNext() => _moveNextLambda(this);
         var moveNextMethod = _typeBuilder.DefineMethod( "MoveNext", MethodAttributes.Public | MethodAttributes.Virtual, typeof( void ), Type.EmptyTypes );
         var moveNextIlGenerator = moveNextMethod.GetILGenerator();
         moveNextIlGenerator.Emit( OpCodes.Ldarg_0 ); // this
         moveNextIlGenerator.Emit( OpCodes.Ldfld, _moveNextLambdaField ); // load _moveNextLambda
         moveNextIlGenerator.Emit( OpCodes.Ldarg_0 ); // load this as argument for _moveNextLambda
-        moveNextIlGenerator.Emit( OpCodes.Callvirt, _moveNextLambdaField.FieldType.GetMethod( "Invoke" )! ); // _moveNextLambda(this)
+
+
+
+        var actionType = typeof(Action<>);
+        var invokeMethod = actionType.GetMethod("Invoke");
+        moveNextIlGenerator.Emit(OpCodes.Callvirt, invokeMethod);
+        moveNextIlGenerator.Emit(OpCodes.Callvirt, _moveNextLambdaField.FieldType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public)!); // _moveNextLambda(this)
         moveNextIlGenerator.Emit( OpCodes.Ret );
+
 
         _stateMachineType = _typeBuilder.CreateTypeInfo()!.AsType();
     }
@@ -131,6 +144,14 @@ public class StateMachineBuilder<TResult>
     private static bool TryGetAwaiterType( Expression expr, out Type awaiterType )
     {
         awaiterType = null;
+
+
+        if ( typeof(Task).IsAssignableFrom( expr.Type ) )
+        {
+            var blockGenericArgument = expr.Type.IsGenericType ? expr.Type.GetGenericArguments()[0] : typeof(void);
+            awaiterType = typeof(ConfiguredTaskAwaitable<>).MakeGenericType(blockGenericArgument).GetNestedType("ConfiguredTaskAwaiter")!;
+            return true;
+        }
 
         if ( expr is not MethodCallExpression methodCall || !typeof(Task).IsAssignableFrom( methodCall.Type ) )
         {
@@ -165,10 +186,11 @@ public class StateMachineBuilder<TResult>
             {
                 var awaiterType = blockReturnType.IsGenericType
                     ? typeof( ConfiguredTaskAwaitable<> ).MakeGenericType( blockReturnType.GetGenericArguments()[0] )
-                    : typeof( ConfiguredTaskAwaitable );
+                    : typeof(ConfiguredTaskAwaitable<>).MakeGenericType( blockReturnType );
 
-                var awaiterField = _typeBuilder.DefineField( $"_awaiter_{i}", awaiterType.GetNestedType( "ConfiguredTaskAwaiter" )!, FieldAttributes.Private );
-                _awaiterFields.Add( awaiterField );
+                var awaiterField = _awaiterFields.First( x => x.Name == $"_awaiter_{i}" );
+                // var awaiterField = _typeBuilder.DefineField( $"_awaiter_{i}", awaiterType.GetNestedType( "ConfiguredTaskAwaiter" )!, FieldAttributes.Private );
+                // _awaiterFields.Add( awaiterField );
 
                 var assignAwaiter = Expression.Assign(
                     Expression.Field( stateMachineInstance, awaiterField ),
@@ -185,10 +207,16 @@ public class StateMachineBuilder<TResult>
 
                 bodyExpressions.Add( Expression.Block( assignAwaiter, setupContinuation ) );
             }
+            else if (i == blocks.Count - 1)
+            {
+                // Handle non-awaitable final block
+                var assignFinalResult = Expression.Assign(Expression.Field(stateMachineInstance, _finalResultField), blockExpr!);
+                bodyExpressions.Add(assignFinalResult);
+            }
             else
             {
-                var assignFinalResult = Expression.Assign( Expression.Field( stateMachineInstance, _finalResultField ), blockExpr );
-                bodyExpressions.Add( assignFinalResult );
+                // Handle non-awaitable block
+                bodyExpressions.Add(blockExpr!);
             }
         }
 
@@ -203,3 +231,24 @@ public class StateMachineBuilder<TResult>
         return Expression.Lambda( Expression.Block( bodyExpressions ), stateMachineInstance );
     }
 }
+
+/*
+public class DynamicStateMachine : IAsyncStateMachine
+{
+    private DynamicStateMachine _innerStateMachine = null;
+
+    private readonly Action<DynamicStateMachine> _lambda;
+
+    public DynamicStateMachine( Action<DynamicStateMachine> lambda )
+    {
+        _lambda = lambda;
+    }
+
+    public void MoveNext() => _lambda( _innerStateMachine ?? this );
+
+    public void SetStateMachine( IAsyncStateMachine stateMachine )
+    {
+        _innerStateMachine = (DynamicStateMachine) stateMachine;
+    }
+}
+*/
