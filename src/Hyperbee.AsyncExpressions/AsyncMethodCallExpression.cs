@@ -1,5 +1,5 @@
-﻿using System.Linq.Expressions;
-using System.Reflection;
+﻿using System.Reflection;
+using System.Linq.Expressions;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -7,30 +7,27 @@ public class AsyncMethodCallExpression : AsyncBaseExpression
 {
     private readonly MethodCallExpression _methodCallExpression;
 
-    public AsyncMethodCallExpression( MethodCallExpression methodCallExpression ) : base( [methodCallExpression] )
+    public AsyncMethodCallExpression( MethodCallExpression methodCallExpression )
     {
-        _methodCallExpression = methodCallExpression;
+        _methodCallExpression = methodCallExpression ?? throw new ArgumentNullException( nameof(methodCallExpression) );
     }
 
     protected override Type GetFinalResultType()
     {
-        if ( _methodCallExpression.Type == typeof(Task) )
+        var returnType = _methodCallExpression.Type;
+
+        if ( IsTask( returnType ) && returnType.IsGenericType )
         {
-            return typeof(void); // No result to return
+            return returnType.GetGenericArguments()[0];
         }
 
-        if ( _methodCallExpression.Type.IsGenericType && _methodCallExpression.Type.GetGenericTypeDefinition() == typeof(Task<>) )
-        {
-            return _methodCallExpression.Type.GetGenericArguments()[0]; // Return T from Task<T>
-        }
-
-        throw new InvalidOperationException( "Method call must return Task or Task<T>" );
+        return typeof(void);
     }
 
     protected override void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder )
     {
         var block = Block( _methodCallExpression );
-        builder.GenerateMoveNextMethod( block );
+        builder.SetSource( block );
     }
 }
 

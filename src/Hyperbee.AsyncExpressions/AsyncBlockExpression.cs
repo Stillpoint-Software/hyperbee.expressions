@@ -7,13 +7,14 @@ public class AsyncBlockExpression : AsyncBaseExpression
     private readonly BlockExpression _reducedBlock;
     private readonly Type _finalResultType;
 
-    public AsyncBlockExpression( Expression[] expressions ) : base( expressions )
+    public AsyncBlockExpression( Expression[] expressions ) 
     {
         if ( expressions == null || expressions.Length == 0 )
         {
             throw new ArgumentException( "AsyncBlockExpression must contain at least one expression.", nameof(expressions) );
         }
 
+        // Reduce the block and determine the final result type
         _reducedBlock = ReduceBlock( expressions, out _finalResultType );
     }
 
@@ -24,12 +25,12 @@ public class AsyncBlockExpression : AsyncBaseExpression
 
     protected override void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder )
     {
-        builder.GenerateMoveNextMethod( _reducedBlock );
+        builder.SetSource( _reducedBlock );
     }
 
     private static BlockExpression ReduceBlock( Expression[] expressions, out Type finalResultType )
     {
-        var parentBlockExpressions = new List<Expression>();
+        var childBlockExpressions = new List<Expression>();
         var currentBlockExpressions = new List<Expression>();
         var awaitEncountered = false;
 
@@ -55,38 +56,40 @@ public class AsyncBlockExpression : AsyncBaseExpression
                     variables.Add( varExpr );
                     break;
                 case AwaitExpression:
-                {
                     awaitEncountered = true;
                     var currentBlock = Block( currentBlockExpressions );
-                    parentBlockExpressions.Add( currentBlock );
+                    childBlockExpressions.Add( currentBlock );
                     currentBlockExpressions = [];
                     break;
-                }
             }
         }
 
         if ( currentBlockExpressions.Count > 0 )
         {
             var finalBlock = Block( currentBlockExpressions );
-            parentBlockExpressions.Add( finalBlock );
+            childBlockExpressions.Add( finalBlock );
 
             // Update the final result type based on the last expression in the final block
-            var lastExpr = currentBlockExpressions.Last();
+            var lastExpr = currentBlockExpressions[^1];
             if ( IsTask( lastExpr.Type ) )
             {
-                finalResultType = lastExpr.Type.IsGenericType 
-                    ? lastExpr.Type.GetGenericArguments()[0] 
+                finalResultType = lastExpr.Type.IsGenericType
+                    ? lastExpr.Type.GetGenericArguments()[0]
                     : typeof(void); // Task without a result
+            }
+            else
+            {
+                finalResultType = lastExpr.Type;
             }
         }
 
         if ( !awaitEncountered )
         {
-            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one {nameof(AwaitExpression)}." );
+            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
         }
 
         // Combine all child blocks into a single parent block, with variables declared at the parent level
-        return Block( variables, parentBlockExpressions ); // Declare variables only once at the top level
+        return Block( variables, childBlockExpressions ); // Declare variables only once at the top level
     }
 }
 

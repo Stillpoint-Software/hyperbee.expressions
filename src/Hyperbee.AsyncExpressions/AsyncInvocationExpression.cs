@@ -6,30 +6,27 @@ public class AsyncInvocationExpression : AsyncBaseExpression
 {
     private readonly InvocationExpression _invocationExpression;
 
-    public AsyncInvocationExpression( InvocationExpression invocationExpression ) : base( [invocationExpression] )
+    public AsyncInvocationExpression( InvocationExpression invocationExpression )
     {
-        _invocationExpression = invocationExpression;
+        _invocationExpression = invocationExpression ?? throw new ArgumentNullException( nameof(invocationExpression) );
     }
 
     protected override Type GetFinalResultType()
     {
-        if ( _invocationExpression.Type == typeof(Task) )
+        var returnType = _invocationExpression.Type;
+
+        if ( IsTask( returnType ) && returnType.IsGenericType )
         {
-            return typeof(void); // No result to return
+            return returnType.GetGenericArguments()[0];
         }
 
-        if ( _invocationExpression.Type.IsGenericType && _invocationExpression.Type.GetGenericTypeDefinition() == typeof(Task<>) )
-        {
-            return _invocationExpression.Type.GetGenericArguments()[0]; // Return T from Task<T>
-        }
-
-        throw new InvalidOperationException( "Invocation must return Task or Task<T>" );
+        return typeof(void);
     }
 
     protected override void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder )
     {
         var block = Block( _invocationExpression );
-        builder.GenerateMoveNextMethod( block );
+        builder.SetSource( block );
     }
 }
 
