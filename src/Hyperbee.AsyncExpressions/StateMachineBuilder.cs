@@ -16,7 +16,6 @@ public class StateMachineBuilder<TResult>
     private readonly string _typeName;
     private Type _stateMachineType;
     private TypeBuilder _typeBuilder;
-    private FieldBuilder _stateField;
     private FieldBuilder _builderField;
     private FieldBuilder _finalResultField;
     private FieldBuilder _moveNextLambdaField;
@@ -81,7 +80,7 @@ public class StateMachineBuilder<TResult>
         _typeBuilder = _moduleBuilder.DefineType( _typeName, TypeAttributes.Public, typeof( object ), [typeof( IAsyncStateMachine )] );
 
         // Define fields
-        _stateField = _typeBuilder.DefineField( "_state", typeof( int ), FieldAttributes.Private );
+        _typeBuilder.DefineField( "_state", typeof( int ), FieldAttributes.Private );
         _builderField = _typeBuilder.DefineField( "_builder", typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ), FieldAttributes.Private );
         _finalResultField = _typeBuilder.DefineField( "_finalResult", typeof( TResult ), FieldAttributes.Private );
         _moveNextLambdaField = _typeBuilder.DefineField( "_moveNextLambda", typeof( Action<> ).MakeGenericType( _typeBuilder ), FieldAttributes.Private ); // Action<TStateMachine>
