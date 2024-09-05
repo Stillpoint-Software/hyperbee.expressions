@@ -250,9 +250,9 @@ public class StateMachineBuilder<TResult>
 
         static Type GetAwaiterType( Type taskType )
         {
-            var genericArgument = taskType.IsGenericType ? taskType.GetGenericArguments()[0] : typeof(void);
+            var genericArgument = taskType.IsGenericType ? taskType.GetGenericArguments()[0] : null;
 
-            if ( genericArgument == typeof(void) || genericArgument.FullName == "System.Threading.Tasks.VoidTaskResult" )
+            if ( genericArgument == null || genericArgument.FullName == "System.Threading.Tasks.VoidTaskResult" )
             {
                 return typeof(ConfiguredTaskAwaitable.ConfiguredTaskAwaiter);
             }
