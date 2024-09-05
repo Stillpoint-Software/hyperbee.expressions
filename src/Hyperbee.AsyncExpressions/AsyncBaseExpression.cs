@@ -50,16 +50,20 @@ public abstract class AsyncBaseExpression : Expression
         return stateMachineType;
     }
 
-    // TODO: Implement this method
     public Expression StartStateMachine()
     {
-        // return hot task that:
-        //
-        // creates a new instance of the state machine
-        // calls the MoveNext method
-        // returns the hot task
+        var reducedExpression = Reduce();
 
-        return null;
+        var stateMachineVariable = Variable( reducedExpression.Type, "stateMachineVariable" );
+        var builderFieldInfo = reducedExpression.Type.GetField( "_builder" )!;
+        var taskFieldInfo = builderFieldInfo.FieldType.GetProperty( "Task" )!;
+
+        return Block(
+            [stateMachineVariable],
+            Assign( stateMachineVariable, reducedExpression ),
+            Call( stateMachineVariable, "MoveNext", Type.EmptyTypes ),
+            Property( Field( stateMachineVariable, builderFieldInfo ), taskFieldInfo )
+        );
     }
 
     internal static bool IsTask( Type type )

@@ -62,10 +62,48 @@ public class AwaitExpression : Expression
     }
 }
 
+
+[DebuggerDisplay( "{_asyncExpression}" )]
+[DebuggerTypeProxy( typeof(AwaitableExpressionProxy) )]
+public class AwaitableExpression : Expression
+{
+    private readonly Expression _asyncExpression;
+
+    internal AwaitableExpression( Expression asyncExpression )
+    {
+        _asyncExpression = asyncExpression;
+    }
+
+    public override ExpressionType NodeType => ExpressionType.Extension;
+
+    public override Type Type => _asyncExpression.Type;
+
+    public override bool CanReduce => true;
+
+    public override Expression Reduce()
+    {
+        return _asyncExpression;
+    }
+
+    private class AwaitableExpressionProxy( AwaitableExpression node )
+    {
+        public Expression Target => node._asyncExpression;
+        public Type ReturnType => node.Type;
+    }
+}
+
+
+
+
 public static partial class AsyncExpression
 {
     public static AwaitExpression Await( Expression expression, bool configureAwait )
     {
         return new AwaitExpression( expression, configureAwait );
+    }
+
+    public static AwaitableExpression Awaitable( Expression expression )
+    {
+        return new AwaitableExpression( expression );
     }
 }

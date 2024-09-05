@@ -78,19 +78,44 @@ public class AsyncBlockTests
     public void TestAsyncBlock_SimpleBlockSplitting()
     {
         // Arrange
-        var expr1 = Expression.Constant(1);
-        var expr2 = Expression.Constant(2);
-        var awaitExpr3 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask), false);
-        var expr4 = Expression.Constant(4);
+        var expr1 = Expression.Constant( 1 );
+        var expr2 = Expression.Constant( 2 );
+        var awaitExpr3 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask ), false );
+        var expr4 = Expression.Constant( 4 );
 
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4 );
 
         // Act
-        var reducedExpression = asyncBlock.Reduce();// as BlockExpression;
+        var reducedExpression = asyncBlock.Reduce() as BlockExpression;
 
         // Assert
-        Assert.IsNotNull(reducedExpression);
-        //Assert.AreEqual(2, reducedExpression.Expressions.Count); // Should result in two sub-blocks
+        Assert.IsNotNull( reducedExpression );
+        Assert.AreEqual(2, reducedExpression.Expressions.Count); // Should result in two sub-blocks
+    }
+
+    [TestMethod]
+    public async Task TestAsyncBlock_StartStateMachine()
+    {
+        // Arrange
+        var expr1 = Expression.Constant( 1 );
+        var expr2 = Expression.Constant( 2 );
+        var awaitExpr3 = AsyncExpression.Awaitable( Expression.Constant( Task.FromResult( 3 ) ) );
+        var expr4 = Expression.Constant( 4 );
+        var expr5 = Expression.Constant( 5 );
+        var awaitExpr6 = AsyncExpression.Awaitable( Expression.Constant( Task.CompletedTask, typeof(Task) ) );
+        var expr7 = Expression.Constant( 7 );
+
+        var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4, expr5, awaitExpr6, expr7 );
+
+        // Act
+        var body = asyncBlock.StartStateMachine();
+
+        var lambda = Expression.Lambda<Func<Task<int>>>( body );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 7, result ); // Should return last expression value
     }
 
     [TestMethod]

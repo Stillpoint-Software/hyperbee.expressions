@@ -55,6 +55,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
                 case BinaryExpression binaryExpr when binaryExpr.Left is ParameterExpression varExpr:
                     variables.Add( varExpr );
                     break;
+                case AwaitableExpression:
                 case AwaitExpression:
                     awaitEncountered = true;
                     var currentBlock = Block( currentBlockExpressions );
