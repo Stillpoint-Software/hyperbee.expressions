@@ -11,7 +11,7 @@ public class AsyncInvocationExpression : AsyncBaseExpression
         _invocationExpression = invocationExpression ?? throw new ArgumentNullException( nameof(invocationExpression) );
     }
 
-    protected override Type GetFinalResultType()
+    protected override Type GetResultType()
     {
         var returnType = _invocationExpression.Type;
 

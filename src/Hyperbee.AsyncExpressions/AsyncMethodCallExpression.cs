@@ -12,7 +12,7 @@ public class AsyncMethodCallExpression : AsyncBaseExpression
         _methodCallExpression = methodCallExpression ?? throw new ArgumentNullException( nameof(methodCallExpression) );
     }
 
-    protected override Type GetFinalResultType()
+    protected override Type GetResultType()
     {
         var returnType = _methodCallExpression.Type;
 

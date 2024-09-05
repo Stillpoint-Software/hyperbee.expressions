@@ -2,7 +2,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -14,26 +13,28 @@ public abstract class AsyncBaseExpression : Expression
 
     public override Expression Reduce()
     {
-        if ( !_isReduced )
-        {
-            _stateMachineBody = InvokeBuildStateMachine();
-            _isReduced = true;
-        }
+        if ( _isReduced )
+            return _stateMachineBody;
+
+        _stateMachineBody = InvokeBuildStateMachine();
+        _isReduced = true;
+
         return _stateMachineBody;
     }
 
     protected abstract void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder );
 
-    protected abstract Type GetFinalResultType();
+    protected abstract Type GetResultType();
 
     private Expression InvokeBuildStateMachine()
     {
-        var finalResultType = GetFinalResultType();
-        var buildMethod = typeof(AsyncBaseExpression)
+        var finalResultType = GetResultType();
+        var buildStateMachine = typeof(AsyncBaseExpression)
             .GetMethods( BindingFlags.Instance | BindingFlags.NonPublic )
             .First( m => m.Name == nameof(BuildStateMachine) )
             .MakeGenericMethod( finalResultType );
-        return (Expression) buildMethod.Invoke( this, null );
+
+        return (Expression) buildStateMachine.Invoke( this, null );
     }
 
     private Expression BuildStateMachine<TResult>()

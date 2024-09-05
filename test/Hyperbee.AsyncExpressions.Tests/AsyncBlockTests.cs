@@ -80,7 +80,7 @@ public class AsyncBlockTests
         // Arrange
         var expr1 = Expression.Constant( 1 );
         var expr2 = Expression.Constant( 2 );
-        var awaitExpr3 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask ), false );
+        var awaitExpr3 = AsyncExpression.Awaitable( Expression.Constant( Task.CompletedTask, typeof(Task) ) );
         var expr4 = Expression.Constant( 4 );
 
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4 );

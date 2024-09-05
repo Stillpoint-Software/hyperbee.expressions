@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -240,7 +240,6 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-
     private static bool TryGetAwaiterType( Expression expr, out Type awaiterType )
     {
         awaiterType = null;
@@ -278,6 +277,45 @@ public class StateMachineBuilder<TResult>
 
     private LambdaExpression CreateMoveNextExpression( BlockExpression block )
     {
+        // Example of a typical state-machine:
+        //
+        // public void MoveNext()
+        // {
+        //     try
+        //     {
+        //         if (_state == 0)
+        //         {
+        //             _awaiter1 = task1.ConfigureAwait(false).GetAwaiter();
+        //
+        //             if (!_awaiter1.IsCompleted == false)
+        //             {
+        //                 _builder.AwaitUnsafeOnCompleted(ref _awaiter1, this);
+        //                 return;
+        //             }
+        //
+        //             _awaiter1.GetResult();
+        //             _state = 1;
+        //         }
+        //
+        //         if (_state == 1)
+        //         {
+        //             _awaiter2 = task2.ConfigureAwait(false).GetAwaiter();
+        //
+        //             if (!_awaiter2.IsCompleted)
+        //             {
+        //                 _builder.AwaitUnsafeOnCompleted(ref _awaiter2, this);
+        //                 return;
+        //             }
+        //
+        //             _awaiter2.GetResult();
+        //         }
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _builder.SetException(ex);
+        //     }
+        // }
+
         var stateMachineInstance = Expression.Parameter( _stateMachineType, "stateMachine" );
         var parameterVisitor = new ParameterMappingVisitor( stateMachineInstance, _variableFields );
 
@@ -287,6 +325,9 @@ public class StateMachineBuilder<TResult>
         var bodyExpressions = new List<Expression>();
 
         var blocks = block.Expressions;
+        int lastBlockIndex = blocks.Count - 1;
+
+        // Each block is a state in the state machine
         for ( var i = 0; i < blocks.Count; i++ )
         {
             // Fix BlockExpression parameters to use fields from state machine
@@ -295,45 +336,89 @@ public class StateMachineBuilder<TResult>
 
             if ( AsyncBaseExpression.IsTask( blockReturnType ) )
             {
-                var awaiterField = GetFieldInfo(_stateMachineType, _awaiterFields[i]); // BF - This is the field we defined in EmitBlockFields
+                var awaiterField = GetFieldInfo( _stateMachineType, _awaiterFields[i] );
 
                 var configureAwaitMethod = blockExpr.Type.GetMethod( "ConfigureAwait", [typeof(bool)] )!;
-                var getAwaiterMethod = configureAwaitMethod.ReturnType.GetMethod("GetAwaiter");
+                var getAwaiterMethod = configureAwaitMethod.ReturnType.GetMethod( "GetAwaiter" );
 
+                // Evaluate the block expression to produce the task
+                var evaluateTask = blockExpr;
+
+                // Assign the awaiter field (e.g., _awaiterX = task.ConfigureAwait(false).GetAwaiter())
                 var assignAwaiter = Expression.Assign(
                     Expression.Field( stateMachineInstance, awaiterField ),
                     Expression.Call(
-                        Expression.Call( blockExpr, configureAwaitMethod, Expression.Constant( false ) ),
-                        getAwaiterMethod! ) );
+                        Expression.Call( evaluateTask, configureAwaitMethod, Expression.Constant( false ) ),
+                        getAwaiterMethod! )
+                );
 
-                var setupContinuation = Expression.Call(
-                    Expression.Field( stateMachineInstance, buildFieldInfo ),
-                    nameof( AsyncTaskMethodBuilder<TResult>.AwaitUnsafeOnCompleted ),
-                    [awaiterField.FieldType, typeof( IAsyncStateMachine )],
-                    Expression.Field( stateMachineInstance, awaiterField ),
-                    stateMachineInstance );
+                // Call AwaitUnsafeOnCompleted when awaiter is not completed
+                var awaiterCompletedCheck = Expression.IfThen(
+                    Expression.IsFalse( Expression.Property( Expression.Field( stateMachineInstance, awaiterField ), "IsCompleted" ) ),
+                    Expression.Block(
+                        Expression.Call(
+                            Expression.Field( stateMachineInstance, buildFieldInfo ),
+                            nameof(AsyncTaskMethodBuilder<TResult>.AwaitUnsafeOnCompleted),
+                            [awaiterField.FieldType, typeof(IAsyncStateMachine)],
+                            Expression.Field( stateMachineInstance, awaiterField ),
+                            stateMachineInstance
+                        ),
+                        Expression.Return( Expression.Label() ) // Return from MoveNext
+                    )
+                );
 
-                bodyExpressions.Add( Expression.Block( assignAwaiter, setupContinuation ) );
+                // Handle case when awaiter is completed (i.e., proceed to next state)
+
+                var getResultMethod = awaiterField.FieldType.GetMethod( "GetResult" );
+                var getResult = Expression.Call( Expression.Field( stateMachineInstance, awaiterField ), getResultMethod! );
+
+                var handleCompletedAwaiter = i == lastBlockIndex
+                    ? Expression.Block(
+                        Expression.Assign( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i + 1 ) ), 
+                        Expression.Assign( Expression.Field( stateMachineInstance, finalResultFieldInfo ), getResult ) 
+                    )
+                    : Expression.Block(
+                        getResult, 
+                        Expression.Assign( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i + 1 ) ) 
+                    );
+
+                // Full block for `if ( state == X )`
+                var stateCheck = Expression.IfThen(  
+                    Expression.Equal( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i ) ), 
+                    Expression.Block( assignAwaiter, awaiterCompletedCheck, handleCompletedAwaiter ) // Execute task handling logic
+                );
+
+                bodyExpressions.Add( stateCheck );
             }
-            else
+            else if ( i == lastBlockIndex ) // final block: non-task
             {
-                // Handle non-awaitable final block
-                var assignFinalResult = Expression.Assign(Expression.Field(stateMachineInstance, finalResultFieldInfo ), blockExpr! );
-                bodyExpressions.Add(assignFinalResult);
-            }
+                var assignFinalResult = Expression.Assign(
+                    Expression.Field( stateMachineInstance, finalResultFieldInfo ), blockExpr!
+                );
 
+                var finalStateCheck = Expression.IfThen( 
+                    Expression.Equal( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i ) ), 
+                    assignFinalResult
+                );
+
+                bodyExpressions.Add( finalStateCheck );
+            }
         }
 
+        // Set the final result
         var setResult = Expression.Call(
             Expression.Field( stateMachineInstance, buildFieldInfo ),
-            nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
+            nameof(AsyncTaskMethodBuilder<TResult>.SetResult),
             null,
-            Expression.Field( stateMachineInstance, finalResultFieldInfo ) );
+            Expression.Field( stateMachineInstance, finalResultFieldInfo )
+        );
 
         bodyExpressions.Add( setResult );
 
+        // Return the lambda expression for the method
         return Expression.Lambda( Expression.Block( bodyExpressions ), stateMachineInstance );
 
+        // Helper method to retrieve FieldInfo from the created type
         static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
         {
             return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;

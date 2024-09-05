@@ -4,38 +4,58 @@ namespace Hyperbee.AsyncExpressions;
 
 public class AsyncBlockExpression : AsyncBaseExpression
 {
-    private readonly BlockExpression _reducedBlock;
-    private readonly Type _finalResultType;
+    private readonly Expression[] _expressions;
     private readonly ParameterExpression[] _initialVariables;
 
+    private bool _isReduced;
+    private BlockExpression _reducedBlock;
+    private Type _resultType;
 
-    public AsyncBlockExpression( Expression[] expressions ) : this( [], expressions ) { }
+    public AsyncBlockExpression( Expression[] expressions )
+        : this( [], expressions )
+    {
+    }
 
     public AsyncBlockExpression( ParameterExpression[] variables, Expression[] expressions )
     {
-        _initialVariables = variables;
         if ( expressions == null || expressions.Length == 0 )
         {
             throw new ArgumentException( "AsyncBlockExpression must contain at least one expression.",
                 nameof(expressions) );
         }
 
-        // Reduce the block and determine the final result type
-        _reducedBlock = ReduceBlock( expressions, out _finalResultType );
+        _initialVariables = variables;
+        _expressions = expressions;
     }
 
-
-    protected override Type GetFinalResultType()
+    public override Expression Reduce()
     {
-        return _finalResultType;
+        if ( _isReduced )
+            return _reducedBlock;
+
+        _reducedBlock = ReduceBlock( _expressions, out _resultType );
+        _isReduced = true;
+
+        return _reducedBlock;
+    }
+
+    protected override Type GetResultType()
+    {
+        if ( !_isReduced )
+            Reduce();
+
+        return _resultType;
     }
 
     protected override void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder )
     {
-        builder.SetSource( _reducedBlock );
+        if ( !_isReduced )
+            Reduce();
+
+        builder.SetSource( _reducedBlock ); 
     }
 
-    private BlockExpression ReduceBlock( Expression[] expressions, out Type finalResultType )
+    private BlockExpression ReduceBlock( Expression[] expressions, out Type resultType )
     {
         var childBlockExpressions = new List<Expression>();
         var currentBlockExpressions = new List<Expression>();
@@ -43,7 +63,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
 
         // Collect all variables declared in the block
         var variables = new HashSet<ParameterExpression>( _initialVariables );
-        finalResultType = typeof(void); // Default to void, adjust if task found
+        resultType = typeof(void); // Default to void, adjust if task found
 
         foreach ( var expr in expressions )
         {
@@ -81,13 +101,13 @@ public class AsyncBlockExpression : AsyncBaseExpression
             var lastExpr = currentBlockExpressions[^1];
             if ( IsTask( lastExpr.Type ) )
             {
-                finalResultType = lastExpr.Type.IsGenericType
+                resultType = lastExpr.Type.IsGenericType
                     ? lastExpr.Type.GetGenericArguments()[0]
                     : typeof(void); // Task without a result
             }
             else
             {
-                finalResultType = lastExpr.Type;
+                resultType = lastExpr.Type;
             }
         }
 
