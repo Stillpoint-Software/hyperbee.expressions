@@ -84,7 +84,7 @@ public class StateMachineBuilder<TResult>
         //      public void SetStateMachine(IAsyncStateMachine stateMachine) => _builder.SetStateMachine( stateMachine );
         // }
 
-        _typeBuilder = _moduleBuilder.DefineType( _typeName, TypeAttributes.Public, typeof( object ), [typeof( IAsyncStateMachine )] );
+        _typeBuilder = _moduleBuilder.DefineType( _typeName, TypeAttributes.Public, typeof( object ), [typeof( IAsyncStateMachine )]);
 
         _typeBuilder.DefineField( "_state", typeof( int ), FieldAttributes.Private );
         _builderField = _typeBuilder.DefineField( "_builder", typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ), FieldAttributes.Private );
@@ -124,12 +124,16 @@ public class StateMachineBuilder<TResult>
 
         // Define: awaiter fields
         _awaiterFields = [];
-        foreach ( var expr in block.Expressions )
+        for ( var i = 0; i < block.Expressions.Count; i++ )
         {
-            if ( !TryGetAwaiterType( expr, out Type awaiterType ) )
-                continue;
+            var expr = block.Expressions[i];
 
-            var awaiterField = _typeBuilder.DefineField( $"_awaiter{_awaiterFields.Count}", awaiterType, FieldAttributes.Private );
+            if ( !TryGetAwaiterType( expr, out Type awaiterType ) )
+                continue; // Not an awaitable expression
+
+            var fieldName = $"_awaiter_{i}";
+
+            var awaiterField = _typeBuilder.DefineField( fieldName, awaiterType, FieldAttributes.Private );
             _awaiterFields.Add( awaiterField );
         }
     }
@@ -227,22 +231,34 @@ public class StateMachineBuilder<TResult>
     {
         awaiterType = null;
 
-        if ( typeof(Task).IsAssignableFrom( expr.Type ) )
+        switch ( expr )
         {
-            var blockGenericArgument = expr.Type.IsGenericType ? expr.Type.GetGenericArguments()[0] : typeof(void);
-            awaiterType = typeof(ConfiguredTaskAwaitable<>).MakeGenericType(blockGenericArgument).GetNestedType("ConfiguredTaskAwaiter")!;
-            return true;
+            case MethodCallExpression methodCall when typeof(Task).IsAssignableFrom( methodCall.Type ):
+                awaiterType = GetAwaiterType( methodCall.Type );
+                return true;
+
+            case InvocationExpression invocation when typeof(Task).IsAssignableFrom( invocation.Type ):
+                awaiterType = GetAwaiterType( invocation.Type );
+                return true;
+
+            case not null when typeof(Task).IsAssignableFrom( expr.Type ):
+                awaiterType = GetAwaiterType( expr.Type );
+                return true;
         }
 
-        if ( expr is not MethodCallExpression methodCall || !typeof(Task).IsAssignableFrom( methodCall.Type ) )
+        return false;
+
+        static Type GetAwaiterType( Type taskType )
         {
-            return false;
+            var genericArgument = taskType.IsGenericType ? taskType.GetGenericArguments()[0] : typeof(void);
+
+            if ( genericArgument == typeof(void) || genericArgument.FullName == "System.Threading.Tasks.VoidTaskResult" )
+            {
+                return typeof(ConfiguredTaskAwaitable.ConfiguredTaskAwaiter);
+            }
+
+            return typeof(ConfiguredTaskAwaitable<>).MakeGenericType(genericArgument).GetNestedType("ConfiguredTaskAwaiter")!;
         }
-
-        var genericArgument = methodCall.Type.IsGenericType ? methodCall.Type.GetGenericArguments()[0] : typeof( void );
-        awaiterType = typeof( ConfiguredTaskAwaitable<> ).MakeGenericType( genericArgument ).GetNestedType( "ConfiguredTaskAwaiter" )!;
-
-        return true;
     }
 
     private LambdaExpression CreateMoveNextExpression( BlockExpression block )
