@@ -126,12 +126,12 @@ public class StateMachineBuilder<TResult>
         _awaiterFields = [];
         for ( var i = 0; i < block.Expressions.Count; i++ )
         {
-            var expr = block.Expressions[i];
+            var expr = block.Expressions[i]; 
 
             if ( !TryGetAwaiterType( expr, out Type awaiterType ) )
                 continue; // Not an awaitable expression
 
-            var fieldName = $"_awaiter_{i}";
+            var fieldName = $"_awaiter_{i}"; // `i` should match the index of the expression to align with state machine logic
 
             var awaiterField = _typeBuilder.DefineField( fieldName, awaiterType, FieldAttributes.Private );
             _awaiterFields.Add( awaiterField );
@@ -267,8 +267,10 @@ public class StateMachineBuilder<TResult>
 
         var bodyExpressions = new List<Expression>
             {
-                Expression.Assign(Expression.Field(stateMachineInstance, _builderField),
-                    Expression.Call(typeof(AsyncTaskMethodBuilder<TResult>), nameof(AsyncTaskMethodBuilder<TResult>.Create), null))
+                Expression.Assign(
+                    Expression.Field(stateMachineInstance, _builderField),
+                    Expression.Call(typeof(AsyncTaskMethodBuilder<TResult>), nameof(AsyncTaskMethodBuilder<TResult>.Create), null)
+                )
             };
 
         var blocks = block.Expressions;
@@ -283,7 +285,8 @@ public class StateMachineBuilder<TResult>
                     ? typeof( ConfiguredTaskAwaitable<> ).MakeGenericType( blockReturnType.GetGenericArguments()[0] )
                     : typeof(ConfiguredTaskAwaitable<>).MakeGenericType( blockReturnType );
 
-                var awaiterField = _awaiterFields.First( x => x.Name == $"_awaiter_{i}" );
+                var awaiterField = _awaiterFields[i]; // BF - This is the field we defined in EmitBlockFields
+                //var awaiterField = _awaiterFields.First( x => x.Name == $"_awaiter_{i}" );
                 // var awaiterField = _typeBuilder.DefineField( $"_awaiter_{i}", awaiterType.GetNestedType( "ConfiguredTaskAwaiter" )!, FieldAttributes.Private );
                 // _awaiterFields.Add( awaiterField );
 
