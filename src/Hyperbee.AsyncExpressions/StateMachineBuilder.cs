@@ -45,7 +45,6 @@ public class StateMachineBuilder<TResult>
 
         // Compile MoveNext lambda and assign to state machine
         var moveNextLambda = CreateMoveNextExpression( _blockSource );
-
         var lambdaType = typeof( Action<> ).MakeGenericType( _stateMachineType );
 
         var constructor = _stateMachineType.GetConstructor( [lambdaType] );
@@ -56,38 +55,66 @@ public class StateMachineBuilder<TResult>
     {
         // Define the state machine type
         //
-        // public class StateMachineTypeN : IAsyncStateMachine
+        // public class StateMachineType : IAsyncStateMachine
         // {
         //      public int _state;
         //      public AsyncTaskMethodBuilder<TResult> _builder;
         //      public TResult _finalResult;
         //      public Action _moveNextLambda;
         //      
-        //      // Variables
+        //      // Variables (example)
         //      public int _variable1;
         //      public int _variable2;
         //
-        //      // Awaiters
+        //      // Awaiters (example)
         //      public ConfiguredTaskAwaitable.ConfiguredTaskAwaiter _awaiter1;
         //      public ConfiguredTaskAwaitable.ConfiguredTaskAwaiter _awaiter2;
         //
-        //      public StateMachineTypeN(Action moveNextLambda)
+        //      public StateMachineType()
         //      {
-        //          _moveNextLambda = moveNextLambda;
         //      }
-        //      public void SetLambda<T>(Action<T> moveNextLambda) { _moveNextLambda = moveNextLambda }
+        //
+        //      public void SetLambda<T>(Action<T> moveNextLambda)
+        //      {
+        //         Action<object> moveNext = obj => moveNextLambda( (StateMachineType) obj );
+        //         moveNext(this);
+        //      }
+        //
         //      public void MoveNext() => _moveNextLambda(this);
+        //      public void SetStateMachine(IAsyncStateMachine stateMachine) => _builder.SetStateMachine( stateMachine );
         // }
 
         _typeBuilder = _moduleBuilder.DefineType( _typeName, TypeAttributes.Public, typeof( object ), [typeof( IAsyncStateMachine )] );
 
-        // Define fields
         _typeBuilder.DefineField( "_state", typeof( int ), FieldAttributes.Private );
         _builderField = _typeBuilder.DefineField( "_builder", typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ), FieldAttributes.Private );
         _finalResultField = _typeBuilder.DefineField( "_finalResult", typeof( TResult ), FieldAttributes.Private );
-        _moveNextLambdaField = _typeBuilder.DefineField( "_moveNextLambda", typeof( Action<> ).MakeGenericType( _typeBuilder ), FieldAttributes.Private ); // Action<TStateMachine>
+        _moveNextLambdaField = _typeBuilder.DefineField( "_moveNextLambda", typeof( Action<> ).MakeGenericType( _typeBuilder ), FieldAttributes.Private );
 
-        // Define variable fields
+        EmitBlockFields( block );
+        EmitConstructor();
+        EmitSetMoveNextMethod();
+        EmitMoveNextMethod();
+        EmitSetStateMachineMethod();
+
+        _stateMachineType = _typeBuilder.CreateTypeInfo()!.AsType();
+    }
+
+    private void EmitConstructor()
+    {
+        // Define a parameterless constructor: public StateMachineType()
+        var constructor = _typeBuilder.DefineConstructor( MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes );
+        var ilGenerator = constructor.GetILGenerator();
+
+        // Call the base constructor (object)
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
+        ilGenerator.Emit( OpCodes.Call, typeof(object).GetConstructor( Type.EmptyTypes )! ); // base()
+        ilGenerator.Emit( OpCodes.Ret ); // return
+    }
+
+    private void EmitBlockFields( BlockExpression block )
+    {
+        // Define: variable fields
         _variableFields = [];
         foreach ( var variable in block.Variables )
         {
@@ -95,56 +122,110 @@ public class StateMachineBuilder<TResult>
             _variableFields.Add( field );
         }
 
-        // Define awaiter fields
+        // Define: awaiter fields
         _awaiterFields = [];
         foreach ( var expr in block.Expressions )
         {
             if ( !TryGetAwaiterType( expr, out Type awaiterType ) )
-            {
                 continue;
-            }
 
             var awaiterField = _typeBuilder.DefineField( $"_awaiter{_awaiterFields.Count}", awaiterType, FieldAttributes.Private );
             _awaiterFields.Add( awaiterField );
         }
+    }
 
-        // Define constructor: public StateMachineType(Action<StateMachineType> moveNextLambda)
-        var constructor = _typeBuilder.DefineConstructor( MethodAttributes.Public, CallingConventions.Standard, [_moveNextLambdaField.FieldType] );
-        var ilGenerator = constructor.GetILGenerator();
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Call, typeof( object ).GetConstructor( Type.EmptyTypes )! ); // base()
+    private void EmitSetMoveNextMethod()
+    {
+        // Define: public void SetMoveNext(Action<StateMachineTypeN> moveNext)
+        //
+        //  public void SetMoveNext<T>(Action<T> moveNext)
+        //  {
+        //     _moveNextLambda = moveNext;
+        //  }
+
+        var setMoveNextMethod = _typeBuilder.DefineMethod( 
+            "SetMoveNext", 
+            MethodAttributes.Public | MethodAttributes.Virtual, 
+            typeof(void),
+            [typeof(Action<>).MakeGenericType( _typeBuilder )]
+        );
+
+        var ilGenerator = setMoveNextMethod.GetILGenerator();
+
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // moveNextLambda
         ilGenerator.Emit( OpCodes.Stfld, _moveNextLambdaField ); // this._moveNextLambda = moveNextLambda
+        ilGenerator.Emit( OpCodes.Ret ); // return
+    }
+
+    private void EmitMoveNextMethod()
+    {
+        // Define: public void MoveNext()
+        //
+        //  public void MoveNext()
+        //  {
+        //      Action<object> moveNext = obj => _moveNextLambda( (StateMachineTypeN) obj );
+        //      moveNext( this );
+        //  }
+
+        var moveNextMethod = _typeBuilder.DefineMethod(
+            "MoveNext",
+            MethodAttributes.Public | MethodAttributes.Virtual,
+            typeof(void),
+            Type.EmptyTypes
+        );
+
+        var ilGenerator = moveNextMethod.GetILGenerator();
+
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this`
+        ilGenerator.Emit( OpCodes.Ldfld, _moveNextLambdaField ); // load `_moveNextLambda`
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this` as lambda argument
+
+        var actionObjectType = typeof(Action<object>);
+        var invokeMethod = actionObjectType.GetMethod( "Invoke" );
+        ilGenerator.Emit( OpCodes.Callvirt, invokeMethod! ); // Call Action<object>.Invoke(this)
+
+        ilGenerator.Emit( OpCodes.Ret );
+    }
+
+    private void EmitSetStateMachineMethod()
+    {
+        // Define the SetStateMachine method (from IAsyncStateMachine)
+
+        // public void SetStateMachine( IAsyncStateMachine stateMachine )
+        // {
+        //    _builder.SetStateMachine( stateMachine );
+        // }
+        
+        var setStateMachineMethod = _typeBuilder.DefineMethod(
+            "SetStateMachine",
+            MethodAttributes.Public | MethodAttributes.Virtual,
+            typeof(void),
+            [typeof(IAsyncStateMachine)]
+        );
+
+        var ilGenerator = setStateMachineMethod.GetILGenerator();
+
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this`
+        ilGenerator.Emit( OpCodes.Ldfld, _builderField ); // load `_builder`
+        ilGenerator.Emit( OpCodes.Ldarg_1 ); // Load the `stateMachine` parameter
+
+        var setStateMachineOnBuilder = typeof(AsyncTaskMethodBuilder<>)
+            .MakeGenericType( typeof(TResult) )
+            .GetMethod( "SetStateMachine", [typeof(IAsyncStateMachine)] );
+
+        ilGenerator.Emit( OpCodes.Callvirt, setStateMachineOnBuilder! );
         ilGenerator.Emit( OpCodes.Ret );
 
-        var setStateMachineMethod = _typeBuilder.DefineMethod("SetStateMachine", MethodAttributes.Public | MethodAttributes.Virtual, typeof(void), [typeof(IAsyncStateMachine)]);
-        var setStateMachineIlGenerator = setStateMachineMethod.GetILGenerator();
-        setStateMachineIlGenerator.Emit(OpCodes.Ret);
-
-        // Define method: public void MoveNext() => _moveNextLambda(this);
-        var moveNextMethod = _typeBuilder.DefineMethod( "MoveNext", MethodAttributes.Public | MethodAttributes.Virtual, typeof( void ), Type.EmptyTypes );
-        var moveNextIlGenerator = moveNextMethod.GetILGenerator();
-        moveNextIlGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        moveNextIlGenerator.Emit( OpCodes.Ldfld, _moveNextLambdaField ); // load _moveNextLambda
-        moveNextIlGenerator.Emit( OpCodes.Ldarg_0 ); // load this as argument for _moveNextLambda
-
-
-
-        var actionType = typeof(Action<>);
-        var invokeMethod = actionType.GetMethod("Invoke");
-        moveNextIlGenerator.Emit(OpCodes.Callvirt, invokeMethod);
-        moveNextIlGenerator.Emit(OpCodes.Callvirt, _moveNextLambdaField.FieldType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public)!); // _moveNextLambda(this)
-        moveNextIlGenerator.Emit( OpCodes.Ret );
-
-
-        _stateMachineType = _typeBuilder.CreateTypeInfo()!.AsType();
+        _typeBuilder.DefineMethodOverride( setStateMachineMethod, 
+            typeof(IAsyncStateMachine).GetMethod( "SetStateMachine" )! 
+        );
     }
+
 
     private static bool TryGetAwaiterType( Expression expr, out Type awaiterType )
     {
         awaiterType = null;
-
 
         if ( typeof(Task).IsAssignableFrom( expr.Type ) )
         {
@@ -162,10 +243,8 @@ public class StateMachineBuilder<TResult>
         awaiterType = typeof( ConfiguredTaskAwaitable<> ).MakeGenericType( genericArgument ).GetNestedType( "ConfiguredTaskAwaiter" )!;
 
         return true;
-
     }
 
-    // Builds the MoveNext expression and compiles it
     private LambdaExpression CreateMoveNextExpression( BlockExpression block )
     {
         var stateMachineInstance = Expression.Parameter( _stateMachineType, "stateMachine" );
@@ -231,24 +310,3 @@ public class StateMachineBuilder<TResult>
         return Expression.Lambda( Expression.Block( bodyExpressions ), stateMachineInstance );
     }
 }
-
-/*
-public class DynamicStateMachine : IAsyncStateMachine
-{
-    private DynamicStateMachine _innerStateMachine = null;
-
-    private readonly Action<DynamicStateMachine> _lambda;
-
-    public DynamicStateMachine( Action<DynamicStateMachine> lambda )
-    {
-        _lambda = lambda;
-    }
-
-    public void MoveNext() => _lambda( _innerStateMachine ?? this );
-
-    public void SetStateMachine( IAsyncStateMachine stateMachine )
-    {
-        _innerStateMachine = (DynamicStateMachine) stateMachine;
-    }
-}
-*/
