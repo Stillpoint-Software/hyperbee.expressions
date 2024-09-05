@@ -61,9 +61,9 @@ public class AsyncBlockExpression : AsyncBaseExpression
         var currentBlockExpressions = new List<Expression>();
         var awaitEncountered = false;
 
-        // Collect all variables declared in the block
         var variables = new HashSet<ParameterExpression>( _initialVariables );
-        resultType = typeof(void); // Default to void, adjust if task found
+        
+        resultType = typeof(void);
 
         foreach ( var expr in expressions )
         {
@@ -99,6 +99,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
 
             // Update the final result type based on the last expression in the final block
             var lastExpr = currentBlockExpressions[^1];
+            
             if ( IsTask( lastExpr.Type ) )
             {
                 resultType = lastExpr.Type.IsGenericType
