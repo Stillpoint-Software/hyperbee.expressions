@@ -6,17 +6,24 @@ public class AsyncBlockExpression : AsyncBaseExpression
 {
     private readonly BlockExpression _reducedBlock;
     private readonly Type _finalResultType;
+    private readonly ParameterExpression[] _initialVariables;
 
-    public AsyncBlockExpression( Expression[] expressions ) 
+
+    public AsyncBlockExpression( Expression[] expressions ) : this( [], expressions ) { }
+
+    public AsyncBlockExpression( ParameterExpression[] variables, Expression[] expressions )
     {
+        _initialVariables = variables;
         if ( expressions == null || expressions.Length == 0 )
         {
-            throw new ArgumentException( "AsyncBlockExpression must contain at least one expression.", nameof(expressions) );
+            throw new ArgumentException( "AsyncBlockExpression must contain at least one expression.",
+                nameof(expressions) );
         }
 
         // Reduce the block and determine the final result type
         _reducedBlock = ReduceBlock( expressions, out _finalResultType );
     }
+
 
     protected override Type GetFinalResultType()
     {
@@ -28,14 +35,14 @@ public class AsyncBlockExpression : AsyncBaseExpression
         builder.SetSource( _reducedBlock );
     }
 
-    private static BlockExpression ReduceBlock( Expression[] expressions, out Type finalResultType )
+    private BlockExpression ReduceBlock( Expression[] expressions, out Type finalResultType )
     {
         var childBlockExpressions = new List<Expression>();
         var currentBlockExpressions = new List<Expression>();
         var awaitEncountered = false;
 
         // Collect all variables declared in the block
-        var variables = new HashSet<ParameterExpression>();
+        var variables = new HashSet<ParameterExpression>( _initialVariables );
         finalResultType = typeof(void); // Default to void, adjust if task found
 
         foreach ( var expr in expressions )
@@ -99,6 +106,11 @@ public static partial class AsyncExpression
     public static AsyncBlockExpression BlockAsync( params Expression[] expressions )
     {
         return new AsyncBlockExpression( expressions );
+    }
+
+    public static AsyncBlockExpression BlockAsync( ParameterExpression[] variables, params Expression[] expressions )
+    {
+        return new AsyncBlockExpression( variables, expressions );
     }
 }
 

@@ -279,6 +279,7 @@ public class StateMachineBuilder<TResult>
     private LambdaExpression CreateMoveNextExpression( BlockExpression block )
     {
         var stateMachineInstance = Expression.Parameter( _stateMachineType, "stateMachine" );
+        var parameterVisitor = new ParameterMappingVisitor( stateMachineInstance, _variableFields );
 
         var buildFieldInfo = GetFieldInfo( _stateMachineType, _builderField );
         var finalResultFieldInfo = GetFieldInfo( _stateMachineType, _finalResultField );
@@ -288,7 +289,8 @@ public class StateMachineBuilder<TResult>
         var blocks = block.Expressions;
         for ( var i = 0; i < blocks.Count; i++ )
         {
-            var blockExpr = blocks[i];
+            // Fix BlockExpression parameters to use fields from state machine
+            var blockExpr = parameterVisitor.Visit( blocks[i] );
             var blockReturnType = blockExpr.Type;
 
             if ( AsyncBaseExpression.IsTask( blockReturnType ) )
@@ -316,7 +318,7 @@ public class StateMachineBuilder<TResult>
             else
             {
                 // Handle non-awaitable final block
-                var assignFinalResult = Expression.Assign(Expression.Field(stateMachineInstance, finalResultFieldInfo ), blockExpr!);
+                var assignFinalResult = Expression.Assign(Expression.Field(stateMachineInstance, finalResultFieldInfo ), blockExpr! );
                 bodyExpressions.Add(assignFinalResult);
             }
 

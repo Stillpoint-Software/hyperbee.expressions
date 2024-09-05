@@ -22,18 +22,18 @@ public class AwaitExpression : Expression
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    public override Type Type => _asyncExpression.Type;
-    // {
-    //     get
-    //     {
-    //         return _asyncExpression.Type.IsGenericType switch
-    //         {
-    //             true when _asyncExpression.Type.GetGenericTypeDefinition() == typeof( Task<> ) => _asyncExpression.Type.GetGenericArguments()[0],
-    //             false when _asyncExpression.Type == typeof( Task ) => typeof( void ),
-    //             _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
-    //         };
-    //     }
-    // }
+    public override Type Type
+    {
+        get
+        {
+            return _asyncExpression.Type.IsGenericType switch
+            {
+                true when _asyncExpression.Type.GetGenericTypeDefinition() == typeof( Task<> ) => _asyncExpression.Type.GetGenericArguments()[0],
+                false when _asyncExpression.Type == typeof( Task ) => typeof( void ),
+                _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
+            };
+        }
+    }
 
     public override bool CanReduce => true;
 

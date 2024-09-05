@@ -119,6 +119,35 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
+    public async Task TestAsyncBlock_StartStateMachineWithVariables()
+    {
+        // Arrange
+        var param1 = Expression.Parameter( typeof( int ), "param1" );
+        var var1 = Expression.Variable( typeof( int ), "var1" );
+        var var2 = Expression.Variable( typeof( int ), "var2" );
+
+        var exp1 = Expression.Assign( var1, Expression.Constant( 1 ) );
+        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ), false );
+        var exp3 = Expression.Assign( var2, awaitExpr2 );
+        var add = Expression.Add( var1, Expression.Add( var2, param1 ) );
+        
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [var1, var2],
+            exp1, awaitExpr2, exp3, add
+        );
+
+        // Act
+        var body = asyncBlock.StartStateMachine();
+
+        var lambda = Expression.Lambda<Func<int, Task<int>>>( body, param1 );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda(3);
+
+        // Assert
+        Assert.AreEqual( 7, result ); // Should return last expression value
+    }
+
+    [TestMethod]
     public void TestAsyncBlock_SingleAwait()
     {
         // Arrange
