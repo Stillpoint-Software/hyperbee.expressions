@@ -27,12 +27,18 @@ public abstract class AsyncBaseExpression : Expression
         return _stateMachineBody;
     }
 
+    protected abstract Expression PreReduce();
+
     protected abstract void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder );
 
     protected abstract Type GetResultType();
 
     private Expression InvokeBuildStateMachine()
     {
+        PreReduce();  // BF (ME) - Moving Reduce logic to the ctor caused
+                      // the base reduce to not be called or to be cyclical. This is a workaround.
+
+
         var resultType = GetResultType();
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
 

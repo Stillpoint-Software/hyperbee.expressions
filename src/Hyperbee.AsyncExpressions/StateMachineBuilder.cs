@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -327,6 +327,9 @@ public class StateMachineBuilder<TResult>
         var blocks = block.Expressions;
         int lastBlockIndex = blocks.Count - 1;
 
+
+        LabelTarget returnLabel = Expression.Label( "ExitMoveNext" );
+
         // Each block is a state in the state machine
         for ( var i = 0; i < blocks.Count; i++ )
         {
@@ -363,7 +366,7 @@ public class StateMachineBuilder<TResult>
                             Expression.Field( stateMachineInstance, awaiterField ),
                             stateMachineInstance
                         ),
-                        Expression.Return( Expression.Label() ) // Return from MoveNext
+                        Expression.Return( returnLabel ) // Return from MoveNext
                     )
                 );
 
@@ -414,6 +417,7 @@ public class StateMachineBuilder<TResult>
         );
 
         bodyExpressions.Add( setResult );
+        bodyExpressions.Add( Expression.Label( returnLabel ) );
 
         // Return the lambda expression for the method
         return Expression.Lambda( Expression.Block( bodyExpressions ), stateMachineInstance );

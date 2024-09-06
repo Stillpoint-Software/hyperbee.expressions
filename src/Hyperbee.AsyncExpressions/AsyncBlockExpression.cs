@@ -29,8 +29,19 @@ public class AsyncBlockExpression : AsyncBaseExpression
     }
 
     public override bool CanReduce => true;
+    //
+    // public override Expression Reduce()
+    // {
+    //     if ( _isReduced )
+    //         return _reducedBlock;
+    //
+    //     _reducedBlock = ReduceBlock( _expressions, out _resultType );
+    //     _isReduced = true;
+    //
+    //     return _reducedBlock;
+    // }
 
-    public override Expression Reduce()
+    protected override Expression PreReduce()
     {
         if ( _isReduced )
             return _reducedBlock;

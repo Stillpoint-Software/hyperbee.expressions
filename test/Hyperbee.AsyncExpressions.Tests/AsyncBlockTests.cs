@@ -100,10 +100,10 @@ public class AsyncBlockTests
         // Arrange
         var expr1 = Expression.Constant( 1 );
         var expr2 = Expression.Constant( 2 );
-        var awaitExpr3 = AsyncExpression.Awaitable( Expression.Constant( Task.FromResult( 3 ) ) );
+        var awaitExpr3 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ), false  );
         var expr4 = Expression.Constant( 4 );
         var expr5 = Expression.Constant( 5 );
-        var awaitExpr6 = AsyncExpression.Awaitable( Expression.Constant( Task.CompletedTask, typeof(Task) ) );
+        var awaitExpr6 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ), false );
         var expr7 = Expression.Constant( 7 );
 
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4, expr5, awaitExpr6, expr7 );
