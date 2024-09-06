@@ -48,7 +48,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
         if ( _isReduced )
             return _stateMachine;
 
-        var reducedBlock = ReduceBlock( _expressions, out _resultType );
+        var reducedBlock = ReduceBlock( out _resultType );
         _stateMachine = StateMachineBuilder.Create( reducedBlock, _resultType, createRunner: true );
 
         _isReduced = true;
@@ -56,7 +56,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
         return _stateMachine;
     }
 
-    private BlockExpression ReduceBlock( Expression[] expressions, out Type resultType )
+    internal BlockExpression ReduceBlock( out Type resultType )
     {
         var childBlockExpressions = new List<Expression>();
         var currentBlockExpressions = new List<Expression>();
@@ -66,7 +66,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
         
         resultType = typeof(void);
 
-        foreach ( var expr in expressions )
+        foreach ( var expr in _expressions )
         {
             if ( expr is AsyncBlockExpression asyncBlock )
             {

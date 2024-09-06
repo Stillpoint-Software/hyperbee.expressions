@@ -87,7 +87,7 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4 );
 
         // Act
-        var reducedExpression = asyncBlock.Reduce() as BlockExpression;
+        var reducedExpression = asyncBlock.ReduceBlock( out _ );
 
         // Assert
         Assert.IsNotNull( reducedExpression );
@@ -133,7 +133,7 @@ public class AsyncBlockTests
         
         var asyncBlock = AsyncExpression.BlockAsync(
             [var1, var2],
-            exp1, awaitExpr2, exp3, add
+            exp1, exp3, add
         );
 
         // Act
