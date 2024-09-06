@@ -28,6 +28,13 @@ public class AsyncBlockExpression : AsyncBaseExpression
 
         _initialVariables = variables;
         _expressions = expressions;
+
+        // var testing = new AwaitVisitor();
+        // foreach ( var expr in expressions )
+        // {
+        //     testing.Visit( expr );
+        // }
+        // _expressions = testing.Expressions.ToArray();
     }
 
     public override Type Type
