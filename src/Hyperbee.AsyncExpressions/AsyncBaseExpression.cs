@@ -11,6 +11,9 @@ public abstract class AsyncBaseExpression : Expression
     private Expression _stateMachineBody;
     private bool _isReduced;
 
+    private static readonly MethodInfo BuildStateMachineMethod = 
+        typeof(AsyncBaseExpression).GetMethod( nameof(BuildStateMachine), BindingFlags.NonPublic | BindingFlags.Instance );
+
     public override Expression Reduce()
     {
         if ( _isReduced )
@@ -28,11 +31,8 @@ public abstract class AsyncBaseExpression : Expression
 
     private Expression InvokeBuildStateMachine()
     {
-        var finalResultType = GetResultType();
-        var buildStateMachine = typeof(AsyncBaseExpression)
-            .GetMethods( BindingFlags.Instance | BindingFlags.NonPublic )
-            .First( m => m.Name == nameof(BuildStateMachine) )
-            .MakeGenericMethod( finalResultType );
+        var resultType = GetResultType();
+        var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
 
         return (Expression) buildStateMachine.Invoke( this, null );
     }
@@ -47,11 +47,10 @@ public abstract class AsyncBaseExpression : Expression
 
         ConfigureStateMachine( stateMachineBuilder );
 
-        var stateMachineType = stateMachineBuilder.CreateStateMachine();
-        return stateMachineType;
+        return stateMachineBuilder.CreateStateMachine();
     }
 
-    public Expression StartStateMachine()
+    internal Expression StartStateMachine()
     {
         var reducedExpression = Reduce();
 
@@ -76,12 +75,8 @@ public abstract class AsyncBaseExpression : Expression
     {
         private readonly AsyncBaseExpression _node;
 
-        public AsyncBaseExpressionDebuggerProxy( AsyncBaseExpression node )
-        {
-            _node = node;
-        }
+        public AsyncBaseExpressionDebuggerProxy( AsyncBaseExpression node ) => _node = node;
 
-        //public Expression[] Body => _node._body;
         public Expression StateMachineBody => _node._stateMachineBody;
         public bool IsReduced => _node._isReduced;
         public Type ReturnType => _node.Type;

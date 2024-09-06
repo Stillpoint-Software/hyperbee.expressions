@@ -28,6 +28,8 @@ public class AsyncBlockExpression : AsyncBaseExpression
         _expressions = expressions;
     }
 
+    public override bool CanReduce => true;
+
     public override Expression Reduce()
     {
         if ( _isReduced )
@@ -83,21 +85,27 @@ public class AsyncBlockExpression : AsyncBaseExpression
                     variables.Add( varExpr );
                     break;
                 case AwaitableExpression:
-                case AwaitExpression:
                     awaitEncountered = true;
-                    var currentBlock = Block( currentBlockExpressions );
-                    childBlockExpressions.Add( currentBlock );
+                    var currentBlock1 = Block( currentBlockExpressions );
+                    childBlockExpressions.Add( currentBlock1 );
+                    currentBlockExpressions = [];
+                    break;
+                case AwaitExpression awaitExpression:
+                    awaitExpression.ReturnTask = true;
+                    awaitEncountered = true;
+                    var currentBlock2 = Block( currentBlockExpressions );
+                    childBlockExpressions.Add( currentBlock2 );
                     currentBlockExpressions = [];
                     break;
             }
         }
 
+        // Get the result type
         if ( currentBlockExpressions.Count > 0 )
         {
             var finalBlock = Block( currentBlockExpressions );
             childBlockExpressions.Add( finalBlock );
 
-            // Update the final result type based on the last expression in the final block
             var lastExpr = currentBlockExpressions[^1];
             
             if ( IsTask( lastExpr.Type ) )
@@ -112,13 +120,14 @@ public class AsyncBlockExpression : AsyncBaseExpression
             }
         }
 
+        // Ensure that at least one await is present in the block
         if ( !awaitEncountered )
         {
             throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
         }
 
         // Combine all child blocks into a single parent block, with variables declared at the parent level
-        return Block( variables, childBlockExpressions ); // Declare variables only once at the top level
+        return Block( variables, childBlockExpressions ); 
     }
 }
 

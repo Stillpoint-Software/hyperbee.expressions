@@ -16,12 +16,9 @@ public class AsyncMethodCallExpression : AsyncBaseExpression
     {
         var returnType = _methodCallExpression.Type;
 
-        if ( IsTask( returnType ) && returnType.IsGenericType )
-        {
-            return returnType.GetGenericArguments()[0];
-        }
-
-        return typeof(void);
+        return IsTask( returnType ) && returnType.IsGenericType 
+            ? returnType.GetGenericArguments()[0] 
+            : typeof(void);
     }
 
     protected override void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder )

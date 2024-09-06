@@ -20,31 +20,39 @@ public class AwaitExpression : Expression
         _configureAwait = configureAwait;
     }
 
+    
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     public override Type Type
     {
         get
         {
+            if ( ReturnTask )
+                return _asyncExpression.Type;
+
             return _asyncExpression.Type.IsGenericType switch
             {
-                true when _asyncExpression.Type.GetGenericTypeDefinition() == typeof( Task<> ) => _asyncExpression.Type.GetGenericArguments()[0],
-                false when _asyncExpression.Type == typeof( Task ) => typeof( void ),
+                true when _asyncExpression.Type.GetGenericTypeDefinition() == typeof(Task<>) => _asyncExpression.Type.GetGenericArguments()[0],
+                false => typeof(void),
                 _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
             };
         }
     }
 
+    public bool ReturnTask { get; set; }
+
     public override bool CanReduce => true;
 
     public override Expression Reduce()
     {
+        if ( ReturnTask )
+            return _asyncExpression;
+
         return Call( Type == typeof( void ) 
             ? AwaitMethod 
             : AwaitResultMethod.MakeGenericMethod( Type ), _asyncExpression, Constant( _configureAwait ) );
     }
 
-    // TODO: Make these Expressions
     private static void Await( Task task, bool configureAwait )
     {
         task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
