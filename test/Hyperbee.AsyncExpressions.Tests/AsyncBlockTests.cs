@@ -109,9 +109,8 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4, expr5, awaitExpr6, expr7 );
 
         // Act
-        var body = asyncBlock.StartStateMachine();
 
-        var lambda = Expression.Lambda<Func<Task<int>>>( body );
+        var lambda = Expression.Lambda<Func<Task<int>>>( asyncBlock );
         var compiledLambda = lambda.Compile();
         var result = await compiledLambda();
 
@@ -138,9 +137,8 @@ public class AsyncBlockTests
         );
 
         // Act
-        var body = asyncBlock.StartStateMachine();
 
-        var lambda = Expression.Lambda<Func<int, Task<int>>>( body, param1 );
+        var lambda = Expression.Lambda<Func<int, Task<int>>>( asyncBlock, param1 );
         var compiledLambda = lambda.Compile();
         var result = await compiledLambda(3);
 

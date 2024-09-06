@@ -6,30 +6,37 @@ namespace Hyperbee.AsyncExpressions;
 public class AsyncMethodCallExpression : AsyncBaseExpression
 {
     private readonly MethodCallExpression _methodCallExpression;
+    private bool _isReduced;
+    private Expression _stateMachine;
 
     public AsyncMethodCallExpression( MethodCallExpression methodCallExpression )
     {
         _methodCallExpression = methodCallExpression ?? throw new ArgumentNullException( nameof(methodCallExpression) );
     }
 
-    protected override Expression PreReduce()
+    public override bool CanReduce => true;
+
+    public override Expression Reduce()
     {
-        return _methodCallExpression;
+        if ( _isReduced )
+            return _stateMachine;
+
+        _stateMachine = StateMachineBuilder.Create( Block( _methodCallExpression ), Type, createRunner: true );
+        _isReduced = true;
+
+        return _stateMachine;
     }
 
-    protected override Type GetResultType()
+    public override Type Type
     {
-        var returnType = _methodCallExpression.Type;
+        get
+        {
+            var returnType = _methodCallExpression.Type;
 
-        return IsTask( returnType ) && returnType.IsGenericType 
-            ? returnType.GetGenericArguments()[0] 
-            : typeof(void);
-    }
-
-    protected override void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder )
-    {
-        var block = Block( _methodCallExpression );
-        builder.SetSource( block );
+            return IsTask( returnType ) && returnType.IsGenericType
+                ? returnType.GetGenericArguments()[0]
+                : typeof(void);
+        }
     }
 }
 

@@ -1,14 +1,16 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 
 namespace Hyperbee.AsyncExpressions;
 
+[DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression : AsyncBaseExpression
 {
     private readonly Expression[] _expressions;
     private readonly ParameterExpression[] _initialVariables;
 
     private bool _isReduced;
-    private BlockExpression _reducedBlock;
+    private Expression _stateMachine;
     private Type _resultType;
 
     public AsyncBlockExpression( Expression[] expressions )
@@ -28,44 +30,30 @@ public class AsyncBlockExpression : AsyncBaseExpression
         _expressions = expressions;
     }
 
-    public override bool CanReduce => true;
-    //
-    // public override Expression Reduce()
-    // {
-    //     if ( _isReduced )
-    //         return _reducedBlock;
-    //
-    //     _reducedBlock = ReduceBlock( _expressions, out _resultType );
-    //     _isReduced = true;
-    //
-    //     return _reducedBlock;
-    // }
+    public override Type Type
+    {
+        get
+        {
+            if ( !_isReduced )
+                Reduce();
 
-    protected override Expression PreReduce()
+            return _stateMachine.Type;
+        }
+    }
+
+    public override bool CanReduce => true;
+
+    public override Expression Reduce()
     {
         if ( _isReduced )
-            return _reducedBlock;
+            return _stateMachine;
 
-        _reducedBlock = ReduceBlock( _expressions, out _resultType );
+        var reducedBlock = ReduceBlock( _expressions, out _resultType );
+        _stateMachine = StateMachineBuilder.Create( reducedBlock, _resultType, createRunner: true );
+
         _isReduced = true;
 
-        return _reducedBlock;
-    }
-
-    protected override Type GetResultType()
-    {
-        if ( !_isReduced )
-            Reduce();
-
-        return _resultType;
-    }
-
-    protected override void ConfigureStateMachine<TResult>( StateMachineBuilder<TResult> builder )
-    {
-        if ( !_isReduced )
-            Reduce();
-
-        builder.SetSource( _reducedBlock ); 
+        return _stateMachine;
     }
 
     private BlockExpression ReduceBlock( Expression[] expressions, out Type resultType )
@@ -139,6 +127,20 @@ public class AsyncBlockExpression : AsyncBaseExpression
 
         // Combine all child blocks into a single parent block, with variables declared at the parent level
         return Block( variables, childBlockExpressions ); 
+    }
+
+    private class AsyncBlockExpressionDebuggerProxy
+    {
+        private readonly AsyncBlockExpression _node;
+
+        public AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node ) => _node = node;
+
+        public Expression StateMachine => _node._stateMachine;
+        public bool IsReduced => _node._isReduced;
+        public Type ReturnType => _node._resultType;
+
+        public Expression[] Expressions => _node._expressions;
+        public ParameterExpression[] InitialVariables => _node._initialVariables;
     }
 }
 

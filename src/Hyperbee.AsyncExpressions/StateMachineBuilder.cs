@@ -5,9 +5,6 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
-// ReSharper disable once InconsistentNaming
-internal interface VoidResult;
-
 public class StateMachineBuilder<TResult>
 {
     private BlockExpression _blockSource;
@@ -33,7 +30,7 @@ public class StateMachineBuilder<TResult>
         _blockSource = blockSource;
     }
 
-    public Expression CreateStateMachine()
+    public Expression CreateStateMachine( bool createRunner = true )
     {
         if ( _blockSource == null )
         {
@@ -52,7 +49,7 @@ public class StateMachineBuilder<TResult>
 
         var constructor = _stateMachineType.GetConstructor( Type.EmptyTypes )!;
 
-        return Expression.Block(
+        var stateMachineExpression = Expression.Block(
             [stateMachineVariable],
             Expression.Assign( stateMachineVariable, Expression.New( constructor ) ),
             Expression.Assign(
@@ -63,6 +60,21 @@ public class StateMachineBuilder<TResult>
             stateMachineVariable
         );
 
+        return createRunner ? CreateStateMachineRunner( stateMachineExpression ) : stateMachineExpression;
+    }
+
+    public Expression CreateStateMachineRunner( Expression stateMachineExpression )
+    {
+        var stateMachineVariable = Expression.Variable( stateMachineExpression.Type, "stateMachineVariable" );
+        var builderFieldInfo = stateMachineExpression.Type.GetField( "_builder" )!;
+        var taskFieldInfo = builderFieldInfo.FieldType.GetProperty( "Task" )!;
+
+        return Expression.Block(
+            [stateMachineVariable],
+            Expression.Assign( stateMachineVariable, stateMachineExpression ),
+            Expression.Call( stateMachineVariable, "MoveNext", Type.EmptyTypes ),
+            Expression.Property( Expression.Field( stateMachineVariable, builderFieldInfo ), taskFieldInfo )
+        );
     }
 
     private void CreateStateMachineType( BlockExpression block )
@@ -427,5 +439,32 @@ public class StateMachineBuilder<TResult>
         {
             return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
         }
+    }
+}
+
+public static class StateMachineBuilder
+{
+    private static readonly MethodInfo BuildStateMachineMethod =
+        typeof(StateMachineBuilder)
+            .GetMethods( BindingFlags.Public | BindingFlags.Static )
+            .First( x => x.Name == nameof(Create) && x.IsGenericMethod );
+
+    public static Expression Create( BlockExpression source, Type resultType, bool createRunner )
+    {
+        var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
+        return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
+    }
+
+    public static Expression Create<TResult>( BlockExpression source, bool createRunner = true )
+    {
+        var assemblyName = new AssemblyName( "DynamicStateMachineAssembly" );
+        var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
+        var moduleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
+
+        var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "DynamicStateMachine" );
+        stateMachineBuilder.SetSource( source );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( createRunner );
+
+        return stateMachineExpression;
     }
 }
