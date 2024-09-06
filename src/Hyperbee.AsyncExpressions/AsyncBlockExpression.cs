@@ -84,14 +84,14 @@ public class AsyncBlockExpression : AsyncBaseExpression
                 case BinaryExpression binaryExpr when binaryExpr.Left is ParameterExpression varExpr:
                     variables.Add( varExpr );
                     break;
-                case AwaitableExpression:
+                case AwaitableExpression: // BF - Think this can be removed
                     awaitEncountered = true;
                     var currentBlock1 = Block( currentBlockExpressions );
                     childBlockExpressions.Add( currentBlock1 );
                     currentBlockExpressions = [];
                     break;
                 case AwaitExpression awaitExpression:
-                    awaitExpression.ReturnTask = true;
+                    awaitExpression.ReturnTask = true; // BF - Set the return task flag to true
                     awaitEncountered = true;
                     var currentBlock2 = Block( currentBlockExpressions );
                     childBlockExpressions.Add( currentBlock2 );

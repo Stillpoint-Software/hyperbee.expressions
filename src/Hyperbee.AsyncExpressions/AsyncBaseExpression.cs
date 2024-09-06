@@ -14,6 +14,8 @@ public abstract class AsyncBaseExpression : Expression
     private static readonly MethodInfo BuildStateMachineMethod = 
         typeof(AsyncBaseExpression).GetMethod( nameof(BuildStateMachine), BindingFlags.NonPublic | BindingFlags.Instance );
 
+    public override bool CanReduce => true;
+
     public override Expression Reduce()
     {
         if ( _isReduced )

@@ -48,9 +48,13 @@ public class AwaitExpression : Expression
         if ( ReturnTask )
             return _asyncExpression;
 
-        return Call( Type == typeof( void ) 
+        // BF - state machine is not being started (code was lost)
+
+        var awaitResult = Call( Type == typeof( void ) 
             ? AwaitMethod 
             : AwaitResultMethod.MakeGenericMethod( Type ), _asyncExpression, Constant( _configureAwait ) );
+
+        return awaitResult;
     }
 
     private static void Await( Task task, bool configureAwait )

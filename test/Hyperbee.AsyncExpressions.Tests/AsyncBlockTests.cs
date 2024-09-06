@@ -49,6 +49,7 @@ public class AsyncBlockTests
         // Assert
         Assert.IsNotNull(reducedExpression);
         Assert.AreEqual(3, reducedExpression.Expressions.Count); // Should result in three sub-blocks
+        
         var lambda = Expression.Lambda<Action>(reducedExpression);
         var compiledLambda = lambda.Compile();
 
