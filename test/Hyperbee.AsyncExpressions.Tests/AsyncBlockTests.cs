@@ -152,7 +152,7 @@ public class AsyncBlockTests
         // Arrange
         var varExpr = Expression.Variable(typeof(int), "x");
         var assignExpr = Expression.Assign(varExpr, Expression.Constant(5));
-        var awaitExpr = AsyncExpression.Await(Expression.Constant(Task.CompletedTask), false);
+        var awaitExpr = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof(Task)), false);
         var assertExpr = Expression.Call(
             GetMethod(nameof(AreEqual)),
             Expression.Constant(5),
@@ -161,12 +161,12 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( assignExpr, awaitExpr, assertExpr );
 
         // Act
-        var reducedExpression = asyncBlock.Reduce() as BlockExpression;
+        var reducedExpression = asyncBlock.ReduceBlock( out _ );
 
         // Assert
         Assert.IsNotNull(reducedExpression);
         Assert.AreEqual(2, reducedExpression.Expressions.Count); // Should result in two sub-blocks
-        var lambda = Expression.Lambda<Action>(reducedExpression);
+        var lambda = Expression.Lambda<Action>(asyncBlock);
         var compiledLambda = lambda.Compile();
 
         compiledLambda(); // Should execute without assertion failures
