@@ -20,21 +20,29 @@ public class AsyncInvocationExpression : AsyncBaseExpression
         if ( _isReduced )
             return _stateMachine;
 
-        _stateMachine = StateMachineBuilder.Create( Block( _invocationExpression ), Type, createRunner: true );
+        var resultType = ResultType( _invocationExpression.Type );
+
+        _stateMachine = StateMachineBuilder.Create( Block( _invocationExpression ), resultType, createRunner: true );
         _isReduced = true;
 
         return _stateMachine;
+
+        static Type ResultType( Type returnType )
+        {
+            return returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>)
+                ? returnType.GetGenericArguments()[0]
+                : typeof(void);
+        }
     }
 
     public override Type Type
     {
         get
         {
-            var returnType = _invocationExpression.Type;
+            if ( !_isReduced )
+                Reduce();
 
-            return IsTask( returnType ) && returnType.IsGenericType
-                ? returnType.GetGenericArguments()[0]
-                : typeof(void);
+            return _stateMachine.Type;
         }
     }
 }

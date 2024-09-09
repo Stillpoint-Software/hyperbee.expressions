@@ -10,6 +10,7 @@ public class AwaitExpression : Expression
 {
     private readonly Expression _asyncExpression;
     private readonly bool _configureAwait;
+    private readonly Type _resultType;
 
     private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression).GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
     private static readonly MethodInfo AwaitResultMethod = typeof(AwaitExpression).GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
@@ -18,25 +19,25 @@ public class AwaitExpression : Expression
     {
         _asyncExpression = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
         _configureAwait = configureAwait;
+        _resultType = ResultType( asyncExpression.Type );
     }
 
     
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    public override Type Type
+    public override Type Type => _resultType;
+    
+    private Type ResultType( Type taskType )
     {
-        get
-        {
-            if ( ReturnTask )
-                return _asyncExpression.Type;
+        if ( ReturnTask )
+            return taskType;
 
-            return _asyncExpression.Type.IsGenericType switch
-            {
-                true when _asyncExpression.Type.GetGenericTypeDefinition() == typeof(Task<>) => _asyncExpression.Type.GetGenericArguments()[0],
-                false => typeof(void),
-                _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
-            };
-        }
+        return taskType.IsGenericType switch
+        {
+            true when taskType.GetGenericTypeDefinition() == typeof(Task<>) => taskType.GetGenericArguments()[0],
+            false => typeof(void),
+            _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
+        };
     }
 
     public bool ReturnTask { get; set; }
@@ -48,13 +49,11 @@ public class AwaitExpression : Expression
         if ( ReturnTask )
             return _asyncExpression;
 
-        // BF - state machine is not being started (code was lost)
-
-        var awaitResult = Call( Type == typeof( void ) 
+        var awaitExpression = Call( _resultType == typeof( void ) 
             ? AwaitMethod 
-            : AwaitResultMethod.MakeGenericMethod( Type ), _asyncExpression, Constant( _configureAwait ) );
+            : AwaitResultMethod.MakeGenericMethod( _resultType ), _asyncExpression, Constant( _configureAwait ) );
 
-        return awaitResult;
+        return awaitExpression;
     }
 
     private static void Await( Task task, bool configureAwait )
@@ -70,7 +69,7 @@ public class AwaitExpression : Expression
     private class AwaitExpressionProxy( AwaitExpression node )
     {
         public Expression Target => node._asyncExpression;
-        public Type ReturnType => node.Type;
+        public Type ReturnType => node._resultType;
     }
 }
 

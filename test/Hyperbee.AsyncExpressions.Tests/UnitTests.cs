@@ -49,7 +49,7 @@ public class AsyncExpressionUnitTests
     private static async Task<int> ThrowExceptionAsync()
     {
         await Task.Delay( 50 );
-        throw new InvalidOperationException( "Simulated exception" );
+        throw new InvalidOperationException( "Simulated exception." );
     }
 
     private static MethodInfo GetMethodInfo( string name )
@@ -416,7 +416,7 @@ public class AsyncExpressionUnitTests
         }
         catch ( InvalidOperationException ex )
         {
-            Assert.AreEqual( "Simulated exception", ex.Message, "The exception message should match." );
+            Assert.AreEqual( "Simulated exception.", ex.Message, "The exception message should match." );
         }
     }
 }
