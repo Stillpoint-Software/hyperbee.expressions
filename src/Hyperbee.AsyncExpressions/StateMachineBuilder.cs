@@ -5,20 +5,20 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
-public static class Debug
-{
-    public static void Log( string message )
-    {
-        Console.WriteLine( message );
-    }
+//internal static class Debug
+//{
+//    public static void Log( string message )
+//    {
+//        Console.WriteLine( message );
+//    }
+//
+//    public static MethodCallExpression LogCall( string message )
+//    {
+//        return Expression.Call( typeof( Debug ).GetMethod( "Log" )!, Expression.Constant( message ) );
+//    }
+//}
 
-    public static MethodCallExpression LogCall( string message )
-    {
-        return Expression.Call( typeof( Debug ).GetMethod( "Log" )!, Expression.Constant( message ) );
-    }
-}
-
-public interface IVoidTaskResult;
+public interface IVoidTaskResult; // Marker interface for void Task results
 
 public class StateMachineBuilder<TResult>
 {
