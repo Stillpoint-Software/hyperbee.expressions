@@ -418,5 +418,9 @@ public class AsyncExpressionUnitTests
         {
             Assert.AreEqual( "Simulated exception.", ex.Message, "The exception message should match." );
         }
+        catch ( Exception ex )
+        {
+            Assert.Fail( $"Unexpected exception of type {ex.GetType()} was thrown." );
+        }
     }
 }
