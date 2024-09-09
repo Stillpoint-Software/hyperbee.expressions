@@ -345,7 +345,7 @@ public class StateMachineBuilder<TResult>
 
         LabelTarget returnLabel = Expression.Label( "ExitMoveNext" );
 
-        // Iterate through the blocks and handle task-based or non-task states
+        // Iterate through the blocks (each block is a state)
         for ( var i = 0; i <= lastBlockIndex; i++ )
         {
             var blockExpr = parameterVisitor.Visit( blocks[i] );
@@ -353,9 +353,9 @@ public class StateMachineBuilder<TResult>
 
             if ( AsyncBaseExpression.IsTask( blockReturnType ) )
             {
-                // Task-based state generation
+                // Task-based state
                 var awaiterField = GetFieldInfo( _stateMachineType, _awaiterFields[i] );
-                var configureAwaitMethod = blockExpr.Type.GetMethod( "ConfigureAwait", new[] { typeof(bool) } )!;
+                var configureAwaitMethod = blockExpr.Type.GetMethod( "ConfigureAwait", [typeof(bool)] )!;
                 var getAwaiterMethod = configureAwaitMethod.ReturnType.GetMethod( "GetAwaiter" );
 
                 var assignAwaiter = Expression.Assign(
@@ -366,16 +366,17 @@ public class StateMachineBuilder<TResult>
                     )
                 );
 
-                // Set the state before checking IsCompleted
+                // Increment state
                 var setStateBeforeAwait = Expression.Assign( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i + 1 ) );
 
+                // Check completed
                 var awaiterCompletedCheck = Expression.IfThen(
                     Expression.IsFalse( Expression.Property( Expression.Field( stateMachineInstance, awaiterField ), "IsCompleted" ) ),
                     Expression.Block(
                         Expression.Call(
                             Expression.Field( stateMachineInstance, buildFieldInfo ),
                             nameof(AsyncTaskMethodBuilder<TResult>.AwaitUnsafeOnCompleted),
-                            new[] { awaiterField.FieldType, typeof(IAsyncStateMachine) },
+                            [awaiterField.FieldType, typeof(IAsyncStateMachine)],
                             Expression.Field( stateMachineInstance, awaiterField ),
                             stateMachineInstance
                         ),
@@ -390,18 +391,20 @@ public class StateMachineBuilder<TResult>
 
                 bodyExpressions.Add( stateCheck );
             }
-            else if ( i == lastBlockIndex && typeof(TResult) != typeof(IVoidTaskResult) )
+            else if ( i == lastBlockIndex ) // If last block is not a Task
             {
-                // Handle the last block when it's not a task and TResult is not IVoidTaskResult
-                var assignFinalResult = Expression.Assign( Expression.Field( stateMachineInstance, finalResultFieldInfo ), blockExpr );
-                var incrementState = Expression.Assign( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i + 1 ) );
-                bodyExpressions.Add( Expression.Block( assignFinalResult, incrementState ) );
-            }
-            else if ( i == lastBlockIndex && typeof(TResult) == typeof(IVoidTaskResult) )
-            {
-                // For IVoidTaskResult return types, just skip the final result assignment
-                var incrementState = Expression.Assign( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i + 1 ) );
-                bodyExpressions.Add( incrementState );
+                if ( typeof(TResult) != typeof(IVoidTaskResult) )
+                {
+                    var assignFinalResult = Expression.Assign( Expression.Field( stateMachineInstance, finalResultFieldInfo ), blockExpr );
+                    var incrementState = Expression.Assign( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i + 1 ) );
+                    bodyExpressions.Add( Expression.Block( assignFinalResult, incrementState ) );
+                }
+                else
+                {
+                    // IVoidTaskResult (no result)
+                    var incrementState = Expression.Assign( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i + 1 ) );
+                    bodyExpressions.Add( incrementState );
+                }
             }
             else
             {
@@ -413,7 +416,7 @@ public class StateMachineBuilder<TResult>
         var finalState = Expression.IfThen(
             Expression.Equal( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( lastBlockIndex + 1 ) ),
             Expression.Block(
-                // Handle the final result for Task and Task<T> appropriately
+                // Handle the final result for Task and Task<T> 
                 typeof(TResult) != typeof(IVoidTaskResult)
                     ? Expression.Assign(
                         Expression.Field( stateMachineInstance, finalResultFieldInfo ),
@@ -458,14 +461,12 @@ public class StateMachineBuilder<TResult>
                         null,
                         exceptionParameter
                     ),
-                    Expression.Return( returnLabel ) // Same return path for both try and catch
+                    Expression.Return( returnLabel ) 
                 )
             )
         );
 
-        var fullBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) ); // Define the label once here
-
-        // Return the generated Lambda Expression representing MoveNext
+        var fullBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) ); 
         return Expression.Lambda( fullBody, stateMachineInstance );
     }
 
