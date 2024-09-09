@@ -34,6 +34,7 @@ public class AwaitExpression : Expression
 
         return taskType.IsGenericType switch
         {
+            true when taskType == typeof(Task<IVoidTaskResult>) => typeof(void),
             true when taskType.GetGenericTypeDefinition() == typeof(Task<>) => taskType.GetGenericArguments()[0],
             false => typeof(void),
             _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
@@ -49,7 +50,7 @@ public class AwaitExpression : Expression
         if ( ReturnTask )
             return _asyncExpression;
 
-        var awaitExpression = Call( _resultType == typeof( void ) 
+        var awaitExpression = Call( _resultType == typeof(void) || _resultType == typeof( IVoidTaskResult )  
             ? AwaitMethod 
             : AwaitResultMethod.MakeGenericMethod( _resultType ), _asyncExpression, Constant( _configureAwait ) );
 
