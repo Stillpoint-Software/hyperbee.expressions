@@ -10,7 +10,7 @@ public class AwaitExpression : Expression
 {
     private readonly Expression _asyncExpression;
     private readonly bool _configureAwait;
-    private readonly Type _resultType;
+    //private readonly Type _resultType;
 
     private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression).GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
     private static readonly MethodInfo AwaitResultMethod = typeof(AwaitExpression).GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
@@ -19,14 +19,17 @@ public class AwaitExpression : Expression
     {
         _asyncExpression = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
         _configureAwait = configureAwait;
-        _resultType = ResultType( asyncExpression.Type );
+        //_resultType = ResultType( asyncExpression.Type );
     }
 
     
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    public override Type Type => _resultType;
-    
+    // TODO: Review with BF (fix caching the type)
+    public override Type Type => ResultType( _asyncExpression.Type ); //_resultType;
+
+    public Expression AsyncExpression => _asyncExpression;
+
     private Type ResultType( Type taskType )
     {
         if ( ReturnTask )
@@ -50,9 +53,10 @@ public class AwaitExpression : Expression
         if ( ReturnTask )
             return _asyncExpression;
 
-        var awaitExpression = Call( _resultType == typeof(void) || _resultType == typeof( IVoidTaskResult )  
+        var resultType = ResultType( _asyncExpression.Type );
+        var awaitExpression = Call( resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
             ? AwaitMethod 
-            : AwaitResultMethod.MakeGenericMethod( _resultType ), _asyncExpression, Constant( _configureAwait ) );
+            : AwaitResultMethod.MakeGenericMethod( resultType ), _asyncExpression, Constant( _configureAwait ) );
 
         return awaitExpression;
     }
@@ -70,50 +74,14 @@ public class AwaitExpression : Expression
     private class AwaitExpressionProxy( AwaitExpression node )
     {
         public Expression Target => node._asyncExpression;
-        public Type ReturnType => node._resultType;
-    }
-}
-
-
-[DebuggerDisplay( "{_asyncExpression}" )]
-[DebuggerTypeProxy( typeof(AwaitableExpressionProxy) )]
-public class AwaitableExpression : Expression
-{
-    private readonly Expression _asyncExpression;
-
-    internal AwaitableExpression( Expression asyncExpression )
-    {
-        _asyncExpression = asyncExpression;
-    }
-
-    public override ExpressionType NodeType => ExpressionType.Extension;
-
-    public override Type Type => _asyncExpression.Type;
-
-    public override bool CanReduce => true;
-
-    public override Expression Reduce()
-    {
-        return _asyncExpression;
-    }
-
-    private class AwaitableExpressionProxy( AwaitableExpression node )
-    {
-        public Expression Target => node._asyncExpression;
         public Type ReturnType => node.Type;
     }
 }
-
 
 public static partial class AsyncExpression
 {
     public static AwaitExpression Await( Expression expression, bool configureAwait )
     {
         return new AwaitExpression( expression, configureAwait );
-    }
-
-    public static AwaitableExpression Awaitable( Expression expression )
-    {
-        return new AwaitableExpression( expression );
     }
 }

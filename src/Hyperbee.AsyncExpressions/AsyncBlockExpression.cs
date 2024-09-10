@@ -27,14 +27,13 @@ public class AsyncBlockExpression : AsyncBaseExpression
         }
 
         _initialVariables = variables;
-        _expressions = expressions;
 
-        // var testing = new AwaitVisitor();
-        // foreach ( var expr in expressions )
-        // {
-        //     testing.Visit( expr );
-        // }
-        // _expressions = testing.Expressions.ToArray();
+        var splitVisitor = new AwaitSplitVisitor();
+        foreach ( var expr in expressions )
+        {
+            splitVisitor.Visit( expr );
+        }
+        _expressions = splitVisitor.Expressions.ToArray();
     }
 
     public override Type Type
@@ -87,14 +86,12 @@ public class AsyncBlockExpression : AsyncBaseExpression
 
             switch ( expr )
             {
-                case BinaryExpression binaryExpr when binaryExpr.Left is ParameterExpression varExpr:
+                case BinaryExpression { Left: ParameterExpression varExpr }:
                     variables.Add( varExpr );
                     break;
-                case AwaitableExpression: // BF - Think this can be removed
-                    awaitEncountered = true;
-                    var currentBlock1 = Block( currentBlockExpressions );
-                    childBlockExpressions.Add( currentBlock1 );
-                    currentBlockExpressions = [];
+                case AwaitResultExpression { InnerVariable: ParameterExpression parameter }:
+                    // TODO: Review with BF (tracking variables)
+                    variables.Add( parameter );
                     break;
                 case AwaitExpression awaitExpression:
                     awaitExpression.ReturnTask = true; // BF - Set the return task flag to true

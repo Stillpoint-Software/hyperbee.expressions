@@ -345,21 +345,30 @@ public class StateMachineBuilder<TResult>
 
         LabelTarget returnLabel = Expression.Label( "ExitMoveNext" );
 
+        FieldInfo lastAwaitField = null; // TODO: Review with BF
+        bool handledFinalBlock = false;  // TODO: Review with BF
+
         // Iterate through the blocks (each block is a state)
         for ( var i = 0; i <= lastBlockIndex; i++ )
         {
+            // ensure awaited results have state machine instance set
+            if ( blocks[i] is BlockExpression blockExpression && blockExpression.Expressions.First() is AwaitResultExpression resultExpression )
+            {
+                resultExpression.InitializeAwaiter( stateMachineInstance, lastAwaitField ); 
+            }
+
             var blockExpr = parameterVisitor.Visit( blocks[i] );
             var blockReturnType = blockExpr.Type;
 
             if ( AsyncBaseExpression.IsTask( blockReturnType ) )
             {
                 // Task-based state
-                var awaiterField = GetFieldInfo( _stateMachineType, _awaiterFields[i] );
-                var configureAwaitMethod = blockExpr.Type.GetMethod( "ConfigureAwait", [typeof(bool)] )!;
+                lastAwaitField = GetFieldInfo( _stateMachineType, _awaiterFields[i] );
+                var configureAwaitMethod = blockReturnType.GetMethod( "ConfigureAwait", [typeof(bool)] )!;
                 var getAwaiterMethod = configureAwaitMethod.ReturnType.GetMethod( "GetAwaiter" );
 
                 var assignAwaiter = Expression.Assign(
-                    Expression.Field( stateMachineInstance, awaiterField ),
+                    Expression.Field( stateMachineInstance, lastAwaitField ),
                     Expression.Call(
                         Expression.Call( blockExpr, configureAwaitMethod, Expression.Constant( false ) ),
                         getAwaiterMethod!
@@ -371,13 +380,13 @@ public class StateMachineBuilder<TResult>
 
                 // Check completed
                 var awaiterCompletedCheck = Expression.IfThen(
-                    Expression.IsFalse( Expression.Property( Expression.Field( stateMachineInstance, awaiterField ), "IsCompleted" ) ),
+                    Expression.IsFalse( Expression.Property( Expression.Field( stateMachineInstance, lastAwaitField ), "IsCompleted" ) ),
                     Expression.Block(
                         Expression.Call(
                             Expression.Field( stateMachineInstance, buildFieldInfo ),
                             nameof(AsyncTaskMethodBuilder<TResult>.AwaitUnsafeOnCompleted),
-                            [awaiterField.FieldType, typeof(IAsyncStateMachine)],
-                            Expression.Field( stateMachineInstance, awaiterField ),
+                            [lastAwaitField.FieldType, typeof(IAsyncStateMachine)],
+                            Expression.Field( stateMachineInstance, lastAwaitField ),
                             stateMachineInstance
                         ),
                         Expression.Return( returnLabel )
@@ -388,7 +397,6 @@ public class StateMachineBuilder<TResult>
                     Expression.Equal( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i ) ),
                     Expression.Block( assignAwaiter, setStateBeforeAwait, awaiterCompletedCheck )
                 );
-
                 bodyExpressions.Add( stateCheck );
             }
             else if ( i == lastBlockIndex ) // If last block is not a Task
@@ -398,6 +406,7 @@ public class StateMachineBuilder<TResult>
                     var assignFinalResult = Expression.Assign( Expression.Field( stateMachineInstance, finalResultFieldInfo ), blockExpr );
                     var incrementState = Expression.Assign( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( i + 1 ) );
                     bodyExpressions.Add( Expression.Block( assignFinalResult, incrementState ) );
+                    handledFinalBlock = true;
                 }
                 else
                 {
@@ -417,11 +426,11 @@ public class StateMachineBuilder<TResult>
             Expression.Equal( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( lastBlockIndex + 1 ) ),
             Expression.Block(
                 // Handle the final result for Task and Task<T> 
-                typeof(TResult) != typeof(IVoidTaskResult)
+                !handledFinalBlock && typeof( TResult) != typeof(IVoidTaskResult)
                     ? Expression.Assign(
                         Expression.Field( stateMachineInstance, finalResultFieldInfo ),
                         Expression.Call(
-                            Expression.Field( stateMachineInstance, GetFieldInfo( _stateMachineType, _awaiterFields[lastBlockIndex] ) ),
+                            Expression.Field( stateMachineInstance, lastAwaitField ),
                             "GetResult", Type.EmptyTypes
                         )
                     )
@@ -488,6 +497,13 @@ public class StateMachineBuilder<TResult>
 
             case InvocationExpression invocation when typeof( Task ).IsAssignableFrom( invocation.Type ):
                 awaiterType = GetAwaiterType( invocation.Type );
+                return true;
+
+            case BlockExpression block:
+                return TryGetAwaiterType( block.Expressions.Last(), out awaiterType );
+
+            case AwaitExpression await:
+                awaiterType = GetAwaiterType( await.AsyncExpression.Type );
                 return true;
 
             case not null when typeof( Task ).IsAssignableFrom( expr.Type ):
