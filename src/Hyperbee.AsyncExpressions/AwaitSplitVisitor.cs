@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -10,40 +11,30 @@ public class AwaitSplitVisitor : ExpressionVisitor
 
     public IReadOnlyList<Expression> Expressions => _expressions;
 
-    protected override Expression VisitConstant( ConstantExpression node )
+    [MethodImpl( MethodImplOptions.AggressiveInlining )] 
+    private Expression ProcessNode( Expression node )
     {
-        if ( _currentExpressions.Count == 0 ) 
+        var rewriting = _currentExpressions.Count > 0;
+
+        if ( !rewriting )
             _expressions.Add( node );
 
         return node;
     }
 
-    protected override Expression VisitExtension( Expression node )
-    {
-        if ( _currentExpressions.Count == 0 )
-            _expressions.Add( node );
+    protected override Expression VisitConstant( ConstantExpression node ) => ProcessNode( node );
 
-        return node;
-    }
+    protected override Expression VisitExtension( Expression node ) => ProcessNode( node );
 
-    protected override Expression VisitUnary( UnaryExpression node )
-    {
-        if ( _currentExpressions.Count == 0 ) _expressions.Add( node );
-        return node;
-    }
+    protected override Expression VisitUnary( UnaryExpression node ) => ProcessNode( node );
 
-    protected override Expression VisitBlock( BlockExpression node )
-    {
-        if ( _currentExpressions.Count == 0 ) _expressions.Add( node );
-        return node;
-    }
+    protected override Expression VisitBlock( BlockExpression node ) => ProcessNode( node );
 
     protected override Expression VisitBinary( BinaryExpression node )
     {
         if ( node.Right is not AwaitExpression awaitExpression )
         {
-            if ( _currentExpressions.Count == 0 ) _expressions.Add( node );
-            return node;
+            return ProcessNode( node );
         }
 
         _expressions.Add( awaitExpression );
@@ -82,8 +73,7 @@ public class AwaitSplitVisitor : ExpressionVisitor
 
         if(!containedAwait )
         {
-            if ( _currentExpressions.Count == 0 ) _expressions.Add( node );
-            return node;
+            return ProcessNode( node );
         }
 
         // Rewrite the method call
