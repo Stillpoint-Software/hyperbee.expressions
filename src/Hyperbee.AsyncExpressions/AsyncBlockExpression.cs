@@ -27,13 +27,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
         }
 
         _initialVariables = variables;
-
-        var splitVisitor = new AwaitSplitVisitor();
-        foreach ( var expr in expressions )
-        {
-            splitVisitor.Visit( expr );
-        }
-        _expressions = [..splitVisitor.Expressions];
+        _expressions = expressions;
     }
 
     public override bool CanReduce => true;
@@ -43,9 +37,9 @@ public class AsyncBlockExpression : AsyncBaseExpression
         if ( _isReduced )
             return _stateMachine;
 
-        var reducedBlock = ReduceBlock( out _resultType );
+        var asyncBlock = ConvertToAwaitableBlock( out _resultType );
         
-        _stateMachine = StateMachineBuilder.Create( reducedBlock, _resultType, createRunner: true );
+        _stateMachine = StateMachineBuilder.Create( asyncBlock, _resultType, createRunner: true );
         _isReduced = true;
 
         return _stateMachine;
@@ -62,17 +56,26 @@ public class AsyncBlockExpression : AsyncBaseExpression
         }
     }
 
-    internal BlockExpression ReduceBlock( out Type resultType )
+    internal BlockExpression ConvertToAwaitableBlock( out Type resultType )
     {
         var childBlockExpressions = new List<Expression>();
         var currentBlockExpressions = new List<Expression>();
         var awaitEncountered = false;
 
         var variables = new HashSet<ParameterExpression>( _initialVariables );
-        
         resultType = typeof(void);
 
+        // Restructure expressions so we can split them into awaitable blocks
+        var splitVisitor = new AwaitSplitVisitor();
         foreach ( var expr in _expressions )
+        {
+            splitVisitor.Visit( expr );
+        }
+
+        var expressions = splitVisitor.Expressions;
+
+        // Create a block for each state-machine await
+        foreach ( var expr in expressions )
         {
             if ( expr is AsyncBlockExpression asyncBlock )
             {

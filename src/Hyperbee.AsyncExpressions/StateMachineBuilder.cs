@@ -538,7 +538,7 @@ public static class StateMachineBuilder
             .GetMethods( BindingFlags.Public | BindingFlags.Static )
             .First( x => x.Name == nameof( Create ) && x.IsGenericMethod );
 
-    public static Expression Create( BlockExpression source, Type resultType, bool createRunner )
+    public static Expression Create( BlockExpression source, Type resultType, bool createRunner = true )
     {
         // If the result type is void, use the internal VoidTaskResult type
         if ( resultType == typeof(void) )

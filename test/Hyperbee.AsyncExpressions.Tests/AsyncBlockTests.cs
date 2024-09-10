@@ -87,7 +87,7 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4 );
 
         // Act
-        var reducedExpression = asyncBlock.ReduceBlock( out _ );
+        var reducedExpression = asyncBlock.ConvertToAwaitableBlock( out _ );
 
         // Assert
         Assert.IsNotNull( reducedExpression );
@@ -161,7 +161,7 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( assignExpr, awaitExpr, assertExpr );
 
         // Act
-        var reducedExpression = asyncBlock.ReduceBlock( out _ );
+        var reducedExpression = asyncBlock.ConvertToAwaitableBlock( out _ );
 
         // Assert
         Assert.IsNotNull(reducedExpression);
@@ -189,7 +189,7 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr );
 
         // Act
-        var reducedExpression = asyncBlock.ReduceBlock( out _ );
+        var reducedExpression = asyncBlock.ConvertToAwaitableBlock( out _ );
 
         // Assert
         Assert.IsNotNull(reducedExpression);
@@ -221,7 +221,7 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, awaitExpr1, innerBlock, assertExpr );
 
         // Act
-        var reducedExpression = asyncBlock.ReduceBlock( out _ );
+        var reducedExpression = asyncBlock.ConvertToAwaitableBlock( out _ );
 
         // Assert
         Assert.IsNotNull( reducedExpression );
