@@ -33,7 +33,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
         {
             splitVisitor.Visit( expr );
         }
-        _expressions = splitVisitor.Expressions.ToArray();
+        _expressions = [..splitVisitor.Expressions];
     }
 
     public override bool CanReduce => true;
