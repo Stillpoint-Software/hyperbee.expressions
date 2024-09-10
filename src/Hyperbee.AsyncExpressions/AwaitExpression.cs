@@ -22,27 +22,12 @@ public class AwaitExpression : Expression
         //_resultType = ResultType( asyncExpression.Type );
     }
 
-    
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     // TODO: Review with BF (fix caching the type)
     public override Type Type => ResultType( _asyncExpression.Type ); //_resultType;
 
     public Expression AsyncExpression => _asyncExpression;
-
-    private Type ResultType( Type taskType )
-    {
-        if ( ReturnTask )
-            return taskType;
-
-        return taskType.IsGenericType switch
-        {
-            true when taskType == typeof(Task<IVoidTaskResult>) => typeof(void),
-            true when taskType.GetGenericTypeDefinition() == typeof(Task<>) => taskType.GetGenericArguments()[0],
-            false => typeof(void),
-            _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
-        };
-    }
 
     public bool ReturnTask { get; set; }
 
@@ -59,6 +44,20 @@ public class AwaitExpression : Expression
             : AwaitResultMethod.MakeGenericMethod( resultType ), _asyncExpression, Constant( _configureAwait ) );
 
         return awaitExpression;
+    }
+
+    private Type ResultType( Type taskType )
+    {
+        if ( ReturnTask )
+            return taskType;
+
+        return taskType.IsGenericType switch
+        {
+            true when taskType == typeof( Task<IVoidTaskResult> ) => typeof( void ),
+            true when taskType.GetGenericTypeDefinition() == typeof( Task<> ) => taskType.GetGenericArguments()[0],
+            false => typeof( void ),
+            _ => throw new InvalidOperationException( $"Unsupported type in {nameof( AwaitExpression )}." )
+        };
     }
 
     private static void Await( Task task, bool configureAwait )

@@ -36,6 +36,21 @@ public class AsyncBlockExpression : AsyncBaseExpression
         _expressions = splitVisitor.Expressions.ToArray();
     }
 
+    public override bool CanReduce => true;
+
+    public override Expression Reduce()
+    {
+        if ( _isReduced )
+            return _stateMachine;
+
+        var reducedBlock = ReduceBlock( out _resultType );
+        
+        _stateMachine = StateMachineBuilder.Create( reducedBlock, _resultType, createRunner: true );
+        _isReduced = true;
+
+        return _stateMachine;
+    }
+
     public override Type Type
     {
         get
@@ -45,21 +60,6 @@ public class AsyncBlockExpression : AsyncBaseExpression
 
             return _stateMachine.Type;
         }
-    }
-
-    public override bool CanReduce => true;
-
-    public override Expression Reduce()
-    {
-        if ( _isReduced )
-            return _stateMachine;
-
-        var reducedBlock = ReduceBlock( out _resultType );
-        _stateMachine = StateMachineBuilder.Create( reducedBlock, _resultType, createRunner: true );
-
-        _isReduced = true;
-
-        return _stateMachine;
     }
 
     internal BlockExpression ReduceBlock( out Type resultType )
