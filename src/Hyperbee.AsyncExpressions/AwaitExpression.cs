@@ -27,7 +27,7 @@ public class AwaitExpression : Expression
     // TODO: Review with BF (fix caching the type)
     public override Type Type => ResultType( _asyncExpression.Type ); //_resultType;
 
-    public Expression AsyncExpression => _asyncExpression;
+    public Expression Target => _asyncExpression;
 
     public bool ReturnTask { get; set; }
 
@@ -39,11 +39,10 @@ public class AwaitExpression : Expression
             return _asyncExpression;
 
         var resultType = ResultType( _asyncExpression.Type );
-        var awaitExpression = Call( resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
+
+        return Call( resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
             ? AwaitMethod 
             : AwaitResultMethod.MakeGenericMethod( resultType ), _asyncExpression, Constant( _configureAwait ) );
-
-        return awaitExpression;
     }
 
     private Type ResultType( Type taskType )
@@ -79,7 +78,7 @@ public class AwaitExpression : Expression
 
 public static partial class AsyncExpression
 {
-    public static AwaitExpression Await( Expression expression, bool configureAwait )
+    public static AwaitExpression Await( Expression expression, bool configureAwait = false )
     {
         return new AwaitExpression( expression, configureAwait );
     }

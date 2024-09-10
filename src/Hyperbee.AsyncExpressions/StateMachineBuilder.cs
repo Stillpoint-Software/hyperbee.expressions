@@ -193,7 +193,7 @@ public class StateMachineBuilder<TResult>
         {
             var expr = block.Expressions[i];
 
-            if ( !TryGetAwaiterType( expr, out Type awaiterType ) )
+            if ( !TryMakeAwaiterType( expr, out Type awaiterType ) )
                 continue; // Not an awaitable expression
 
             var fieldName = $"_awaiter_{i}"; // `i` should match the index of the expression to align with state machine logic
@@ -433,7 +433,7 @@ public class StateMachineBuilder<TResult>
                     ? Expression.Assign(
                         Expression.Field( stateMachineInstance, finalResultFieldInfo ),
                         Expression.Call(
-                            Expression.Field( stateMachineInstance, lastAwaitField ),
+                            Expression.Field( stateMachineInstance, lastAwaitField! ),
                             "GetResult", Type.EmptyTypes
                         )
                     )
@@ -488,35 +488,35 @@ public class StateMachineBuilder<TResult>
         return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
     }
 
-    private static bool TryGetAwaiterType( Expression expr, out Type awaiterType )
+    private static bool TryMakeAwaiterType( Expression expr, out Type awaiterType )
     {
         awaiterType = null;
 
         switch ( expr )
         {
             case MethodCallExpression methodCall when typeof( Task ).IsAssignableFrom( methodCall.Type ):
-                awaiterType = GetAwaiterType( methodCall.Type );
+                awaiterType = MakeAwaiterType( methodCall.Type );
                 return true;
 
             case InvocationExpression invocation when typeof( Task ).IsAssignableFrom( invocation.Type ):
-                awaiterType = GetAwaiterType( invocation.Type );
+                awaiterType = MakeAwaiterType( invocation.Type );
                 return true;
 
             case BlockExpression block:
-                return TryGetAwaiterType( block.Expressions.Last(), out awaiterType );
+                return TryMakeAwaiterType( block.Expressions.Last(), out awaiterType );
 
             case AwaitExpression await:
-                awaiterType = GetAwaiterType( await.AsyncExpression.Type );
+                awaiterType = MakeAwaiterType( await.Target.Type );
                 return true;
 
             case not null when typeof( Task ).IsAssignableFrom( expr.Type ):
-                awaiterType = GetAwaiterType( expr.Type );
+                awaiterType = MakeAwaiterType( expr.Type );
                 return true;
         }
 
         return false;
 
-        static Type GetAwaiterType( Type taskType )
+        static Type MakeAwaiterType( Type taskType )
         {
             if ( !taskType.IsGenericType )
                 return typeof( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter );

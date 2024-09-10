@@ -25,7 +25,7 @@ public class AsyncExpressionUnitTests
 
     private static async Task<int> AddTwoNumbersAsync( int a, int b )
     {
-        await Task.Delay( 10 );
+        await Task.Delay( 100 );
         return a + b;
     }
 
@@ -37,7 +37,7 @@ public class AsyncExpressionUnitTests
 
     private static async Task<string> SayHelloAsync( int a )
     {
-        await Task.Delay( 10 );
+        await Task.Delay( 100 );
         return $"Hello {a}";
     }
 
@@ -48,7 +48,7 @@ public class AsyncExpressionUnitTests
 
     private static async Task<int> ThrowExceptionAsync()
     {
-        await Task.Delay( 50 );
+        await Task.Delay( 100 );
         throw new InvalidOperationException( "Simulated exception." );
     }
 
@@ -336,8 +336,8 @@ public class AsyncExpressionUnitTests
 
         var paramA = Expression.Parameter( typeof( int ), "a" );
 
-        var l1 = AsyncExpression.Await( AsyncExpression.InvokeAsync( incrementExpression, paramA ), false );
-        var l2 = AsyncExpression.Await( AsyncExpression.InvokeAsync( incrementExpression, l1 ), false );
+        var l1 = AsyncExpression.Await( AsyncExpression.InvokeAsync( incrementExpression, paramA ), configureAwait: false );
+        var l2 = AsyncExpression.Await( AsyncExpression.InvokeAsync( incrementExpression, l1 ), configureAwait: false );
         var l3 = AsyncExpression.InvokeAsync( incrementExpression, l2 );
 
         var compiled = Expression.Lambda<Func<int, Task<int>>>( l3, paramA ).Compile();
@@ -412,7 +412,7 @@ public class AsyncExpressionUnitTests
         try
         {
             _ = compiledLambda(); // Directly get the unwrapped result
-            Assert.Fail( "Expected exception was not thrown." );
+            Assert.Fail( "An exception was not thrown." );
         }
         catch ( InvalidOperationException ex )
         {

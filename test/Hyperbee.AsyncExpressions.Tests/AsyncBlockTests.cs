@@ -95,7 +95,7 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    public async Task TestAsyncBlock_StartStateMachine()
+    public async Task TestAsyncBlock_WithoutParameters_ReturnsResult()
     {
         // Arrange
         var expr1 = Expression.Constant( 1 );
@@ -119,7 +119,7 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    public async Task TestAsyncBlock_StartStateMachineWithVariables()
+    public async Task TestAsyncBlock_WithParameters_ReturnsResult()
     {
         // Arrange
         var param1 = Expression.Parameter( typeof( int ), "param1" );
