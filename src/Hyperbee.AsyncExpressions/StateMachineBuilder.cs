@@ -174,7 +174,7 @@ public class StateMachineBuilder<TResult>
         // Call the base constructor (object)
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
         ilGenerator.Emit( OpCodes.Call, typeof( object ).GetConstructor( Type.EmptyTypes )! ); // base()
-        ilGenerator.Emit( OpCodes.Ret ); // return
+        ilGenerator.Emit( OpCodes.Ret ); 
     }
 
     private void EmitBlockFields( BlockExpression block )
@@ -290,7 +290,6 @@ public class StateMachineBuilder<TResult>
             typeof( IAsyncStateMachine ).GetMethod( "SetStateMachine" )!
         );
     }
-
 
     private LambdaExpression CreateMoveNextExpression( BlockExpression block )
     {
@@ -425,7 +424,7 @@ public class StateMachineBuilder<TResult>
         }
 
         // Generate the final state
-        var finalState = Expression.IfThen(
+        var finalState = Expression.IfThen(  
             Expression.Equal( Expression.Field( stateMachineInstance, "_state" ), Expression.Constant( lastBlockIndex + 1 ) ),
             Expression.Block(
                 // Handle the final result for Task and Task<T> 
@@ -490,43 +489,47 @@ public class StateMachineBuilder<TResult>
 
     private static bool TryMakeAwaiterType( Expression expr, out Type awaiterType )
     {
-        awaiterType = null;
-
-        switch ( expr )
+        while ( true )
         {
-            case MethodCallExpression methodCall when typeof( Task ).IsAssignableFrom( methodCall.Type ):
-                awaiterType = MakeAwaiterType( methodCall.Type );
-                return true;
+            awaiterType = null;
 
-            case InvocationExpression invocation when typeof( Task ).IsAssignableFrom( invocation.Type ):
-                awaiterType = MakeAwaiterType( invocation.Type );
-                return true;
+            switch ( expr )
+            {
+                case MethodCallExpression methodCall when typeof(Task).IsAssignableFrom( methodCall.Type ):
+                    awaiterType = MakeAwaiterType( methodCall.Type );
+                    return true;
 
-            case BlockExpression block:
-                return TryMakeAwaiterType( block.Expressions.Last(), out awaiterType );
+                case InvocationExpression invocation when typeof(Task).IsAssignableFrom( invocation.Type ):
+                    awaiterType = MakeAwaiterType( invocation.Type );
+                    return true;
 
-            case AwaitExpression await:
-                awaiterType = MakeAwaiterType( await.Target.Type );
-                return true;
+                case BlockExpression block:
+                    expr = block.Expressions.Last();
+                    continue; // loop
 
-            case not null when typeof( Task ).IsAssignableFrom( expr.Type ):
-                awaiterType = MakeAwaiterType( expr.Type );
-                return true;
+                case AwaitExpression await:
+                    awaiterType = MakeAwaiterType( await.Target.Type );
+                    return true;
+
+                case not null when typeof(Task).IsAssignableFrom( expr.Type ):
+                    awaiterType = MakeAwaiterType( expr.Type );
+                    return true;
+            }
+
+            return false;
         }
-
-        return false;
 
         static Type MakeAwaiterType( Type taskType )
         {
-            if ( !taskType.IsGenericType )
-                return typeof( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter );
+            if ( !taskType.IsGenericType ) 
+                return typeof(ConfiguredTaskAwaitable.ConfiguredTaskAwaiter);
 
             var genericArgument = taskType.GetGenericArguments()[0];
 
             if ( genericArgument.FullName == "System.Threading.Tasks.VoidTaskResult" )
                 throw new InvalidOperationException( "Task<VoidTaskResult> is not supported, are you missing a cast to Task?" );
 
-            return typeof( ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter ).MakeGenericType( genericArgument );
+            return typeof(ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter).MakeGenericType( genericArgument );
         }
     }
 }

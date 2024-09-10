@@ -6,10 +6,8 @@ namespace Hyperbee.AsyncExpressions.Tests;
 [TestClass]
 public class AsyncBlockTests
 {
-    // Helper method to replace Assert.AreEqual for int comparisons
     public static bool AreEqual(int a, int b) => a == b;
 
-    // Helper method to retrieve MethodInfo for test methods
     public static MethodInfo GetMethod(string name) => typeof(AsyncBlockTests).GetMethod(name);
 
     [TestMethod]
@@ -48,12 +46,12 @@ public class AsyncBlockTests
 
         // Assert
         Assert.IsNotNull(reducedExpression);
-        Assert.AreEqual(3, reducedExpression.Expressions.Count); // Should result in three sub-blocks
+        Assert.AreEqual(3, reducedExpression.Expressions.Count); 
         
         var lambda = Expression.Lambda<Action>(reducedExpression);
         var compiledLambda = lambda.Compile();
 
-        compiledLambda(); // Should execute without assertion failures
+        compiledLambda(); 
     }
 
     [TestMethod]
@@ -91,7 +89,7 @@ public class AsyncBlockTests
 
         // Assert
         Assert.IsNotNull( reducedExpression );
-        Assert.AreEqual(2, reducedExpression.Expressions.Count); // Should result in two sub-blocks
+        Assert.AreEqual(2, reducedExpression.Expressions.Count); 
     }
 
     [TestMethod]
@@ -115,7 +113,7 @@ public class AsyncBlockTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 7, result ); // Should return last expression value
+        Assert.AreEqual( 7, result ); 
     }
 
     [TestMethod]
@@ -143,7 +141,7 @@ public class AsyncBlockTests
         var result = await compiledLambda(3);
 
         // Assert
-        Assert.AreEqual( 7, result ); // Should return last expression value
+        Assert.AreEqual( 7, result ); 
     }
 
     [TestMethod]
@@ -165,11 +163,11 @@ public class AsyncBlockTests
 
         // Assert
         Assert.IsNotNull(reducedExpression);
-        Assert.AreEqual(2, reducedExpression.Expressions.Count); // Should result in two sub-blocks
+        Assert.AreEqual(2, reducedExpression.Expressions.Count); 
         var lambda = Expression.Lambda<Action>(asyncBlock);
         var compiledLambda = lambda.Compile();
 
-        compiledLambda(); // Should execute without assertion failures
+        compiledLambda(); 
     }
 
     [TestMethod]
@@ -193,11 +191,11 @@ public class AsyncBlockTests
 
         // Assert
         Assert.IsNotNull(reducedExpression);
-        Assert.AreEqual(3, reducedExpression.Expressions.Count); // Should result in three sub-blocks
+        Assert.AreEqual(3, reducedExpression.Expressions.Count); 
         var lambda = Expression.Lambda<Action>(reducedExpression);
         var compiledLambda = lambda.Compile();
 
-        compiledLambda(); // Should execute without assertion failures
+        compiledLambda(); 
     }
 
     [TestMethod]
@@ -225,10 +223,10 @@ public class AsyncBlockTests
 
         // Assert
         Assert.IsNotNull( reducedExpression );
-        Assert.AreEqual( 2, reducedExpression.Expressions.Count ); // Should result in three sub-blocks (outer block and inner async treated as a single block)
+        Assert.AreEqual( 2, reducedExpression.Expressions.Count ); 
         var lambda = Expression.Lambda<Action>( reducedExpression );
         var compiledLambda = lambda.Compile();
 
-        compiledLambda(); // Should execute without assertion failures
+        compiledLambda(); 
     }
 }
