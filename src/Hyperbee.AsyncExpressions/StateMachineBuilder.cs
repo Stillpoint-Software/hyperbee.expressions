@@ -5,18 +5,20 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
-//internal static class Debug
-//{
-//    public static void Log( string message )
-//    {
-//        Console.WriteLine( message );
-//    }
-//
-//    public static MethodCallExpression LogCall( string message )
-//    {
-//        return Expression.Call( typeof( Debug ).GetMethod( "Log" )!, Expression.Constant( message ) );
-//    }
-//}
+#if STATEMACHINE_LOGGER
+internal static class Debug
+{
+    public static void Log( string message )
+    {
+        Console.WriteLine( message );
+    }
+
+    public static MethodCallExpression LogCall( string message )
+    {
+        return Expression.Call( typeof( Debug ).GetMethod( "Log" )!, Expression.Constant( message ) );
+    }
+}
+#endif
 
 public interface IVoidTaskResult; // Marker interface for void Task results
 
@@ -75,18 +77,19 @@ public class StateMachineBuilder<TResult>
             stateMachineVariable
         );
 
-        return createRunner ? CreateStateMachineRunner( stateMachineExpression ) : stateMachineExpression;
+        return createRunner ? CreateRunStateMachine( stateMachineExpression ) : stateMachineExpression;
     }
 
-    public Expression CreateStateMachineRunner( Expression stateMachineExpression )
+    public Expression CreateRunStateMachine( Expression stateMachineExpression )
     {
-        /*
-            public Task<TResult> RunStateMachine( StateMachineType stateMachine )
-            {
-                stateMachine._builder.Start<StateMachineType>( ref stateMachine );
-                return stateMachine._builder.Task;
-            }
-        */
+        // Define the RunStateMachine method
+        //
+        // public Task<TResult> RunStateMachine( StateMachineType stateMachine )
+        // {
+        //     stateMachine._builder.Start<StateMachineType>( ref stateMachine );
+        //     return stateMachine._builder.Task;
+        // }
+
         var stateMachineVariable = Expression.Variable( _stateMachineType, "stateMachine" );
 
         var builderFieldInfo = _stateMachineType.GetField( "_builder" )!;
@@ -202,7 +205,7 @@ public class StateMachineBuilder<TResult>
 
     private void EmitSetMoveNextMethod()
     {
-        // Define: public void SetMoveNext(Action<StateMachineTypeN> moveNext)
+        // Define the SetMoveNext method
         //
         //  public void SetMoveNext<T>(Action<T> moveNext)
         //  {
@@ -226,7 +229,7 @@ public class StateMachineBuilder<TResult>
 
     private void EmitMoveNextMethod()
     {
-        // Define: public void MoveNext()
+        // Define the MoveNext method
         //
         //  public void MoveNext()
         //  {
@@ -256,8 +259,8 @@ public class StateMachineBuilder<TResult>
 
     private void EmitSetStateMachineMethod()
     {
-        // Define the SetStateMachine method (from IAsyncStateMachine)
-
+        // Define the IAsyncStateMachine.SetStateMachine method
+        //
         // public void SetStateMachine( IAsyncStateMachine stateMachine )
         // {
         //    _builder.SetStateMachine( stateMachine );
@@ -466,8 +469,8 @@ public class StateMachineBuilder<TResult>
             )
         );
 
-        var fullBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) ); 
-        return Expression.Lambda( fullBody, stateMachineInstance );
+        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) ); 
+        return Expression.Lambda( moveNextBody, stateMachineInstance );
     }
 
     // Helper method to retrieve FieldInfo from the created type
@@ -518,12 +521,6 @@ public static class StateMachineBuilder
         typeof( StateMachineBuilder )
             .GetMethods( BindingFlags.Public | BindingFlags.Static )
             .First( x => x.Name == nameof( Create ) && x.IsGenericMethod );
-
-    //public static Expression Create( BlockExpression source, Type resultType, bool createRunner )
-    //{
-    //    var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
-    //    return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
-    //}
 
     public static Expression Create( BlockExpression source, Type resultType, bool createRunner )
     {

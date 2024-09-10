@@ -22,11 +22,26 @@ public class AwaitExpression : Expression
         _resultType = ResultType( asyncExpression.Type );
     }
 
-    
     public override ExpressionType NodeType => ExpressionType.Extension;
 
+    public bool ReturnTask { get; set; }
+
+    public override bool CanReduce => true;
+
     public override Type Type => _resultType;
-    
+
+    public override Expression Reduce()
+    {
+        if ( ReturnTask )
+            return _asyncExpression;
+
+        var awaitExpression = Call( _resultType == typeof(void) || _resultType == typeof( IVoidTaskResult )  
+            ? AwaitMethod 
+            : AwaitResultMethod.MakeGenericMethod( _resultType ), _asyncExpression, Constant( _configureAwait ) );
+
+        return awaitExpression;
+    }
+
     private Type ResultType( Type taskType )
     {
         if ( ReturnTask )
@@ -39,22 +54,6 @@ public class AwaitExpression : Expression
             false => typeof(void),
             _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
         };
-    }
-
-    public bool ReturnTask { get; set; }
-
-    public override bool CanReduce => true;
-
-    public override Expression Reduce()
-    {
-        if ( ReturnTask )
-            return _asyncExpression;
-
-        var awaitExpression = Call( _resultType == typeof(void) || _resultType == typeof( IVoidTaskResult )  
-            ? AwaitMethod 
-            : AwaitResultMethod.MakeGenericMethod( _resultType ), _asyncExpression, Constant( _configureAwait ) );
-
-        return awaitExpression;
     }
 
     private static void Await( Task task, bool configureAwait )
