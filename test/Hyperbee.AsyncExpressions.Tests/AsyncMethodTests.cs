@@ -10,7 +10,7 @@ public enum ExpressionKind
 }
 
 [TestClass]
-public class AsyncExpressionUnitTests
+public class AsyncMethodTests
 {
     private static async Task Delay()
     {
@@ -19,25 +19,25 @@ public class AsyncExpressionUnitTests
 
     private static async Task<int> GetNumberAsync()
     {
-        await Task.Delay( 100 );
+        await Task.Delay( 10 );
         return 42;
     }
 
     private static async Task<int> AddTwoNumbersAsync( int a, int b )
     {
-        await Task.Delay( 100 );
+        await Task.Delay( 10 );
         return a + b;
     }
 
     private static async Task<int> AddThreeNumbersAsync( int a, int b, int c )
     {
-        await Task.Delay( 100 );
+        await Task.Delay( 10 );
         return a + b + c;
     }
 
     private static async Task<string> SayHelloAsync( int a )
     {
-        await Task.Delay( 100 );
+        await Task.Delay( 10 );
         return $"Hello {a}";
     }
 
@@ -48,13 +48,13 @@ public class AsyncExpressionUnitTests
 
     private static async Task<int> ThrowExceptionAsync()
     {
-        await Task.Delay( 100 );
+        await Task.Delay( 10 );
         throw new InvalidOperationException( "Simulated exception." );
     }
 
     private static MethodInfo GetMethodInfo( string name )
     {
-        return typeof( AsyncExpressionUnitTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
+        return typeof( AsyncMethodTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
     }
 
     private static AsyncBaseExpression GetAsyncExpression( ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments )
