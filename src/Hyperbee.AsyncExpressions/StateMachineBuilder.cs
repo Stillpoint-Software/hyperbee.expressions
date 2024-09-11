@@ -43,6 +43,7 @@ public class StateMachineBuilder<TResult>
         public const string FinalResult = "__finalResult<>";
         public const string MoveNextLambda = "__moveNextLambda<>";
         public const string State = "__state<>";
+        
         private const string AwaiterTemplate = "__awaiter<{0}>";
 
         public static string Awaiter( int i ) => string.Format( AwaiterTemplate, i );
