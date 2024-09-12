@@ -28,11 +28,8 @@ public class StateMachineBuilder<TResult>
 
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
-    private Type _stateMachineType;
-    private TypeBuilder _typeBuilder;
     private FieldBuilder _builderField;
     private FieldBuilder _finalResultField;
-    private FieldBuilder _moveNextLambdaField;
     private List<FieldBuilder> _variableFields;
     private List<FieldBuilder> _awaiterFields;
 
@@ -63,57 +60,46 @@ public class StateMachineBuilder<TResult>
     public Expression CreateStateMachine( bool createRunner = true )
     {
         if ( _blockSource == null )
-        {
             throw new InvalidOperationException( "Source must be set before creating state machine." );
-        }
 
-        // Create the state machine type
-        CreateStateMachineType( _blockSource );
+        // Create the state-machine
 
-        // Compile MoveNext lambda and assign to state machine
-        var moveNextLambda = CreateMoveNextExpression( _blockSource );
+        var stateMachineBaseType = CreateStateMachineBaseType( _blockSource );
+        var stateMachineType = CreateStateMachineType( stateMachineBaseType );
+        var moveNextLambda = CreateMoveNextExpression( _blockSource, stateMachineBaseType );
 
-        var stateMachineVariable = Expression.Variable( _stateMachineType, "stateMachine" );
-        var builderFieldInfo = _stateMachineType.GetField( FieldName.Builder )!;
-        var setLambdaMethod = _stateMachineType.GetMethod( "SetMoveNext" )!;
-
-        var constructor = _stateMachineType.GetConstructor( Type.EmptyTypes )!;
+        var stateMachineVariable = Expression.Variable( stateMachineType, "stateMachine" );
+        var setMoveNextMethod = stateMachineType.GetMethod( "SetMoveNextExpression" )!;
 
         var stateMachineExpression = Expression.Block(
             [stateMachineVariable],
-            Expression.Assign( stateMachineVariable, Expression.New( constructor ) ),
-            Expression.Assign(
-                Expression.Field( stateMachineVariable, builderFieldInfo ),
-                Expression.Call( typeof( AsyncTaskMethodBuilder<TResult> ), nameof( AsyncTaskMethodBuilder<TResult>.Create ), null )
-            ),
-            Expression.Call( stateMachineVariable, setLambdaMethod, moveNextLambda ),
+            Expression.Assign( stateMachineVariable, Expression.New( stateMachineType ) ),
+            Expression.Call( stateMachineVariable, setMoveNextMethod, moveNextLambda ),
             stateMachineVariable
         );
 
-        return createRunner ? CreateRunStateMachine( stateMachineExpression ) : stateMachineExpression;
-    }
+        if ( !createRunner )
+            return stateMachineExpression;
 
-    public Expression CreateRunStateMachine( Expression stateMachineExpression )
-    {
-        // Define the RunStateMachine method
+        // Wrap the state-machine in a method that executes it
         //
-        // public Task<TResult> RunStateMachine( StateMachineType stateMachine )
+        // Conceptually:
+        //
+        // public Task<TResult> Run( StateMachineType stateMachine )
         // {
         //     stateMachine._builder.Start<StateMachineType>( ref stateMachine );
         //     return stateMachine._builder.Task;
         // }
 
-        var stateMachineVariable = Expression.Variable( _stateMachineType, "stateMachine" );
-
-        var builderFieldInfo = _stateMachineType.GetField( FieldName.Builder )!;
+        var builderFieldInfo = stateMachineType.GetField( FieldName.Builder )!;
         var taskFieldInfo = builderFieldInfo.FieldType.GetProperty( "Task" )!;
 
         var builderField = Expression.Field( stateMachineVariable, builderFieldInfo );
 
-        var startMethod = typeof( AsyncTaskMethodBuilder<> )
-            .MakeGenericType( typeof( TResult ) )
+        var startMethod = typeof(AsyncTaskMethodBuilder<>)
+            .MakeGenericType( typeof(TResult) )
             .GetMethod( "Start" )!
-            .MakeGenericMethod( _stateMachineType );
+            .MakeGenericMethod( stateMachineType );
 
         var callBuilderStart = Expression.Call(
             builderField,
@@ -129,16 +115,15 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private void CreateStateMachineType( BlockExpression block )
+    private Type CreateStateMachineBaseType( BlockExpression block )
     {
         // Define the state machine type
         //
-        // public class StateMachineType : IAsyncStateMachine
+        // public class StateMachineBaseType : IAsyncStateMachine
         // {
         //      public int __state<>;
         //      public AsyncTaskMethodBuilder<TResult> __builder<>;
         //      public TResult __finalResult<>;
-        //      public Action __moveNextLambda<>;
         //      
         //      // Variables (example)
         //      public int _variable1;
@@ -148,50 +133,88 @@ public class StateMachineBuilder<TResult>
         //      public ConfiguredTaskAwaitable.ConfiguredTaskAwaiter __awaiter<1>;
         //      public ConfiguredTaskAwaitable.ConfiguredTaskAwaiter __awaiter<2>;
         //
-        //      public StateMachineType()
-        //      {
-        //      }
+        //      public StateMachineBaseType() {}
         //
-        //      public void MoveNext() => __moveNextLambda<>(this);
-        //      public void SetLambda<T>(Action<T> moveNextLambda) => __moveNextLambda<> = obj => moveNextLambda( (StateMachineType) obj );
+        //      public abstract void MoveNext();
         //      public void SetStateMachine(IAsyncStateMachine stateMachine) => __builder<>.SetStateMachine( stateMachine );
         // }
 
-        _typeBuilder = _moduleBuilder.DefineType( _typeName, TypeAttributes.Public, typeof( object ), [typeof( IAsyncStateMachine )] );
+        var typeBuilder = _moduleBuilder.DefineType(
+            $"{_typeName}Base",
+            TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Class,
+            typeof(object),
+            [typeof(IAsyncStateMachine)]
+        );
 
-        _typeBuilder.DefineField( FieldName.State, typeof( int ), FieldAttributes.Public );
-        _builderField = _typeBuilder.DefineField( FieldName.Builder, typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ), FieldAttributes.Public );
-        _finalResultField = _typeBuilder.DefineField( FieldName.FinalResult, typeof( TResult ), FieldAttributes.Public );
-        _moveNextLambdaField = _typeBuilder.DefineField( FieldName.MoveNextLambda, typeof( Action<> ).MakeGenericType( _typeBuilder ), FieldAttributes.Private );
+        typeBuilder.DefineField( FieldName.State, typeof(int), FieldAttributes.Public );
+        _builderField = typeBuilder.DefineField( FieldName.Builder, typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ), FieldAttributes.Public );
+        _finalResultField = typeBuilder.DefineField( FieldName.FinalResult, typeof(TResult), FieldAttributes.Public );
 
-        EmitBlockFields( block );
-        EmitConstructor();
-        EmitSetMoveNextMethod();
-        EmitMoveNextMethod();
-        EmitSetStateMachineMethod();
+        EmitBlockFields( typeBuilder, block );
+        EmitConstructor( typeBuilder, typeof(object) );
+        EmitSetStateMachineMethod( typeBuilder );
 
-        _stateMachineType = _typeBuilder.CreateType();
+        typeBuilder.DefineMethod(
+            "MoveNext",
+            MethodAttributes.Public | MethodAttributes.Abstract | MethodAttributes.Virtual,
+            typeof(void),
+            Type.EmptyTypes
+        );
+
+        return typeBuilder.CreateType();
     }
 
-    private void EmitConstructor()
+    private Type CreateStateMachineType( Type stateMachineBaseType )
     {
-        // Define a parameterless constructor: public StateMachineType()
-        var constructor = _typeBuilder.DefineConstructor( MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes );
+        // Define the state machine type
+        //
+        // public class StateMachineType : StateMachineBaseType
+        // {
+        //      private Action<StateMachineBaseType> __moveNextLambda<>;
+        //
+        //      public StateMachineType() {}
+        //      public override void MoveNext() => __moveNextLambda<>((StateMachineBaseType) this);
+        // }
+
+        var typeBuilder = _moduleBuilder.DefineType(
+            _typeName,
+            TypeAttributes.Public,
+            stateMachineBaseType
+        );
+
+        var moveNextExpressionField = typeBuilder.DefineField(
+            FieldName.MoveNextLambda,
+            typeof(Action<>).MakeGenericType( stateMachineBaseType ),
+            FieldAttributes.Private
+        );
+
+        EmitConstructor( typeBuilder, stateMachineBaseType );
+
+        EmitSetMoveNextMethod( typeBuilder, moveNextExpressionField );
+        EmitOverrideMoveNextMethod( typeBuilder, moveNextExpressionField );
+
+        return typeBuilder.CreateType();
+    }
+
+    private void EmitConstructor( TypeBuilder typeBuilder, Type baseType )
+    {
+        // Define a parameterless constructor
+        var constructor = typeBuilder.DefineConstructor( MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes );
         var ilGenerator = constructor.GetILGenerator();
 
-        // Call the base constructor (object)
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Call, typeof( object ).GetConstructor( Type.EmptyTypes )! ); // base()
-        ilGenerator.Emit( OpCodes.Ret ); 
+        // Call the base constructor 
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); 
+        ilGenerator.Emit( OpCodes.Call, baseType.GetConstructor( Type.EmptyTypes )! ); // base()
+        ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private void EmitBlockFields( BlockExpression block )
+    private void EmitBlockFields( TypeBuilder typeBuilder, BlockExpression block )
     {
         // Define: variable fields
         _variableFields = [];
         foreach ( var variable in block.Variables )
         {
-            var field = _typeBuilder.DefineField( $"_{variable.Name}", variable.Type, FieldAttributes.Public );
+            var field = typeBuilder.DefineField( $"_{variable.Name}", variable.Type, FieldAttributes.Public );
             _variableFields.Add( field );
         }
 
@@ -205,67 +228,37 @@ public class StateMachineBuilder<TResult>
                 continue; // Not an awaitable expression
 
             // `i` should match the index of the expression to align with state machine logic
-            var awaiterField = _typeBuilder.DefineField( FieldName.Awaiter( i ), awaiterType, FieldAttributes.Public );
+            var awaiterField = typeBuilder.DefineField( FieldName.Awaiter( i ), awaiterType, FieldAttributes.Public );
 
             _awaiterFields.Add( awaiterField );
         }
     }
 
-    private void EmitSetMoveNextMethod()
+    private void EmitSetMoveNextMethod( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
     {
         // Define the SetMoveNext method
         //
-        //  public void SetMoveNext<T>(Action<T> moveNext)
+        //  public void SetMoveNext<StateMachineBase>(Action<StateMachineBase> moveNext)
         //  {
         //     _moveNextLambda = moveNext;
         //  }
 
-        var setMoveNextMethod = _typeBuilder.DefineMethod(
-            "SetMoveNext",
-            MethodAttributes.Public | MethodAttributes.Virtual,
-            typeof( void ),
-            [typeof( Action<> ).MakeGenericType( _typeBuilder )]
+        var setMoveNextMethod = typeBuilder.DefineMethod(
+            "SetMoveNextExpression",
+            MethodAttributes.Public,
+            typeof(void),
+            [typeof(Action<>).MakeGenericType( typeBuilder.BaseType! )] //[typeof(Action<StateMachineBase<TResult>>)]
         );
 
         var ilGenerator = setMoveNextMethod.GetILGenerator();
 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // moveNextLambda
-        ilGenerator.Emit( OpCodes.Stfld, _moveNextLambdaField ); // this._moveNextLambda = moveNextLambda
+        ilGenerator.Emit( OpCodes.Stfld, moveNextExpressionField ); // this._moveNextLambda = moveNextLambda
         ilGenerator.Emit( OpCodes.Ret ); // return
     }
 
-    private void EmitMoveNextMethod()
-    {
-        // Define the MoveNext method
-        //
-        //  public void MoveNext()
-        //  {
-        //      Action<object> moveNext = obj => _moveNextLambda( (StateMachineTypeN) obj );
-        //      moveNext( this );
-        //  }
-
-        var moveNextMethod = _typeBuilder.DefineMethod(
-            "MoveNext",
-            MethodAttributes.Public | MethodAttributes.Virtual,
-            typeof( void ),
-            Type.EmptyTypes
-        );
-
-        var ilGenerator = moveNextMethod.GetILGenerator();
-
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this`
-        ilGenerator.Emit( OpCodes.Ldfld, _moveNextLambdaField ); // load `_moveNextLambda`
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this` as lambda argument
-
-        var actionObjectType = typeof( Action<object> );
-        var invokeMethod = actionObjectType.GetMethod( "Invoke" );
-        ilGenerator.Emit( OpCodes.Callvirt, invokeMethod! ); // Call Action<object>.Invoke(this)
-
-        ilGenerator.Emit( OpCodes.Ret );
-    }
-
-    private void EmitSetStateMachineMethod()
+    private void EmitSetStateMachineMethod( TypeBuilder typeBuilder )
     {
         // Define the IAsyncStateMachine.SetStateMachine method
         //
@@ -274,32 +267,55 @@ public class StateMachineBuilder<TResult>
         //    _builder.SetStateMachine( stateMachine );
         // }
 
-        var setStateMachineMethod = _typeBuilder.DefineMethod(
+        var setStateMachineMethod = typeBuilder.DefineMethod(
             "SetStateMachine",
             MethodAttributes.Public | MethodAttributes.Virtual,
-            typeof( void ),
-            [typeof( IAsyncStateMachine )]
+            typeof(void),
+            [typeof(IAsyncStateMachine)]
         );
 
         var ilGenerator = setStateMachineMethod.GetILGenerator();
 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this`
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this` (stateMachine)
         ilGenerator.Emit( OpCodes.Ldfld, _builderField ); // load `_builder`
-        ilGenerator.Emit( OpCodes.Ldarg_1 ); // Load the `stateMachine` parameter
+        ilGenerator.Emit( OpCodes.Ldarg_1 ); // Load the `stateMachine` (IAsyncStateMachine) from the argument
 
-        var setStateMachineOnBuilder = typeof( AsyncTaskMethodBuilder<> )
-            .MakeGenericType( typeof( TResult ) )
-            .GetMethod( "SetStateMachine", [typeof( IAsyncStateMachine )] );
+        var setStateMachineOnBuilder = typeof(AsyncTaskMethodBuilder<>)
+            .MakeGenericType( typeof(TResult) )
+            .GetMethod( "SetStateMachine", [typeof(IAsyncStateMachine)] );
 
         ilGenerator.Emit( OpCodes.Callvirt, setStateMachineOnBuilder! );
         ilGenerator.Emit( OpCodes.Ret );
 
-        _typeBuilder.DefineMethodOverride( setStateMachineMethod,
-            typeof( IAsyncStateMachine ).GetMethod( "SetStateMachine" )!
-        );
+        typeBuilder.DefineMethodOverride( setStateMachineMethod, 
+            typeof(IAsyncStateMachine).GetMethod( "SetStateMachine" )! );
     }
 
-    private LambdaExpression CreateMoveNextExpression( BlockExpression block )
+    private void EmitOverrideMoveNextMethod( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
+    {
+        var moveNextMethod = typeBuilder.DefineMethod(
+            "MoveNext",
+            MethodAttributes.Public | MethodAttributes.Virtual,
+            typeof(void),
+            Type.EmptyTypes
+        );
+
+        var ilGen = moveNextMethod.GetILGenerator();
+
+        ilGen.Emit( OpCodes.Ldarg_0 ); // load `this`
+        ilGen.Emit( OpCodes.Ldfld, moveNextExpressionField ); // load `_moveNextExpression`
+
+        ilGen.Emit( OpCodes.Ldarg_0 ); // load 'this' as the argument for `_moveNextExpression.Invoke`
+
+        var invokeMethod = typeof(Action<>)
+            .MakeGenericType( typeBuilder.BaseType! ) 
+            .GetMethod( "Invoke" );
+
+        ilGen.Emit( OpCodes.Callvirt, invokeMethod! );
+        ilGen.Emit( OpCodes.Ret );
+    }
+
+    private LambdaExpression CreateMoveNextExpression( BlockExpression block, Type stateMachineBaseType )
     {
         // Example of a typical state-machine:
         //
@@ -342,41 +358,46 @@ public class StateMachineBuilder<TResult>
         //         __builder<>.SetException(ex);
         //     }
         // }
-        var stateMachineInstance = Expression.Parameter( _stateMachineType, "stateMachine" );
+
+
+        var stateMachineInstance = Expression.Parameter( stateMachineBaseType, "stateMachine" );
+
         var parameterVisitor = new ParameterMappingVisitor( stateMachineInstance, _variableFields );
 
-        var buildFieldInfo = GetFieldInfo( _stateMachineType, _builderField );
-        var finalResultFieldInfo = GetFieldInfo( _stateMachineType, _finalResultField );
+        var buildFieldInfo = GetFieldInfo( stateMachineBaseType, _builderField );
+        var finalResultFieldInfo = GetFieldInfo( stateMachineBaseType, _finalResultField );
 
         var bodyExpressions = new List<Expression>();
 
         var blocks = block.Expressions;
         int lastBlockIndex = blocks.Count - 1;
 
-        LabelTarget returnLabel = Expression.Label( "ExitMoveNext" );
+        var returnLabel = Expression.Label( "ExitMoveNext" );
 
-        FieldInfo lastAwaitField = null; // TODO: Review with BF
-        bool handledFinalBlock = false;  // TODO: Review with BF
+        FieldInfo lastAwaitField = null; // To track the last awaiter field
+        var handledFinalBlock = false;
 
-        // Iterate through the blocks (each block is a state)
+        // Iterate through the blocks (each block corresponds to a state)
         for ( var i = 0; i <= lastBlockIndex; i++ )
         {
-            // ensure awaited results have state machine instance set
+            // Initialize awaiters
             if ( blocks[i] is BlockExpression blockExpression && blockExpression.Expressions.First() is AwaitResultExpression resultExpression )
             {
-                resultExpression.InitializeAwaiter( stateMachineInstance, lastAwaitField ); 
+                resultExpression.InitializeAwaiter( stateMachineInstance, lastAwaitField );
             }
 
+            // Visit and map parameters to fields for the current block
             var blockExpr = parameterVisitor.Visit( blocks[i] );
             var blockReturnType = blockExpr.Type;
 
             if ( AsyncBaseExpression.IsTask( blockReturnType ) )
             {
-                // Task-based state
-                lastAwaitField = GetFieldInfo( _stateMachineType, _awaiterFields[i] );
-                var configureAwaitMethod = blockReturnType.GetMethod( "ConfigureAwait", [typeof(bool)] )!;
-                var getAwaiterMethod = configureAwaitMethod.ReturnType.GetMethod( "GetAwaiter" );
+                // Handle task-based state
+                lastAwaitField = GetFieldInfo( stateMachineBaseType, _awaiterFields[i] );
+                var configureAwaitMethod = blockReturnType.GetMethod( "ConfigureAwait", [typeof(bool)] );
+                var getAwaiterMethod = configureAwaitMethod!.ReturnType.GetMethod( "GetAwaiter" );
 
+                // Assign the awaiter to the field
                 var assignAwaiter = Expression.Assign(
                     Expression.Field( stateMachineInstance, lastAwaitField ),
                     Expression.Call(
@@ -388,7 +409,7 @@ public class StateMachineBuilder<TResult>
                 // Increment state
                 var setStateBeforeAwait = Expression.Assign( Expression.Field( stateMachineInstance, FieldName.State ), Expression.Constant( i + 1 ) );
 
-                // Check completed
+                // Check if awaiter is completed
                 var awaiterCompletedCheck = Expression.IfThen(
                     Expression.IsFalse( Expression.Property( Expression.Field( stateMachineInstance, lastAwaitField ), "IsCompleted" ) ),
                     Expression.Block(
@@ -403,14 +424,16 @@ public class StateMachineBuilder<TResult>
                     )
                 );
 
+                // Check the current state and execute the block
                 var stateCheck = Expression.IfThen(
                     Expression.Equal( Expression.Field( stateMachineInstance, FieldName.State ), Expression.Constant( i ) ),
                     Expression.Block( assignAwaiter, setStateBeforeAwait, awaiterCompletedCheck )
                 );
                 bodyExpressions.Add( stateCheck );
             }
-            else if ( i == lastBlockIndex ) // If last block is not a Task
+            else if ( i == lastBlockIndex ) // If the last block is not a task
             {
+                // Handle final result for Task<T>
                 if ( typeof(TResult) != typeof(IVoidTaskResult) )
                 {
                     var assignFinalResult = Expression.Assign( Expression.Field( stateMachineInstance, finalResultFieldInfo ), blockExpr );
@@ -420,7 +443,7 @@ public class StateMachineBuilder<TResult>
                 }
                 else
                 {
-                    // IVoidTaskResult (no result)
+                    // For void result task
                     var incrementState = Expression.Assign( Expression.Field( stateMachineInstance, FieldName.State ), Expression.Constant( i + 1 ) );
                     bodyExpressions.Add( incrementState );
                 }
@@ -431,20 +454,21 @@ public class StateMachineBuilder<TResult>
             }
         }
 
-        // Generate the final state
-        var finalState = Expression.IfThen(  
+        // Generate the final state logic
+        var finalState = Expression.IfThen(
             Expression.Equal( Expression.Field( stateMachineInstance, FieldName.State ), Expression.Constant( lastBlockIndex + 1 ) ),
             Expression.Block(
-                // Handle the final result for Task and Task<T> 
-                !handledFinalBlock && typeof( TResult) != typeof(IVoidTaskResult)
+                // Handle the final result for Task<T>
+                !handledFinalBlock && typeof(TResult) != typeof(IVoidTaskResult)
                     ? Expression.Assign(
                         Expression.Field( stateMachineInstance, finalResultFieldInfo ),
                         Expression.Call(
                             Expression.Field( stateMachineInstance, lastAwaitField! ),
-                            "GetResult", Type.EmptyTypes
+                            "GetResult",
+                            Type.EmptyTypes
                         )
                     )
-                    : Expression.Empty(), // No-op for IVoidTaskResult
+                    : Expression.Empty(), // No result for IVoidTaskResult
 
                 // Set the final result on the builder
                 Expression.Call(
@@ -458,16 +482,17 @@ public class StateMachineBuilder<TResult>
             )
         );
 
-        // Mark as completed after the final state logic is executed
+        // Mark the state machine as completed after executing the final state
         var markCompletedState = Expression.Assign(
             Expression.Field( stateMachineInstance, FieldName.State ),
             Expression.Constant( -2 ) // Mark the state machine as completed
         );
 
+        // Add the final state and the completion marker to the body
         bodyExpressions.Add( finalState );
         bodyExpressions.Add( markCompletedState );
 
-        // Create try-catch block
+        // Create a try-catch block to handle exceptions
         var exceptionParameter = Expression.Parameter( typeof(Exception), "ex" );
         var tryCatchBlock = Expression.TryCatch(
             Expression.Block( typeof(void), bodyExpressions ), // Try block returns void
@@ -480,19 +505,21 @@ public class StateMachineBuilder<TResult>
                         null,
                         exceptionParameter
                     ),
-                    Expression.Return( returnLabel ) 
+                    Expression.Return( returnLabel ) // Return after setting the exception
                 )
             )
         );
 
-        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) ); 
-        return Expression.Lambda( moveNextBody, stateMachineInstance );
-    }
+        // Combine the try-catch block with the return label
+        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
 
-    // Helper method to retrieve FieldInfo from the created type
-    private static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
-    {
-        return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
+        // Return the lambda expression for MoveNext
+        return Expression.Lambda( moveNextBody, stateMachineInstance );
+
+        static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
+        {
+            return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
+        }
     }
 
     private static bool TryMakeAwaiterType( Expression expr, out Type awaiterType )
