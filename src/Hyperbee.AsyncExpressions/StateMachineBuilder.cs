@@ -65,7 +65,7 @@ public class StateMachineBuilder<TResult>
         // Create the state-machine
 
         var stateMachineBaseType = CreateStateMachineBaseType( _blockSource );
-        var stateMachineType = CreateStateMachineType( stateMachineBaseType );
+        var stateMachineType = CreateStateMachineDerivedType( stateMachineBaseType );
         var moveNextLambda = CreateMoveNextExpression( _blockSource, stateMachineBaseType );
 
         var stateMachineVariable = Expression.Variable( stateMachineType, "stateMachine" );
@@ -117,7 +117,7 @@ public class StateMachineBuilder<TResult>
 
     private Type CreateStateMachineBaseType( BlockExpression block )
     {
-        // Define the state machine type
+        // Define the state machine base type
         //
         // public class StateMachineBaseType : IAsyncStateMachine
         // {
@@ -164,9 +164,9 @@ public class StateMachineBuilder<TResult>
         return typeBuilder.CreateType();
     }
 
-    private Type CreateStateMachineType( Type stateMachineBaseType )
+    private Type CreateStateMachineDerivedType( Type stateMachineBaseType )
     {
-        // Define the state machine type
+        // Define the state machine derived type
         //
         // public class StateMachineType : StateMachineBaseType
         // {
@@ -300,19 +300,18 @@ public class StateMachineBuilder<TResult>
             Type.EmptyTypes
         );
 
-        var ilGen = moveNextMethod.GetILGenerator();
+        var ilGenerator = moveNextMethod.GetILGenerator();
 
-        ilGen.Emit( OpCodes.Ldarg_0 ); // load `this`
-        ilGen.Emit( OpCodes.Ldfld, moveNextExpressionField ); // load `_moveNextExpression`
-
-        ilGen.Emit( OpCodes.Ldarg_0 ); // load 'this' as the argument for `_moveNextExpression.Invoke`
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this`
+        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField ); // load `_moveNextExpression`
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load 'this' as the argument for `_moveNextExpression.Invoke`
 
         var invokeMethod = typeof(Action<>)
             .MakeGenericType( typeBuilder.BaseType! ) 
             .GetMethod( "Invoke" );
 
-        ilGen.Emit( OpCodes.Callvirt, invokeMethod! );
-        ilGen.Emit( OpCodes.Ret );
+        ilGenerator.Emit( OpCodes.Callvirt, invokeMethod! );
+        ilGenerator.Emit( OpCodes.Ret );
     }
 
     private LambdaExpression CreateMoveNextExpression( BlockExpression block, Type stateMachineBaseType )
@@ -358,7 +357,6 @@ public class StateMachineBuilder<TResult>
         //         __builder<>.SetException(ex);
         //     }
         // }
-
 
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, "stateMachine" );
 
