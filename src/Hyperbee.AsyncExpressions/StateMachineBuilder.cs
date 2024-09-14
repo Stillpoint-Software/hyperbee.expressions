@@ -73,7 +73,7 @@ public class StateMachineBuilder<TResult>
         
         var stateMachineBaseType = CreateStateMachineBaseType( _blockSource );
         var stateMachineType = CreateStateMachineDerivedType( stateMachineBaseType );
-        var moveNextLambda = CreateMoveNextExpression( _blockSource, stateMachineBaseType );
+        var moveNextLambda = CreateMoveNextBody( _blockSource, stateMachineBaseType );
 
         var stateMachineVariable = Expression.Variable( stateMachineType, "stateMachine" );
         var setMoveNextMethod = stateMachineType.GetMethod( "SetMoveNext" )!;
@@ -319,7 +319,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private LambdaExpression CreateMoveNextExpression( BlockExpression block, Type stateMachineBaseType )
+    private LambdaExpression CreateMoveNextBody( BlockExpression block, Type stateMachineBaseType )
     {
         // Example of a typical state-machine:
         //
