@@ -52,7 +52,7 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public void SetSource( BlockExpression blockSource )
+    public void SetExpressionSource( BlockExpression blockSource )
     {
         _blockSource = blockSource;
     }
@@ -125,7 +125,7 @@ public class StateMachineBuilder<TResult>
         //      public AsyncTaskMethodBuilder<TResult> __builder<>;
         //      public TResult __finalResult<>;
         //      
-        //      // Variables (example)
+        //      // Hoisted (example)
         //      public int _variable1;
         //      public int _variable2;
         //
@@ -150,9 +150,9 @@ public class StateMachineBuilder<TResult>
         _builderField = typeBuilder.DefineField( FieldName.Builder, typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ), FieldAttributes.Public );
         _finalResultField = typeBuilder.DefineField( FieldName.FinalResult, typeof(TResult), FieldAttributes.Public );
 
-        EmitBlockFields( typeBuilder, block );
-        EmitConstructor( typeBuilder, typeof(object) );
-        EmitSetStateMachineMethod( typeBuilder );
+        ImplementFields( typeBuilder, block );
+        ImplementConstructor( typeBuilder, typeof(object) );
+        ImplementSetStateMachine( typeBuilder );
 
         typeBuilder.DefineMethod(
             "MoveNext",
@@ -173,6 +173,7 @@ public class StateMachineBuilder<TResult>
         //      private Action<StateMachineBaseType> __moveNextLambda<>;
         //
         //      public StateMachineType() {}
+        //      public void SetMoveNext(Action<StateMachineBaseType> moveNext) => __moveNextLambda<> = moveNext;
         //      public override void MoveNext() => __moveNextLambda<>((StateMachineBaseType) this);
         // }
 
@@ -188,15 +189,15 @@ public class StateMachineBuilder<TResult>
             FieldAttributes.Private
         );
 
-        EmitConstructor( typeBuilder, stateMachineBaseType );
+        ImplementConstructor( typeBuilder, stateMachineBaseType );
 
-        EmitSetMoveNextMethod( typeBuilder, moveNextExpressionField );
-        EmitOverrideMoveNextMethod( typeBuilder, moveNextExpressionField );
+        ImplementSetMoveNext( typeBuilder, moveNextExpressionField );
+        ImplementMoveNext( typeBuilder, moveNextExpressionField );
 
         return typeBuilder.CreateType();
     }
 
-    private void EmitConstructor( TypeBuilder typeBuilder, Type baseType )
+    private void ImplementConstructor( TypeBuilder typeBuilder, Type baseType )
     {
         // Define a parameterless constructor
         var constructor = typeBuilder.DefineConstructor( MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes );
@@ -208,7 +209,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private void EmitBlockFields( TypeBuilder typeBuilder, BlockExpression block )
+    private void ImplementFields( TypeBuilder typeBuilder, BlockExpression block )
     {
         // Define: variable fields
         _variableFields = [];
@@ -234,7 +235,7 @@ public class StateMachineBuilder<TResult>
         }
     }
 
-    private void EmitSetMoveNextMethod( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
+    private void ImplementSetMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
     {
         // Define the SetMoveNext method
         //
@@ -258,7 +259,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret ); // return
     }
 
-    private void EmitSetStateMachineMethod( TypeBuilder typeBuilder )
+    private void ImplementSetStateMachine( TypeBuilder typeBuilder )
     {
         // Define the IAsyncStateMachine.SetStateMachine method
         //
@@ -291,7 +292,7 @@ public class StateMachineBuilder<TResult>
             typeof(IAsyncStateMachine).GetMethod( "SetStateMachine" )! );
     }
 
-    private void EmitOverrideMoveNextMethod( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
+    private void ImplementMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
     {
         var moveNextMethod = typeBuilder.DefineMethod(
             "MoveNext",
@@ -591,7 +592,7 @@ public static class StateMachineBuilder
         var moduleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "DynamicStateMachine" );
-        stateMachineBuilder.SetSource( source );
+        stateMachineBuilder.SetExpressionSource( source );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( createRunner );
 
         return stateMachineExpression;
