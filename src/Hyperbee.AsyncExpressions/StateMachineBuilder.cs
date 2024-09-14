@@ -63,13 +63,20 @@ public class StateMachineBuilder<TResult>
             throw new InvalidOperationException( "Source must be set before creating state machine." );
 
         // Create the state-machine
-
+        //
+        // Conceptually:
+        //
+        // var stateMachine = new StateMachine();
+        // var moveNextLambda = (StateMachineBase stateMachine) => { ... };
+        //
+        // stateMachine.SetMoveNext( moveNextLambda );
+        
         var stateMachineBaseType = CreateStateMachineBaseType( _blockSource );
         var stateMachineType = CreateStateMachineDerivedType( stateMachineBaseType );
         var moveNextLambda = CreateMoveNextExpression( _blockSource, stateMachineBaseType );
 
         var stateMachineVariable = Expression.Variable( stateMachineType, "stateMachine" );
-        var setMoveNextMethod = stateMachineType.GetMethod( "SetMoveNextExpression" )!;
+        var setMoveNextMethod = stateMachineType.GetMethod( "SetMoveNext" )!;
 
         var stateMachineExpression = Expression.Block(
             [stateMachineVariable],
@@ -81,15 +88,12 @@ public class StateMachineBuilder<TResult>
         if ( !createRunner )
             return stateMachineExpression;
 
-        // Wrap the state-machine in a method that executes it
+        // Run the state-machine
         //
         // Conceptually:
         //
-        // public Task<TResult> Run( StateMachineType stateMachine )
-        // {
-        //     stateMachine._builder.Start<StateMachineType>( ref stateMachine );
-        //     return stateMachine._builder.Task;
-        // }
+        // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
+        // return stateMachine._builder.Task;
 
         var builderFieldInfo = stateMachineType.GetField( FieldName.Builder )!;
         var taskFieldInfo = builderFieldInfo.FieldType.GetProperty( "Task" )!;
@@ -245,7 +249,7 @@ public class StateMachineBuilder<TResult>
         //  }
 
         var setMoveNextMethod = typeBuilder.DefineMethod(
-            "SetMoveNextExpression",
+            "SetMoveNext",
             MethodAttributes.Public,
             typeof(void),
             [typeof(Action<>).MakeGenericType( typeBuilder.BaseType! )] //[typeof(Action<StateMachineBase<TResult>>)]
