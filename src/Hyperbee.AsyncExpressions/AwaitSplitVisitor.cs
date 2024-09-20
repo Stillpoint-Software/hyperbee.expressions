@@ -1,64 +1,162 @@
 ﻿using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
 public class AwaitSplitVisitor : ExpressionVisitor
 {
-    private readonly Stack<Expression> _currentExpressions = [];
-    private readonly List<Expression> _expressions = [];
+    private readonly HashSet<ParameterExpression> _variables = [];
     private int _variableCounter;
 
-    public IReadOnlyList<Expression> Expressions => _expressions;
+    private bool _awaitEncountered;
+    private int _awaitCounter;
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )] 
-    private Expression ProcessNode( Expression node )
+    public bool AwaitEncountered => _awaitEncountered;
+    public IReadOnlyCollection<ParameterExpression> Variables => _variables;
+
+    protected override Expression VisitExtension( Expression node )
     {
-        var rewriting = _currentExpressions.Count > 0;
+        switch ( node )
+        {
+            case AwaitableResultExpression:
+                // Always ignore AwaitResultExpression nodes
+                return node;
 
-        if ( !rewriting )
-            _expressions.Add( node );
+            case AwaitExpression awaitExpression:
+                _awaitEncountered = true;
 
-        return node;
+                // Visit internal nodes of await expression
+                Visit( awaitExpression.Target );
+
+                _awaitCounter++;
+
+                awaitExpression.ReturnTask = true;
+                //_containedAwait = true;
+
+                // Then ignore?
+                return node;
+
+            default:
+                return base.VisitExtension( node );
+        }
     }
-
-    protected override Expression VisitConstant( ConstantExpression node ) => ProcessNode( node );
-
-    protected override Expression VisitExtension( Expression node ) => ProcessNode( node );
-
-    protected override Expression VisitUnary( UnaryExpression node ) => ProcessNode( node );
-
-    protected override Expression VisitBlock( BlockExpression node ) => ProcessNode( node );
 
     protected override Expression VisitBinary( BinaryExpression node )
     {
-        if ( node.Right is not AwaitExpression awaitExpression )
+        var updatedNode = base.VisitBinary( node );
+
+        var containedAwait = (_awaitCounter--) != 0;
+
+        if ( !containedAwait || updatedNode is not BinaryExpression binaryExpression )
         {
-            return ProcessNode( node );
+            return updatedNode;
         }
 
-        _expressions.Add( awaitExpression );
-        _expressions.Add( new AwaitResultExpression( node.Left ) );
+        if ( binaryExpression.Left is ParameterExpression parameterExpression )
+        {
+            _variables.Add( parameterExpression );
+        }
 
-        return node;
+        return AwaitBlock(
+            Expression.Block(
+                binaryExpression.Right
+            ),
+            Expression.Block(
+                new AwaitableResultExpression( binaryExpression.Left )
+            )
+        );
+    }
+
+    // protected override Expression VisitBlock( BlockExpression node )
+    // {
+    //     var updatedNode = base.VisitBlock( node );
+    //
+    //     if ( !_containedAwait || updatedNode is not BlockExpression blockExpression )
+    //     {
+    //         return updatedNode;
+    //     }
+    //
+    //     _containedAwait = false;
+    //
+    //     return Expression.Block(
+    //     );
+    // }
+
+    // protected override Expression VisitLabel( LabelExpression node )
+    // {
+    //     var updatedNode = base.VisitLabel( node );
+    //
+    //     if ( !_containedAwait || updatedNode is not LabelExpression labelExpression )
+    //     {
+    //         return updatedNode;
+    //     }
+    //
+    //     _containedAwait = false;
+    //
+    //     return Expression.Block(
+    //     );
+    // }
+
+
+    protected override Expression VisitGoto( GotoExpression node )
+    {
+        var updatedNode = base.VisitGoto( node );
+
+        var containedAwait = (_awaitCounter--) != 0;
+
+        if ( !containedAwait || updatedNode is not GotoExpression gotoExpression )
+        {
+            return updatedNode;
+        }
+
+        if ( gotoExpression.Value is not AwaitExpression awaitExpression )
+        {
+            return updatedNode;
+        }
+
+        var variable = CreateVariable( awaitExpression );
+        return AwaitBlock(
+            Expression.Block(
+                awaitExpression
+            ),
+            Expression.Block(
+                new AwaitableResultExpression( variable ),
+                gotoExpression.Update( gotoExpression.Target, variable )
+            )
+        );
     }
 
     protected override Expression VisitMethodCall( MethodCallExpression node )
     {
+        var updatedNode = base.VisitMethodCall( node );
+
+        var containedAwait = (_awaitCounter--) != 0;
+
+        if ( !containedAwait || updatedNode is not MethodCallExpression methodCallExpression )
+        {
+            return updatedNode;
+        }
+
+        //_containedAwait = false;
+
         var arguments = new List<Expression>();
         var variables = new List<ParameterExpression>();
-        var containedAwait = false;
+        var blockExpression = new List<Expression>();
 
         // Visit each argument in the method call
-        foreach ( var argument in node.Arguments )
+        foreach ( var argument in methodCallExpression.Arguments )
         {
             if ( argument is AwaitExpression awaitExpression )
             {
-                containedAwait = true;
-                _expressions.Add( awaitExpression );
-
-                var variable = Expression.Variable( argument.Type, TempVariableName() );
-                _expressions.Add( new AwaitResultExpression( variable ) );
+                var variable = CreateVariable( awaitExpression );
+                blockExpression.Add(
+                    AwaitBlock(
+                        Expression.Block(
+                            awaitExpression
+                        ),
+                        Expression.Block(
+                            new AwaitableResultExpression( variable )
+                        )
+                    ) );
 
                 // Replace the AwaitExpression in the method call with the variable
                 arguments.Add( variable );
@@ -70,41 +168,48 @@ public class AwaitSplitVisitor : ExpressionVisitor
                 arguments.Add( argument );
             }
         }
-
-        if(!containedAwait )
-        {
-            return ProcessNode( node );
-        }
-
+        
         // Rewrite the method call
-        _currentExpressions.Push( node );
-        var updatedCall = node.Update( node.Object, arguments );
-        _currentExpressions.Pop();
+        var updatedCall = methodCallExpression.Update( methodCallExpression.Object, arguments );
+        blockExpression.Add( updatedCall );
 
-        // Create a new block that represents the rewritten method call
-        if ( variables.Count > 0 )
-        {
-            _expressions.Add( Expression.Block( variables, updatedCall ) );
-        }
-
-        return node;
+        return Expression.Block( variables, blockExpression );
     }
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
-        if ( node.Test is not AwaitExpression awaitExpression )
-            return node;
+        var updatedNode = base.VisitConditional( node );
 
-        _expressions.Add( awaitExpression );
+        var containedAwait = (_awaitCounter--) != 0;
 
-        var variable = Expression.Variable( awaitExpression.Type, TempVariableName() );
-        _expressions.Add( new AwaitResultExpression( variable ) );
+        if ( !containedAwait ||
+             updatedNode is not ConditionalExpression conditionalExpression ||
+             conditionalExpression.Test is not AwaitExpression awaitExpression )
+        {
+            return updatedNode;
+        }
 
-        var updateConditional = node.Update( variable, node.IfTrue, node.IfFalse );
-        _expressions.Add( updateConditional );
-
-        return node;
+        var variable = CreateVariable( awaitExpression );
+        return AwaitBlock(
+            Expression.Block(
+                awaitExpression
+            ),
+            Expression.Block(
+                new AwaitableResultExpression( variable ),
+                node.Update( variable, conditionalExpression.IfTrue, conditionalExpression.IfFalse )
+            )
+        );
     }
 
-    private string TempVariableName() => $"__await_var{_variableCounter++}";
+    private static Expression AwaitBlock( Expression before, Expression after )
+    {
+        return new AwaitableBlockExpression( before, after );
+    }
+
+    private ParameterExpression CreateVariable(AwaitExpression awaitExpression)
+    {
+        var variable = Expression.Variable( awaitExpression.ReturnType, $"__awaitResult<{_variableCounter++}>" );
+        _variables.Add( variable );
+        return variable;
+    }
 }

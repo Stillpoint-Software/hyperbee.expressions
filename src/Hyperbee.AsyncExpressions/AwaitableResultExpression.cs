@@ -4,9 +4,9 @@ using System.Reflection;
 
 namespace Hyperbee.AsyncExpressions;
 
-[DebuggerDisplay( "{InnerVariable}" )]
+[DebuggerDisplay( "GetResult({InnerVariable})" )]
 [DebuggerTypeProxy( typeof( AwaitResultExpressionProxy ) )]
-public class AwaitResultExpression( Expression variable ) : Expression
+public class AwaitableResultExpression( Expression variable ) : Expression
 {
     private Expression _instance;
     private FieldInfo _fieldInfo;
@@ -18,10 +18,17 @@ public class AwaitResultExpression( Expression variable ) : Expression
 
     public override Expression Reduce()
     {
-        return Assign( variable, Call(
-            Field( _instance, _fieldInfo ),
-            "GetResult", Type.EmptyTypes )
-        );
+        try
+        {
+            return Assign( variable, Call(
+                Field( _instance, _fieldInfo ),
+                "GetResult", Type.EmptyTypes )
+            );
+        }
+        catch ( Exception e )
+        {
+            return variable;
+        }
     }
 
     public void InitializeAwaiter( Expression stateMachineInstance, FieldInfo fieldInfo )
@@ -29,7 +36,7 @@ public class AwaitResultExpression( Expression variable ) : Expression
         _instance = stateMachineInstance;
         _fieldInfo = fieldInfo;
     }
-    private class AwaitResultExpressionProxy( AwaitResultExpression node )
+    private class AwaitResultExpressionProxy( AwaitableResultExpression node )
     {
         public Expression InnerVariable => node.InnerVariable;
         public Type ReturnType => node.Type;

@@ -66,44 +66,55 @@ public class AsyncBlockExpression : AsyncBaseExpression
         resultType = typeof(void);
 
         // Restructure expressions so we can split them into awaitable blocks
-        var splitVisitor = new AwaitSplitVisitor();
-        foreach ( var expr in _expressions )
+
+
+        
+
+        foreach ( var blockPartExpr in _expressions )
         {
-            splitVisitor.Visit( expr );
-        }
+            var splitVisitor = new AwaitSplitVisitor();
+            var updateExpression = splitVisitor.Visit( blockPartExpr );
 
-        var expressions = splitVisitor.Expressions;
+            currentBlockExpressions.Add( updateExpression );
+            variables.UnionWith( splitVisitor.Variables );
+            awaitEncountered = awaitEncountered || splitVisitor.AwaitEncountered;
 
-        // Create a block for each state-machine await
-        foreach ( var expr in expressions )
-        {
-            if ( expr is AsyncBlockExpression asyncBlock )
-            {
-                // Recursively reduce the inner async block
-                var reducedInnerBlock = asyncBlock.Reduce();
-                currentBlockExpressions.Add( reducedInnerBlock );
-                continue;
-            }
+            // Expression[] expressions = updateExpression is BlockExpression block
+            //     ? [..block.Expressions]
+            //     : [updateExpression];
+            //
+            // // Create a block for each state-machine await
+            // foreach ( var expr in expressions )
+            // {
+            //     if ( expr is AsyncBlockExpression asyncBlock )
+            //     {
+            //         // Recursively reduce the inner async block
+            //         var reducedInnerBlock = asyncBlock.Reduce();
+            //         currentBlockExpressions.Add( reducedInnerBlock );
+            //         continue;
+            //     }
+            //
+            //     currentBlockExpressions.Add( expr );
+            //
+            //     switch ( expr )
+            //     {
+            //         case BinaryExpression { Left: ParameterExpression varExpr }:
+            //             variables.Add( varExpr );
+            //             break;
+            //         case AwaitResultExpression { InnerVariable: ParameterExpression parameter }:
+            //             // TODO: Review with BF (tracking variables)
+            //             variables.Add( parameter );
+            //             break;
+            //         case AwaitExpression awaitExpression:
+            //             awaitExpression.ReturnTask = true; // BF - Set the return task flag to true
+            //             awaitEncountered = true;
+            //             var currentBlock = Block( currentBlockExpressions );
+            //             childBlockExpressions.Add( currentBlock );
+            //             currentBlockExpressions = [];
+            //             break;
+            //     }
+            // }
 
-            currentBlockExpressions.Add( expr );
-
-            switch ( expr )
-            {
-                case BinaryExpression { Left: ParameterExpression varExpr }:
-                    variables.Add( varExpr );
-                    break;
-                case AwaitResultExpression { InnerVariable: ParameterExpression parameter }:
-                    // TODO: Review with BF (tracking variables)
-                    variables.Add( parameter );
-                    break;
-                case AwaitExpression awaitExpression:
-                    awaitExpression.ReturnTask = true; // BF - Set the return task flag to true
-                    awaitEncountered = true;
-                    var currentBlock2 = Block( currentBlockExpressions );
-                    childBlockExpressions.Add( currentBlock2 );
-                    currentBlockExpressions = [];
-                    break;
-            }
         }
 
         // Get the result type
@@ -127,7 +138,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
         }
 
         // Ensure that at least one await is present in the block
-        if ( !awaitEncountered )
+        if( !awaitEncountered )
         {
             throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
         }

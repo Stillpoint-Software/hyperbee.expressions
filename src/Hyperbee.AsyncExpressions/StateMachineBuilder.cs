@@ -373,13 +373,13 @@ public class StateMachineBuilder<TResult>
         var returnLabel = Expression.Label( "ExitMoveNext" );
 
         FieldInfo lastAwaitField = null; // To track the last awaiter field
-        var handledFinalBlock = false;
+        var assignedFinalResult = false;
 
         // Iterate through the blocks (each block corresponds to a state)
         for ( var i = 0; i <= lastBlockIndex; i++ )
         {
             // Initialize awaiters
-            if ( blocks[i] is BlockExpression blockExpression && blockExpression.Expressions.First() is AwaitResultExpression resultExpression )
+            if ( blocks[i] is BlockExpression blockExpression && blockExpression.Expressions.First() is AwaitableResultExpression resultExpression )
             {
                 resultExpression.InitializeAwaiter( stateMachineInstance, lastAwaitField );
             }
@@ -437,7 +437,7 @@ public class StateMachineBuilder<TResult>
                     var assignFinalResult = Expression.Assign( Expression.Field( stateMachineInstance, finalResultFieldInfo ), blockExpr );
                     var incrementState = Expression.Assign( Expression.Field( stateMachineInstance, FieldName.State ), Expression.Constant( i + 1 ) );
                     bodyExpressions.Add( Expression.Block( assignFinalResult, incrementState ) );
-                    handledFinalBlock = true;
+                    assignedFinalResult = true;
                 }
                 else
                 {
@@ -457,7 +457,7 @@ public class StateMachineBuilder<TResult>
             Expression.Equal( Expression.Field( stateMachineInstance, FieldName.State ), Expression.Constant( lastBlockIndex + 1 ) ),
             Expression.Block(
                 // Handle the final result for Task<T>
-                !handledFinalBlock && typeof(TResult) != typeof(IVoidTaskResult)
+                !assignedFinalResult && typeof(TResult) != typeof(IVoidTaskResult)
                     ? Expression.Assign(
                         Expression.Field( stateMachineInstance, finalResultFieldInfo ),
                         Expression.Call(

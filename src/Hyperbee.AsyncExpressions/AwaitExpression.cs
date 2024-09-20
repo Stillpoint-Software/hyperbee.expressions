@@ -4,7 +4,7 @@ using System.Reflection;
 
 namespace Hyperbee.AsyncExpressions;
 
-[DebuggerDisplay( "{_asyncExpression}" )]
+[DebuggerDisplay( "Await({_asyncExpression})" )]
 [DebuggerTypeProxy( typeof(AwaitExpressionProxy) )]
 public class AwaitExpression : Expression
 {
@@ -19,13 +19,13 @@ public class AwaitExpression : Expression
     {
         _asyncExpression = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
         _configureAwait = configureAwait;
-        //_resultType = ResultType( asyncExpression.Type );
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     // TODO: Review with BF (fix caching the type)
-    public override Type Type => ResultType( _asyncExpression.Type ); //_resultType;
+    public override Type Type => ResultType( _asyncExpression.Type, false );
+    public Type ReturnType => ResultType( _asyncExpression.Type, false );
 
     public Expression Target => _asyncExpression;
 
@@ -38,16 +38,16 @@ public class AwaitExpression : Expression
         if ( ReturnTask )
             return _asyncExpression;
 
-        var resultType = ResultType( _asyncExpression.Type );
+        var resultType = ResultType( _asyncExpression.Type, ReturnTask );
 
         return Call( resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
             ? AwaitMethod 
             : AwaitResultMethod.MakeGenericMethod( resultType ), _asyncExpression, Constant( _configureAwait ) );
     }
 
-    private Type ResultType( Type taskType )
+    private Type ResultType( Type taskType, bool returnTask )
     {
-        if ( ReturnTask )
+        if ( returnTask )
             return taskType;
 
         return taskType.IsGenericType switch
@@ -72,7 +72,7 @@ public class AwaitExpression : Expression
     private class AwaitExpressionProxy( AwaitExpression node )
     {
         public Expression Target => node._asyncExpression;
-        public Type ReturnType => node.Type;
+        public Type ReturnType => node.ReturnType;
     }
 }
 

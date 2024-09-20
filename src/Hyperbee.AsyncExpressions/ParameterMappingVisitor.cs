@@ -46,4 +46,22 @@ public class ParameterMappingVisitor( Expression instance, List<FieldBuilder> fi
             node.Variables.Where( v => !_fieldNames.Contains( v.Name ) ),
             node.Expressions.Select( Visit ) );
     }
+
+    protected override Expression VisitExtension( Expression node )
+    {
+        switch (node)
+        {
+            case AwaitableResultExpression awaitableResult:
+                Visit( awaitableResult.InnerVariable );
+                return node;
+            case AwaitableBlockExpression awaitableBlock:
+                Visit( awaitableBlock.Before );
+                Visit( awaitableBlock.After );
+                return node;
+            case AwaitExpression awaitExpression:
+                return Visit( awaitExpression.Target );
+            default:
+                return base.VisitExtension( node );
+        }
+    }
 }
