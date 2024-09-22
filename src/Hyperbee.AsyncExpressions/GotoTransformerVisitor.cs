@@ -120,12 +120,10 @@ namespace Hyperbee.AsyncExpressions
                 switchTransition.DefaultNode = _states[defaultIndex];
             }
 
-            continueToIndex = PopContinueTo();
-
-            switchTransition.ContinueTo = _states[continueToIndex];
-
             _states[currentStateIndex].Transition = switchTransition;
-            _currentStateIndex = continueToIndex;
+            _currentStateIndex = PopContinueTo();
+
+            switchTransition.ContinueTo = _states[_currentStateIndex];
 
             if ( _states[_currentStateIndex].Transition == null && _continueToIndexes.Count > 0 ) // BF: Feel like a bit of a hack.
                 _states[_currentStateIndex].Transition = new GotoTransition { TargetNode = _states[_continueToIndexes.Peek()] };
