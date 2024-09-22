@@ -127,6 +127,9 @@ namespace Hyperbee.AsyncExpressions
             _states[currentStateIndex].Transition = switchTransition;
             _currentStateIndex = continueToIndex;
 
+            if ( _states[_currentStateIndex].Transition == null && _continueToIndexes.Count > 0 ) // BF: Feel like a bit of a hack.
+                _states[_currentStateIndex].Transition = new GotoTransition { TargetNode = _states[_continueToIndexes.Peek()] };
+
             return node;
         }
 
