@@ -140,18 +140,18 @@ namespace Hyperbee.AsyncExpressions
             var continueToIndex = InsertState();
             PushContinueTo( continueToIndex );
 
-            var tryIndex = InsertState( node.Body );
+            var tryIndex = InsertState( node.Body, continueToIndex );
             tryCatchTransition.TryNode = _states[tryIndex];
 
             foreach ( var catchBlock in node.Handlers )
             {
-                var catchIndex = InsertState( catchBlock.Body );
+                var catchIndex = InsertState( catchBlock.Body, continueToIndex );
                 tryCatchTransition.CatchNodes.Add( _states[catchIndex] );
             }
 
             if ( node.Finally != null )
             {
-                var finallyIndex = InsertState( node.Finally );
+                var finallyIndex = InsertState( node.Finally, continueToIndex );
                 tryCatchTransition.FinallyNode = _states[finallyIndex];
             }
 
