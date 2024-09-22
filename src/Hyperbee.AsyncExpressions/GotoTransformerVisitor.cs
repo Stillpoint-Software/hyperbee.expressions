@@ -29,13 +29,18 @@ namespace Hyperbee.AsyncExpressions
             return _states.Count - 1;
         }
 
-        private int InsertState( Expression expression )
+        private int InsertState( Expression expression, int continueToIndex = -1 )
         {
             var stateIndex = InsertState();
             _currentStateIndex = stateIndex;
 
             Visit( expression ); // Visit may mutate _currentStateIndex
             
+            if ( continueToIndex >= 0 && _states[stateIndex].Transition == null ) // BF: This is a bit of a hack.
+            {
+                _states[stateIndex].Transition = new GotoTransition { TargetNode = _states[continueToIndex] };
+            }
+
             return stateIndex;
         }
 
@@ -59,11 +64,11 @@ namespace Hyperbee.AsyncExpressions
 
             var currentStateIndex = _currentStateIndex;
 
-            var ifTrueIndex = InsertState( node.IfTrue );
-            var ifFalseIndex = (node.IfFalse is not DefaultExpression) ? InsertState( node.IfFalse ) : -1;
-
             var continueToIndex = InsertState();
             PushContinueTo( continueToIndex );
+
+            var ifTrueIndex = InsertState( node.IfTrue, continueToIndex );
+            var ifFalseIndex = (node.IfFalse is not DefaultExpression) ? InsertState( node.IfFalse, continueToIndex ) : -1;
 
             var conditionalTransition = new ConditionalTransition 
             { 
@@ -74,6 +79,9 @@ namespace Hyperbee.AsyncExpressions
 
             _states[currentStateIndex].Transition = conditionalTransition;
             _currentStateIndex = PopContinueTo();
+
+            if ( _states[_currentStateIndex].Transition == null && _continueToIndexes.Count > 0 ) // BF: This is a bit of a hack.
+                _states[_currentStateIndex].Transition = new GotoTransition { TargetNode = _states[_continueToIndexes.Peek()] };
 
             return node;
         }
