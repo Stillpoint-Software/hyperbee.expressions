@@ -36,7 +36,7 @@ namespace Hyperbee.AsyncExpressions
 
             Visit( expression ); // Visit may mutate _currentStateIndex
             
-            if ( continueToIndex >= 0 && _states[stateIndex].Transition == null ) // BF: This is a bit of a hack.
+            if ( continueToIndex >= 0 && _states[stateIndex].Transition == null ) 
             {
                 _states[stateIndex].Transition = new GotoTransition { TargetNode = _states[continueToIndex] };
             }
@@ -80,7 +80,7 @@ namespace Hyperbee.AsyncExpressions
             _states[currentStateIndex].Transition = conditionalTransition;
             _currentStateIndex = PopContinueTo();
 
-            if ( _states[_currentStateIndex].Transition == null && _continueToIndexes.Count > 0 ) // BF: This is a bit of a hack.
+            if ( _states[_currentStateIndex].Transition == null && _continueToIndexes.Count > 0 ) // BF: Feel like a bit of a hack.
                 _states[_currentStateIndex].Transition = new GotoTransition { TargetNode = _states[_continueToIndexes.Peek()] };
 
             return node;
