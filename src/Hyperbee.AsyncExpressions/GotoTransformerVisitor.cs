@@ -1,434 +1,371 @@
 ﻿using System.Linq.Expressions;
-using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.AsyncExpressions;
-
-public class GotoTransformerVisitor : ExpressionVisitor
+namespace Hyperbee.AsyncExpressions
 {
-    private readonly List<StateNode> _states = [];
-    private int _continuationCounter;
-    private int _labelCounter;
-    private StateNode _currentState;
-    private readonly Stack<StateNode> _finalNodes = [];
-    private readonly Dictionary<LabelTarget, int> _labelMappings = [];
-
-    public List<StateNode> Transform( Expression expression )
+    public class GotoTransformerVisitor : ExpressionVisitor
     {
-        // Initialize the first state (n0)
-        _currentState = new StateNode( _labelCounter++ );
-        _states.Add( _currentState );
+        private readonly List<StateNode> _states = [];
+        private readonly Stack<int> _continueToIndexes = new();
+        private readonly Dictionary<LabelTarget, int> _labelMappings = new();
 
-        Visit( expression );
+        private int _continuationCounter;
+        private int _labelCounter;
 
-        return _states;
-    }
+        private int _currentStateIndex;
+        private StateNode CurrentState => _states[_currentStateIndex];
 
-    protected override Expression VisitBlock( BlockExpression node )
-    {
-        foreach ( var expr in node.Expressions )
+        public List<StateNode> Transform( Expression expression )
         {
-            Visit( expr );
+            _currentStateIndex = InsertState();
+
+            Visit( expression );
+
+            return _states;
         }
 
-        return node;
-    }
-
-    protected override Expression VisitConditional( ConditionalExpression node )
-    {
-        // Always lift Condition to current state
-        Visit( node.Test );
-
-        // Push the final node to stack for later convergence
-        var hasFalse = node.IfFalse is not DefaultExpression;
-        var ifTrueNode = new StateNode( _labelCounter++ );
-        var ifFalseNode = hasFalse ? new StateNode( _labelCounter++ ) : null;
-        var finalNode = new StateNode( _labelCounter++ );
-
-        _currentState.IfTrue = ifTrueNode;
-        _currentState.IfFalse = ifFalseNode;
-
-        _states.Add( finalNode );
-        _finalNodes.Push( finalNode );
-
-        // Process IfTrue branch
-        ProcessBranch( node.IfTrue, ifTrueNode, finalNode );
-
-        // Process IfFalse branch
-        if ( hasFalse )
-            ProcessBranch( node.IfFalse, ifFalseNode, finalNode );
-
-        // Pop the final node and set it as current state
-        _currentState = _finalNodes.Pop();
-
-        return node;
-
-    }
-
-    protected override Expression VisitSwitch( SwitchExpression node )
-    {
-        // Always lift SwitchValue to current state
-        Visit( node.SwitchValue );
-
-        var switchNode = _currentState;
-        switchNode.Cases = [];
-
-        // Create the final node where all cases will converge
-        var finalNode = new StateNode( _labelCounter++ );
-        _states.Add( finalNode );
-        _finalNodes.Push( finalNode );
-
-        // Process each case
-        List<SwitchCase> cases = [];
-        foreach ( var switchCase in node.Cases )
+        private int InsertState()
         {
-            var caseNode = new StateNode( _labelCounter++ );
-            switchNode.Cases.Add( caseNode );
-
-            // Add case label to the state
-            cases.Add( SwitchCase( Goto( caseNode.Label ), switchCase.TestValues ) );
-
-            ProcessBranch( switchCase.Body, caseNode, finalNode );
+            _states.Add( new StateNode( _labelCounter++ ) );
+            return _states.Count - 1;
         }
 
-        // Handle default case if present
-        Expression defaultBody = null;
-        if ( node.DefaultBody != null )
+        private int InsertState( Expression expression )
         {
-            var defaultNode = new StateNode( _labelCounter++ );
+            var stateIndex = InsertState();
+            _currentStateIndex = stateIndex;
 
-            // TODO: Can't use `ProcessBranch` because GoTos are add differently
-
-            _states.Add( defaultNode );
-            _currentState = defaultNode;
-
-            Visit( node.DefaultBody );
-
-            //_currentState.Expressions.Add( Goto( finalNode.Label ) );
-            defaultBody = Goto( finalNode.Label );
-            _currentState.Final = finalNode;
+            Visit( expression ); // Visit may mutate _currentStateIndex
+            
+            return stateIndex;
         }
 
-        var gotoSwitch = Switch(
-            node.SwitchValue,
-            defaultBody,
-            [.. cases] );
-        switchNode.Expressions.Add( gotoSwitch );
+        private void PushContinueTo( int index ) => _continueToIndexes.Push( index );
 
+        private int PopContinueTo() => _continueToIndexes.Pop();
 
-        // Pop the final node and set it as current state
-        _currentState = _finalNodes.Pop();
-
-        return node;
-    }
-
-    protected override Expression VisitTry( TryExpression node )
-    {        
-        // Always lift body to current state
-        Visit( node.Body );
-
-        var tryNode = _currentState;
-        tryNode.Catches = [];
-
-        var hasFinally = node.Finally != null;
-
-        // TODO: fault block
-        //var hasFault = node.Fault != null;
-        //var faultNode = hasFault ? new StateNode( _labelCounter++ ) : null;
-        var finallyNode = hasFinally ? new StateNode( _labelCounter++ ) : null;
-        var finalNode = new StateNode( _labelCounter++ );
-
-        _states.Add( finalNode );
-        _finalNodes.Push( finalNode );
-
-        // Process each case
-        List<CatchBlock> catches = [];
-        foreach ( var catchBlock in node.Handlers )
+        protected override Expression VisitBlock( BlockExpression node )
         {
-            var catchNode = new StateNode( _labelCounter++ );
-            tryNode.Catches.Add( catchNode );
+            foreach ( var expr in node.Expressions )
+            {
+                Visit( expr );
+            }
 
-            // TODO: catchBlock.Filter
-            // Add case label to the state
-            // TODO: verify node.Body.Type as the correct type
-            catches.Add( Catch( catchBlock.Test, Goto( catchNode.Label, node.Body.Type ) ) );  
-
-            ProcessBranch( catchBlock.Body, catchNode, finalNode );
-        }
-
-        // Visit the finally-block, if it exists
-        Expression finallyBody = null;
-        if ( finallyNode != null )
-        {
-            var defaultNode = new StateNode( _labelCounter++ );
-
-            // TODO: Can't use `ProcessBranch` because GoTos are add differently
-
-            _states.Add( defaultNode );
-            _currentState = defaultNode;
-
-            Visit( node.Finally );
-
-            finallyBody = Goto( finalNode.Label );
-            _currentState.Final = finalNode;
-        }
-
-        // Visit the fault-block, if it exists
-        // Expression faultBody = null;
-        // if ( faultNode != null )
-        // {
-        // }
-
-        // TODO replace?
-        var newTry = TryCatchFinally(
-            node.Body,
-            finallyBody,
-            [..catches]
-        );
-        tryNode.Expressions.Add( newTry );
-
-        // Pop the final node and set it as current state
-        _currentState = _finalNodes.Pop();
-
-        return node;
-
-    }
-
-    protected override Expression VisitLoop( LoopExpression node )
-    {
-        // var loopNode = _currentState;
-        //
-        // var breakNode = new StateNode( _labelCounter++ ); // { Label = node.BreakLabel };
-        // var finalNode = new StateNode( _labelCounter++ ); 
-        // _states.Add( finalNode );
-        // _finalNodes.Push( finalNode );
-        //
-        // var loopBodyNode = new StateNode( _labelCounter++ );
-        // _states.Add( loopBodyNode );
-        // _currentState = loopBodyNode;
-        //
-        // Visit( node.Body );
-        //
-        // _currentState.Expressions.Add( Goto( finalNode.Label ) );
-        // _currentState.Final = finalNode;
-        //
-        // loopNode.Continue = loopBodyNode;
-        // loopNode.Break = breakNode;
-        // breakNode.Final = finalNode;
-        //
-        //
-        // _currentState = _finalNodes.Pop();
-
-        return node;
-    }
-
-    protected override Expression VisitExtension( Expression node )
-    {
-        if ( node is not AwaitExpression awaitExpression )
-        {
-            _currentState.Expressions.Add( node );
             return node;
         }
 
-        var stateId = _continuationCounter++;
-        var awaitNode = new StateNode( _labelCounter++ ) { ContinuationId = stateId };
-        var finalNode = new StateNode( _labelCounter++ ) { ContinuationId = stateId };
-
-        _currentState.Await = awaitNode;
-
-        _states.Add( finalNode );
-        _finalNodes.Push( finalNode );
-
-        ProcessBranch( awaitExpression.Target, awaitNode, finalNode );
-
-        // build awaiter
-        /*
-           awaiter8 = GetRandom().GetAwaiter();
-           if (!awaiter8.IsCompleted)
-           {
-               num = (<>1__state = 0);
-               <>u__1 = awaiter8;
-               <Main>d__0 stateMachine = this;
-               <>t__builder.AwaitUnsafeOnCompleted(ref awaiter8, ref stateMachine);
-               return;
-           }
-           goto IL_00fe;
-         */
-
-        // build awaiter continue:
-        /*
-           awaiter8 = <>u__1;
-           <>u__1 = default(TaskAwaiter<int>);
-           num = (<>1__state = -1);
-           goto IL_00fe;
-        */
-
-        // Pop the final node and set it as current state
-        _currentState = _finalNodes.Pop();
-
-        return node;
-    }
-
-    protected override Expression VisitMethodCall( MethodCallExpression node )
-    {
-        foreach ( var nodeArgument in node.Arguments )
+        protected override Expression VisitConditional( ConditionalExpression node )
         {
-            Visit( nodeArgument );
-        }
+            Visit( node.Test );
 
-        _currentState.Expressions.Add( node );
+            var currentStateIndex = _currentStateIndex;
 
-        return node;
-    }
+            var ifTrueIndex = InsertState( node.IfTrue );
+            var ifFalseIndex = (node.IfFalse is not DefaultExpression) ? InsertState( node.IfFalse ) : -1;
 
-    protected override Expression VisitBinary( BinaryExpression node )
-    {
-        _currentState.Expressions.Add( node );
-        return node;
-    }
+            var continueToIndex = InsertState();
+            PushContinueTo( continueToIndex );
 
-    protected override Expression VisitParameter( ParameterExpression node )
-    {
-        _currentState.Expressions.Add( node );
-        return node;
-    }
-
-    protected override Expression VisitConstant( ConstantExpression node )
-    {
-        _currentState.Expressions.Add( node );
-        return node;
-    }
-
-    protected override Expression VisitGoto( GotoExpression node )
-    {
-        // Handle goto if necessary
-        _currentState.Expressions.Add( node );
-
-        var gotoNode = new StateNode( _labelCounter++ );
-        _states.Add( gotoNode );
-        _currentState.Goto = gotoNode;
-        gotoNode.Final = CreateLabelBlock( node.Target );
-
-        return node;
-    }
-
-    protected override Expression VisitUnary( UnaryExpression node )
-    {
-        if(node.NodeType == ExpressionType.Throw)
-        {
-            _currentState.Expressions.Add( node );
-            return node;
-        }
-
-        return base.VisitUnary( node );
-    }
-
-    protected override Expression VisitLabel( LabelExpression node )
-    {
-        // Create a label state block and map it to the label target
-        CreateLabelBlock( node.Target );
-        return node;
-    }
-
-    private StateNode CreateLabelBlock( LabelTarget label )
-    {
-        if ( _labelMappings.TryGetValue( label, out var id ) )
-        {
-            return _states.First( x => x.BlockId == id );
-        }
-
-        var block = new StateNode( _labelCounter++ );
-        _labelMappings[label] = block.BlockId;
-        _states.Add( block );
-        return block;
-    }
-
-    private void ProcessBranch( Expression expression, StateNode stateNode, StateNode final )
-    {
-        _states.Add( stateNode );
-        _currentState = stateNode;
-
-        Visit( expression );
-
-        // TODO: This Add doesn't work for everyone
-        _currentState.Expressions.Add( Goto( final.Label ) );
-        _currentState.Final = final;
-    }
-
-    public void PrintStateMachine()
-    {
-        PrintStateMachine( _states );
-    }
-
-    public static void PrintStateMachine( List<StateNode> states )
-    {
-        foreach ( var state in states )
-        {
-            Console.WriteLine( $"{state.Label}: {(state.ContinuationId != null ? $" (state: {state.ContinuationId})" : string.Empty)}" );
-            foreach ( var expr in state.Expressions )
-            {
-                Console.WriteLine( $"\t{ExpressionToString( expr )}" );
-            }
-
-            if ( state.Cases != null )
-            {
-                foreach ( var caseNode in state.Cases )
-                {
-                    Console.WriteLine( $"\tCase -> {caseNode.Label}" );
-                }
-            }
-            if ( state.Await != null )
-                Console.WriteLine( $"\tAwait -> {state.Await.Label}" );
-            if ( state.IfTrue != null )
-                Console.WriteLine( $"\tIfTrue -> {state.IfTrue.Label}" );
-            if ( state.IfFalse != null )
-                Console.WriteLine( $"\tIfFalse -> {state.IfFalse.Label}" );
-            if ( state.Final != null )
-                Console.WriteLine( $"\tFinal -> {state.Final.Label}" );
-            if( state.Goto != null )
-                Console.WriteLine( $"\tGoto -> {state.Goto.Label}" );
-            if ( state.IsTerminal )
-                Console.WriteLine( "\tTerminal" );
-            Console.WriteLine();
-        }
-
-        return;
-
-
-        static string GetBinaryOperator( ExpressionType nodeType )
-        {
-            return nodeType switch
-            {
-                ExpressionType.Assign => "=",
-                ExpressionType.GreaterThan => ">",
-                ExpressionType.LessThan => "<",
-                ExpressionType.Add => "+",
-                ExpressionType.Subtract => "-",
-                ExpressionType.Multiply => "*",
-                ExpressionType.Divide => "/",
-                _ => nodeType.ToString()
+            var conditionalTransition = new ConditionalTransition 
+            { 
+                IfTrue = _states[ifTrueIndex], 
+                IfFalse = ifFalseIndex >= -1 ? _states[ifFalseIndex] : null, 
+                ContinueTo = _states[continueToIndex] 
             };
+
+            _states[currentStateIndex].Transition = conditionalTransition;
+            _currentStateIndex = PopContinueTo();
+
+            return node;
         }
 
-        static string ExpressionToString( Expression expr )
+        protected override Expression VisitSwitch( SwitchExpression node )
         {
-            switch ( expr )
+            Visit( node.SwitchValue );
+
+            var currentStateIndex = _currentStateIndex;
+            var switchTransition = new SwitchTransition();
+
+            var continueToIndex = InsertState();
+            PushContinueTo( continueToIndex );
+
+            foreach ( var switchCase in node.Cases )
             {
-                case MethodCallExpression m:
-                    var args = string.Join( ", ", m.Arguments.Select( ExpressionToString ) );
-                    return $"{m.Method.Name}({args})";
-                case BinaryExpression b:
-                    return $"{ExpressionToString( b.Left )} {GetBinaryOperator( b.NodeType )} {ExpressionToString( b.Right )}";
-                case ParameterExpression p:
-                    return p.Name;
-                case ConstantExpression c:
-                    return c.Value?.ToString() ?? "empty";
-                case GotoExpression g:
-                    return $"goto {g.Target.Name}";
-                case UnaryExpression u:
-                    return $"{u.NodeType} {ExpressionToString( u.Operand )}";
-                default:
-                    return expr.ToString();
+                var caseIndex = InsertState( switchCase.Body );
+
+                _states[caseIndex].Transition = new DefaultTransition 
+                { 
+                    ContinueTo = _states[continueToIndex]
+                };
+
+                switchTransition.CaseNodes.Add( _states[caseIndex] );
             }
+
+            if ( node.DefaultBody != null )
+            {
+                var defaultIndex = InsertState( node.DefaultBody );
+
+                _states[defaultIndex].Transition = new DefaultTransition 
+                { 
+                    ContinueTo = _states[continueToIndex] 
+                };
+
+                switchTransition.DefaultNode = _states[defaultIndex];
+            }
+
+            continueToIndex = PopContinueTo();
+
+            switchTransition.ContinueTo = _states[continueToIndex];
+
+            _states[currentStateIndex].Transition = switchTransition;
+            _currentStateIndex = continueToIndex;
+
+            return node;
+        }
+
+        protected override Expression VisitTry( TryExpression node ) //BF awaits aren't allowed in try-catch-finally. Are we doing too much?
+        {
+            var currentStateIndex = _currentStateIndex;
+
+            var tryCatchTransition = new TryCatchTransition();
+
+            var continueToIndex = InsertState();
+            PushContinueTo( continueToIndex );
+
+            var tryIndex = InsertState( node.Body );
+            tryCatchTransition.TryNode = _states[tryIndex];
+
+            foreach ( var catchBlock in node.Handlers )
+            {
+                var catchIndex = InsertState( catchBlock.Body );
+                tryCatchTransition.CatchNodes.Add( _states[catchIndex] );
+            }
+
+            if ( node.Finally != null )
+            {
+                var finallyIndex = InsertState( node.Finally );
+                tryCatchTransition.FinallyNode = _states[finallyIndex];
+            }
+
+            continueToIndex = PopContinueTo();
+            
+            tryCatchTransition.ContinueTo = _states[continueToIndex];
+
+            _states[currentStateIndex].Transition = tryCatchTransition;
+            _currentStateIndex = continueToIndex;
+
+            return node;
+        }
+
+        protected override Expression VisitExtension( Expression node )
+        {
+            if ( node is not AwaitExpression awaitExpression )
+            {
+                CurrentState.Expressions.Add( node );
+                return node;
+            }
+
+            var currentStateIndex = _currentStateIndex;
+
+            // awaiter-finally
+            var continueToIndex = InsertState();
+            PushContinueTo( continueToIndex );
+
+            // awaiter-continuation
+            var completionStateIndex = InsertState( awaitExpression.Target ); 
+
+            var gotoTransition = new GotoTransition
+            {
+                TargetNode = _states[continueToIndex]
+            };
+
+            _states[completionStateIndex].Transition = gotoTransition;
+
+            // awaiter
+            var awaitTransition = new AwaitTransition 
+            { 
+                ContinuationId = _continuationCounter++,
+                CompletionNode = _states[completionStateIndex],
+                ContinueTo = _states[continueToIndex] 
+            };
+
+            _states[currentStateIndex].Transition = awaitTransition;
+
+            _currentStateIndex = PopContinueTo();
+
+            // build awaiter
+            /*
+               awaiter8 = GetRandom().GetAwaiter();
+               if (!awaiter8.IsCompleted)
+               {
+                   num = (<>1__state = 0);
+                   <>u__1 = awaiter8;
+                   <Main>d__0 stateMachine = this;
+                   <>t__builder.AwaitUnsafeOnCompleted(ref awaiter8, ref stateMachine);
+                   return;
+               }
+               goto IL_00fe;
+             */
+
+            // build awaiter continuation
+            /*
+               awaiter8 = <>u__1;
+               <>u__1 = default(TaskAwaiter<int>);
+               num = (<>1__state = -1);
+               goto IL_00fe;
+            */
+
+            return node;
+        }
+
+        protected override Expression VisitMethodCall( MethodCallExpression node )
+        {
+            foreach ( var nodeArgument in node.Arguments )
+            {
+                Visit( nodeArgument );
+            }
+
+            CurrentState.Expressions.Add( node );
+            return node;
+        }
+
+        protected override Expression VisitBinary( BinaryExpression node )
+        {
+            CurrentState.Expressions.Add( node );
+            return node;
+        }
+
+        protected override Expression VisitParameter( ParameterExpression node )
+        {
+            CurrentState.Expressions.Add( node );
+            return node;
+        }
+
+        protected override Expression VisitConstant( ConstantExpression node )
+        {
+            CurrentState.Expressions.Add( node );
+            return node;
+        }
+
+        protected override Expression VisitUnary( UnaryExpression node )
+        {
+            if ( node.NodeType != ExpressionType.Throw )
+            {
+                return base.VisitUnary( node );
+            }
+
+            CurrentState.Expressions.Add( node );
+            return node;
+        }
+
+        protected override Expression VisitGoto( GotoExpression node )
+        {
+            var currentStateIndex = _currentStateIndex;
+            
+            var gotoTransition = new GotoTransition 
+            { 
+                TargetNode = _states[GetOrCreateLabelIndex( node.Target )] 
+            };
+
+            _states[currentStateIndex].Transition = gotoTransition;
+            return node;
+        }
+
+        protected override Expression VisitLabel( LabelExpression node )
+        {
+            var labelIndex = GetOrCreateLabelIndex( node.Target );
+            
+            _states[labelIndex].Transition ??= new LabelTransition();
+
+            return node;
+        }
+
+        private int GetOrCreateLabelIndex( LabelTarget label )
+        {
+            if ( _labelMappings.TryGetValue( label, out var index ) )
+            {
+                return index;
+            }
+
+            index = InsertState();
+            _labelMappings[label] = index;
+
+            return index;
+        }
+
+        public void PrintStateMachine()
+        {
+            PrintStateMachine( _states );
+        }
+
+        public static void PrintStateMachine( List<StateNode> states )
+        {
+            foreach ( var state in states )
+            {
+                if ( state == null )
+                    continue;
+
+                var transitionName = state?.Transition?.GetType().Name ?? "Null";
+
+                Console.WriteLine( $"{state.Label.Name}: [{transitionName}]" );
+
+                foreach ( var expr in state.Expressions )
+                {
+                    Console.WriteLine( $"\t{ExpressionToString( expr )}" );
+                }
+
+                var transition = state.Transition;
+
+                if ( transition != null )
+                {
+                    switch ( transition )
+                    {
+                        case ConditionalTransition condNode:
+                            Console.WriteLine( $"\tIfTrue -> {condNode.IfTrue?.BlockId}" );
+                            Console.WriteLine( $"\tIfFalse -> {condNode.IfFalse?.BlockId}" );
+                            break;
+                        case SwitchTransition switchNode:
+                            foreach ( var caseNode in switchNode.CaseNodes )
+                            {
+                                Console.WriteLine( $"\tCase -> {caseNode?.BlockId}" );
+                            }
+
+                            Console.WriteLine( $"\tDefault -> {switchNode.DefaultNode?.BlockId}" );
+                            break;
+                        case TryCatchTransition tryNode:
+                            Console.WriteLine( $"\tTry -> {tryNode.TryNode?.BlockId}" );
+                            foreach ( var catchNode in tryNode.CatchNodes )
+                            {
+                                Console.WriteLine( $"\tCatch -> {catchNode?.BlockId}" );
+                            }
+
+                            Console.WriteLine( $"\tFinally -> {tryNode.FinallyNode?.BlockId}" );
+                            break;
+                        case AwaitTransition awaitNode:
+                            Console.WriteLine( $"\tAwait -> {awaitNode.CompletionNode?.BlockId}" );
+                            break;
+                        case GotoTransition gotoNode:
+                            Console.WriteLine( $"\tGoto -> {gotoNode.TargetNode?.BlockId}" );
+                            break;
+
+                        case LabelTransition:
+                        case DefaultTransition:
+                            break;
+                    }
+                }
+
+                if ( state.Transition?.ContinueTo != null )
+                    Console.WriteLine( $"\tContinueTo -> {state.Transition.ContinueTo.BlockId}" );
+
+                if ( state.Transition == null )
+                    Console.WriteLine( "\tTerminal" );
+
+                Console.WriteLine();
+            }
+        }
+
+        private static string ExpressionToString( Expression expr )
+        {
+            return expr.ToString();
         }
     }
 }

@@ -59,7 +59,7 @@ public class ParameterMappingVisitor( Expression instance, List<FieldBuilder> fi
                 Visit( awaitableBlock.After );
                 return node;
             case AwaitExpression awaitExpression:
-                return Visit( awaitExpression.Target );
+                return Visit( awaitExpression.Target )!;
             default:
                 return base.VisitExtension( node );
         }

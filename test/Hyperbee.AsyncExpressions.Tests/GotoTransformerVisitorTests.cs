@@ -51,7 +51,7 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( ifThenElseExpr );
 
         // Assert
@@ -76,7 +76,7 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( switchBlock );
 
         // Assert
@@ -101,7 +101,7 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( switchBlock );
 
         // Assert
@@ -124,7 +124,7 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( callExpr );
 
         // Assert
@@ -145,7 +145,7 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( callExpr );
 
         // Assert
@@ -168,7 +168,7 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( gotoExpr );
 
         // Assert
@@ -197,7 +197,7 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( whileBlockExpr );
         
         // Assert
@@ -223,7 +223,7 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( tryCatchExpr );
 
         // Assert
@@ -257,7 +257,7 @@ public class GotoTransformerVisitorTests
             Constant( 5 )
         );
 
-        var transformer = new GotoTransformerVisitor();
+        var transformer = new GotoTransformerVisitor0();
         transformer.Transform( ifThenElseExpr );
 
         transformer.PrintStateMachine();

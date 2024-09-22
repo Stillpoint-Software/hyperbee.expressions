@@ -597,6 +597,7 @@ public static class StateMachineBuilder
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "DynamicStateMachine" );
         stateMachineBuilder.SetExpressionSource( source );
+
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( createRunner );
 
         return stateMachineExpression;
