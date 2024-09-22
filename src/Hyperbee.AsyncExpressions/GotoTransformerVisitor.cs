@@ -68,7 +68,7 @@ namespace Hyperbee.AsyncExpressions
             var conditionalTransition = new ConditionalTransition 
             { 
                 IfTrue = _states[ifTrueIndex], 
-                IfFalse = ifFalseIndex >= -1 ? _states[ifFalseIndex] : null, 
+                IfFalse = ifFalseIndex >= 0 ? _states[ifFalseIndex] : null, 
                 ContinueTo = _states[continueToIndex] 
             };
 
@@ -181,11 +181,11 @@ namespace Hyperbee.AsyncExpressions
             _states[completionStateIndex].Transition = gotoTransition;
 
             // awaiter
-            var awaitTransition = new AwaitTransition 
-            { 
+            var awaitTransition = new AwaitTransition
+            {
                 ContinuationId = _continuationCounter++,
                 CompletionNode = _states[completionStateIndex],
-                ContinueTo = _states[continueToIndex] 
+                ContinueTo = _states[continueToIndex]
             };
 
             _states[currentStateIndex].Transition = awaitTransition;
@@ -320,31 +320,31 @@ namespace Hyperbee.AsyncExpressions
                     switch ( transition )
                     {
                         case ConditionalTransition condNode:
-                            Console.WriteLine( $"\tIfTrue -> {condNode.IfTrue?.BlockId}" );
-                            Console.WriteLine( $"\tIfFalse -> {condNode.IfFalse?.BlockId}" );
+                            Console.WriteLine( $"\tIfTrue -> {condNode.IfTrue?.Label}" );
+                            Console.WriteLine( $"\tIfFalse -> {condNode.IfFalse?.Label}" );
                             break;
                         case SwitchTransition switchNode:
                             foreach ( var caseNode in switchNode.CaseNodes )
                             {
-                                Console.WriteLine( $"\tCase -> {caseNode?.BlockId}" );
+                                Console.WriteLine( $"\tCase -> {caseNode?.Label}" );
                             }
 
-                            Console.WriteLine( $"\tDefault -> {switchNode.DefaultNode?.BlockId}" );
+                            Console.WriteLine( $"\tDefault -> {switchNode.DefaultNode?.Label}" );
                             break;
                         case TryCatchTransition tryNode:
-                            Console.WriteLine( $"\tTry -> {tryNode.TryNode?.BlockId}" );
+                            Console.WriteLine( $"\tTry -> {tryNode.TryNode?.Label}" );
                             foreach ( var catchNode in tryNode.CatchNodes )
                             {
-                                Console.WriteLine( $"\tCatch -> {catchNode?.BlockId}" );
+                                Console.WriteLine( $"\tCatch -> {catchNode?.Label}" );
                             }
 
-                            Console.WriteLine( $"\tFinally -> {tryNode.FinallyNode?.BlockId}" );
+                            Console.WriteLine( $"\tFinally -> {tryNode.FinallyNode?.Label}" );
                             break;
                         case AwaitTransition awaitNode:
-                            Console.WriteLine( $"\tAwait -> {awaitNode.CompletionNode?.BlockId}" );
+                            Console.WriteLine( $"\tAwait -> {awaitNode.CompletionNode?.Label}" );
                             break;
                         case GotoTransition gotoNode:
-                            Console.WriteLine( $"\tGoto -> {gotoNode.TargetNode?.BlockId}" );
+                            Console.WriteLine( $"\tGoto -> {gotoNode.TargetNode?.Label}" );
                             break;
 
                         case LabelTransition:
@@ -354,7 +354,7 @@ namespace Hyperbee.AsyncExpressions
                 }
 
                 if ( state.Transition?.ContinueTo != null )
-                    Console.WriteLine( $"\tContinueTo -> {state.Transition.ContinueTo.BlockId}" );
+                    Console.WriteLine( $"\tContinueTo -> {state.Transition.ContinueTo.Label}" );
 
                 if ( state.Transition == null )
                     Console.WriteLine( "\tTerminal" );
