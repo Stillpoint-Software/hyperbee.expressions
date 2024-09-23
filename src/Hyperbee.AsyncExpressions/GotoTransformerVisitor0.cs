@@ -38,14 +38,16 @@ public class GotoTransformerVisitor0 : ExpressionVisitor
         // Always lift Condition to current state
         Visit( node.Test );
 
+        var conditionalNode = _currentState;
+
         // Push the final node to stack for later convergence
         var hasFalse = node.IfFalse is not DefaultExpression;
         var ifTrueNode = new StateNode0( _labelCounter++ );
         var ifFalseNode = hasFalse ? new StateNode0( _labelCounter++ ) : null;
         var finalNode = new StateNode0( _labelCounter++ );
 
-        _currentState.IfTrue = ifTrueNode;
-        _currentState.IfFalse = ifFalseNode;
+        conditionalNode.IfTrue = ifTrueNode;
+        conditionalNode.IfFalse = ifFalseNode;
 
         _states.Add( finalNode );
         _finalNodes.Push( finalNode );
@@ -82,12 +84,13 @@ public class GotoTransformerVisitor0 : ExpressionVisitor
         foreach ( var switchCase in node.Cases )
         {
             var caseNode = new StateNode0( _labelCounter++ );
+            ProcessBranch( switchCase.Body, caseNode, finalNode );
+
             switchNode.Cases.Add( caseNode );
 
             // Add case label to the state
             cases.Add( SwitchCase( Goto( caseNode.Label ), switchCase.TestValues ) );
 
-            ProcessBranch( switchCase.Body, caseNode, finalNode );
         }
 
         // Handle default case if present
@@ -347,7 +350,11 @@ public class GotoTransformerVisitor0 : ExpressionVisitor
         _states.Add( stateNode );
         _currentState = stateNode;
 
+        //Console.WriteLine("Before: {0}", _currentState.Label.Name);
+
         Visit( expression );
+
+        //Console.WriteLine( "After: {0}", _currentState.Label.Name );
 
         // TODO: This Add doesn't work for everyone
         _currentState.Expressions.Add( Goto( final.Label ) );

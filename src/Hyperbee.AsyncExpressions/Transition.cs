@@ -2,7 +2,7 @@
 
 public enum TransitionType
 {
-    Default, // Represents a no-op or default transition
+    None, // Represents a no-op or default transition
     Conditional, // Conditional transitions (e.g., if-else)
     Switch, // Switch case transitions
     TryCatch, // Try-catch-finally transitions
@@ -15,19 +15,9 @@ public enum TransitionType
 public abstract class TransitionNode
 {
     public TransitionType TransitionType { get; }
-    public StateNode ContinueTo { get; set; } 
-
     protected TransitionNode( TransitionType transitionType )
     {
         TransitionType = transitionType;
-    }
-}
-
-public class DefaultTransition : TransitionNode
-{
-    public DefaultTransition()
-        : base( TransitionType.Default )
-    {
     }
 }
 

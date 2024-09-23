@@ -16,32 +16,51 @@ namespace Hyperbee.AsyncExpressions
 
         public List<StateNode> Transform( Expression expression )
         {
-            _currentStateIndex = InsertState();
+            InsertState( out _currentStateIndex );
 
             Visit( expression );
 
             return _states;
         }
 
-        private int InsertState()
+        private StateNode InsertState( out int index )
         {
-            _states.Add( new StateNode( _labelCounter++ ) );
-            return _states.Count - 1;
+            var stateNode = new StateNode( _labelCounter++ );
+            _states.Add( stateNode );
+
+            index = _states.Count - 1;
+            return stateNode;
         }
 
-        private int InsertState( Expression expression, int continueToIndex = -1 )
+        private StateNode VisitState( Expression expression, int continueToIndex )
         {
-            var stateIndex = InsertState();
-            _currentStateIndex = stateIndex;
+            var state = InsertState( out var index );
+            _currentStateIndex = index;
 
-            Visit( expression ); // Visit may mutate _currentStateIndex
-            
-            if ( continueToIndex >= 0 && _states[stateIndex].Transition == null ) 
-            {
-                _states[stateIndex].Transition = new GotoTransition { TargetNode = _states[continueToIndex] };
-            }
+            Visit( expression );
 
-            return stateIndex;
+            _states[_currentStateIndex].ContinueTo = _states[continueToIndex];
+
+            return state;
+        }
+
+        private int EnterTransition( out int currentStateIndex )
+        {
+            InsertState( out var continueToIndex );
+            PushContinueTo( continueToIndex );
+            currentStateIndex = _currentStateIndex;
+
+            return continueToIndex;
+        }
+
+        private void ExitTransition( TransitionNode transitionNode, int transitionStateIndex, int continueToIndex )
+        {
+            var transitionState = _states[transitionStateIndex];
+
+            transitionState.Transition = transitionNode;
+            transitionState.ContinueTo = _states[continueToIndex];
+
+            _currentStateIndex = PopContinueTo();
         }
 
         private void PushContinueTo( int index ) => _continueToIndexes.Push( index );
@@ -62,26 +81,16 @@ namespace Hyperbee.AsyncExpressions
         {
             Visit( node.Test );
 
-            var currentStateIndex = _currentStateIndex;
-
-            var continueToIndex = InsertState();
-            PushContinueTo( continueToIndex );
-
-            var ifTrueIndex = InsertState( node.IfTrue, continueToIndex );
-            var ifFalseIndex = (node.IfFalse is not DefaultExpression) ? InsertState( node.IfFalse, continueToIndex ) : -1;
-
-            var conditionalTransition = new ConditionalTransition 
-            { 
-                IfTrue = _states[ifTrueIndex], 
-                IfFalse = ifFalseIndex >= 0 ? _states[ifFalseIndex] : null, 
-                ContinueTo = _states[continueToIndex] 
+            var continueToIndex = EnterTransition( out var currentStateIndex );
+            var conditionalTransition = new ConditionalTransition
+            {
+                IfTrue = VisitState( node.IfTrue, continueToIndex ),
+                IfFalse = (node.IfFalse is not DefaultExpression)
+                    ? VisitState( node.IfFalse, continueToIndex )
+                    : null
             };
 
-            _states[currentStateIndex].Transition = conditionalTransition;
-            _currentStateIndex = PopContinueTo();
-
-            if ( _states[_currentStateIndex].Transition == null && _continueToIndexes.Count > 0 ) // BF: Feel like a bit of a hack.
-                _states[_currentStateIndex].Transition = new GotoTransition { TargetNode = _states[_continueToIndexes.Peek()] };
+            ExitTransition( conditionalTransition, currentStateIndex, continueToIndex );
 
             return node;
         }
@@ -90,77 +99,43 @@ namespace Hyperbee.AsyncExpressions
         {
             Visit( node.SwitchValue );
 
-            var currentStateIndex = _currentStateIndex;
+            var continueToIndex = EnterTransition( out var currentStateIndex );
             var switchTransition = new SwitchTransition();
-
-            var continueToIndex = InsertState();
-            PushContinueTo( continueToIndex );
-
-            foreach ( var switchCase in node.Cases )
-            {
-                var caseIndex = InsertState( switchCase.Body );
-
-                _states[caseIndex].Transition = new DefaultTransition 
-                { 
-                    ContinueTo = _states[continueToIndex]
-                };
-
-                switchTransition.CaseNodes.Add( _states[caseIndex] );
-            }
 
             if ( node.DefaultBody != null )
             {
-                var defaultIndex = InsertState( node.DefaultBody );
-
-                _states[defaultIndex].Transition = new DefaultTransition 
-                { 
-                    ContinueTo = _states[continueToIndex] 
-                };
-
-                switchTransition.DefaultNode = _states[defaultIndex];
+                switchTransition.DefaultNode = VisitState( node.DefaultBody, continueToIndex );
             }
 
-            _states[currentStateIndex].Transition = switchTransition;
-            _currentStateIndex = PopContinueTo();
+            foreach ( var switchCase in node.Cases )
+            {
+                switchTransition.CaseNodes.Add( VisitState( switchCase.Body, continueToIndex ) );
+            }
 
-            switchTransition.ContinueTo = _states[_currentStateIndex];
-
-            if ( _states[_currentStateIndex].Transition == null && _continueToIndexes.Count > 0 ) // BF: Feel like a bit of a hack.
-                _states[_currentStateIndex].Transition = new GotoTransition { TargetNode = _states[_continueToIndexes.Peek()] };
+            ExitTransition( switchTransition, currentStateIndex, continueToIndex );
 
             return node;
         }
 
-        protected override Expression VisitTry( TryExpression node ) //BF awaits aren't allowed in try-catch-finally. Are we doing too much?
+        protected override Expression VisitTry( TryExpression node )
         {
-            var currentStateIndex = _currentStateIndex;
-
-            var tryCatchTransition = new TryCatchTransition();
-
-            var continueToIndex = InsertState();
-            PushContinueTo( continueToIndex );
-
-            var tryIndex = InsertState( node.Body, continueToIndex );
-            tryCatchTransition.TryNode = _states[tryIndex];
+            var continueToIndex = EnterTransition( out var currentStateIndex );
+            var tryCatchTransition = new TryCatchTransition
+            {
+                TryNode = VisitState( node.Body, continueToIndex )
+            };
 
             foreach ( var catchBlock in node.Handlers )
             {
-                var catchIndex = InsertState( catchBlock.Body, continueToIndex );
-                tryCatchTransition.CatchNodes.Add( _states[catchIndex] );
+                tryCatchTransition.CatchNodes.Add( VisitState( catchBlock.Body, continueToIndex ) );
             }
 
             if ( node.Finally != null )
             {
-                var finallyIndex = InsertState( node.Finally, continueToIndex );
-                tryCatchTransition.FinallyNode = _states[finallyIndex];
+                tryCatchTransition.FinallyNode = VisitState( node.Finally, continueToIndex );
             }
 
-            continueToIndex = PopContinueTo();
-            
-            tryCatchTransition.ContinueTo = _states[continueToIndex];
-
-            _states[currentStateIndex].Transition = tryCatchTransition;
-            _currentStateIndex = continueToIndex;
+            ExitTransition( tryCatchTransition, currentStateIndex, continueToIndex );
 
             return node;
         }
@@ -173,33 +148,23 @@ namespace Hyperbee.AsyncExpressions
                 return node;
             }
 
-            var currentStateIndex = _currentStateIndex;
+            var continueToIndex = EnterTransition( out var currentStateIndex );
+            var awaitTransition = new AwaitTransition();
 
-            // awaiter-finally
-            var continueToIndex = InsertState();
-            PushContinueTo( continueToIndex );
-
-            // awaiter-continuation
-            var completionStateIndex = InsertState( awaitExpression.Target ); 
+            var awaitResultState = VisitState( awaitExpression.Target, continueToIndex ); 
 
             var gotoTransition = new GotoTransition
             {
                 TargetNode = _states[continueToIndex]
             };
 
-            _states[completionStateIndex].Transition = gotoTransition;
+            awaitResultState.Transition = gotoTransition;
 
             // awaiter
-            var awaitTransition = new AwaitTransition
-            {
-                ContinuationId = _continuationCounter++,
-                CompletionNode = _states[completionStateIndex],
-                ContinueTo = _states[continueToIndex]
-            };
+            awaitTransition.ContinuationId = _continuationCounter++;
+            awaitTransition.CompletionNode = awaitResultState;
 
-            _states[currentStateIndex].Transition = awaitTransition;
-
-            _currentStateIndex = PopContinueTo();
+            ExitTransition( awaitTransition, currentStateIndex, continueToIndex );
 
             // build awaiter
             /*
@@ -266,16 +231,34 @@ namespace Hyperbee.AsyncExpressions
             return node;
         }
 
+        // protected override LabelTarget VisitLabelTarget( LabelTarget node )
+        // {
+        //     CurrentState.Label = node;
+        //     return node;
+        // }
+
         protected override Expression VisitGoto( GotoExpression node )
         {
-            var currentStateIndex = _currentStateIndex;
-            
-            var gotoTransition = new GotoTransition 
-            { 
-                TargetNode = _states[GetOrCreateLabelIndex( node.Target )] 
-            };
+            var gotoTransition = new GotoTransition();
 
-            _states[currentStateIndex].Transition = gotoTransition;
+            var continueToIndex = GetOrCreateLabelIndex( node.Target );
+            VisitLabelTarget( node.Target );
+            PushContinueTo( continueToIndex );
+
+            gotoTransition.TargetNode = _states[continueToIndex];
+
+            _states[continueToIndex].ContinueTo = _states[_currentStateIndex];
+
+            _currentStateIndex = PopContinueTo();
+
+            // var currentStateIndex = _currentStateIndex;
+            //
+            // var gotoTransition = new GotoTransition 
+            // { 
+            //     TargetNode = _states[GetOrCreateLabelIndex( node.Target )] 
+            // };
+            //
+            // _states[currentStateIndex].Transition = gotoTransition;
             return node;
         }
 
@@ -295,8 +278,8 @@ namespace Hyperbee.AsyncExpressions
                 return index;
             }
 
-            index = InsertState();
-            _labelMappings[label] = index;
+            InsertState( out var stateIndex );
+            _labelMappings[label] = stateIndex;
 
             return index;
         }
@@ -357,18 +340,14 @@ namespace Hyperbee.AsyncExpressions
                             break;
 
                         case LabelTransition:
-                        case DefaultTransition:
                             break;
                     }
                 }
 
-                if ( state.Transition?.ContinueTo != null )
-                    Console.WriteLine( $"\tContinueTo -> {state.Transition.ContinueTo.Label}" );
-
-                if ( state.Transition == null )
-                    Console.WriteLine( "\tTerminal" );
-
-                Console.WriteLine();
+                Console.WriteLine(
+                    state.ContinueTo != null 
+                        ? $"\tContinueTo -> {state.ContinueTo.Label}"
+                        : "\tTerminal" );
             }
         }
 

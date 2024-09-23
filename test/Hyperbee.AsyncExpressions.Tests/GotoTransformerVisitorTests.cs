@@ -59,6 +59,44 @@ public class GotoTransformerVisitorTests
     }
 
     [TestMethod]
+    public void GotoTransformer_WithNestedSwitch()
+    {
+
+        var switchBlock = Block(
+            Constant( "before switch" ),
+            Switch(
+                Constant( "switchTest" ),
+                Constant( 1.1 ),
+                [
+                    SwitchCase( Constant( 1.2 ), Constant( "TestValue1" ) ),
+                    SwitchCase( Block(
+                        Constant( "nested switch" ),
+                        Switch(
+                            Constant( "nestedSwitchTest" ),
+                            Constant( 2.1 ),
+                            [
+                                SwitchCase( Constant( 2.2 ), Constant( "NestedTestValue1" ) ),
+                                SwitchCase( Constant( 2.3 ), Constant( "NestedTestValue2" ) )
+                            ]
+                        ),
+                        Constant( 1.3 )
+                    ), Constant( "TestValue2" ) ),
+                    SwitchCase( Constant( 1.4 ), Constant( "TestValue3" ) )
+                ]
+            ),
+            Constant( "after switch" )
+        );
+
+        // Act
+        var transformer = new GotoTransformerVisitor();
+        transformer.Transform( switchBlock );
+
+        // Assert
+        transformer.PrintStateMachine();
+    }
+
+
+    [TestMethod]
     public void GotoTransformer_WithSwitch()
     {
         var switchBlock = Block(
