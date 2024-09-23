@@ -296,16 +296,18 @@ namespace Hyperbee.AsyncExpressions
                 if ( state == null )
                     continue;
 
-                var transitionName = state?.Transition?.GetType().Name ?? "Null";
+                var transition = state.Transition;
 
-                Console.WriteLine( $"{state.Label.Name}: [{transitionName}]" );
+                var transitionName = transition?.GetType().Name ?? "Null";
+                
+                var continuationId = (transition is AwaitTransition awaitTransition) ? awaitTransition.ContinuationId : -1;
+
+                Console.WriteLine( $"{state.Label.Name}: [{transitionName}] {(continuationId != -1 ? $" (state: {continuationId})" : string.Empty)}" );
 
                 foreach ( var expr in state.Expressions )
                 {
                     Console.WriteLine( $"\t{ExpressionToString( expr )}" );
                 }
-
-                var transition = state.Transition;
 
                 if ( transition != null )
                 {
@@ -313,7 +315,9 @@ namespace Hyperbee.AsyncExpressions
                     {
                         case ConditionalTransition condNode:
                             Console.WriteLine( $"\tIfTrue -> {condNode.IfTrue?.Label}" );
-                            Console.WriteLine( $"\tIfFalse -> {condNode.IfFalse?.Label}" );
+
+                            if ( condNode.IfFalse != null )
+                                Console.WriteLine( $"\tIfFalse -> {condNode.IfFalse?.Label}" );
                             break;
                         case SwitchTransition switchNode:
                             foreach ( var caseNode in switchNode.CaseNodes )
@@ -348,12 +352,46 @@ namespace Hyperbee.AsyncExpressions
                     state.ContinueTo != null 
                         ? $"\tContinueTo -> {state.ContinueTo.Label}"
                         : "\tTerminal" );
+
+                Console.WriteLine();
             }
         }
 
-        private static string ExpressionToString( Expression expr )
+        static string GetBinaryOperator( ExpressionType nodeType )
         {
-            return expr.ToString();
+            return nodeType switch
+            {
+                ExpressionType.Assign => "=",
+                ExpressionType.GreaterThan => ">",
+                ExpressionType.LessThan => "<",
+                ExpressionType.Add => "+",
+                ExpressionType.Subtract => "-",
+                ExpressionType.Multiply => "*",
+                ExpressionType.Divide => "/",
+                _ => nodeType.ToString()
+            };
+        }
+
+        static string ExpressionToString( Expression expr )
+        {
+            switch ( expr )
+            {
+                case MethodCallExpression m:
+                    var args = string.Join( ", ", m.Arguments.Select( ExpressionToString ) );
+                    return $"{m.Method.Name}({args})";
+                case BinaryExpression b:
+                    return $"{ExpressionToString( b.Left )} {GetBinaryOperator( b.NodeType )} {ExpressionToString( b.Right )}";
+                case ParameterExpression p:
+                    return p.Name;
+                case ConstantExpression c:
+                    return c.Value?.ToString() ?? "empty";
+                case GotoExpression g:
+                    return $"goto {g.Target.Name}";
+                case UnaryExpression u:
+                    return $"{u.NodeType} {ExpressionToString( u.Operand )}";
+                default:
+                    return expr.ToString();
+            }
         }
     }
 }
