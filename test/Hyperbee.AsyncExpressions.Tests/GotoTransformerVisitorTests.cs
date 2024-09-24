@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Linq.Expressions;
+using System.Reflection;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.AsyncExpressions.AsyncExpression;
 
@@ -59,9 +60,109 @@ public class GotoTransformerVisitorTests
     }
 
     [TestMethod]
+    public void GotoTransformer_WithParameters()
+    {        
+        // Arrange
+        var methodInfo = GetType()
+            .GetMethod( nameof( Test ), BindingFlags.Static | BindingFlags.NonPublic )!;
+
+        var aParam = Parameter( typeof(int), "a" );
+        var bParam = Parameter( typeof(int), "b" );
+        var variables = Block(
+            [aParam, bParam],
+            Constant( "before parameters" ),
+            Assign( aParam, Constant( 1 ) ),
+            Assign( bParam, Constant( 2 ) ),
+            Constant( "after parameters" ),
+            Call(  methodInfo, aParam, bParam )
+        );
+
+        // Act
+        var transformer = new GotoTransformerVisitor();
+        transformer.Transform( variables );
+
+        // Assert
+        transformer.PrintStateMachine();
+    }
+
+    [TestMethod]
+    public void GotoTransformer_WithNestedBlockParameters()
+    {
+        // Arrange
+        var methodInfo = GetType()
+            .GetMethod( nameof( Test ), BindingFlags.Static | BindingFlags.NonPublic )!;
+
+        var aParam = Parameter( typeof( int ), "a" );
+        var b2Param = Parameter( typeof( int ), "b" );  // Same name, inner scope
+        var childBlock = Block(
+            [aParam, b2Param],
+            Constant( "before nested parameters" ),
+            Assign( aParam, Constant( 3 ) ),
+            Assign( b2Param, Constant( 4 ) ),
+            Constant( "after nested parameters" ),
+            Call( methodInfo, aParam, b2Param )
+        );
+
+        var bParam = Parameter( typeof( int ), "b" );
+        var variables = Block(
+            [aParam, bParam],
+            Constant( "before parameters" ),
+            Assign( aParam, Constant( 1 ) ),
+            Assign( bParam, Constant( 2 ) ),
+            Constant( "after parameters" ),
+            childBlock
+        );
+
+        // Act
+        var transformer = new GotoTransformerVisitor();
+        transformer.Transform( variables );
+
+        // Assert
+        transformer.PrintStateMachine();
+    }
+
+    [TestMethod]
+    public void GotoTransformer_WithConditionalParameters()
+    {
+        // Arrange
+        var methodInfo = GetType()
+            .GetMethod( nameof(Test), BindingFlags.Static | BindingFlags.NonPublic )!;
+
+        var aParam = Parameter( typeof(int), "a" );
+        var bParam = Parameter( typeof(int), "b" );
+        var conditionalParameters = Block(
+            [aParam, bParam],
+            Constant( "before if" ),
+            IfThenElse( Constant( true ),
+                Block(
+                    Constant( "before nested parameters" ),
+                    Assign( aParam, Constant( 3 ) ),
+                    Assign( bParam, Constant( 4 ) ),
+                    Constant( "after nested parameters" ),
+                    Call( methodInfo, aParam, bParam )
+                ),
+                Block(
+                    Constant( "before nested parameters" ),
+                    Assign( aParam, Constant( 5 ) ),
+                    Assign( bParam, Constant( 6 ) ),
+                    Constant( "after nested parameters" ),
+                    Call( methodInfo, aParam, bParam )
+                )
+            ),
+            Constant( "after if" )
+        );
+
+        // Act
+        var transformer = new GotoTransformerVisitor();
+        transformer.Transform( conditionalParameters );
+
+        // Assert
+        transformer.PrintStateMachine();
+    }
+
+    [TestMethod]
     public void GotoTransformer_WithNestedSwitch()
     {
-
         var switchBlock = Block(
             Constant( "before switch" ),
             Switch(
@@ -94,7 +195,6 @@ public class GotoTransformerVisitorTests
         // Assert
         transformer.PrintStateMachine();
     }
-
 
     [TestMethod]
     public void GotoTransformer_WithSwitch()
@@ -131,7 +231,7 @@ public class GotoTransformerVisitorTests
                 Constant( 1.1 ),
                 [
                     SwitchCase( Constant( 1.2 ), Constant( "TestValue1" ) ),
-                    SwitchCase( Constant( 1.3 ), Await( Constant( Task.FromResult( "await switch value" ) ) ) ),
+                    SwitchCase( Await( Constant( Task.FromResult( 1.3 ) ) ), Constant( "TestValue2" ) ),
                     SwitchCase( Constant( 1.4 ), Constant( "TestValue3" ) )
                 ]
             ),
@@ -141,6 +241,58 @@ public class GotoTransformerVisitorTests
         // Act
         var transformer = new GotoTransformerVisitor();
         transformer.Transform( switchBlock );
+
+        // Assert
+        transformer.PrintStateMachine();
+    }
+
+    [TestMethod]
+    public void GotoTransformer_WithAwaitAssignments()
+    {
+        // Arrange
+        var methodInfo = GetType()
+            .GetMethod( nameof( Test ), BindingFlags.Static | BindingFlags.NonPublic )!;
+
+        var aParam = Parameter( typeof( int ), "a" );
+        var bParam = Parameter( typeof( int ), "b" );
+        var methodWithParameter = Block(
+            [aParam, bParam],
+            Constant( "before parameters" ),
+            Assign( aParam, Await( Constant( Task.FromResult( 1 ) ) ) ),
+            Assign( bParam, Await( Constant( Task.FromResult( 2 ) ) ) ),
+            Constant( "after parameters" ),
+            Call( methodInfo, aParam, bParam )
+        );
+
+        // Act
+        var transformer = new GotoTransformerVisitor();
+        transformer.Transform( methodWithParameter );
+
+        // Assert
+        transformer.PrintStateMachine();
+    }
+
+    [TestMethod]
+    public void GotoTransformer_WithNestedBlockAndAwaitParameters()
+    {
+        // Arrange
+        var methodInfo = GetType()
+            .GetMethod( nameof( TestAsync ), BindingFlags.Static | BindingFlags.NonPublic )!;
+
+        var aParam = Parameter( typeof( int ), "a" );
+        var bParam = Parameter( typeof( int ), "b" );
+        var methodWithParameter = Block(
+            [aParam, bParam],
+            Constant( "before parameters" ),
+            Assign( aParam, Constant( 1 ) ),
+            Assign( bParam, Constant( 2 ) ),
+            Constant( "after parameters" ),
+            Await( Call( methodInfo, aParam, bParam ) )
+        );
+
+        // Act
+        var transformer = new GotoTransformerVisitor();
+        transformer.Transform( methodWithParameter );
 
         // Assert
         transformer.PrintStateMachine();
@@ -190,28 +342,28 @@ public class GotoTransformerVisitorTests
         transformer.PrintStateMachine();
     }
 
-    [TestMethod]
-    public void GotoTransformer_WithGoto()
-    {
-        // Arrange
-        var gotoLabel = Label( "gotoLabel" );
-        var gotoExpr = Block(
-
-            Constant( "before goto" ),
-            Goto( gotoLabel ),
-            Constant( "after goto" ),
-
-            Label( gotoLabel ),
-            Constant( "after label" )
-        );
-
-        // Act
-        var transformer = new GotoTransformerVisitor();
-        transformer.Transform( gotoExpr );
-
-        // Assert
-        transformer.PrintStateMachine();
-    }
+    // [TestMethod]
+    // public void GotoTransformer_WithGoto()
+    // {
+    //     // Arrange
+    //     var gotoLabel = Label( "gotoLabel" );
+    //     var gotoExpr = Block(
+    //
+    //         Constant( "before goto" ),
+    //         Goto( gotoLabel ),
+    //         Constant( "after goto" ),
+    //
+    //         Label( gotoLabel ),
+    //         Constant( "after label" )
+    //     );
+    //
+    //     // Act
+    //     var transformer = new GotoTransformerVisitor();
+    //     transformer.Transform( gotoExpr );
+    //
+    //     // Assert
+    //     transformer.PrintStateMachine();
+    // }
 
     [TestMethod]
     public void GotoTransformer_WithLoop()

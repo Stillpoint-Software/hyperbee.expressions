@@ -8,7 +8,7 @@ public class StateNode
     public LabelTarget Label { get; set; }
     public List<Expression> Expressions { get; } = [];
     public TransitionNode Transition { get; set; }
-    public StateNode ContinueTo { get; set; }
+    public HashSet<ParameterExpression> Variables { get; } = [];
 
     public StateNode( int blockId )
     {

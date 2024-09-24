@@ -13,6 +13,9 @@ public class AsyncBlockExpression : AsyncBaseExpression
     private Expression _stateMachine;
     private Type _resultType;
 
+    public Expression[] Expressions => _expressions;
+    public ParameterExpression[] InitialVariables => _initialVariables;
+
     public AsyncBlockExpression( Expression[] expressions )
         : this( [], expressions )
     {
@@ -66,9 +69,9 @@ public class AsyncBlockExpression : AsyncBaseExpression
         resultType = typeof(void);
 
         // Restructure expressions so we can split them into awaitable blocks
-
-
-        
+        var transformer = new GotoTransformerVisitor();
+        var states = transformer.Transform( this );
+        transformer.PrintStateMachine();
 
         foreach ( var blockPartExpr in _expressions )
         {

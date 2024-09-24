@@ -66,6 +66,16 @@ public class AwaitTransition : TransitionNode
     }
 }
 
+public class AwaitResultTransition : TransitionNode
+{
+    public StateNode TargetNode { get; set; }
+
+    public AwaitResultTransition()
+        : base( TransitionType.Await )
+    {
+    }
+}
+
 public class GotoTransition : TransitionNode
 {
     public StateNode TargetNode { get; set; }
