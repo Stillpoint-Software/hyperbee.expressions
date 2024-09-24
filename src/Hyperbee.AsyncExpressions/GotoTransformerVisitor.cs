@@ -333,9 +333,6 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
             // label
 
-            //var transitionName = state?.Transition?.TransitionType.ToString() ?? "Terminal";
-            //Console.WriteLine( $"{state.Label.Name}: [{transitionName}]" );
-
             Console.WriteLine( state.Label.Name + ":" );
 
             // variables
