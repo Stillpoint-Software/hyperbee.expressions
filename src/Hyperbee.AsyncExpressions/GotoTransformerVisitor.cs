@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using static System.TimeZoneInfo;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -330,56 +331,71 @@ public class GotoTransformerVisitor : ExpressionVisitor
             if ( state == null )
                 continue;
 
-            var transitionName = state?.Transition?.GetType().Name ?? "Null";
+            // label
 
-            Console.WriteLine( $"{state.Label.Name}: [{transitionName}]" );
+            //var transitionName = state?.Transition?.TransitionType.ToString() ?? "Terminal";
+            //Console.WriteLine( $"{state.Label.Name}: [{transitionName}]" );
+
+            Console.WriteLine( state.Label.Name + ":" );
+
+            // variables
+
             if ( state.Variables.Count > 0 )
             {
-                Console.WriteLine( $"\t - Variables: [{VariablesToString( state.Variables )}]" );
+                Console.WriteLine( "\tVariables" );
+                Console.WriteLine( $"\t\t[{VariablesToString( state.Variables )}]" );
             }
 
-            foreach ( var expr in state.Expressions )
+            // expressions
+
+            if ( state.Expressions.Count > 0 )
             {
-                Console.WriteLine( $"\t{ExpressionToString( expr )}" );
+                Console.WriteLine( "\tExpressions" );
+
+                foreach ( var expr in state.Expressions )
+                {
+                    Console.WriteLine( $"\t\t{ExpressionToString( expr )}" );
+                }
             }
+
+            // transitions
 
             var transition = state.Transition;
+
+            Console.WriteLine( $"\t{transition?.GetType().Name ?? "Terminal"}" );
 
             if ( transition != null )
             {
                 switch ( transition )
                 {
                     case ConditionalTransition condNode:
-                        Console.WriteLine( $"\tIfTrue -> {condNode.IfTrue?.Label}" );
-                        Console.WriteLine( $"\tIfFalse -> {condNode.IfFalse?.Label}" );
+                        Console.WriteLine( $"\t\tIfTrue -> {condNode.IfTrue?.Label}" );
+                        Console.WriteLine( $"\t\tIfFalse -> {condNode.IfFalse?.Label}" );
                         break;
                     case SwitchTransition switchNode:
                         foreach ( var caseNode in switchNode.CaseNodes )
                         {
-                            Console.WriteLine( $"\tCase -> {caseNode?.Label}" );
+                            Console.WriteLine( $"\t\tCase -> {caseNode?.Label}" );
                         }
-
-                        Console.WriteLine( $"\tDefault -> {switchNode.DefaultNode?.Label}" );
+                        Console.WriteLine( $"\t\tDefault -> {switchNode.DefaultNode?.Label}" );
                         break;
                     case TryCatchTransition tryNode:
-                        Console.WriteLine( $"\tTry -> {tryNode.TryNode?.Label}" );
+                        Console.WriteLine( $"\t\tTry -> {tryNode.TryNode?.Label}" );
                         foreach ( var catchNode in tryNode.CatchNodes )
                         {
-                            Console.WriteLine( $"\tCatch -> {catchNode?.Label}" );
+                            Console.WriteLine( $"\t\tCatch -> {catchNode?.Label}" );
                         }
-
-                        Console.WriteLine( $"\tFinally -> {tryNode.FinallyNode?.Label}" );
+                        Console.WriteLine( $"\t\tFinally -> {tryNode.FinallyNode?.Label}" );
                         break;
                     case AwaitTransition awaitNode:
-                        Console.WriteLine( $"\tAwait -> {awaitNode.CompletionNode?.Label}" );
+                        Console.WriteLine( $"\t\tCompletion -> {awaitNode.CompletionNode?.Label}" );
                         break;
                     case AwaitResultTransition awaitResultNode:
-                        Console.WriteLine( $"\tGoto -> {awaitResultNode.TargetNode?.Label}" );
+                        Console.WriteLine( $"\t\tGoto -> {awaitResultNode.TargetNode?.Label}" );
                         break;
                     case GotoTransition gotoNode:
-                        Console.WriteLine( $"\tGoto -> {gotoNode.TargetNode?.Label}" );
+                        Console.WriteLine( $"\t\tGoto -> {gotoNode.TargetNode?.Label}" );
                         break;
-
                     case LabelTransition:
                         break;
                 }
@@ -387,8 +403,10 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
             if ( state.Transition == null )
             {
-                Console.WriteLine( "\tTerminal" );
+                Console.WriteLine( "\t\tExit" );
             }
+
+            Console.WriteLine();
         }
     }
 
@@ -398,21 +416,15 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
         static string TypeToString( Type type )
         {
-            switch ( type )
+            return type switch
             {
-                case null:
-                    return "null";
-                case { IsGenericType: true }:
-                    return $"{type.Name.Split( '`' )[0]}<{string.Join( ", ", type.GetGenericArguments().Select( TypeToString ) )}>";
-                case { IsArray: true }:
-                    return $"{TypeToString( type.GetElementType() )}[]";
-                case { IsByRef: true }:
-                    return $"{TypeToString( type.GetElementType() )}&";
-                case { IsPointer: true }:
-                    return $"{TypeToString( type.GetElementType() )}*";
-                case { IsGenericType: false }:
-                    return type.Name;
-            }
+                null => "null",
+                { IsGenericType: true } => $"{type.Name.Split( '`' )[0]}<{string.Join( ", ", type.GetGenericArguments().Select( TypeToString ) )}>",
+                { IsArray: true } => $"{TypeToString( type.GetElementType() )}[]",
+                { IsByRef: true } => $"{TypeToString( type.GetElementType() )}&",
+                { IsPointer: true } => $"{TypeToString( type.GetElementType() )}*",
+                { IsGenericType: false } => type.Name
+            };
         }
     }
 
