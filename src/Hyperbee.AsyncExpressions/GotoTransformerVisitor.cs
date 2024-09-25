@@ -458,7 +458,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
                 foreach ( var expr in state.Expressions )
                 {
-                    Console.WriteLine( $"\t\t{ExpressionToString( expr )}" );
+                    Console.WriteLine( $"\t\t{expr}" );
                 }
             }
 
@@ -512,29 +512,26 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
             Console.WriteLine();
         }
-    }
 
-    private static string VariablesToString( IEnumerable<ParameterExpression> parameterExpressions )
-    {
-        return string.Join( ", ", parameterExpressions.Select( x => $"{TypeToString(x.Type)} {x.Name}" ) );
+        return;
 
-        static string TypeToString( Type type )
+        static string VariablesToString( IEnumerable<ParameterExpression> parameterExpressions )
         {
-            return type switch
-            {
-                null => "null",
-                { IsGenericType: true } => $"{type.Name.Split( '`' )[0]}<{string.Join( ", ", type.GetGenericArguments().Select( TypeToString ) )}>",
-                { IsArray: true } => $"{TypeToString( type.GetElementType() )}[]",
-                { IsByRef: true } => $"{TypeToString( type.GetElementType() )}&",
-                { IsPointer: true } => $"{TypeToString( type.GetElementType() )}*",
-                { IsGenericType: false } => type.Name
-            };
-        }
-    }
+            return string.Join( ", ", parameterExpressions.Select( x => $"{TypeToString( x.Type )} {x.Name}" ) );
 
-    private static string ExpressionToString( Expression expr )
-    {
-        return expr.ToString();
+            static string TypeToString( Type type )
+            {
+                return type switch
+                {
+                    null => "null",
+                    { IsGenericType: true } => $"{type.Name.Split( '`' )[0]}<{string.Join( ", ", type.GetGenericArguments().Select( TypeToString ) )}>",
+                    { IsArray: true } => $"{TypeToString( type.GetElementType() )}[]",
+                    { IsByRef: true } => $"{TypeToString( type.GetElementType() )}&",
+                    { IsPointer: true } => $"{TypeToString( type.GetElementType() )}*",
+                    { IsGenericType: false } => type.Name
+                };
+            }
+        }
     }
 }
 
@@ -546,8 +543,6 @@ public class JumpTableExpression : Expression
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override Type Type => typeof( void );
     public override bool CanReduce => true;
-
-    
 
     public JumpTableExpression( Expression state )
     {
