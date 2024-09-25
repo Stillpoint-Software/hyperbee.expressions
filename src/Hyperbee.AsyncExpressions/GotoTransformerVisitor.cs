@@ -212,7 +212,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
                 Expression.Call( awaitExpression.Target, awaitExpression.Target.Type.GetMethod( "GetAwaiter" )! ) ) );
 
         /*
-        TODO: We need at least the return label, 
+        TODO: We need at least the return label,
             but ideally we would have the state machine instance and the last await field too.
             This is where we can add a custom lazy Expression that will reduce to this:
         */
@@ -222,8 +222,8 @@ public class GotoTransformerVisitor : ExpressionVisitor
         awaiterState.Expressions.Add( Expression.Goto( awaitResultState.Label ) );
 
         // Keep awaiter variable in scope for results
-        CurrentState.Variables.Add( awaiterVariable );
-        CurrentState.Expressions.Add( CreateGetResults( awaitExpression, awaiterVariable, CurrentState.BlockId, out var localVariable ) );
+        CreateGetResults( CurrentState, awaitExpression, awaiterVariable, CurrentState.BlockId, out var localVariable );
+        awaitResultState.Variables.Add( localVariable );
         CurrentState.Expressions.Add( Expression.Goto( _states[joinIndex].Label ) );
 
         awaitResultState.Transition = new AwaitResultTransition { TargetNode = _states[joinIndex] };
@@ -263,31 +263,40 @@ public class GotoTransformerVisitor : ExpressionVisitor
         ParameterExpression CreateAwaiterVariable( AwaitExpression expression, int stateId )
         {
             var variable = Expression.Variable(
-                expression.ReturnType == typeof( void )
-                    ? typeof( TaskAwaiter )
-                    : typeof( TaskAwaiter<> ).MakeGenericType( expression.ReturnType ),
+                expression.ReturnType == typeof(void)
+                    ? typeof(TaskAwaiter)
+                    : typeof(TaskAwaiter<>).MakeGenericType( expression.ReturnType ),
                 $"awaiter<{stateId}>" );
 
             CurrentState.Variables.Add( variable );
             return variable;
         }
 
-        Expression CreateGetResults( AwaitExpression expression, ParameterExpression awaiter, int blockId, out ParameterExpression variable )
+        void CreateGetResults( StateNode state,
+            AwaitExpression expression,
+            ParameterExpression awaiter,
+            int blockId,
+            out ParameterExpression variable )
         {
-            if ( expression.ReturnType == typeof( void ) )
+            state.Variables.Add( awaiter );
+            if ( expression.ReturnType == typeof(void) )
             {
                 variable = null;
-                return Expression.Call( awaiter, "GetResult", Type.EmptyTypes );
+                state.Expressions.Add(
+                    Expression.Call( awaiter, "GetResult", Type.EmptyTypes )
+                );
             }
-
-            variable = Expression.Variable( expression.ReturnType, $"<>s__{blockId}" );
-            CurrentState.Variables.Add( variable );
-            return Expression.Assign( variable, Expression.Call( awaiter, "GetResult", Type.EmptyTypes ) );
+            else
+            {
+                variable = Expression.Variable( expression.ReturnType, $"<>s__{blockId}" );
+                state.Variables.Add( variable );
+                state.Expressions.Add(
+                    Expression.Assign( variable, Expression.Call( awaiter, "GetResult", Type.EmptyTypes ) )
+                );
+            }
         }
-
-
-
     }
+
     //
     // protected override Expression VisitMethodCall( MethodCallExpression node )
     // {
