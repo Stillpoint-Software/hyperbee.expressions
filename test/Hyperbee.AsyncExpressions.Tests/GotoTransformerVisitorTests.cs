@@ -1,5 +1,4 @@
-﻿using System.Linq.Expressions;
-using System.Reflection;
+﻿using System.Reflection;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.AsyncExpressions.AsyncExpression;
 
@@ -11,9 +10,27 @@ public class GotoTransformerVisitorTests
     static int Test( int a, int b ) => a + b;
     static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
 
+
+    [TestMethod]
+    public void GotoTransformer_CollectExpressions()
+    {        
+        // Arrange
+        var varExpr = Variable( typeof( int ), "x" );
+        var assignExpr = Assign( varExpr, Add( varExpr, Constant( 2 ) ) );
+
+        // Act
+        var transformer = new GotoTransformerVisitor();
+        transformer.Transform( assignExpr );
+
+        // Assert
+        transformer.PrintStateMachine();
+    }
+
+
     [TestMethod]
     public void GotoTransformer_WithBodyAwaits()
-    {
+    {        
+        // Arrange
         var blockAwaits = Block(
             Constant( "before await1" ),
             Await( Constant( Task.FromResult( "await1" ) ) ),
@@ -38,7 +55,8 @@ public class GotoTransformerVisitorTests
 
     [TestMethod]
     public void GotoTransformer_WithIfThen()
-    {
+    {        
+        // Arrange
         var ifThenElseExpr = Block(
             Constant( 0 ),
             IfThen(

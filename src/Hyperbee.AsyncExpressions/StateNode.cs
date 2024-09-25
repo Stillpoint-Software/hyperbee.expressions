@@ -9,7 +9,6 @@ public class StateNode
     public List<Expression> Expressions { get; } = [];
     public TransitionNode Transition { get; set; }
     public HashSet<ParameterExpression> Variables { get; } = [];
-
     public StateNode( int blockId )
     {
         BlockId = blockId;
