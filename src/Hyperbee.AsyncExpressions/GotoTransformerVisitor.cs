@@ -1,14 +1,12 @@
-﻿using System;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
-using static System.TimeZoneInfo;
 
 namespace Hyperbee.AsyncExpressions;
 
 public class GotoTransformerVisitor : ExpressionVisitor
 {
     private readonly List<StateNode> _states = [];
-    private readonly Stack<int> _continueToIndexes = new();
+    private readonly Stack<int> _joinIndexes = new();
     private readonly Dictionary<LabelTarget, int> _labelMappings = new();
 
     private int _continuationCounter;
@@ -26,43 +24,44 @@ public class GotoTransformerVisitor : ExpressionVisitor
         return _states;
     }
 
-    private StateNode InsertState( out int index )
+    private StateNode InsertState( out int stateIndex )
     {
         var stateNode = new StateNode( _labelCounter++ );
         _states.Add( stateNode );
 
-        index = _states.Count - 1;
+        stateIndex = _states.Count - 1;
         return stateNode;
     }
 
-    private StateNode VisitState( Expression expression, int continueToIndex )
+    private StateNode VisitState( Expression expression, int joinIndex )
     {
-        var state = InsertState( out var index );
-        _currentStateIndex = index;
+        var state = InsertState( out var stateIndex );
+        _currentStateIndex = stateIndex;
 
         Visit( expression );
 
         _states[_currentStateIndex].Transition ??= new GotoTransition
         {
-            TargetNode = _states[continueToIndex]
+            TargetNode = _states[joinIndex]
         };
 
         return state;
     }
 
-    private int EnterTransition( out int currentStateIndex )
+    private int EnterTransitionContext( out int sourceIndex )
     {
-        InsertState( out var continueToIndex );
-        _continueToIndexes.Push( continueToIndex );
-        currentStateIndex = _currentStateIndex;
+        InsertState( out var joinIndex ); 
 
-        return continueToIndex;
+        _joinIndexes.Push( joinIndex );
+        sourceIndex = _currentStateIndex;
+
+        return joinIndex;
     }
 
-    private void ExitTransition( TransitionNode transitionNode, int transitionStateIndex )
+    private void ExitTransitionContext( int sourceIndex, TransitionNode transitionNode )
     {
-        _states[transitionStateIndex].Transition = transitionNode;
-        _currentStateIndex = _continueToIndexes.Pop();
+        _states[sourceIndex].Transition = transitionNode;
+        _currentStateIndex = _joinIndexes.Pop();
     }
 
     protected override Expression VisitBlock( BlockExpression node )
@@ -79,17 +78,17 @@ public class GotoTransformerVisitor : ExpressionVisitor
     {
         Visit( node.Test );
 
-        var continueToIndex = EnterTransition( out var currentStateIndex );
+        var joinIndex = EnterTransitionContext( out var sourceIndex );
 
         var conditionalTransition = new ConditionalTransition
         {
-            IfTrue = VisitState( node.IfTrue, continueToIndex ),
+            IfTrue = VisitState( node.IfTrue, joinIndex ),
             IfFalse = (node.IfFalse is not DefaultExpression)
-                ? VisitState( node.IfFalse, continueToIndex )
-                : _states[continueToIndex]
+                ? VisitState( node.IfFalse, joinIndex )
+                : _states[joinIndex]
         };
 
-        ExitTransition( conditionalTransition, currentStateIndex );
+        ExitTransitionContext( sourceIndex, conditionalTransition );
 
         return node;
     }
@@ -98,43 +97,45 @@ public class GotoTransformerVisitor : ExpressionVisitor
     {
         Visit( node.SwitchValue );
 
-        var continueToIndex = EnterTransition( out var currentStateIndex );
+        var joinIndex = EnterTransitionContext( out var sourceIndex );
+
         var switchTransition = new SwitchTransition();
 
         if ( node.DefaultBody != null )
         {
-            switchTransition.DefaultNode = VisitState( node.DefaultBody, continueToIndex );
+            switchTransition.DefaultNode = VisitState( node.DefaultBody, joinIndex );
         }
 
         foreach ( var switchCase in node.Cases )
         {
-            switchTransition.CaseNodes.Add( VisitState( switchCase.Body, continueToIndex ) );
+            switchTransition.CaseNodes.Add( VisitState( switchCase.Body, joinIndex ) );
         }
 
-        ExitTransition( switchTransition, currentStateIndex );
+        ExitTransitionContext( sourceIndex, switchTransition );
 
         return node;
     }
 
     protected override Expression VisitTry( TryExpression node )
     {
-        var continueToIndex = EnterTransition( out var currentStateIndex );
+        var joinIndex = EnterTransitionContext( out var sourceIndex );
+
         var tryCatchTransition = new TryCatchTransition
         {
-            TryNode = VisitState( node.Body, continueToIndex )
+            TryNode = VisitState( node.Body, joinIndex )
         };
 
         foreach ( var catchBlock in node.Handlers )
         {
-            tryCatchTransition.CatchNodes.Add( VisitState( catchBlock.Body, continueToIndex ) );
+            tryCatchTransition.CatchNodes.Add( VisitState( catchBlock.Body, joinIndex ) );
         }
 
         if ( node.Finally != null )
         {
-            tryCatchTransition.FinallyNode = VisitState( node.Finally, continueToIndex );
+            tryCatchTransition.FinallyNode = VisitState( node.Finally, joinIndex );
         }
 
-        ExitTransition( tryCatchTransition, currentStateIndex );
+        ExitTransitionContext( sourceIndex, tryCatchTransition );
 
         return node;
     }
@@ -157,7 +158,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             return node;
         }
 
-        var continueToIndex = EnterTransition( out var currentStateIndex );
+        var joinIndex = EnterTransitionContext( out var sourceIndex );
 
         // get awaiter
         var awaitTransition = new AwaitTransition { ContinuationId = _continuationCounter++ };
@@ -165,16 +166,16 @@ public class GotoTransformerVisitor : ExpressionVisitor
         // Create awaiter variable
         var variable = CreateAwaiterVariable( awaitExpression, awaitTransition.ContinuationId );
 
-        var awaitResultState = VisitState( awaitExpression.Target, continueToIndex );
+        var awaitResultState = VisitState( awaitExpression.Target, joinIndex );
 
         // Keep awaiter variable in scope for results
         CurrentState.Variables.Add( variable );
-        awaitResultState.Transition = new AwaitResultTransition { TargetNode = _states[continueToIndex] };
+        awaitResultState.Transition = new AwaitResultTransition { TargetNode = _states[joinIndex] };
 
         // awaiter Results
         awaitTransition.CompletionNode = awaitResultState;
 
-        ExitTransition( awaitTransition, currentStateIndex );
+        ExitTransitionContext( sourceIndex, awaitTransition );
 
         // build awaiter
         /*
@@ -293,19 +294,19 @@ public class GotoTransformerVisitor : ExpressionVisitor
     //
     //     return node;
     // }
-
-    private int GetOrCreateLabelIndex( LabelTarget label )
-    {
-        if ( _labelMappings.TryGetValue( label, out var index ) )
-        {
-            return index;
-        }
-
-        InsertState( out var stateIndex );
-        _labelMappings[label] = stateIndex;
-
-        return index;
-    }
+    //
+    //private int GetOrCreateLabelIndex( LabelTarget label )
+    //{
+    //    if ( _labelMappings.TryGetValue( label, out var index ) )
+    //    {
+    //        return index;
+    //    }
+    //
+    //    InsertState( out var stateIndex );
+    //    _labelMappings[label] = stateIndex;
+    //
+    //    return index;
+    //}
 
     private ParameterExpression CreateAwaiterVariable( AwaitExpression awaitExpression, int stateId )
     {
