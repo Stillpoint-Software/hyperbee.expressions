@@ -36,11 +36,6 @@ public class GotoTransformerVisitor : ExpressionVisitor
     public GotoTransformResult Transform( ParameterExpression[] initialVariables, params Expression[] expressions )
     {
         _initialVariables = initialVariables;
-        return Transform( expressions );
-    }
-
-    public GotoTransformResult Transform( params Expression[] expressions )
-    {
         InsertState( out _currentStateIndex );
 
         foreach ( var expr in expressions )
@@ -49,6 +44,11 @@ public class GotoTransformerVisitor : ExpressionVisitor
         }
 
         return new GotoTransformResult { Nodes = _nodes, JumpTable = _jumpTable };
+    }
+
+    public GotoTransformResult Transform( params Expression[] expressions )
+    {
+        return Transform( [], expressions );
     }
 
     private StateNode InsertState( out int stateIndex )
@@ -382,7 +382,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
                 foreach ( var expr in state.Expressions )
                 {
-                    Console.WriteLine( $"\t\t{ExpressionToString( expr )}" );
+                    Console.WriteLine( $"\t\t{expr}" );
                 }
             }
 
@@ -436,29 +436,26 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
             Console.WriteLine();
         }
-    }
 
-    private static string VariablesToString( IEnumerable<ParameterExpression> parameterExpressions )
-    {
-        return string.Join( ", ", parameterExpressions.Select( x => $"{TypeToString(x.Type)} {x.Name}" ) );
+        return;
 
-        static string TypeToString( Type type )
+        static string VariablesToString( IEnumerable<ParameterExpression> parameterExpressions )
         {
-            return type switch
-            {
-                null => "null",
-                { IsGenericType: true } => $"{type.Name.Split( '`' )[0]}<{string.Join( ", ", type.GetGenericArguments().Select( TypeToString ) )}>",
-                { IsArray: true } => $"{TypeToString( type.GetElementType() )}[]",
-                { IsByRef: true } => $"{TypeToString( type.GetElementType() )}&",
-                { IsPointer: true } => $"{TypeToString( type.GetElementType() )}*",
-                { IsGenericType: false } => type.Name
-            };
-        }
-    }
+            return string.Join( ", ", parameterExpressions.Select( x => $"{TypeToString( x.Type )} {x.Name}" ) );
 
-    private static string ExpressionToString( Expression expr )
-    {
-        return expr.ToString();
+            static string TypeToString( Type type )
+            {
+                return type switch
+                {
+                    null => "null",
+                    { IsGenericType: true } => $"{type.Name.Split( '`' )[0]}<{string.Join( ", ", type.GetGenericArguments().Select( TypeToString ) )}>",
+                    { IsArray: true } => $"{TypeToString( type.GetElementType() )}[]",
+                    { IsByRef: true } => $"{TypeToString( type.GetElementType() )}&",
+                    { IsPointer: true } => $"{TypeToString( type.GetElementType() )}*",
+                    { IsGenericType: false } => type.Name
+                };
+            }
+        }
     }
 }
 
