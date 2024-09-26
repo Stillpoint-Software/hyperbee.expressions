@@ -22,8 +22,13 @@ public class AsyncMethodCallExpression : AsyncBaseExpression
             return _stateMachine;
 
         var resultType = ResultType( _methodCallExpression.Type );
-     
-        _stateMachine = StateMachineBuilder.Create( Block( _methodCallExpression ), resultType, createRunner: true );
+
+        // Restructure expressions so we can split them into awaitable blocks
+        var transformer = new GotoTransformerVisitor();
+        var transformResult = transformer.Transform( this );
+        transformer.PrintStateMachine();
+
+        _stateMachine = StateMachineBuilder.Create( transformResult, resultType, createRunner: true );
         _isReduced = true;
 
         return _stateMachine;

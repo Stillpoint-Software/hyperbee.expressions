@@ -22,7 +22,11 @@ public class AsyncInvocationExpression : AsyncBaseExpression
 
         var resultType = ResultType( _invocationExpression.Type );
 
-        _stateMachine = StateMachineBuilder.Create( Block( _invocationExpression ), resultType, createRunner: true );
+        var transformer = new GotoTransformerVisitor();
+        var transformResult = transformer.Transform( this );
+        transformer.PrintStateMachine();
+
+        _stateMachine = StateMachineBuilder.Create( transformResult, resultType, createRunner: true );
         _isReduced = true;
 
         return _stateMachine;

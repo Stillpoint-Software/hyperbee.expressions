@@ -4,7 +4,12 @@ using System.Reflection.Emit;
 
 namespace Hyperbee.AsyncExpressions;
 
-public class ParameterMappingVisitor( Expression instance, List<FieldBuilder> fields ) : ExpressionVisitor
+public class ParameterMappingVisitor( 
+    Expression instance, 
+    List<FieldBuilder> fields, 
+    LabelTarget returnLabel, 
+    MemberExpression stateIdField,
+    MemberExpression stateMachineBuilderField ) : ExpressionVisitor
 {
     private readonly Dictionary<Expression, MemberExpression> _mappingCache = [];
     private readonly string[] _fieldNames = fields.Select( x => x.Name ).ToArray();
@@ -24,7 +29,7 @@ public class ParameterMappingVisitor( Expression instance, List<FieldBuilder> fi
 
         bool TryGetFieldInfo( ParameterExpression parameterExpression, out FieldInfo field )
         {
-            var name = $"_{parameterExpression.Name ?? parameterExpression.ToString()}";
+            var name = $"{parameterExpression.Name ?? parameterExpression.ToString()}";
 
             var builderField = fields.FirstOrDefault( f => f.Name == name );
             if ( builderField != null )
@@ -40,13 +45,12 @@ public class ParameterMappingVisitor( Expression instance, List<FieldBuilder> fi
 
     protected override Expression VisitBlock( BlockExpression node )
     {
-        // TODO: Review with BF
         // Update each expression in a block to use only state machine fields/variables
         return node.Update(
             node.Variables.Where( v => !_fieldNames.Contains( v.Name ) ),
             node.Expressions.Select( Visit ) );
     }
-
+    
     protected override Expression VisitExtension( Expression node )
     {
         switch (node)
@@ -54,6 +58,10 @@ public class ParameterMappingVisitor( Expression instance, List<FieldBuilder> fi
             case AwaitableResultExpression awaitableResult:
                 Visit( awaitableResult.InnerVariable );
                 return node;
+            case AwaitCompletionExpression awaitCompletionExpression:
+                // TODO: clean up how we initialize the await completion expression
+                awaitCompletionExpression.Initialize( instance, fields, returnLabel, stateIdField, stateMachineBuilderField );
+                return awaitCompletionExpression.Reduce();
             case AwaitableBlockExpression awaitableBlock:
                 Visit( awaitableBlock.Before );
                 Visit( awaitableBlock.After );

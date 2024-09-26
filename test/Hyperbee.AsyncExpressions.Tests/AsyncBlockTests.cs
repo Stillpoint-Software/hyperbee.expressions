@@ -11,7 +11,7 @@ public class AsyncBlockTests
     public static MethodInfo GetMethod(string name) => typeof(AsyncBlockTests).GetMethod(name);
 
     [TestMethod]
-    public void TestAsyncBlock_VariableScopeWithMultipleAwaits()
+    public async Task TestAsyncBlock_VariableScopeWithMultipleAwaits()
     {
         // Arrange
         var varExpr = Expression.Variable(typeof(int), "x");
@@ -39,24 +39,22 @@ public class AsyncBlockTests
             Expression.Constant(12),
             varExpr);
 
-        var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr1, finalAssignExpr, assertExpr2 );
+        var asyncBlock = AsyncExpression.BlockAsync( 
+            [varExpr], 
+            assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr1, finalAssignExpr, assertExpr2 );
 
         // Act
-        var reducedExpression = asyncBlock.Reduce() as BlockExpression;
+        var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
 
         // Assert
-        Assert.IsNotNull(reducedExpression);
-        Assert.AreEqual(3, reducedExpression.Expressions.Count); 
-        
-        var lambda = Expression.Lambda<Action>(reducedExpression);
-        var compiledLambda = lambda.Compile();
-
-        compiledLambda(); 
+        Assert.IsTrue( result );
     }
 
     [TestMethod]
     [ExpectedException(typeof(InvalidOperationException))]
-    public void TestAsyncBlock_WithoutAwait_ThrowsException()
+    public async Task TestAsyncBlock_WithoutAwait_ThrowsException()
     {
         // Arrange
         var varExpr = Expression.Variable(typeof(int), "x");
@@ -67,14 +65,21 @@ public class AsyncBlockTests
             Expression.Constant(11),
             varExpr);
 
-        var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, assignExpr2, assertExpr );
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [varExpr],
+            assignExpr1, assignExpr2, assertExpr );
 
         // Act
-        asyncBlock.Reduce();
+        var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.IsTrue( result );
     }
 
     [TestMethod]
-    public void TestAsyncBlock_SimpleBlockSplitting()
+    public async Task TestAsyncBlock_SimpleBlockSplitting()
     {
         // Arrange
         var expr1 = Expression.Constant( 1 );
@@ -85,11 +90,12 @@ public class AsyncBlockTests
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4 );
 
         // Act
-        var reducedExpression = asyncBlock.ConvertToAwaitableBlock( out _ );
+        var lambda = Expression.Lambda<Func<Task<int>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
 
         // Assert
-        Assert.IsNotNull( reducedExpression );
-        Assert.AreEqual(2, reducedExpression.Expressions.Count); 
+        Assert.AreEqual( 4, result );
     }
 
     [TestMethod]
@@ -135,7 +141,6 @@ public class AsyncBlockTests
         );
 
         // Act
-
         var lambda = Expression.Lambda<Func<int, Task<int>>>( asyncBlock, param1 );
         var compiledLambda = lambda.Compile();
         var result = await compiledLambda(3);
@@ -145,33 +150,104 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    public void TestAsyncBlock_SingleAwait()
+    public async Task TestAsyncBlock_SwitchWithParameters_ReturnsResult()
     {
-        // Arrange
-        var varExpr = Expression.Variable(typeof(int), "x");
-        var assignExpr = Expression.Assign(varExpr, Expression.Constant(5));
-        var awaitExpr = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof(Task)), false);
-        var assertExpr = Expression.Call(
-            GetMethod(nameof(AreEqual)),
-            Expression.Constant(5),
-            varExpr);
+        var param1 = Expression.Parameter( typeof( int ), "param1" );
+        var var1 = Expression.Variable( typeof( int ), "var1" );
 
-        var asyncBlock = AsyncExpression.BlockAsync( assignExpr, awaitExpr, assertExpr );
+        var switchCase = Expression.Switch(
+            param1,
+            Expression.Constant( 0 ),
+            [
+                Expression.SwitchCase( 
+                    Expression.Assign( var1, AsyncExpression.Await( Expression.Constant( Task.FromResult( 5 ) ) ) ), 
+                    Expression.Constant( 1 ) ),
+                Expression.SwitchCase( 
+                    Expression.Assign( var1, AsyncExpression.Await( Expression.Constant( Task.FromResult( 7 ) ) ) ), 
+                    Expression.Constant( 2 ) )
+            ]
+        );
+
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [var1],
+            switchCase, var1
+        );
 
         // Act
-        var reducedExpression = asyncBlock.ConvertToAwaitableBlock( out _ );
+        var lambda = Expression.Lambda<Func<int, Task<int>>>( asyncBlock, param1 );
+        var compiledLambda = lambda.Compile();
+        var switch1 = await compiledLambda( 1 );
+        var switch2 = await compiledLambda( 2 );
 
         // Assert
-        Assert.IsNotNull(reducedExpression);
-        Assert.AreEqual(2, reducedExpression.Expressions.Count); 
-        var lambda = Expression.Lambda<Action>(asyncBlock);
-        var compiledLambda = lambda.Compile();
-
-        compiledLambda(); 
+        Assert.AreEqual( 5, switch1 );
+        Assert.AreEqual( 7, switch2 );
     }
 
+
     [TestMethod]
-    public void TestAsyncBlock_MultipleAwaitAndVariableUpdate()
+    public async Task TestAsyncBlock_ConditionalWithParameters_ReturnsResult()
+    {
+        // Arrange
+        var param1 = Expression.Parameter( typeof( int ), "param1" );
+        var param2 = Expression.Parameter( typeof( bool ), "param2" );
+        var var1 = Expression.Variable( typeof( int ), "var1" );
+        var var2 = Expression.Variable( typeof( int ), "var2" );
+
+        var exp1 = Expression.Assign( var1, Expression.Constant( 1 ) );
+        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ), false );
+        var exp3 = Expression.Assign( var2, awaitExpr2 );
+        var conditionalAdd = Expression.IfThenElse( param2,
+            Expression.Assign( var2, Expression.Add( var2, param1 ) ),
+            Expression.Assign( var2, Expression.Add( var1, Expression.Add( var2, param1 ) ) )
+        );
+
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [var1, var2],
+            exp1, exp3, conditionalAdd, var2
+        );
+
+        // Act
+        var lambda = Expression.Lambda<Func<int, bool, Task<int>>>( asyncBlock, param1, param2 );
+        var compiledLambda = lambda.Compile();
+        var resultTrue = await compiledLambda( 3, true );
+        var resultFalse = await compiledLambda( 3, false );
+
+        // Assert
+        Assert.AreEqual( 6, resultTrue );
+        Assert.AreEqual( 7, resultFalse );
+    }
+
+
+    [TestMethod]
+    public async Task TestAsyncBlock_SingleAwait()
+    {
+        // Arrange
+        var varExpr = Expression.Variable( typeof( int ), "x" );
+        var assignExpr = Expression.Assign( varExpr, Expression.Constant( 5 ) );
+        var awaitExpr = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof( Task ) ), false );
+        var assertExpr = Expression.Call(
+            GetMethod( nameof( AreEqual ) ),
+            Expression.Constant( 5 ),
+            varExpr );
+
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [varExpr],
+            assignExpr, awaitExpr, assertExpr );
+
+        // Act
+        var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.IsTrue( result );
+    }
+
+
+
+    [TestMethod]
+    public async Task TestAsyncBlock_MultipleAwaitAndVariableUpdate()
     {
         // Arrange
         var varExpr = Expression.Variable(typeof(int), "x");
@@ -184,22 +260,22 @@ public class AsyncBlockTests
             Expression.Constant(3),
             varExpr);
 
-        var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr );
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [varExpr],
+            assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr );
 
         // Act
-        var reducedExpression = asyncBlock.ConvertToAwaitableBlock( out _ );
+        var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
 
         // Assert
-        Assert.IsNotNull(reducedExpression);
-        Assert.AreEqual(3, reducedExpression.Expressions.Count); 
-        var lambda = Expression.Lambda<Action>(reducedExpression);
-        var compiledLambda = lambda.Compile();
-
-        compiledLambda(); 
+        Assert.IsTrue( result );
     }
 
     [TestMethod]
-    public void TestAsyncBlock_NestedAsyncBlock()
+    [ExpectedException( typeof( NotSupportedException ) )]
+    public async Task TestAsyncBlock_NestedAsyncBlock()
     {
         // Arrange
         var varExpr = Expression.Variable( typeof(int), "x" );
@@ -209,24 +285,24 @@ public class AsyncBlockTests
         // Inner async block
         var innerAssign = Expression.Assign( varExpr, Expression.Add( varExpr, Expression.Constant( 2 ) ) );
         var innerAwait = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ), false );
-        var innerBlock = AsyncExpression.BlockAsync( innerAssign, innerAwait );
+        var innerBlock = AsyncExpression.Await( 
+            AsyncExpression.BlockAsync( innerAssign, innerAwait, varExpr ), false );
 
         var assertExpr = Expression.Call(
             GetMethod( nameof(AreEqual) ),
             Expression.Constant( 3 ),
             varExpr );
 
-        var asyncBlock = AsyncExpression.BlockAsync( assignExpr1, awaitExpr1, innerBlock, assertExpr );
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [varExpr],
+            assignExpr1, awaitExpr1, innerBlock, assertExpr );
 
         // Act
-        var reducedExpression = asyncBlock.ConvertToAwaitableBlock( out _ );
+        var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
 
         // Assert
-        Assert.IsNotNull( reducedExpression );
-        Assert.AreEqual( 2, reducedExpression.Expressions.Count ); 
-        var lambda = Expression.Lambda<Action>( reducedExpression );
-        var compiledLambda = lambda.Compile();
-
-        compiledLambda(); 
+        Assert.IsTrue( result );
     }
 }

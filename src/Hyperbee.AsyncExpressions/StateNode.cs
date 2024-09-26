@@ -9,9 +9,18 @@ public class StateNode
     public List<Expression> Expressions { get; } = [];
     public TransitionNode Transition { get; set; }
     public HashSet<ParameterExpression> Variables { get; } = [];
+
     public StateNode( int blockId )
     {
         BlockId = blockId;
         Label = Expression.Label( $"block_{BlockId}" );
+        Expressions.Add( Expression.Label( Label ) );
+    }
+
+    public void Deconstruct( out IReadOnlyCollection<ParameterExpression> variables, out List<Expression> expressions, out TransitionNode transition )
+    {
+        variables = Variables;
+        expressions = Expressions;
+        transition = Transition;
     }
 }

@@ -1,63 +1,83 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
+public record GotoTransformResult
+{
+    public List<StateNode> Nodes { get; set; }
+    public JumpTableExpression JumpTable { get; set; }
+
+    public void Deconstruct( out List<StateNode> states, out JumpTableExpression jumpTable )
+    {
+        states = Nodes;
+        jumpTable = JumpTable;
+    }
+}
 
 public class GotoTransformerVisitor : ExpressionVisitor
 {
-    private readonly List<StateNode> _states = [];
+    private readonly List<StateNode> _nodes = [];
     private readonly Stack<int> _joinIndexes = new();
     private readonly Dictionary<LabelTarget, int> _labelMappings = new();
 
     // jump table?
-    private readonly ParameterExpression _state; // state machine needs this
-    private readonly JumpTableExpression _jumpTable;
+    private readonly JumpTableExpression _jumpTable = new();
 
     private int _continuationCounter;
     private int _labelCounter;
 
     private int _currentStateIndex;
-    private StateNode CurrentState => _states[_currentStateIndex];
+    private ParameterExpression[] _initialVariables;
+    private StateNode TargetState => _nodes[_currentStateIndex];
 
-    public GotoTransformerVisitor()
+    public GotoTransformResult Transform( ParameterExpression[] initialVariables, params Expression[] expressions )
     {
-        _state = Expression.Parameter( typeof(int), "state" );
-        _jumpTable = new JumpTableExpression( _state );
+        _initialVariables = initialVariables;
+        return Transform( expressions );
     }
 
-    public List<StateNode> Transform( Expression expression )
+    public GotoTransformResult Transform( params Expression[] expressions )
     {
         InsertState( out _currentStateIndex );
 
-        InternalVisit( expression );
+        foreach ( var expr in expressions )
+        {
+            VisitInternal( expr );
+        }
 
-        return _states;
+        return new GotoTransformResult { Nodes = _nodes, JumpTable = _jumpTable };
     }
 
     private StateNode InsertState( out int stateIndex )
     {
         var stateNode = new StateNode( _labelCounter++ );
-        _states.Add( stateNode );
+        _nodes.Add( stateNode );
 
-        stateIndex = _states.Count - 1;
+        stateIndex = _nodes.Count - 1;
         return stateNode;
     }
 
-    private StateNode VisitState( Expression expression, int joinIndex, bool ignoreExpression = false )
+    private StateNode VisitState( Expression expression, int joinIndex, bool isAsyncResult = false )
     {
         var state = InsertState( out var stateIndex );
         _currentStateIndex = stateIndex;
 
-        if ( ignoreExpression )
+        if ( isAsyncResult )
             Visit( expression );
         else
-            InternalVisit( expression );
+            VisitInternal( expression );
 
-        _states[_currentStateIndex].Transition ??= new GotoTransition
-        {
-            TargetNode = _states[joinIndex]
-        };
+        // Transition was handling during the visit
+        if ( TargetState.Transition != null )
+            return state;
+
+        // We did not visit the expression, so we need to initialize the defaults
+        TargetState.Transition = new GotoTransition { TargetNode = _nodes[joinIndex] };
+        if( !isAsyncResult )
+            TargetState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
 
         return state;
     }
@@ -74,7 +94,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
     private void ExitTransitionContext( int sourceIndex, TransitionNode transitionNode )
     {
-        _states[sourceIndex].Transition = transitionNode;
+        _nodes[sourceIndex].Transition = transitionNode;
         _currentStateIndex = _joinIndexes.Pop();
     }
 
@@ -82,7 +102,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
     {
         foreach ( var expression in node.Expressions )
         {
-            InternalVisit( expression );
+            VisitInternal( expression );
         }
     
         return node;
@@ -99,7 +119,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             IfTrue = VisitState( node.IfTrue, joinIndex ),
             IfFalse = (node.IfFalse is not DefaultExpression)
                 ? VisitState( node.IfFalse, joinIndex )
-                : _states[joinIndex]
+                : _nodes[joinIndex]
         };
 
         var gotoConditional = Expression.IfThenElse(
@@ -107,7 +127,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             Expression.Goto( conditionalTransition.IfTrue.Label ),
             Expression.Goto( conditionalTransition.IfFalse.Label ) );
 
-        _states[joinIndex].Expressions.Add( gotoConditional );
+        _nodes[sourceIndex].Expressions.Add( gotoConditional );
 
         ExitTransitionContext( sourceIndex, conditionalTransition );
 
@@ -134,6 +154,8 @@ public class GotoTransformerVisitor : ExpressionVisitor
         {
             var caseNode = VisitState( switchCase.Body, joinIndex );
             switchTransition.CaseNodes.Add( caseNode );
+
+            // TODO: Visit test values because they could be async
             cases.Add( Expression.SwitchCase( Expression.Goto( caseNode.Label ), switchCase.TestValues ) );
         }
 
@@ -142,7 +164,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             defaultBody,
             [.. cases] );
 
-        _states[joinIndex].Expressions.Add( gotoSwitch );
+        _nodes[sourceIndex].Expressions.Add( gotoSwitch );
 
         ExitTransitionContext( sourceIndex, switchTransition );
 
@@ -164,6 +186,8 @@ public class GotoTransformerVisitor : ExpressionVisitor
             var catchNode = VisitState( catchBlock.Body, joinIndex );
             tryCatchTransition.CatchNodes.Add( catchNode );
             catches.Add( Expression.Catch( catchBlock.Test, Expression.Goto( catchNode.Label ) ) );
+
+            catchNode.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
         }
 
         Expression finallyBody = null;
@@ -171,6 +195,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
         {
             tryCatchTransition.FinallyNode = VisitState( node.Finally, joinIndex );
             finallyBody = Expression.Goto( tryCatchTransition.FinallyNode.Label );
+            tryCatchTransition.FinallyNode.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
         }
 
         var newTry = Expression.TryCatchFinally(
@@ -179,7 +204,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             [.. catches]
         );
 
-        _states[joinIndex].Expressions.Add( newTry );
+        _nodes[sourceIndex].Expressions.Add( newTry );
 
         ExitTransitionContext( sourceIndex, tryCatchTransition );
 
@@ -190,7 +215,8 @@ public class GotoTransformerVisitor : ExpressionVisitor
     {
         if ( node is AsyncBlockExpression )
         {
-            return base.VisitExtension( node );
+            throw new NotSupportedException( "Async blocks within async blocks are not currently supported." );
+            //TargetState.Expressions.Add( asyncBlockExpression.Reduce() );
         }
 
         if ( node is not AwaitExpression awaitExpression )
@@ -206,7 +232,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
         // Create awaiter variable
         var awaiterVariable = CreateAwaiterVariable( awaitExpression, awaitTransition.ContinuationId );
 
-        var awaiterState = CurrentState;
+        var awaiterState = TargetState;
         awaiterState.Expressions.Add(
             Expression.Assign( awaiterVariable,
                 Expression.Call( awaitExpression.Target, awaitExpression.Target.Type.GetMethod( "GetAwaiter" )! ) ) );
@@ -216,17 +242,19 @@ public class GotoTransformerVisitor : ExpressionVisitor
             but ideally we would have the state machine instance and the last await field too.
             This is where we can add a custom lazy Expression that will reduce to this:
         */
-        awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable ) );
+        awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, awaitTransition.ContinuationId ) );
 
         var awaitResultState = VisitState( awaitExpression.Target, joinIndex, true );
         awaiterState.Expressions.Add( Expression.Goto( awaitResultState.Label ) );
 
         // Keep awaiter variable in scope for results
-        CreateGetResults( CurrentState, awaitExpression, awaiterVariable, CurrentState.BlockId, out var localVariable );
-        awaitResultState.Variables.Add( localVariable );
-        CurrentState.Expressions.Add( Expression.Goto( _states[joinIndex].Label ) );
+        CreateGetResults( TargetState, awaitExpression, awaiterVariable, TargetState.BlockId, out var localVariable );
+        if(localVariable != null)
+            awaitResultState.Variables.Add( localVariable );
 
-        awaitResultState.Transition = new AwaitResultTransition { TargetNode = _states[joinIndex] };
+        TargetState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
+
+        awaitResultState.Transition = new AwaitResultTransition { TargetNode = _nodes[joinIndex] };
 
         _jumpTable.Add( awaitResultState.Label, awaitTransition.ContinuationId );
 
@@ -259,7 +287,6 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
         return (Expression) localVariable ?? Expression.Empty();
 
-
         ParameterExpression CreateAwaiterVariable( AwaitExpression expression, int stateId )
         {
             var variable = Expression.Variable(
@@ -268,7 +295,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
                     : typeof(TaskAwaiter<>).MakeGenericType( expression.ReturnType ),
                 $"awaiter<{stateId}>" );
 
-            CurrentState.Variables.Add( variable );
+            TargetState.Variables.Add( variable );
             return variable;
         }
 
@@ -282,130 +309,28 @@ public class GotoTransformerVisitor : ExpressionVisitor
             if ( expression.ReturnType == typeof(void) )
             {
                 variable = null;
-                state.Expressions.Add(
-                    Expression.Call( awaiter, "GetResult", Type.EmptyTypes )
-                );
+                var expr = Expression.Call( awaiter, "GetResult", Type.EmptyTypes );
+                state.Expressions.Add( expr );
             }
             else
             {
                 variable = Expression.Variable( expression.ReturnType, $"<>s__{blockId}" );
                 state.Variables.Add( variable );
-                state.Expressions.Add(
-                    Expression.Assign( variable, Expression.Call( awaiter, "GetResult", Type.EmptyTypes ) )
-                );
+                var expr = Expression.Assign( variable, Expression.Call( awaiter, "GetResult", Type.EmptyTypes ) );
+                state.Expressions.Add( expr );
             }
         }
     }
 
-    //
-    // protected override Expression VisitMethodCall( MethodCallExpression node )
-    // {
-    //     foreach ( var nodeArgument in node.Arguments )
-    //     {
-    //         VisitDepth( nodeArgument );
-    //     }
-    //
-    //     AddNodeToBlock( node );
-    //     return node;
-    // }
+    protected override Expression VisitParameter( ParameterExpression node )
+    {
+        if ( _initialVariables.Contains( node ) )
+            TargetState.Variables.Add( node );
+        
+        return base.VisitParameter( node );
+    }
 
-    // protected override Expression VisitInvocation( InvocationExpression node )
-    // {
-    //     foreach ( var nodeArgument in node.Arguments )
-    //     {
-    //         VisitDepth( nodeArgument );
-    //     }
-    //
-    //     AddNodeToBlock( node );
-    //     return node;
-    // }
-    //
-    // protected override Expression VisitBinary( BinaryExpression node )
-    // {
-    //     // var left = Visit( node.Left );
-    //     // var right = Visit( node.Right );
-    //     //
-    //     // var newNode = node.Update( left, node.Conversion, right );
-    //
-    //     var updatedNode = base.VisitBinary( node );
-    //     return updatedNode;
-    // }
-
-    // protected override Expression VisitParameter( ParameterExpression node )
-    // {
-    //     CurrentState.Variables.Add( node );
-    //     AddNodeToBlock( node );
-    //     return node;
-    // }
-    //
-    // protected override Expression VisitConstant( ConstantExpression node )
-    // {
-    //     AddNodeToBlock(node);
-    //     return node;
-    // }
-
-    // protected override Expression VisitUnary( UnaryExpression node )
-    // {
-    //     if ( node.NodeType != ExpressionType.Throw )
-    //     {
-    //         return base.VisitUnary( node );
-    //     }
-    //
-    //     AddNodeToBlock( node );
-    //     return node;
-    // }
-
-
-    // protected override LabelTarget VisitLabelTarget( LabelTarget node )
-    // {
-    //     var labelIndex = GetOrCreateLabelIndex( node );
-    //     _states[labelIndex].Transition ??= new LabelTransition();
-    //
-    //     CurrentState.Label = node;
-    //
-    //     return node;
-    // }
-    //
-    // protected override Expression VisitGoto( GotoExpression node )
-    // {
-    //     var continueToIndex = EnterTransition( out var currentStateIndex );
-    //     var gotoTransition = new GotoTransition();
-    //
-    //     base.VisitGoto( node );
-    //     //VisitLabelTarget( node.Target );
-    //     PushContinueTo( continueToIndex );
-    //     gotoTransition.TargetNode = _states[continueToIndex];
-    //
-    //     _states[continueToIndex].ContinueTo = _states[_currentStateIndex];
-    //     _currentStateIndex = PopContinueTo();
-    //
-    //     ExitTransition( gotoTransition, currentStateIndex, continueToIndex );
-    //
-    //     return node;
-    // }
-    //
-    // protected override Expression VisitLabel( LabelExpression node )
-    // {
-    //     var labelIndex = GetOrCreateLabelIndex( node.Target );
-    //     _states[labelIndex].Transition ??= new LabelTransition();
-    //
-    //     return node;
-    // }
-    //
-    // private int GetOrCreateLabelIndex( LabelTarget label )
-    // {
-    //     if ( _labelMappings.TryGetValue( label, out var index ) )
-    //     {
-    //         return index;
-    //     }
-    //
-    //     InsertState( out var stateIndex );
-    //     _labelMappings[label] = stateIndex;
-    //
-    //     return index;
-    // }
-
-    private Expression InternalVisit( Expression expr )
+    private Expression VisitInternal( Expression expr )
     {
         switch ( expr )
         {
@@ -419,16 +344,15 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
             default:
                 var updateNode = Visit( expr );
-                CurrentState.Expressions.Add( updateNode );
+                // Cannot pass this in as it's updated after visiting.
+                TargetState.Expressions.Add( updateNode );
                 return updateNode;
-
         }
     }
 
-
     public void PrintStateMachine()
     {
-        PrintStateMachine( _states );
+        PrintStateMachine( _nodes );
     }
 
     public static void PrintStateMachine( List<StateNode> states )
@@ -540,48 +464,51 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
 public class JumpTableExpression : Expression
 {
-    private readonly Expression _state;
-    private readonly List<SwitchCase> _cases = [];
+    private readonly Dictionary<LabelTarget, int> _jumpCases = new();
 
+    public Expression State { get; set; }
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override Type Type => typeof( void );
     public override bool CanReduce => true;
 
-    
-
-    public JumpTableExpression( Expression state )
-    {
-        _state = state;
-    }
-
     public override Expression Reduce()
     {
-        return Switch( _state, Empty(), [.. _cases] );
+        if ( State == null )
+            throw new NullReferenceException( "State is not set" );
+
+        return Switch( State, Empty(),
+            _jumpCases.Select( c =>
+                    SwitchCase(
+                        Block(
+                            Assign( State, Constant( -1 ) ),
+                            Goto( c.Key )
+                        ),
+                        Constant( c.Value ) ) )
+                .ToArray() );
     }
 
     public void Add( LabelTarget jumpLabel, int stateId )
     {
-        _cases.Add(
-            SwitchCase(
-                Block(
-                    Assign( _state, Expression.Constant( -1 ) ),
-                    Goto( jumpLabel ) ),
-                Constant( stateId ) ) );
+        _jumpCases.Add( jumpLabel, stateId );
     }
 }
 
-public class AwaitCompletionExpression : Expression
+internal class AwaitCompletionExpression : Expression
 {
-    private readonly Expression _awaiter;
+    private readonly ParameterExpression _awaiter;
+    private readonly int _stateId;
 
-    // set before reduce
-    private Type _stateMachineType;
+    // initialize before reduce
     private Expression _stateMachine;
+    private List<FieldBuilder> _fields;
     private LabelTarget _returnLabel;
+    private MemberExpression _stateIdField;
+    private MemberExpression _builderField;
 
-    public AwaitCompletionExpression( Expression awaiter )
+    public AwaitCompletionExpression( ParameterExpression awaiter, int stateId )
     {
         _awaiter = awaiter;
+        _stateId = stateId;
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
@@ -590,20 +517,37 @@ public class AwaitCompletionExpression : Expression
 
     public override Expression Reduce()
     {
-        return Constant("if not completed then await on completed and return");
+        var awaiterField = _fields.First( x => x.Name == _awaiter.Name );
+        var awaiterFieldInfo = GetFieldInfo( _stateMachine.Type, awaiterField );
+        var stateMachineAwaiterField = Field( _stateMachine, awaiterFieldInfo );
 
-        // return IfThen(
-        //     IsFalse( Property( _awaiter, "IsCompleted" ) ),
-        //     Block(
-        //         Call(
-        //             Field( _stateMachine, buildFieldInfo ),
-        //             nameof(AsyncTaskMethodBuilder<TResult>.AwaitUnsafeOnCompleted),
-        //             [_awaiter.FieldType, typeof(IAsyncStateMachine)],
-        //             Field( _stateMachine, _awaiter ),
-        //             _stateMachine
-        //         ),
-        //         Return( _returnLabel )
-        //     )
-        // );
+        return IfThen(
+            IsFalse( Property( stateMachineAwaiterField, "IsCompleted" ) ),
+            Block(
+                Assign( _stateIdField, Constant( _stateId ) ),
+                Call(
+                    _builderField,
+                    "AwaitUnsafeOnCompleted",
+                    [awaiterField.FieldType, typeof(IAsyncStateMachine)],
+                    stateMachineAwaiterField,
+                    _stateMachine
+                ),
+                Return( _returnLabel )
+            )
+        );
+
+        static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
+        {
+            return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
+        }
+    }
+
+    public void Initialize( Expression stateMachine, List<FieldBuilder> fields, LabelTarget returnLabel, MemberExpression stateIdField, MemberExpression buildField )
+    {
+        _stateMachine = stateMachine;
+        _fields = fields;
+        _returnLabel = returnLabel;
+        _stateIdField = stateIdField;
+        _builderField = buildField;
     }
 }

@@ -40,9 +40,14 @@ public class AsyncBlockExpression : AsyncBaseExpression
         if ( _isReduced )
             return _stateMachine;
 
-        var asyncBlock = ConvertToAwaitableBlock( out _resultType );
-        
-        _stateMachine = StateMachineBuilder.Create( asyncBlock, _resultType, createRunner: true );
+        // Restructure expressions so we can split them into awaitable blocks
+        var transformer = new GotoTransformerVisitor();
+        var transformResult = transformer.Transform( _initialVariables, _expressions );
+        transformer.PrintStateMachine();
+
+        _resultType = GetResultType();
+
+        _stateMachine = StateMachineBuilder.Create( transformResult, _resultType, createRunner: true );
         _isReduced = true;
 
         return _stateMachine;
@@ -59,95 +64,17 @@ public class AsyncBlockExpression : AsyncBaseExpression
         }
     }
 
-    internal BlockExpression ConvertToAwaitableBlock( out Type resultType )
+    internal Type GetResultType()
     {
-        var childBlockExpressions = new List<Expression>();
-        var currentBlockExpressions = new List<Expression>();
-        var awaitEncountered = false;
-
-        var variables = new HashSet<ParameterExpression>( _initialVariables );
-        resultType = typeof(void);
-
-        // Restructure expressions so we can split them into awaitable blocks
-        var transformer = new GotoTransformerVisitor();
-        var states = transformer.Transform( this );
-        transformer.PrintStateMachine();
-
-        foreach ( var blockPartExpr in _expressions )
+        var lastExpr = _expressions[^1];
+        if ( IsTask( lastExpr.Type ) )
         {
-            var splitVisitor = new AwaitSplitVisitor();
-            var updateExpression = splitVisitor.Visit( blockPartExpr );
-
-            currentBlockExpressions.Add( updateExpression );
-            variables.UnionWith( splitVisitor.Variables );
-            awaitEncountered = awaitEncountered || splitVisitor.AwaitEncountered;
-
-            // Expression[] expressions = updateExpression is BlockExpression block
-            //     ? [..block.Expressions]
-            //     : [updateExpression];
-            //
-            // // Create a block for each state-machine await
-            // foreach ( var expr in expressions )
-            // {
-            //     if ( expr is AsyncBlockExpression asyncBlock )
-            //     {
-            //         // Recursively reduce the inner async block
-            //         var reducedInnerBlock = asyncBlock.Reduce();
-            //         currentBlockExpressions.Add( reducedInnerBlock );
-            //         continue;
-            //     }
-            //
-            //     currentBlockExpressions.Add( expr );
-            //
-            //     switch ( expr )
-            //     {
-            //         case BinaryExpression { Left: ParameterExpression varExpr }:
-            //             variables.Add( varExpr );
-            //             break;
-            //         case AwaitResultExpression { InnerVariable: ParameterExpression parameter }:
-            //             // TODO: Review with BF (tracking variables)
-            //             variables.Add( parameter );
-            //             break;
-            //         case AwaitExpression awaitExpression:
-            //             awaitExpression.ReturnTask = true; // BF - Set the return task flag to true
-            //             awaitEncountered = true;
-            //             var currentBlock = Block( currentBlockExpressions );
-            //             childBlockExpressions.Add( currentBlock );
-            //             currentBlockExpressions = [];
-            //             break;
-            //     }
-            // }
-
+            return lastExpr.Type.IsGenericType
+                ? lastExpr.Type.GetGenericArguments()[0]
+                : typeof( void ); // Task without a result
         }
 
-        // Get the result type
-        if ( currentBlockExpressions.Count > 0 )
-        {
-            var finalBlock = Block( currentBlockExpressions );
-            childBlockExpressions.Add( finalBlock );
-
-            var lastExpr = currentBlockExpressions[^1];
-            
-            if ( IsTask( lastExpr.Type ) )
-            {
-                resultType = lastExpr.Type.IsGenericType
-                    ? lastExpr.Type.GetGenericArguments()[0]
-                    : typeof(void); // Task without a result
-            }
-            else
-            {
-                resultType = lastExpr.Type;
-            }
-        }
-
-        // Ensure that at least one await is present in the block
-        if( !awaitEncountered )
-        {
-            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
-        }
-
-        // Combine all child blocks into a single parent block, with variables declared at the parent level
-        return Block( variables, childBlockExpressions ); 
+        return lastExpr.Type;
     }
 
     private class AsyncBlockExpressionDebuggerProxy
