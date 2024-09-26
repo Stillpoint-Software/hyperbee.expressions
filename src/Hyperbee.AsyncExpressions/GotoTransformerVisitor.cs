@@ -28,15 +28,15 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
     private int _continuationCounter;
     private int _labelCounter;
+    private int _targetStateIndex;
 
-    private int _currentStateIndex;
+    private StateNode TargetState => _nodes[_targetStateIndex];
     private ParameterExpression[] _initialVariables;
-    private StateNode TargetState => _nodes[_currentStateIndex];
 
     public GotoTransformResult Transform( ParameterExpression[] initialVariables, params Expression[] expressions )
     {
         _initialVariables = initialVariables;
-        InsertState( out _currentStateIndex );
+        InsertState( out _targetStateIndex );
 
         foreach ( var expr in expressions )
         {
@@ -51,6 +51,12 @@ public class GotoTransformerVisitor : ExpressionVisitor
         return Transform( [], expressions );
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void TransitionToState( int stateIndex )
+    {
+        _targetStateIndex = stateIndex;
+    }
+
     private StateNode InsertState( out int stateIndex )
     {
         var stateNode = new StateNode( _labelCounter++ );
@@ -63,7 +69,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
     private StateNode VisitState( Expression expression, int joinIndex, bool isAsyncResult = false )
     {
         var state = InsertState( out var stateIndex );
-        _currentStateIndex = stateIndex;
+        TransitionToState( stateIndex );
 
         if ( isAsyncResult )
             Visit( expression );
@@ -76,6 +82,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
         // We did not visit the expression, so we need to initialize the defaults
         TargetState.Transition = new GotoTransition { TargetNode = _nodes[joinIndex] };
+        
         if( !isAsyncResult )
             TargetState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
 
@@ -87,7 +94,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
         InsertState( out var joinIndex ); 
 
         _joinIndexes.Push( joinIndex );
-        sourceIndex = _currentStateIndex;
+        sourceIndex = _targetStateIndex;
 
         return joinIndex;
     }
@@ -95,7 +102,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
     private void ExitTransitionContext( int sourceIndex, TransitionNode transitionNode )
     {
         _nodes[sourceIndex].Transition = transitionNode;
-        _currentStateIndex = _joinIndexes.Pop();
+        TransitionToState( _joinIndexes.Pop() ); // Transition back to the previous join state
     }
 
     protected override Expression VisitBlock( BlockExpression node )
