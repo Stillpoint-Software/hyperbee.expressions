@@ -7,8 +7,8 @@ namespace Hyperbee.AsyncExpressions.Tests;
 public class AsyncBlockTests
 {
     public static bool AreEqual(int a, int b) => a == b;
-    static int Test( int a, int b ) => a + b;
-    static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
+    //static int Test( int a, int b ) => a + b;
+    //static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
 
     public static MethodInfo GetMethod(string name) => typeof(AsyncBlockTests).GetMethod(name);
 
@@ -20,13 +20,13 @@ public class AsyncBlockTests
         var assignExpr1 = Expression.Assign(varExpr, Expression.Constant(10));
         
         // First await expression
-        var awaitExpr1 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof( Task ) ), false);
+        var awaitExpr1 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof( Task ) ));
 
         // Increment variable after first await
         var assignExpr2 = Expression.Assign(varExpr, Expression.Increment(varExpr));
 
         // Second await expression
-        var awaitExpr2 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof( Task ) ), false);
+        var awaitExpr2 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof( Task ) ));
 
         // Assert to check if variable maintains scope and has the expected value
         var assertExpr1 = Expression.Call(
@@ -86,7 +86,7 @@ public class AsyncBlockTests
         // Arrange
         var expr1 = Expression.Constant( 1 );
         var expr2 = Expression.Constant( 2 );
-        var awaitExpr3 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ), false );
+        var awaitExpr3 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ) );
         var expr4 = Expression.Constant( 4 );
 
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4 );
@@ -106,10 +106,10 @@ public class AsyncBlockTests
         // Arrange
         var expr1 = Expression.Constant( 1 );
         var expr2 = Expression.Constant( 2 );
-        var awaitExpr3 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ), false  );
+        var awaitExpr3 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) )  );
         var expr4 = Expression.Constant( 4 );
         var expr5 = Expression.Constant( 5 );
-        var awaitExpr6 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ), false );
+        var awaitExpr6 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ) );
         var expr7 = Expression.Constant( 7 );
 
         var asyncBlock = AsyncExpression.BlockAsync( expr1, expr2, awaitExpr3, expr4, expr5, awaitExpr6, expr7 );
@@ -133,7 +133,7 @@ public class AsyncBlockTests
         var var2 = Expression.Variable( typeof( int ), "var2" );
 
         var exp1 = Expression.Assign( var1, Expression.Constant( 1 ) );
-        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ), false );
+        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ) );
         var exp3 = Expression.Assign( var2, awaitExpr2 );
         var add = Expression.Add( var1, Expression.Add( var2, param1 ) );
         
@@ -232,7 +232,7 @@ public class AsyncBlockTests
         var var2 = Expression.Variable( typeof( int ), "var2" );
 
         var exp1 = Expression.Assign( var1, Expression.Constant( 1 ) );
-        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ), false );
+        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ) );
         var exp3 = Expression.Assign( var2, awaitExpr2 );
         var conditionalAdd = Expression.IfThenElse( param2,
             Expression.Assign( var2, Expression.Add( var2, param1 ) ),
@@ -266,7 +266,7 @@ public class AsyncBlockTests
         var returnLabel = Expression.Label( typeof( int ), "returnTest" );
 
         var exp1 = Expression.Assign( var1, Expression.Constant( 1 ) );
-        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ), false );
+        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ) );
         var exp3 = Expression.Assign( var2, awaitExpr2 );
         var conditionalAdd = Expression.IfThenElse( param2,
             Expression.Return( returnLabel, Expression.Add( var2, param1 ) ),
@@ -296,7 +296,7 @@ public class AsyncBlockTests
         // Arrange
         var varExpr = Expression.Variable( typeof( int ), "x" );
         var assignExpr = Expression.Assign( varExpr, Expression.Constant( 5 ) );
-        var awaitExpr = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof( Task ) ), false );
+        var awaitExpr = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof( Task ) ) );
         var assertExpr = Expression.Call(
             GetMethod( nameof( AreEqual ) ),
             Expression.Constant( 5 ),
@@ -323,9 +323,9 @@ public class AsyncBlockTests
         // Arrange
         var varExpr = Expression.Variable(typeof(int), "x");
         var assignExpr1 = Expression.Assign(varExpr, Expression.Constant(1));
-        var awaitExpr1 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof( Task ) ), false);
+        var awaitExpr1 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof( Task ) ));
         var assignExpr2 = Expression.Assign(varExpr, Expression.Add(varExpr, Expression.Constant(2)));
-        var awaitExpr2 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof( Task ) ), false);
+        var awaitExpr2 = AsyncExpression.Await(Expression.Constant(Task.CompletedTask, typeof( Task ) ));
         var assertExpr = Expression.Call(
             GetMethod(nameof(AreEqual)),
             Expression.Constant(3),
@@ -351,13 +351,13 @@ public class AsyncBlockTests
         // Arrange
         var varExpr = Expression.Variable( typeof(int), "x" );
         var assignExpr1 = Expression.Assign( varExpr, Expression.Constant( 1 ) );
-        var awaitExpr1 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ), false );
+        var awaitExpr1 = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ) );
 
         // Inner async block
         var innerAssign = Expression.Assign( varExpr, Expression.Add( varExpr, Expression.Constant( 2 ) ) );
-        var innerAwait = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ), false );
+        var innerAwait = AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof(Task) ) );
         var innerBlock = AsyncExpression.Await( 
-            AsyncExpression.BlockAsync( innerAssign, innerAwait, varExpr ), false );
+            AsyncExpression.BlockAsync( innerAssign, innerAwait, varExpr ) );
 
         var assertExpr = Expression.Call(
             GetMethod( nameof(AreEqual) ),

@@ -216,15 +216,17 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         }
 
         _awaitCount++;
+
         var joinIndex = EnterTransitionContext( out var sourceIndex );
 
         // Create awaiter variable
         var awaiterState = GetTargetState();
         var awaiterVariable = CreateAwaiterVariable( awaitExpression, awaiterState );
 
-        awaiterState.Expressions.Add(
-            Expression.Assign( awaiterVariable,
-                Expression.Call( awaitExpression.Target, awaitExpression.Target.Type.GetMethod( "GetAwaiter" )! ) ) );
+        awaiterState.Expressions.Add( Expression.Assign( 
+            awaiterVariable,
+            Expression.Call( awaitExpression.Target, awaitExpression.Target.Type.GetMethod( "GetAwaiter" )! ) ) 
+        );
 
         // Add a lazy expression to build the continuation
         awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, sourceIndex ) );
@@ -235,11 +237,11 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
         // Keep awaiter variable in scope for results
         CreateGetResults( awaitResultState, awaitExpression, awaiterVariable, out var localVariable );
-        if(localVariable != null)
+        
+        if( localVariable != null )
             awaitResultState.Variables.Add( localVariable );
 
         awaitResultState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
-
         awaitResultState.Transition = new AwaitResultTransition { TargetNode = _nodes[joinIndex] };
 
         _jumpTable.Add( awaitResultState.Label, sourceIndex );
@@ -251,7 +253,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
         return (Expression) localVariable ?? Expression.Empty();
 
-        // helper methods
+        // Helper method to create an awaiter variable
         ParameterExpression CreateAwaiterVariable( AwaitExpression expression, StateNode stateNode )
         {
             var variable = Expression.Variable(
@@ -264,10 +266,8 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             return variable;
         }
 
-        void CreateGetResults( StateNode state,
-            AwaitExpression expression,
-            ParameterExpression awaiter,
-            out ParameterExpression variable )
+        // Helper method to create the GetResult call
+        void CreateGetResults( StateNode state, AwaitExpression expression, ParameterExpression awaiter, out ParameterExpression variable )
         {
             state.Variables.Add( awaiter );
             if ( expression.Type == typeof(void) )
