@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 namespace Hyperbee.AsyncExpressions;
 
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
-public class AsyncBlockExpression : AsyncBaseExpression
+public class AsyncBlockExpression: Expression
 {
     private readonly Expression[] _expressions;
     private readonly ParameterExpression[] _initialVariables;
@@ -34,6 +34,8 @@ public class AsyncBlockExpression : AsyncBaseExpression
     }
 
     public override bool CanReduce => true;
+
+    public override ExpressionType NodeType => ExpressionType.Extension;
 
     public override Expression Reduce()
     {
@@ -67,6 +69,7 @@ public class AsyncBlockExpression : AsyncBaseExpression
     internal Type GetResultType()
     {
         var lastExpr = _expressions[^1];
+
         if ( IsTask( lastExpr.Type ) )
         {
             return lastExpr.Type.IsGenericType
@@ -75,6 +78,8 @@ public class AsyncBlockExpression : AsyncBaseExpression
         }
 
         return lastExpr.Type;
+
+        static bool IsTask( Type type ) => typeof(Task).IsAssignableFrom( type );
     }
 
     private class AsyncBlockExpressionDebuggerProxy

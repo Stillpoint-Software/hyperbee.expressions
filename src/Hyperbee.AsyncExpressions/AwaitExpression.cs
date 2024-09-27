@@ -20,34 +20,22 @@ public class AwaitExpression : Expression
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
-
-    // TODO: Review with BF (fix caching the type)
-    public override Type Type => ResultType( Target.Type, false );
-    public Type ReturnType => ResultType( Target.Type, false );
+    public override bool CanReduce => true;
+    public override Type Type => ResultType( Target.Type );
 
     public Expression Target { get; }
 
-    public bool ReturnTask { get; set; }
-
-    public override bool CanReduce => true;
-
     public override Expression Reduce()
     {
-        if ( ReturnTask )
-            return Target;
-
-        var resultType = ResultType( Target.Type, ReturnTask );
+        var resultType = ResultType( Target.Type );
 
         return Call( resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
             ? AwaitMethod 
             : AwaitResultMethod.MakeGenericMethod( resultType ), Target, Constant( _configureAwait ) );
     }
 
-    private static Type ResultType( Type taskType, bool returnTask )
+    private static Type ResultType( Type taskType )
     {
-        if ( returnTask )
-            return taskType;
-
         return taskType.IsGenericType switch
         {
             true when taskType == typeof( Task<IVoidTaskResult> ) => typeof( void ),
@@ -70,7 +58,7 @@ public class AwaitExpression : Expression
     private class AwaitExpressionProxy( AwaitExpression node )
     {
         public Expression Target => node.Target;
-        public Type ReturnType => node.ReturnType;
+        public Type Type => node.Type;
     }
 }
 
@@ -78,6 +66,9 @@ public static partial class AsyncExpression
 {
     public static AwaitExpression Await( Expression expression, bool configureAwait = false )
     {
+        if ( !typeof(Task).IsAssignableFrom( expression.Type ) )
+            throw new ArgumentException( "Expression must be of type Task.", nameof( expression ) );
+
         return new AwaitExpression( expression, configureAwait );
     }
 }

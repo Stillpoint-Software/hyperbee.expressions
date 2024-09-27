@@ -25,7 +25,7 @@ public class AwaitableResultExpression( Expression variable ) : Expression
                 "GetResult", Type.EmptyTypes )
             );
         }
-        catch ( Exception e )
+        catch ( Exception )
         {
             return variable;
         }

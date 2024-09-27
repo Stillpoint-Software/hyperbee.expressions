@@ -297,9 +297,9 @@ public class GotoTransformerVisitor : ExpressionVisitor
         ParameterExpression CreateAwaiterVariable( AwaitExpression expression, int stateId )
         {
             var variable = Expression.Variable(
-                expression.ReturnType == typeof(void)
+                expression.Type == typeof(void)
                     ? typeof(TaskAwaiter)
-                    : typeof(TaskAwaiter<>).MakeGenericType( expression.ReturnType ),
+                    : typeof(TaskAwaiter<>).MakeGenericType( expression.Type ),
                 $"awaiter<{stateId}>" );
 
             TargetState.Variables.Add( variable );
@@ -313,7 +313,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             out ParameterExpression variable )
         {
             state.Variables.Add( awaiter );
-            if ( expression.ReturnType == typeof(void) )
+            if ( expression.Type == typeof(void) )
             {
                 variable = null;
                 var expr = Expression.Call( awaiter, "GetResult", Type.EmptyTypes );
@@ -321,7 +321,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             }
             else
             {
-                variable = Expression.Variable( expression.ReturnType, $"<>s__{blockId}" );
+                variable = Expression.Variable( expression.Type, $"<>s__{blockId}" );
                 state.Variables.Add( variable );
                 var expr = Expression.Assign( variable, Expression.Call( awaiter, "GetResult", Type.EmptyTypes ) );
                 state.Expressions.Add( expr );
