@@ -304,9 +304,9 @@ public class AsyncMethodTests
 
         var paramA = Expression.Parameter( typeof( Task<int> ), "a" );
 
-        var l1 = AsyncExpression.InvokeAsync( incrementExpression, paramA );
-        var l2 = AsyncExpression.InvokeAsync( incrementExpression, l1 );
-        var l3 = AsyncExpression.InvokeAsync( incrementExpression, l2 );
+        var l1 = Expression.Invoke( incrementExpression, paramA );
+        var l2 = Expression.Invoke( incrementExpression, l1 );
+        var l3 = Expression.Invoke( incrementExpression, l2 );
 
         var compiled = Expression.Lambda<Func<Task<int>, Task<int>>>( l3, paramA ).Compile();
         var expressionResult = await compiled( Task.FromResult( 2 ) );
