@@ -16,7 +16,7 @@ public class GotoTransformerVisitorTests
 
     [TestMethod]
     public void GotoTransformer_CollectExpressions()
-    {        
+    {
         // Arrange
         var varExpr = Variable( typeof( int ), "x" );
         var assignExpr = Assign( varExpr, Add( varExpr, Constant( 2 ) ) );
@@ -26,13 +26,13 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( assignExpr );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
 
     [TestMethod]
     public void GotoTransformer_WithBodyAwaits()
-    {        
+    {
         // Arrange
         var blockAwaits = Block(
             Constant( "before await1" ),
@@ -53,12 +53,12 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( blockAwaits );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
     public void GotoTransformer_WithIfThen()
-    {        
+    {
         // Arrange
         var ifThenElseExpr = Block(
             Constant( 0 ),
@@ -77,24 +77,24 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( ifThenElseExpr );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
     public void GotoTransformer_WithParameters()
-    {        
+    {
         // Arrange
         var methodInfo = GetMethod( nameof( Test ) )!;
 
-        var aParam = Parameter( typeof(int), "a" );
-        var bParam = Parameter( typeof(int), "b" );
+        var aParam = Parameter( typeof( int ), "a" );
+        var bParam = Parameter( typeof( int ), "b" );
         var variables = Block(
             [aParam, bParam],
             Constant( "before parameters" ),
             Assign( aParam, Constant( 1 ) ),
             Assign( bParam, Constant( 2 ) ),
             Constant( "after parameters" ),
-            Call(  methodInfo, aParam, bParam )
+            Call( methodInfo, aParam, bParam )
         );
 
         // Act
@@ -102,14 +102,14 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( variables );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
     public void GotoTransformer_WithNestedBlockParameters()
     {
         // Arrange
-        var methodInfo = GetMethod( nameof(Test) );
+        var methodInfo = GetMethod( nameof( Test ) );
 
         var aParam = Parameter( typeof( int ), "a" );
         var b2Param = Parameter( typeof( int ), "b" );  // Same name, inner scope
@@ -137,7 +137,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( variables );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -146,8 +146,8 @@ public class GotoTransformerVisitorTests
         // Arrange
         var methodInfo = GetMethod( nameof( Test ) );
 
-        var aParam = Parameter( typeof(int), "a" );
-        var bParam = Parameter( typeof(int), "b" );
+        var aParam = Parameter( typeof( int ), "a" );
+        var bParam = Parameter( typeof( int ), "b" );
         var conditionalParameters = Block(
             [aParam, bParam],
             Constant( "before if" ),
@@ -175,7 +175,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( conditionalParameters );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -211,7 +211,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( switchBlock );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -236,7 +236,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( switchBlock );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -261,7 +261,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( switchBlock );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -286,7 +286,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( methodWithParameter );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -311,7 +311,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( methodWithParameter );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -333,7 +333,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( callExpr );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -353,7 +353,7 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( callExpr );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     // [TestMethod]
@@ -376,7 +376,7 @@ public class GotoTransformerVisitorTests
     //     var result = transformer.Transform( gotoExpr );
     //
     //     // Assert
-    //     result.PrintNodes();
+    //             Console.WriteLine( result.DebugView );
     // }
 
     [TestMethod]
@@ -403,9 +403,9 @@ public class GotoTransformerVisitorTests
         // Act
         var transformer = new GotoTransformerVisitor();
         var result = transformer.Transform( whileBlockExpr );
-        
+
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
     [TestMethod]
@@ -419,9 +419,9 @@ public class GotoTransformerVisitorTests
                     Constant( "try body before exception" ),
                     Throw( Constant( new Exception( "Test Exception" ) ) ),
                     Constant( "try body after exception" ) ),
-                Catch( typeof(Exception), Block(
+                Catch( typeof( Exception ), Block(
                     Constant( "Exception catch body" ) ) ),
-                Catch( typeof(ArgumentException), Block(
+                Catch( typeof( ArgumentException ), Block(
                     Constant( "ArgumentException catch body" ) ) ) ),
             Constant( "after try" )
         );
@@ -431,13 +431,13 @@ public class GotoTransformerVisitorTests
         var result = transformer.Transform( tryCatchExpr );
 
         // Assert
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
-        
+
     [TestMethod]
     public void GotoTransformer_WithComplexConditions()
     {
-        var ifThenElseExpr = Block( 
+        var ifThenElseExpr = Block(
             Constant( 0 ),
             IfThen(
                 Await( Constant( Task.FromResult( true ) ) ),
@@ -464,7 +464,7 @@ public class GotoTransformerVisitorTests
         var transformer = new GotoTransformerVisitor();
         var result = transformer.Transform( ifThenElseExpr );
 
-        result.PrintNodes();
+        Console.WriteLine( result.DebugView );
     }
 
 }

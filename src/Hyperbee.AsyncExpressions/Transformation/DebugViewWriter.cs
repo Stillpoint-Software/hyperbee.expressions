@@ -2,9 +2,9 @@
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-internal static class DiagnosticHelper
+internal static class DebugViewWriter
 {
-    public static void WriteNodes( List<StateNode> nodes )
+    public static void WriteTo( StringWriter writer, List<StateNode> nodes )
     {
         foreach ( var node in nodes )
         {
@@ -19,19 +19,19 @@ internal static class DiagnosticHelper
 
             if ( node.Variables.Count > 0 )
             {
-                Console.WriteLine( "\tVariables" );
-                Console.WriteLine( $"\t\t[{VariablesToString( node.Variables )}]" );
+                writer.WriteLine( "\tVariables" );
+                writer.WriteLine( $"\t\t[{VariablesToString( node.Variables )}]" );
             }
 
             // expressions
 
             if ( node.Expressions.Count > 0 )
             {
-                Console.WriteLine( "\tExpressions" );
+                writer.WriteLine( "\tExpressions" );
 
                 foreach ( var expr in node.Expressions )
                 {
-                    Console.WriteLine( $"\t\t{expr}" );
+                    writer.WriteLine( $"\t\t{expr}" );
                 }
             }
 
@@ -39,49 +39,51 @@ internal static class DiagnosticHelper
 
             var transition = node.Transition;
 
-            Console.WriteLine( $"\t{transition?.GetType().Name ?? "Terminal"}" );
+            writer.WriteLine( $"\t{transition?.GetType().Name ?? "Terminal"}" );
 
             if ( transition != null )
             {
                 switch ( transition )
                 {
                     case ConditionalTransition condNode:
-                        Console.WriteLine( $"\t\tIfTrue -> {condNode.IfTrue?.Label}" );
-                        Console.WriteLine( $"\t\tIfFalse -> {condNode.IfFalse?.Label}" );
+                        writer.WriteLine( $"\t\tIfTrue -> {condNode.IfTrue?.Label}" );
+                        writer.WriteLine( $"\t\tIfFalse -> {condNode.IfFalse?.Label}" );
                         break;
                     case SwitchTransition switchNode:
                         foreach ( var caseNode in switchNode.CaseNodes )
                         {
-                            Console.WriteLine( $"\t\tCase -> {caseNode?.Label}" );
+                            writer.WriteLine( $"\t\tCase -> {caseNode?.Label}" );
                         }
-                        Console.WriteLine( $"\t\tDefault -> {switchNode.DefaultNode?.Label}" );
+
+                        writer.WriteLine( $"\t\tDefault -> {switchNode.DefaultNode?.Label}" );
                         break;
                     case TryCatchTransition tryNode:
-                        Console.WriteLine( $"\t\tTry -> {tryNode.TryNode?.Label}" );
+                        writer.WriteLine( $"\t\tTry -> {tryNode.TryNode?.Label}" );
                         foreach ( var catchNode in tryNode.CatchNodes )
                         {
-                            Console.WriteLine( $"\t\tCatch -> {catchNode?.Label}" );
+                            writer.WriteLine( $"\t\tCatch -> {catchNode?.Label}" );
                         }
-                        Console.WriteLine( $"\t\tFinally -> {tryNode.FinallyNode?.Label}" );
+
+                        writer.WriteLine( $"\t\tFinally -> {tryNode.FinallyNode?.Label}" );
                         break;
                     case AwaitTransition awaitNode:
-                        Console.WriteLine( $"\t\tCompletion -> {awaitNode.CompletionNode?.Label}" );
+                        writer.WriteLine( $"\t\tCompletion -> {awaitNode.CompletionNode?.Label}" );
                         break;
                     case AwaitResultTransition awaitResultNode:
-                        Console.WriteLine( $"\t\tGoto -> {awaitResultNode.TargetNode?.Label}" );
+                        writer.WriteLine( $"\t\tGoto -> {awaitResultNode.TargetNode?.Label}" );
                         break;
                     case GotoTransition gotoNode:
-                        Console.WriteLine( $"\t\tGoto -> {gotoNode.TargetNode?.Label}" );
+                        writer.WriteLine( $"\t\tGoto -> {gotoNode.TargetNode?.Label}" );
                         break;
                 }
             }
 
             if ( node.Transition == null )
             {
-                Console.WriteLine( "\t\tExit" );
+                writer.WriteLine( "\t\tExit" );
             }
 
-            Console.WriteLine();
+            writer.WriteLine();
         }
     }
 

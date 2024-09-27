@@ -10,7 +10,7 @@ public enum ExpressionKind
 }
 
 [TestClass]
-public class AsyncMethodTests
+public class AwaitTests
 {
     private static async Task Delay()
     {
@@ -54,7 +54,7 @@ public class AsyncMethodTests
 
     private static MethodInfo GetMethodInfo( string name )
     {
-        return typeof( AsyncMethodTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
+        return typeof( AwaitTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
     }
 
     private static Expression GetAsyncExpression( ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments )
