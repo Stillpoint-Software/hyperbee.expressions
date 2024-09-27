@@ -7,9 +7,6 @@ namespace Hyperbee.AsyncExpressions.Tests;
 public class AsyncBlockTests
 {
     public static bool AreEqual(int a, int b) => a == b;
-    //static int Test( int a, int b ) => a + b;
-    //static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
-
     public static MethodInfo GetMethod(string name) => typeof(AsyncBlockTests).GetMethod(name);
 
     [TestMethod]

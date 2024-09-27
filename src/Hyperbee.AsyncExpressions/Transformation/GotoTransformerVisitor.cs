@@ -7,9 +7,8 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 {
     private readonly List<StateNode> _nodes = [];
     private readonly Stack<int> _joinIndexes = new();
+    private readonly Dictionary<LabelTarget, int> _jumpCases = new();
 
-    // jump table?
-    private readonly JumpTableExpression _jumpTable = new();
     private ParameterExpression _returnValue;
     private ParameterExpression[] _variables;
     private int _awaitCount;
@@ -27,7 +26,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             VisitInternal( expr );
         }
 
-        return new GotoTransformerResult { Nodes = _nodes, JumpTable = _jumpTable, ReturnValue = _returnValue, AwaitCount = _awaitCount };
+        return new GotoTransformerResult { Nodes = _nodes, JumpCases = _jumpCases, ReturnValue = _returnValue, AwaitCount = _awaitCount };
     }
 
     public GotoTransformerResult Transform( params Expression[] expressions )
@@ -244,7 +243,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         awaitResultState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
         awaitResultState.Transition = new AwaitResultTransition { TargetNode = _nodes[joinIndex] };
 
-        _jumpTable.Add( awaitResultState.Label, sourceIndex );
+        _jumpCases.Add( awaitResultState.Label, sourceIndex );
 
         // get awaiter
         var awaitTransition = new AwaitTransition { CompletionNode = awaitResultState };
@@ -325,36 +324,5 @@ internal class GotoTransformerVisitor : ExpressionVisitor
                 GetTargetState().Expressions.Add( updateNode );
                 return updateNode;
         }
-    }
-}
-
-public class JumpTableExpression : Expression
-{
-    private readonly Dictionary<LabelTarget, int> _jumpCases = new();
-
-    public Expression State { get; set; }
-    public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof( void );
-    public override bool CanReduce => true;
-
-    public override Expression Reduce()
-    {
-        if ( State == null )
-            throw new NullReferenceException( "State is not set" );
-
-        return Switch( State, Empty(),
-            _jumpCases.Select( c =>
-                    SwitchCase(
-                        Block(
-                            Assign( State, Constant( -1 ) ),
-                            Goto( c.Key )
-                        ),
-                        Constant( c.Value ) ) )
-                .ToArray() );
-    }
-
-    public void Add( LabelTarget jumpLabel, int stateId )
-    {
-        _jumpCases.Add( jumpLabel, stateId );
     }
 }

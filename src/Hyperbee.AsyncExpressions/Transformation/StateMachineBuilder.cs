@@ -366,8 +366,22 @@ public class StateMachineBuilder<TResult>
             stateMachineBuilderFieldExpression );
 
         // Create the jump table
-        result.JumpTable.State = Expression.Field( stateMachineInstance, FieldName.State );
-        bodyExpressions.Add( result.JumpTable.Reduce() );
+
+        var jumpTableExpression = Expression.Switch(
+            stateIdFieldExpression, 
+            Expression.Empty(),
+            result.JumpCases.Select( c =>
+                Expression.SwitchCase(
+                    Expression.Block(
+                        Expression.Assign( stateIdFieldExpression, Expression.Constant( -1 ) ),
+                        Expression.Goto( c.Key )
+                    ),
+                    Expression.Constant( c.Value ) 
+                ) 
+            )
+            .ToArray() );
+
+        bodyExpressions.Add( jumpTableExpression );
 
         // Iterate through the blocks (each block corresponds to a state)
         foreach ( var (blockVariables, blockExpressions, blockTransition) in result.Nodes )

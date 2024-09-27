@@ -5,10 +5,10 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 public record GotoTransformerResult
 {
-    public List<StateNode> Nodes { get; set; }
-    public JumpTableExpression JumpTable { get; set; }
-    public ParameterExpression ReturnValue { get; set; }
-    public int AwaitCount { get; set; }
+    public List<StateNode> Nodes { get; init; }
+    public IReadOnlyDictionary<LabelTarget, int> JumpCases { get; init; }
+    public ParameterExpression ReturnValue { get; init; }
+    public int AwaitCount { get; init; }
 
     internal string DebugView
     {
@@ -20,9 +20,9 @@ public record GotoTransformerResult
         }
     }
 
-    public void Deconstruct( out List<StateNode> states, out JumpTableExpression jumpTable )
+    public void Deconstruct( out List<StateNode> states, out IReadOnlyDictionary<LabelTarget, int> jumpCases )
     {
         states = Nodes;
-        jumpTable = JumpTable;
+        jumpCases = JumpCases;
     }
 }
