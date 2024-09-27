@@ -331,7 +331,7 @@ public class StateMachineBuilder<TResult>
         //
         //     ST_0000:
         //     stateMachine.var1 = 1;
-        //     stateMachine.awaiter < 0 > = Task<int>.GetAwaiter();
+        //     stateMachine.awaiter<0> = Task<int>.GetAwaiter();
         //
         //     if ( !stateMachine.awaiter<0>.IsCompleted )
         //     {
@@ -343,11 +343,11 @@ public class StateMachineBuilder<TResult>
         //     goto ST_0002;
         //
         //     ST_0001:
-        //     stateMachine.var2 = stateMachine.<> s__2;
+        //     stateMachine.var2 = stateMachine.<>s__2;
         //     goto ST_0004;
         //
         //     ST_0002:
-        //     stateMachine.<> s__2 = stateMachine.awaiter<0>.GetResult();
+        //     stateMachine.<>s__2 = stateMachine.awaiter<0>.GetResult();
         //     goto ST_0001;
         //
         //     ST_0003:
