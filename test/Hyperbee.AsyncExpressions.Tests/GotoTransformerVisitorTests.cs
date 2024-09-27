@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Linq.Expressions;
+using System.Reflection;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.AsyncExpressions.AsyncExpression;
 
@@ -9,6 +10,8 @@ public class GotoTransformerVisitorTests
 {
     static int Test( int a, int b ) => a + b;
     static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
+
+    public static MethodInfo GetMethod( string name ) => typeof( AsyncBlockTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic );
 
 
     [TestMethod]
@@ -81,8 +84,7 @@ public class GotoTransformerVisitorTests
     public void GotoTransformer_WithParameters()
     {        
         // Arrange
-        var methodInfo = GetType()
-            .GetMethod( nameof( Test ), BindingFlags.Static | BindingFlags.NonPublic )!;
+        var methodInfo = GetMethod( nameof( Test ) )!;
 
         var aParam = Parameter( typeof(int), "a" );
         var bParam = Parameter( typeof(int), "b" );
@@ -107,8 +109,7 @@ public class GotoTransformerVisitorTests
     public void GotoTransformer_WithNestedBlockParameters()
     {
         // Arrange
-        var methodInfo = GetType()
-            .GetMethod( nameof( Test ), BindingFlags.Static | BindingFlags.NonPublic )!;
+        var methodInfo = GetMethod( nameof(Test) );
 
         var aParam = Parameter( typeof( int ), "a" );
         var b2Param = Parameter( typeof( int ), "b" );  // Same name, inner scope
@@ -143,8 +144,7 @@ public class GotoTransformerVisitorTests
     public void GotoTransformer_WithConditionalParameters()
     {
         // Arrange
-        var methodInfo = GetType()
-            .GetMethod( nameof(Test), BindingFlags.Static | BindingFlags.NonPublic )!;
+        var methodInfo = GetMethod( nameof( Test ) );
 
         var aParam = Parameter( typeof(int), "a" );
         var bParam = Parameter( typeof(int), "b" );
@@ -268,8 +268,7 @@ public class GotoTransformerVisitorTests
     public void GotoTransformer_WithAwaitAssignments()
     {
         // Arrange
-        var methodInfo = GetType()
-            .GetMethod( nameof( Test ), BindingFlags.Static | BindingFlags.NonPublic )!;
+        var methodInfo = GetMethod( nameof( Test ) );
 
         var aParam = Parameter( typeof( int ), "a" );
         var bParam = Parameter( typeof( int ), "b" );
@@ -294,8 +293,7 @@ public class GotoTransformerVisitorTests
     public void GotoTransformer_WithNestedBlockAndAwaitParameters()
     {
         // Arrange
-        var methodInfo = GetType()
-            .GetMethod( nameof( TestAsync ), BindingFlags.Static | BindingFlags.NonPublic )!;
+        var methodInfo = GetMethod( nameof( TestAsync ) );
 
         var aParam = Parameter( typeof( int ), "a" );
         var bParam = Parameter( typeof( int ), "b" );
@@ -320,8 +318,7 @@ public class GotoTransformerVisitorTests
     public void GotoTransformer_WithMethodAwaits()
     {
         // Arrange
-        var methodInfo = GetType()
-            .GetMethod( nameof( TestAsync ), BindingFlags.Static | BindingFlags.NonPublic )!;
+        var methodInfo = GetMethod( nameof( TestAsync ) );
 
         var callExpr = Block(
             Constant( "before await" ),
@@ -343,8 +340,7 @@ public class GotoTransformerVisitorTests
     public void GotoTransformer_WithMethodAwaitArguments()
     {
         // Arrange
-        var methodInfo = GetType()
-            .GetMethod( nameof( Test ), BindingFlags.Static | BindingFlags.NonPublic )!;
+        var methodInfo = GetMethod( nameof( Test ) );
 
         var callExpr = Block( Call(
             methodInfo,
@@ -441,7 +437,7 @@ public class GotoTransformerVisitorTests
     [TestMethod]
     public void GotoTransformer_WithComplexConditions()
     {
-        var ifThenElseExpr = Block(
+        var ifThenElseExpr = Block( 
             Constant( 0 ),
             IfThen(
                 Await( Constant( Task.FromResult( true ) ) ),
@@ -452,11 +448,11 @@ public class GotoTransformerVisitorTests
                     IfThenElse( Constant( false ), Constant( 1.1 ), Block( Constant( 1.2 ), Constant( 1.3 ) ) ),
                     Constant( "after if" ),
                     Switch(
-                        Await( Constant( Task.FromResult( "await switch Test" ) ) ),
+                        Await( Constant( Task.FromResult( "AwaitTestValue2" ) ) ),
                         Constant( 3.1 ),
                         [
                             SwitchCase( Constant( 3.2 ), Constant( "TestValue1" ) ),
-                            SwitchCase( Constant( 3.3 ), Await( Constant( Task.FromResult( "await switch value" ) ) ) ),
+                            SwitchCase( Constant( 3.3 ), Await( Constant( Task.FromResult( "AwaitTestValue2" ) ) ) ),
                             SwitchCase( Constant( 3.4 ), Constant( "TestValue3" ) )
                         ]
                     ),
@@ -467,7 +463,7 @@ public class GotoTransformerVisitorTests
 
         var transformer = new GotoTransformerVisitor();
         transformer.Transform( ifThenElseExpr );
-
+        
         transformer.PrintStateMachine();
     }
 

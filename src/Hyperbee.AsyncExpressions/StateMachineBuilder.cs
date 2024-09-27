@@ -377,7 +377,7 @@ public class StateMachineBuilder<TResult>
         bodyExpressions.Add( result.JumpTable.Reduce() );
 
         // Iterate through the blocks (each block corresponds to a state)
-        foreach( var (blockVariables, blockExpressions, blockTransition) in result.Nodes )
+        foreach ( var (blockVariables, blockExpressions, blockTransition) in result.Nodes )
         {
             // TODO: Creating block just for visiting?
             var block = Expression.Block( blockVariables, blockExpressions );
@@ -391,10 +391,20 @@ public class StateMachineBuilder<TResult>
                 // TODO: fix final block (add lazy expression?)
                 bodyExpressions.Add( finalBlockExpression.Expressions.First() );
 
-                bodyExpressions.Add( Expression.Assign(
-                    Expression.Field( stateMachineInstance, finalResultFieldInfo ),
-                    Expression.Block( finalBlockExpression.Expressions.Skip( 1 ).ToArray() )
-                ) );
+                if ( result.ReturnValue != null )
+                {
+                    bodyExpressions.Add( Expression.Assign(
+                        Expression.Field( stateMachineInstance, finalResultFieldInfo ),
+                        result.ReturnValue
+                    ) );
+                }
+                else
+                {
+                    bodyExpressions.Add( Expression.Assign(
+                        Expression.Field( stateMachineInstance, finalResultFieldInfo ),
+                        Expression.Block( finalBlockExpression.Expressions.Skip( 1 ).ToArray() )
+                    ) );
+                }
 
                 bodyExpressions.Add( Expression.Assign( stateIdFieldExpression, Expression.Constant( -2 ) ) );
 
@@ -420,10 +430,14 @@ public class StateMachineBuilder<TResult>
             }
         }
 
+        ParameterExpression[] variables = (result.ReturnValue != null)
+            ? [result.ReturnValue]
+            : [];
+
         // Create a try-catch block to handle exceptions
         var exceptionParameter = Expression.Parameter( typeof(Exception), "ex" );
         var tryCatchBlock = Expression.TryCatch(
-            Expression.Block( typeof(void), bodyExpressions ), // Try block returns void
+            Expression.Block( typeof( void ), variables, bodyExpressions ), // Try block returns void
             Expression.Catch(
                 exceptionParameter,
                 Expression.Block(

@@ -7,6 +7,8 @@ namespace Hyperbee.AsyncExpressions.Tests;
 public class AsyncBlockTests
 {
     public static bool AreEqual(int a, int b) => a == b;
+    static int Test( int a, int b ) => a + b;
+    static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
 
     public static MethodInfo GetMethod(string name) => typeof(AsyncBlockTests).GetMethod(name);
 
@@ -99,7 +101,7 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    public async Task TestAsyncBlock_WithoutParameters_ReturnsResult()
+    public async Task TestAsyncBlock_WithoutParameters()
     {
         // Arrange
         var expr1 = Expression.Constant( 1 );
@@ -123,7 +125,7 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    public async Task TestAsyncBlock_WithParameters_ReturnsResult()
+    public async Task TestAsyncBlock_WithParameters()
     {
         // Arrange
         var param1 = Expression.Parameter( typeof( int ), "param1" );
@@ -150,7 +152,7 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    public async Task TestAsyncBlock_SwitchWithParameters_ReturnsResult()
+    public async Task TestAsyncBlock_SwitchWithParameters_VariableResult()
     {
         var param1 = Expression.Parameter( typeof( int ), "param1" );
         var var1 = Expression.Variable( typeof( int ), "var1" );
@@ -184,9 +186,44 @@ public class AsyncBlockTests
         Assert.AreEqual( 7, switch2 );
     }
 
+    [TestMethod]
+    public async Task TestAsyncBlock_SwitchWithParameters_ReturnsResult()
+    {
+        var param1 = Expression.Parameter( typeof( int ), "param1" );
+        var returnLabel = Expression.Label( typeof( int ), "returnTest" );
+
+        var switchCase = Expression.Switch(
+            param1,
+            Expression.Return( returnLabel, AsyncExpression.Await( Expression.Constant( Task.FromResult( 2 ) ) ) ),
+            [
+                Expression.SwitchCase(
+                    Expression.Return( returnLabel, AsyncExpression.Await( Expression.Constant( Task.FromResult( 5 ) ) ) ),
+                    Expression.Constant( 1 ) ),
+                Expression.SwitchCase(
+                    Expression.Return( returnLabel, AsyncExpression.Await( Expression.Constant( Task.FromResult( 7 ) ) ) ),
+                    Expression.Constant( 2 ) )
+            ]
+        );
+        var returnExpr = Expression.Label( returnLabel, Expression.Constant( 9 ) );
+
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [],
+            switchCase, returnExpr
+        );
+
+        // Act
+        var lambda = Expression.Lambda<Func<int, Task<int>>>( asyncBlock, param1 );
+        var compiledLambda = lambda.Compile();
+        var switch1 = await compiledLambda( 1 );
+        var switch2 = await compiledLambda( 2 );
+
+        // Assert
+        Assert.AreEqual( 5, switch1 );
+        Assert.AreEqual( 7, switch2 );
+    }
 
     [TestMethod]
-    public async Task TestAsyncBlock_ConditionalWithParameters_ReturnsResult()
+    public async Task TestAsyncBlock_ConditionalWithParameters_VariableResult()
     {
         // Arrange
         var param1 = Expression.Parameter( typeof( int ), "param1" );
@@ -218,6 +255,40 @@ public class AsyncBlockTests
         Assert.AreEqual( 7, resultFalse );
     }
 
+    [TestMethod]
+    public async Task TestAsyncBlock_ConditionalWithParameters_ReturnsResult()
+    {
+        // Arrange
+        var param1 = Expression.Parameter( typeof( int ), "param1" );
+        var param2 = Expression.Parameter( typeof( bool ), "param2" );
+        var var1 = Expression.Variable( typeof( int ), "var1" );
+        var var2 = Expression.Variable( typeof( int ), "var2" );
+        var returnLabel = Expression.Label( typeof( int ), "returnTest" );
+
+        var exp1 = Expression.Assign( var1, Expression.Constant( 1 ) );
+        var awaitExpr2 = AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ), false );
+        var exp3 = Expression.Assign( var2, awaitExpr2 );
+        var conditionalAdd = Expression.IfThenElse( param2,
+            Expression.Return( returnLabel, Expression.Add( var2, param1 ) ),
+            Expression.Return( returnLabel, Expression.Add( var1, Expression.Add( var2, param1 ) ) )
+        );
+        var returnExpr = Expression.Label( returnLabel, Expression.Constant( 9 ) );
+
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [var1, var2],
+            exp1, exp3, conditionalAdd, returnExpr
+        );
+
+        // Act
+        var lambda = Expression.Lambda<Func<int, bool, Task<int>>>( asyncBlock, param1, param2 );
+        var compiledLambda = lambda.Compile();
+        var resultTrue = await compiledLambda( 3, true );
+        var resultFalse = await compiledLambda( 3, false );
+
+        // Assert
+        Assert.AreEqual( 6, resultTrue );
+        Assert.AreEqual( 7, resultFalse );
+    }
 
     [TestMethod]
     public async Task TestAsyncBlock_SingleAwait()

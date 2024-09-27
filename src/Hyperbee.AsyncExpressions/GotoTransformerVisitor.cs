@@ -9,6 +9,7 @@ public record GotoTransformResult
 {
     public List<StateNode> Nodes { get; set; }
     public JumpTableExpression JumpTable { get; set; }
+    public ParameterExpression ReturnValue { get; set; }
 
     public void Deconstruct( out List<StateNode> states, out JumpTableExpression jumpTable )
     {
@@ -21,10 +22,10 @@ public class GotoTransformerVisitor : ExpressionVisitor
 {
     private readonly List<StateNode> _nodes = [];
     private readonly Stack<int> _joinIndexes = new();
-    //private readonly Dictionary<LabelTarget, int> _labelMappings = new();
 
     // jump table?
     private readonly JumpTableExpression _jumpTable = new();
+    private ParameterExpression _returnValue;
 
     private int _continuationCounter;
     private int _labelCounter;
@@ -43,7 +44,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             VisitInternal( expr );
         }
 
-        return new GotoTransformResult { Nodes = _nodes, JumpTable = _jumpTable };
+        return new GotoTransformResult { Nodes = _nodes, JumpTable = _jumpTable, ReturnValue = _returnValue};
     }
 
     public GotoTransformResult Transform( params Expression[] expressions )
@@ -335,6 +336,19 @@ public class GotoTransformerVisitor : ExpressionVisitor
             TargetState.Variables.Add( node );
         
         return base.VisitParameter( node );
+    }
+
+    protected override Expression VisitGoto( GotoExpression node )
+    {
+        var updateNode = base.VisitGoto( node );
+
+        if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
+            return updateNode;
+
+        _returnValue ??= Expression.Variable( gotoExpression.Value!.Type, "returnValue" );
+
+        // update this to assign to a return value versus a goto
+        return Expression.Assign( _returnValue, gotoExpression.Value! );
     }
 
     private Expression VisitInternal( Expression expr )

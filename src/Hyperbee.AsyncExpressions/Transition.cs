@@ -88,6 +88,8 @@ public class GotoTransition : TransitionNode
 
 public class LabelTransition : TransitionNode
 {
+    public StateNode TargetNode { get; set; }
+
     public LabelTransition()
         : base( TransitionType.Label )
     {
