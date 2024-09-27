@@ -57,19 +57,19 @@ public class AsyncMethodTests
         return typeof( AsyncMethodTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
     }
 
-    private static AsyncBaseExpression GetAsyncExpression( ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments )
+    private static Expression GetAsyncExpression( ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments )
     {
         switch ( kind )
         {
             case ExpressionKind.Lambda:
                 var (lambdaExpression, lambdaArguments) = GetLambdaExpression( methodInfo, arguments );
-                return AsyncExpression.InvokeAsync( lambdaExpression, lambdaArguments );
+                return Expression.Invoke( lambdaExpression, lambdaArguments );
 
             case ExpressionKind.Method:
-                return AsyncExpression.CallAsync( methodInfo, arguments );
+                return Expression.Call( methodInfo, arguments );
 
             default:
-                throw new ArgumentOutOfRangeException( nameof( kind ) );
+                throw new ArgumentOutOfRangeException( nameof(kind) );
         }
     }
 
@@ -287,7 +287,8 @@ public class AsyncMethodTests
 
         // Compile the nested expression into a lambda and execute it
         var lambda = Expression.Lambda<Func<int, int, Task<string>>>( combinedExpression, paramA, paramB );
-        var asyncLambda = AsyncExpression.InvokeAsync( lambda, paramA, paramB );
+
+        var asyncLambda = Expression.Invoke( lambda, paramA, paramB );
         var compiledLambda = Expression.Lambda<Func<int, int, Task<string>>>( asyncLambda, paramA, paramB ).Compile();
 
         var result = await compiledLambda( 32, 10 ); 
@@ -302,10 +303,6 @@ public class AsyncMethodTests
         var incrementExpression = ToExpression( Increment );
 
         var paramA = Expression.Parameter( typeof( Task<int> ), "a" );
-
-        // var l1 = Expression.Invoke( incrementExpression, paramA );
-        // var l2 = Expression.Invoke( incrementExpression, l1 );
-        // var l3 = Expression.Invoke( incrementExpression, l2 );
 
         var l1 = AsyncExpression.InvokeAsync( incrementExpression, paramA );
         var l2 = AsyncExpression.InvokeAsync( incrementExpression, l1 );
@@ -336,9 +333,9 @@ public class AsyncMethodTests
 
         var paramA = Expression.Parameter( typeof( int ), "a" );
 
-        var l1 = AsyncExpression.Await( AsyncExpression.InvokeAsync( incrementExpression, paramA ), configureAwait: false );
-        var l2 = AsyncExpression.Await( AsyncExpression.InvokeAsync( incrementExpression, l1 ), configureAwait: false );
-        var l3 = AsyncExpression.InvokeAsync( incrementExpression, l2 );
+        var l1 = AsyncExpression.Await( Expression.Invoke( incrementExpression, paramA ), configureAwait: false );
+        var l2 = AsyncExpression.Await( Expression.Invoke( incrementExpression, l1 ), configureAwait: false );
+        var l3 = Expression.Invoke( incrementExpression, l2 );
 
         var compiled = Expression.Lambda<Func<int, Task<int>>>( l3, paramA ).Compile();
         var expressionResult = await compiled( 2 );

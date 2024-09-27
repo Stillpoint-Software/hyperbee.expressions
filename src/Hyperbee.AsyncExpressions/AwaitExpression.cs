@@ -4,30 +4,28 @@ using System.Reflection;
 
 namespace Hyperbee.AsyncExpressions;
 
-[DebuggerDisplay( "Await({_asyncExpression})" )]
+[DebuggerDisplay( "Await({Target})" )]
 [DebuggerTypeProxy( typeof(AwaitExpressionProxy) )]
 public class AwaitExpression : Expression
 {
-    private readonly Expression _asyncExpression;
     private readonly bool _configureAwait;
-    //private readonly Type _resultType;
 
     private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression).GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
     private static readonly MethodInfo AwaitResultMethod = typeof(AwaitExpression).GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
 
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
-        _asyncExpression = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
+        Target = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
         _configureAwait = configureAwait;
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     // TODO: Review with BF (fix caching the type)
-    public override Type Type => ResultType( _asyncExpression.Type, false );
-    public Type ReturnType => ResultType( _asyncExpression.Type, false );
+    public override Type Type => ResultType( Target.Type, false );
+    public Type ReturnType => ResultType( Target.Type, false );
 
-    public Expression Target => _asyncExpression;
+    public Expression Target { get; }
 
     public bool ReturnTask { get; set; }
 
@@ -36,16 +34,16 @@ public class AwaitExpression : Expression
     public override Expression Reduce()
     {
         if ( ReturnTask )
-            return _asyncExpression;
+            return Target;
 
-        var resultType = ResultType( _asyncExpression.Type, ReturnTask );
+        var resultType = ResultType( Target.Type, ReturnTask );
 
         return Call( resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
             ? AwaitMethod 
-            : AwaitResultMethod.MakeGenericMethod( resultType ), _asyncExpression, Constant( _configureAwait ) );
+            : AwaitResultMethod.MakeGenericMethod( resultType ), Target, Constant( _configureAwait ) );
     }
 
-    private Type ResultType( Type taskType, bool returnTask )
+    private static Type ResultType( Type taskType, bool returnTask )
     {
         if ( returnTask )
             return taskType;
@@ -71,7 +69,7 @@ public class AwaitExpression : Expression
 
     private class AwaitExpressionProxy( AwaitExpression node )
     {
-        public Expression Target => node._asyncExpression;
+        public Expression Target => node.Target;
         public Type ReturnType => node.ReturnType;
     }
 }
