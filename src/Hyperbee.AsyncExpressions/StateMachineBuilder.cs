@@ -210,13 +210,13 @@ public class StateMachineBuilder<TResult>
         if ( stateFieldInfo != null )
         {
             ilGenerator.Emit( OpCodes.Ldarg_0 );
-            ilGenerator.Emit( OpCodes.Ldc_I4_M1 );
-            ilGenerator.Emit( OpCodes.Stfld, stateFieldInfo ); // __state<> = -1
+            ilGenerator.Emit( OpCodes.Ldc_I4_M1 ); // load -1
+            ilGenerator.Emit( OpCodes.Stfld, stateFieldInfo ); 
         }
 
         // Call the base constructor 
         ilGenerator.Emit( OpCodes.Ldarg_0 );
-        ilGenerator.Emit( OpCodes.Call, baseType.GetConstructor( Type.EmptyTypes )! ); // base()
+        ilGenerator.Emit( OpCodes.Call, baseType.GetConstructor( Type.EmptyTypes )! ); 
         ilGenerator.Emit( OpCodes.Ret );
     }
 
@@ -251,7 +251,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // moveNextLambda
         ilGenerator.Emit( OpCodes.Stfld, moveNextExpressionField ); // this._moveNextLambda = moveNextLambda
-        ilGenerator.Emit( OpCodes.Ret ); // return
+        ilGenerator.Emit( OpCodes.Ret ); 
     }
 
     private void ImplementSetStateMachine( TypeBuilder typeBuilder )
@@ -272,9 +272,9 @@ public class StateMachineBuilder<TResult>
 
         var ilGenerator = setStateMachineMethod.GetILGenerator();
 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this` (stateMachine)
-        ilGenerator.Emit( OpCodes.Ldfld, _builderField ); // load `_builder`
-        ilGenerator.Emit( OpCodes.Ldarg_1 ); // Load the `stateMachine` (IAsyncStateMachine) from the argument
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
+        ilGenerator.Emit( OpCodes.Ldfld, _builderField ); // _builder<>
+        ilGenerator.Emit( OpCodes.Ldarg_1 ); // argument: stateMachine
 
         var setStateMachineOnBuilder = typeof(AsyncTaskMethodBuilder<>)
             .MakeGenericType( typeof(TResult) )
@@ -298,9 +298,9 @@ public class StateMachineBuilder<TResult>
 
         var ilGenerator = moveNextMethod.GetILGenerator();
 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load `this`
-        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField ); // load `_moveNextExpression`
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // load 'this' as the argument for `_moveNextExpression.Invoke`
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
+        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField ); // _moveNextExpression
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // argument: this
 
         var invokeMethod = typeof(Action<>)
             .MakeGenericType( typeBuilder.BaseType! ) 
@@ -364,6 +364,7 @@ public class StateMachineBuilder<TResult>
 
         var stateIdFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
         var stateMachineBuilderFieldExpression = Expression.Field( stateMachineInstance, buildFieldInfo );
+        
         var parameterVisitor = new ParameterMappingVisitor( 
             stateMachineInstance, 
             _variableFields, 
@@ -371,15 +372,13 @@ public class StateMachineBuilder<TResult>
             stateIdFieldExpression,
             stateMachineBuilderFieldExpression );
 
-        // Iterate through the blocks (each block corresponds to a state)
+        // Create the jump table
         result.JumpTable.State = Expression.Field( stateMachineInstance, FieldName.State );
         bodyExpressions.Add( result.JumpTable.Reduce() );
 
-        for ( var i = 0; i <= result.Nodes.Count - 1; i++ )
+        // Iterate through the blocks (each block corresponds to a state)
+        foreach( var (blockVariables, blockExpressions, blockTransition) in result.Nodes )
         {
-            
-            var (blockVariables, blockExpressions, blockTransition) = result.Nodes[i];
-
             // TODO: Creating block just for visiting?
             var block = Expression.Block( blockVariables, blockExpressions );
 
@@ -409,7 +408,6 @@ public class StateMachineBuilder<TResult>
                         : Expression.Constant( null, typeof(TResult) ) // No result for IVoidTaskResult
                 ) );
 
-
                 bodyExpressions.Add( Expression.Goto( returnLabel ) );
             }
             else if ( expr is BlockExpression blockExpression )
@@ -420,7 +418,6 @@ public class StateMachineBuilder<TResult>
             {
                 throw new InvalidOperationException( "Unexpected expression type." );
             }
-
         }
 
         // Create a try-catch block to handle exceptions
