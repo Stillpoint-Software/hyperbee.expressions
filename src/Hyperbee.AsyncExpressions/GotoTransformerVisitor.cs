@@ -27,17 +27,15 @@ public class GotoTransformerVisitor : ExpressionVisitor
     private readonly JumpTableExpression _jumpTable = new();
     private ParameterExpression _returnValue;
 
-    private int _continuationCounter;
-    private int _labelCounter;
-    private int _targetStateIndex;
-
-    private StateNode TargetState => _nodes[_targetStateIndex];
     private ParameterExpression[] _initialVariables;
+
+    private int _targetStateIndex;
+    private StateNode GetTargetState() => _nodes[_targetStateIndex];
 
     public GotoTransformResult Transform( ParameterExpression[] initialVariables, params Expression[] expressions )
     {
         _initialVariables = initialVariables;
-        InsertState( out _targetStateIndex );
+        InsertState();
 
         foreach ( var expr in expressions )
         {
@@ -58,19 +56,18 @@ public class GotoTransformerVisitor : ExpressionVisitor
         _targetStateIndex = stateIndex;
     }
 
-    private StateNode InsertState( out int stateIndex )
+    private StateNode InsertState()
     {
-        var stateNode = new StateNode( _labelCounter++ );
+        var stateNode = new StateNode( _nodes.Count );
         _nodes.Add( stateNode );
 
-        stateIndex = _nodes.Count - 1;
         return stateNode;
     }
 
     private StateNode VisitState( Expression expression, int joinIndex, bool isAsyncResult = false )
     {
-        var state = InsertState( out var stateIndex );
-        TransitionToState( stateIndex );
+        var state = InsertState();
+        TransitionToState( state.StateId );
 
         if ( isAsyncResult )
             Visit( expression );
@@ -78,26 +75,27 @@ public class GotoTransformerVisitor : ExpressionVisitor
             VisitInternal( expression );
 
         // Transition was handling during the visit
-        if ( TargetState.Transition != null )
+        var targetState = GetTargetState();
+        if ( targetState.Transition != null )
             return state;
 
         // We did not visit the expression, so we need to initialize the defaults
-        TargetState.Transition = new GotoTransition { TargetNode = _nodes[joinIndex] };
+        targetState.Transition = new GotoTransition { TargetNode = _nodes[joinIndex] };
         
         if( !isAsyncResult )
-            TargetState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
+            targetState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
 
         return state;
     }
 
     private int EnterTransitionContext( out int sourceIndex )
     {
-        InsertState( out var joinIndex ); 
+        var stateNode = InsertState(); 
 
-        _joinIndexes.Push( joinIndex );
+        _joinIndexes.Push( stateNode.StateId );
         sourceIndex = _targetStateIndex;
 
-        return joinIndex;
+        return stateNode.StateId;
     }
 
     private void ExitTransitionContext( int sourceIndex, TransitionNode transitionNode )
@@ -234,83 +232,55 @@ public class GotoTransformerVisitor : ExpressionVisitor
 
         var joinIndex = EnterTransitionContext( out var sourceIndex );
 
-        // get awaiter
-        var awaitTransition = new AwaitTransition { ContinuationId = _continuationCounter++ };
-
         // Create awaiter variable
-        var awaiterVariable = CreateAwaiterVariable( awaitExpression, awaitTransition.ContinuationId );
+        var awaiterState = GetTargetState();
+        var awaiterVariable = CreateAwaiterVariable( awaitExpression, awaiterState );
 
-        var awaiterState = TargetState;
         awaiterState.Expressions.Add(
             Expression.Assign( awaiterVariable,
                 Expression.Call( awaitExpression.Target, awaitExpression.Target.Type.GetMethod( "GetAwaiter" )! ) ) );
 
-        /*
-        TODO: We need at least the return label,
-            but ideally we would have the state machine instance and the last await field too.
-            This is where we can add a custom lazy Expression that will reduce to this:
-        */
-        awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, awaitTransition.ContinuationId ) );
+        // Add a lazy expression to build the continuation
+        awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, sourceIndex ) );
 
         var awaitResultState = VisitState( awaitExpression.Target, joinIndex, true );
+
         awaiterState.Expressions.Add( Expression.Goto( awaitResultState.Label ) );
 
         // Keep awaiter variable in scope for results
-        CreateGetResults( TargetState, awaitExpression, awaiterVariable, TargetState.BlockId, out var localVariable );
+        CreateGetResults( awaitResultState, awaitExpression, awaiterVariable, out var localVariable );
         if(localVariable != null)
             awaitResultState.Variables.Add( localVariable );
 
-        TargetState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
+        awaitResultState.Expressions.Add( Expression.Goto( _nodes[joinIndex].Label ) );
 
         awaitResultState.Transition = new AwaitResultTransition { TargetNode = _nodes[joinIndex] };
 
-        _jumpTable.Add( awaitResultState.Label, awaitTransition.ContinuationId );
+        _jumpTable.Add( awaitResultState.Label, sourceIndex );
 
-        // awaiter Results
-        awaitTransition.CompletionNode = awaitResultState;
+        // get awaiter
+        var awaitTransition = new AwaitTransition { CompletionNode = awaitResultState };
 
         ExitTransitionContext( sourceIndex, awaitTransition );
 
-        // build awaiter
-        /*
-           awaiter8 = GetRandom().GetAwaiter();
-           if (!awaiter8.IsCompleted)
-           {
-               num = (<>1__state = 0);
-               <>u__1 = awaiter8;
-               <Main>d__0 stateMachine = this;
-               <>t__builder.AwaitUnsafeOnCompleted(ref awaiter8, ref stateMachine);
-               return;
-           }
-           goto IL_00fe;
-         */
-
-        // build awaiter continuation
-        /*
-           awaiter8 = <>u__1;
-           <>u__1 = default(TaskAwaiter<int>);
-           num = (<>1__state = -1);
-           goto IL_00fe;
-        */
-
         return (Expression) localVariable ?? Expression.Empty();
 
-        ParameterExpression CreateAwaiterVariable( AwaitExpression expression, int stateId )
+        // helper methods
+        ParameterExpression CreateAwaiterVariable( AwaitExpression expression, StateNode stateNode )
         {
             var variable = Expression.Variable(
                 expression.Type == typeof(void)
                     ? typeof(TaskAwaiter)
                     : typeof(TaskAwaiter<>).MakeGenericType( expression.Type ),
-                $"awaiter<{stateId}>" );
+                $"awaiter<{stateNode.StateId}>" );
 
-            TargetState.Variables.Add( variable );
+            stateNode.Variables.Add( variable );
             return variable;
         }
 
         void CreateGetResults( StateNode state,
             AwaitExpression expression,
             ParameterExpression awaiter,
-            int blockId,
             out ParameterExpression variable )
         {
             state.Variables.Add( awaiter );
@@ -322,7 +292,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             }
             else
             {
-                variable = Expression.Variable( expression.Type, $"<>s__{blockId}" );
+                variable = Expression.Variable( expression.Type, $"<>s__{state.StateId}" );
                 state.Variables.Add( variable );
                 var expr = Expression.Assign( variable, Expression.Call( awaiter, "GetResult", Type.EmptyTypes ) );
                 state.Expressions.Add( expr );
@@ -333,7 +303,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
     protected override Expression VisitParameter( ParameterExpression node )
     {
         if ( _initialVariables.Contains( node ) )
-            TargetState.Variables.Add( node );
+            GetTargetState().Variables.Add( node );
         
         return base.VisitParameter( node );
     }
@@ -366,7 +336,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
             default:
                 var updateNode = Visit( expr );
                 // Cannot pass this in as it's updated after visiting.
-                TargetState.Expressions.Add( updateNode );
+                GetTargetState().Expressions.Add( updateNode );
                 return updateNode;
         }
     }

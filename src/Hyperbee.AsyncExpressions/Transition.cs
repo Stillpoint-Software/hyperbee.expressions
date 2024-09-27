@@ -57,7 +57,6 @@ public class TryCatchTransition : TransitionNode
 
 public class AwaitTransition : TransitionNode
 {
-    public int ContinuationId { get; set; } = -1;
     public StateNode CompletionNode { get; set; }
 
     public AwaitTransition()
@@ -88,8 +87,6 @@ public class GotoTransition : TransitionNode
 
 public class LabelTransition : TransitionNode
 {
-    public StateNode TargetNode { get; set; }
-
     public LabelTransition()
         : base( TransitionType.Label )
     {

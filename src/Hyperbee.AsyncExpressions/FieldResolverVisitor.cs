@@ -4,7 +4,7 @@ using System.Reflection.Emit;
 
 namespace Hyperbee.AsyncExpressions;
 
-public class ParameterMappingVisitor( 
+public class FieldResolverVisitor( 
     Expression instance, 
     List<FieldBuilder> fields, 
     LabelTarget returnLabel, 
@@ -55,17 +55,10 @@ public class ParameterMappingVisitor(
     {
         switch (node)
         {
-            case AwaitableResultExpression awaitableResult:
-                Visit( awaitableResult.InnerVariable );
-                return node;
             case AwaitCompletionExpression awaitCompletionExpression:
                 // TODO: clean up how we initialize the await completion expression
                 awaitCompletionExpression.Initialize( instance, fields, returnLabel, stateIdField, stateMachineBuilderField );
                 return awaitCompletionExpression.Reduce();
-            case AwaitableBlockExpression awaitableBlock:
-                Visit( awaitableBlock.Before );
-                Visit( awaitableBlock.After );
-                return node;
             case AwaitExpression awaitExpression:
                 return Visit( awaitExpression.Target )!;
             default:

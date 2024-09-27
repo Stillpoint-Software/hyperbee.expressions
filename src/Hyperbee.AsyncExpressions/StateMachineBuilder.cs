@@ -314,47 +314,76 @@ public class StateMachineBuilder<TResult>
     {
         // Example of a typical state-machine:
         //
-        // public void MoveNext()
+        // try
         // {
-        //     try
+        //     int returnValue;
+        //
+        //     switch ( stateMachine.__state<> )
         //     {
-        //         if (__state<> == 0)
-        //         {
-        //             __awaiter<1> = task1.ConfigureAwait(false).GetAwaiter();
-        //             __state<> = 1;
+        //         case 0:
+        //             stateMachine.__state<> = -1;
+        //             goto ST_0002;
+        //             break;
         //
-        //             if (!__awaiter<1>.IsCompleted == false)
-        //             {
-        //                 __builder<>.AwaitUnsafeOnCompleted(ref __awaiter<1>, this);
-        //                 return;
-        //             }
-        //         }
-        //
-        //         if (__state<> == 1)
-        //         {
-        //             __awaiter<1>.GetResult();
-        //             __awaiter<2> = task2.ConfigureAwait(false).GetAwaiter();
-        //             __state<> = 2;
-        //
-        //             if (!__awaiter<2>.IsCompleted)
-        //             {
-        //                 __builder<>.AwaitUnsafeOnCompleted(ref __awaiter<2>, this);
-        //                 return;
-        //             }
-        //         }
-        //
-        //         if (__state<> == 2)
-        //         {
-        //             __builder<>.Task.SetResult( __awaiter<2>.GetResult() );
-        //         }
+        //         default:
+        //             ;
+        //             break;
         //     }
-        //     catch (Exception ex)
+        //
+        //     ST_0000:
+        //     stateMachine.var1 = 1;
+        //     stateMachine.awaiter < 0 > = Task<int>.GetAwaiter();
+        //
+        //     if ( !stateMachine.awaiter<0>.IsCompleted )
         //     {
-        //         __builder<>.SetException(ex);
+        //         stateMachine.__state<> = 0;
+        //         stateMachine.__builder<>.AwaitUnsafeOnCompleted( ref stateMachine.awaiter<0>, ref stateMachine );
+        //         return;
         //     }
+        //
+        //     goto ST_0002;
+        //
+        //     ST_0001:
+        //     stateMachine.var2 = stateMachine.<> s__2;
+        //
+        //     if ( param2 )
+        //     {
+        //         goto ST_0004;
+        //     }
+        //     else
+        //     {
+        //         goto ST_0005;
+        //     }
+        //
+        //     ST_0002:
+        //     stateMachine.<> s__2 = stateMachine.awaiter<0>.GetResult();
+        //     goto ST_0001;
+        //
+        //     ST_0003:
+        //     stateMachine.__finalResult<> = returnValue;
+        //     stateMachine.__state<> = -2;
+        //     stateMachine.__builder<>.SetResult( stateMachine.__finalResult<> );
+        //     goto ST_FINAL;
+        //
+        //     ST_0004:
+        //     returnValue = stateMachine.var2 + param1;
+        //     goto ST_0003;
+        //
+        //     ST_0005:
+        //     returnValue = stateMachine.var1 + stateMachine.var2 + param1;
+        //     goto ST_0003;
         // }
+        // catch ( Exception ex )
+        // {
+        //     stateMachine.__state<> = -2;
+        //     stateMachine.__builder<>.SetException( ex );
+        //     return;
+        // }
+        //
+        // ST_FINAL:
 
-        var returnLabel = Expression.Label( "ExitMoveNext" );
+
+        var returnLabel = Expression.Label( "ST_FINAL" );
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, "stateMachine" );
 
         var buildFieldInfo = GetFieldInfo( stateMachineBaseType, _builderField );
@@ -365,7 +394,7 @@ public class StateMachineBuilder<TResult>
         var stateIdFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
         var stateMachineBuilderFieldExpression = Expression.Field( stateMachineInstance, buildFieldInfo );
         
-        var parameterVisitor = new ParameterMappingVisitor( 
+        var fieldResolverVisitor = new FieldResolverVisitor( 
             stateMachineInstance, 
             _variableFields, 
             returnLabel,
@@ -383,7 +412,7 @@ public class StateMachineBuilder<TResult>
             var block = Expression.Block( blockVariables, blockExpressions );
 
             // Visit and map parameters to fields for the current block
-            var expr = parameterVisitor.Visit( block );
+            var expr = fieldResolverVisitor.Visit( block );
 
             var finalBlock = blockTransition == null;
             if ( finalBlock && expr is BlockExpression finalBlockExpression )

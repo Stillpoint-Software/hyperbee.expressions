@@ -4,16 +4,16 @@ namespace Hyperbee.AsyncExpressions;
 
 public class StateNode
 {
-    public int BlockId { get; }
+    public int StateId { get; }
     public LabelTarget Label { get; set; }
     public List<Expression> Expressions { get; } = [];
     public TransitionNode Transition { get; set; }
     public HashSet<ParameterExpression> Variables { get; } = [];
 
-    public StateNode( int blockId )
+    public StateNode( int stateId )
     {
-        BlockId = blockId;
-        Label = Expression.Label( $"block_{BlockId}" );
+        StateId = stateId;
+        Label = Expression.Label( $"ST_{StateId:0000}" );
         Expressions.Add( Expression.Label( Label ) );
     }
 
