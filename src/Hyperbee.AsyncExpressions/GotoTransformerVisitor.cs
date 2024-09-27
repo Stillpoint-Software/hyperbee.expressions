@@ -21,7 +21,7 @@ public class GotoTransformerVisitor : ExpressionVisitor
 {
     private readonly List<StateNode> _nodes = [];
     private readonly Stack<int> _joinIndexes = new();
-    private readonly Dictionary<LabelTarget, int> _labelMappings = new();
+    //private readonly Dictionary<LabelTarget, int> _labelMappings = new();
 
     // jump table?
     private readonly JumpTableExpression _jumpTable = new();
