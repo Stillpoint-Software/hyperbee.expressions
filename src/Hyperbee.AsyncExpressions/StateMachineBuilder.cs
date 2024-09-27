@@ -326,7 +326,6 @@ public class StateMachineBuilder<TResult>
         //             break;
         //
         //         default:
-        //             ;
         //             break;
         //     }
         //
@@ -345,15 +344,7 @@ public class StateMachineBuilder<TResult>
         //
         //     ST_0001:
         //     stateMachine.var2 = stateMachine.<> s__2;
-        //
-        //     if ( param2 )
-        //     {
-        //         goto ST_0004;
-        //     }
-        //     else
-        //     {
-        //         goto ST_0005;
-        //     }
+        //     goto ST_0004;
         //
         //     ST_0002:
         //     stateMachine.<> s__2 = stateMachine.awaiter<0>.GetResult();
@@ -369,9 +360,6 @@ public class StateMachineBuilder<TResult>
         //     returnValue = stateMachine.var2 + param1;
         //     goto ST_0003;
         //
-        //     ST_0005:
-        //     returnValue = stateMachine.var1 + stateMachine.var2 + param1;
-        //     goto ST_0003;
         // }
         // catch ( Exception ex )
         // {
@@ -381,7 +369,6 @@ public class StateMachineBuilder<TResult>
         // }
         //
         // ST_FINAL:
-
 
         var returnLabel = Expression.Label( "ST_FINAL" );
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, "stateMachine" );
