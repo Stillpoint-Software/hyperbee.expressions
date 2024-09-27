@@ -354,7 +354,7 @@ public class StateMachineBuilder<TResult>
         //     }
         // }
 
-        var returnLabel = Expression.Label( "ExitMoveNext" );
+        var returnLabel = Expression.Label( "ST_FINAL" );
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, "stateMachine" );
 
         var buildFieldInfo = GetFieldInfo( stateMachineBaseType, _builderField );
@@ -365,7 +365,7 @@ public class StateMachineBuilder<TResult>
         var stateIdFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
         var stateMachineBuilderFieldExpression = Expression.Field( stateMachineInstance, buildFieldInfo );
         
-        var parameterVisitor = new ParameterMappingVisitor( 
+        var fieldResolverVisitor = new FieldResolverVisitor( 
             stateMachineInstance, 
             _variableFields, 
             returnLabel,
@@ -383,7 +383,7 @@ public class StateMachineBuilder<TResult>
             var block = Expression.Block( blockVariables, blockExpressions );
 
             // Visit and map parameters to fields for the current block
-            var expr = parameterVisitor.Visit( block );
+            var expr = fieldResolverVisitor.Visit( block );
 
             var finalBlock = blockTransition == null;
             if ( finalBlock && expr is BlockExpression finalBlockExpression )
