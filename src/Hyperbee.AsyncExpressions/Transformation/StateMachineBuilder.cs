@@ -1,32 +1,14 @@
-﻿#define STATEMACHINE_LOGGER
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
-namespace Hyperbee.AsyncExpressions;
-
-#if STATEMACHINE_LOGGER
-internal static class Debug
-{
-    public static void Log( string message )
-    {
-        Console.WriteLine( message );
-    }
-
-    public static MethodCallExpression LogCall( string message )
-    {
-        return Expression.Call( typeof( Debug ).GetMethod( "Log" )!, Expression.Constant( message ) );
-    }
-}
-#endif
+namespace Hyperbee.AsyncExpressions.Transformation;
 
 public interface IVoidTaskResult; // Marker interface for void Task results
 
 public class StateMachineBuilder<TResult>
 {
-    private GotoTransformResult _result;
-
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
     private FieldBuilder _builderField;
@@ -48,14 +30,9 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public void SetExpressionSource( GotoTransformResult result )
+    public Expression CreateStateMachine( GotoTransformerResult source, bool createRunner = true )
     {
-        _result = result;
-    }
-
-    public Expression CreateStateMachine( bool createRunner = true )
-    {
-        if ( _result.Nodes == null )
+        if ( source.Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
 
         // Create the state-machine
@@ -67,9 +44,9 @@ public class StateMachineBuilder<TResult>
         //
         // stateMachine.SetMoveNext( moveNextLambda );
         
-        var stateMachineBaseType = CreateStateMachineBaseType( _result );
+        var stateMachineBaseType = CreateStateMachineBaseType( source );
         var stateMachineType = CreateStateMachineDerivedType( stateMachineBaseType );
-        var moveNextLambda = CreateMoveNextBody( _result, stateMachineBaseType );
+        var moveNextLambda = CreateMoveNextBody( source, stateMachineBaseType );
 
         var stateMachineVariable = Expression.Variable( stateMachineType, "stateMachine" );
         var setMoveNextMethod = stateMachineType.GetMethod( "SetMoveNext" )!;
@@ -115,7 +92,7 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private Type CreateStateMachineBaseType( GotoTransformResult results )
+    private Type CreateStateMachineBaseType( GotoTransformerResult results )
     {
         // Define the state machine base type
         //
@@ -220,7 +197,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private void ImplementFields( TypeBuilder typeBuilder, GotoTransformResult result )
+    private void ImplementFields( TypeBuilder typeBuilder, GotoTransformerResult result )
     {
         // Define: variable fields
         _variableFields = result.Nodes
@@ -310,7 +287,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private LambdaExpression CreateMoveNextBody( GotoTransformResult result, Type stateMachineBaseType )
+    private LambdaExpression CreateMoveNextBody( GotoTransformerResult result, Type stateMachineBaseType )
     {
         // Example of a typical state-machine:
         //
@@ -489,26 +466,25 @@ public static class StateMachineBuilder
             .GetMethods( BindingFlags.Public | BindingFlags.Static )
             .First( x => x.Name == nameof( Create ) && x.IsGenericMethod );
 
-    public static Expression Create( GotoTransformResult result, Type resultType, bool createRunner = true )
+    public static Expression Create( Type resultType, GotoTransformerResult source, bool createRunner = true )
     {
         // If the result type is void, use the internal VoidTaskResult type
         if ( resultType == typeof(void) )
             resultType = typeof(IVoidTaskResult);
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
-        return (Expression) buildStateMachine.Invoke( null, [result, createRunner] );
+        return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
     }
 
-    public static Expression Create<TResult>( GotoTransformResult result, bool createRunner = true )
+    public static Expression Create<TResult>( GotoTransformerResult source, bool createRunner = true )
     {
+        // Create the state machine
         var assemblyName = new AssemblyName( "DynamicStateMachineAssembly" );
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
         var moduleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "DynamicStateMachine" );
-        stateMachineBuilder.SetExpressionSource( result );
-
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( createRunner );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, createRunner );
 
         return stateMachineExpression;
     }

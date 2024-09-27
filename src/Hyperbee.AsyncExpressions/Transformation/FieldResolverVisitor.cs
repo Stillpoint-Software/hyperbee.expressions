@@ -2,9 +2,9 @@
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace Hyperbee.AsyncExpressions;
+namespace Hyperbee.AsyncExpressions.Transformation;
 
-public class FieldResolverVisitor( 
+internal class FieldResolverVisitor( 
     Expression instance, 
     List<FieldBuilder> fields, 
     LabelTarget returnLabel, 

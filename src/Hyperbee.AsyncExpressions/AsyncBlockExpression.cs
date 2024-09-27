@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
+using Hyperbee.AsyncExpressions.Transformation;
 
 namespace Hyperbee.AsyncExpressions;
 
@@ -7,14 +8,11 @@ namespace Hyperbee.AsyncExpressions;
 public class AsyncBlockExpression: Expression
 {
     private readonly Expression[] _expressions;
-    private readonly ParameterExpression[] _initialVariables;
+    private readonly ParameterExpression[] _variables;
+    private readonly Type _resultType;
 
     private bool _isReduced;
     private Expression _stateMachine;
-    private Type _resultType;
-
-    public Expression[] Expressions => _expressions;
-    public ParameterExpression[] InitialVariables => _initialVariables;
 
     public AsyncBlockExpression( Expression[] expressions )
         : this( [], expressions )
@@ -29,8 +27,9 @@ public class AsyncBlockExpression: Expression
                 nameof(expressions) );
         }
 
-        _initialVariables = variables;
+        _variables = variables;
         _expressions = expressions;
+        _resultType = GetResultType();
     }
 
     public override bool CanReduce => true;
@@ -42,17 +41,21 @@ public class AsyncBlockExpression: Expression
         if ( _isReduced )
             return _stateMachine;
 
-        // Restructure expressions so we can split them into awaitable blocks
-        var transformer = new GotoTransformerVisitor();
-        var transformResult = transformer.Transform( _initialVariables, _expressions );
-        transformer.PrintStateMachine();
-
-        _resultType = GetResultType();
-
-        _stateMachine = StateMachineBuilder.Create( transformResult, _resultType, createRunner: true );
+        _stateMachine = Transform( _resultType, _variables, _expressions );
         _isReduced = true;
 
         return _stateMachine;
+    }
+
+    private static Expression Transform( Type resultType, ParameterExpression[] variables, Expression[] expressions )
+    {
+        var transformer = new GotoTransformerVisitor();
+        var source = transformer.Transform( variables, expressions );
+
+        if ( source.AwaitCount == 0 )
+            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
+
+        return StateMachineBuilder.Create( resultType, source );
     }
 
     public override Type Type
@@ -68,18 +71,16 @@ public class AsyncBlockExpression: Expression
 
     internal Type GetResultType()
     {
-        var lastExpr = _expressions[^1];
+        var type = _expressions[^1].Type;
 
-        if ( IsTask( lastExpr.Type ) )
+        if ( typeof(Task).IsAssignableFrom( type ) )
         {
-            return lastExpr.Type.IsGenericType
-                ? lastExpr.Type.GetGenericArguments()[0]
+            return type.IsGenericType
+                ? type.GetGenericArguments()[0]
                 : typeof( void ); // Task without a result
         }
 
-        return lastExpr.Type;
-
-        static bool IsTask( Type type ) => typeof(Task).IsAssignableFrom( type );
+        return type;
     }
 
     private class AsyncBlockExpressionDebuggerProxy
@@ -93,7 +94,7 @@ public class AsyncBlockExpression: Expression
         public Type ReturnType => _node._resultType;
 
         public Expression[] Expressions => _node._expressions;
-        public ParameterExpression[] InitialVariables => _node._initialVariables;
+        public ParameterExpression[] Variables => _node._variables;
     }
 }
 

@@ -1,5 +1,5 @@
-﻿using System.Linq.Expressions;
-using System.Reflection;
+﻿using System.Reflection;
+using Hyperbee.AsyncExpressions.Transformation;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.AsyncExpressions.AsyncExpression;
 
@@ -23,10 +23,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( assignExpr );
+        var result = transformer.Transform( assignExpr );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
 
@@ -50,10 +50,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( blockAwaits );
+        var result = transformer.Transform( blockAwaits );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -74,10 +74,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( ifThenElseExpr );
+        var result = transformer.Transform( ifThenElseExpr );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -99,10 +99,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( variables );
+        var result = transformer.Transform( variables );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -134,10 +134,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( variables );
+        var result = transformer.Transform( variables );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -172,10 +172,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( conditionalParameters );
+        var result = transformer.Transform( conditionalParameters );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -208,10 +208,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( switchBlock );
+        var result = transformer.Transform( switchBlock );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -233,10 +233,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( switchBlock );
+        var result = transformer.Transform( switchBlock );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -258,10 +258,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( switchBlock );
+        var result = transformer.Transform( switchBlock );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -283,10 +283,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( methodWithParameter );
+        var result = transformer.Transform( methodWithParameter );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -308,10 +308,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( methodWithParameter );
+        var result = transformer.Transform( methodWithParameter );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -330,10 +330,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( callExpr );
+        var result = transformer.Transform( callExpr );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -350,10 +350,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( callExpr );
+        var result = transformer.Transform( callExpr );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     // [TestMethod]
@@ -373,10 +373,10 @@ public class GotoTransformerVisitorTests
     //
     //     // Act
     //     var transformer = new GotoTransformerVisitor();
-    //     transformer.Transform( gotoExpr );
+    //     var result = transformer.Transform( gotoExpr );
     //
     //     // Assert
-    //     transformer.PrintStateMachine();
+    //     result.PrintNodes();
     // }
 
     [TestMethod]
@@ -402,10 +402,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( whileBlockExpr );
+        var result = transformer.Transform( whileBlockExpr );
         
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
 
     [TestMethod]
@@ -428,10 +428,10 @@ public class GotoTransformerVisitorTests
 
         // Act
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( tryCatchExpr );
+        var result = transformer.Transform( tryCatchExpr );
 
         // Assert
-        transformer.PrintStateMachine();
+        result.PrintNodes();
     }
         
     [TestMethod]
@@ -462,9 +462,9 @@ public class GotoTransformerVisitorTests
         );
 
         var transformer = new GotoTransformerVisitor();
-        transformer.Transform( ifThenElseExpr );
-        
-        transformer.PrintStateMachine();
+        var result = transformer.Transform( ifThenElseExpr );
+
+        result.PrintNodes();
     }
 
 }
