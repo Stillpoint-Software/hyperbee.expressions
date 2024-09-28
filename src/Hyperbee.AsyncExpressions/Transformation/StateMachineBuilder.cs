@@ -179,6 +179,13 @@ public class StateMachineBuilder<TResult>
 
     private void ImplementConstructor( TypeBuilder typeBuilder, Type baseType, FieldInfo stateFieldInfo = null )
     {
+        // Define the constructor 
+        //
+        // public StateMachineType(): base()
+        // {
+        //     __state<> = -1;
+        // }
+
         // Define a parameterless constructor
         var constructor = typeBuilder.DefineConstructor( MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes );
         var ilGenerator = constructor.GetILGenerator();
@@ -213,7 +220,7 @@ public class StateMachineBuilder<TResult>
         //
         //  public void SetMoveNext<StateMachineBase>(Action<StateMachineBase> moveNext)
         //  {
-        //     _moveNextLambda = moveNext;
+        //     __moveNextLambda<> = moveNext;
         //  }
 
         var setMoveNextMethod = typeBuilder.DefineMethod(
@@ -237,7 +244,7 @@ public class StateMachineBuilder<TResult>
         //
         // public void SetStateMachine( IAsyncStateMachine stateMachine )
         // {
-        //    _builder.SetStateMachine( stateMachine );
+        //    __builder<>.SetStateMachine( stateMachine );
         // }
 
         var setStateMachineMethod = typeBuilder.DefineMethod(
@@ -250,7 +257,7 @@ public class StateMachineBuilder<TResult>
         var ilGenerator = setStateMachineMethod.GetILGenerator();
 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Ldfld, _builderField ); // _builder<>
+        ilGenerator.Emit( OpCodes.Ldfld, _builderField ); // __builder<>
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // argument: stateMachine
 
         var setStateMachineOnBuilder = typeof(AsyncTaskMethodBuilder<>)
@@ -276,7 +283,7 @@ public class StateMachineBuilder<TResult>
         var ilGenerator = moveNextMethod.GetILGenerator();
 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField ); // _moveNextExpression
+        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField ); // __moveNextExpression<>
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // argument: this
 
         var invokeMethod = typeof(Action<>)

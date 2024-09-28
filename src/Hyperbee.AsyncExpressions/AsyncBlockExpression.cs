@@ -52,7 +52,7 @@ public class AsyncBlockExpression: Expression
         var transformer = new GotoTransformerVisitor();
         var source = transformer.Transform( variables, expressions );
 
-        if ( source.AwaitCount == 0 )
+        if ( source.AwaitCount == 0 ) //BF Talk with ME
             throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
 
         return StateMachineBuilder.Create( resultType, source );
