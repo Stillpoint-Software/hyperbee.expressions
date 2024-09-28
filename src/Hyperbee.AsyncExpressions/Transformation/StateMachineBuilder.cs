@@ -66,7 +66,7 @@ public class StateMachineBuilder<TResult>
         // Conceptually:
         //
         // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
-        // return stateMachine._builder.Task;
+        // return stateMachine.__builder<>.Task;
 
         var builderFieldInfo = stateMachineType.GetField( FieldName.Builder )!;
         var taskFieldInfo = builderFieldInfo.FieldType.GetProperty( "Task" )!;
@@ -234,7 +234,7 @@ public class StateMachineBuilder<TResult>
 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // moveNextLambda
-        ilGenerator.Emit( OpCodes.Stfld, moveNextExpressionField ); // this._moveNextLambda = moveNextLambda
+        ilGenerator.Emit( OpCodes.Stfld, moveNextExpressionField ); // this._moveNextLambda<> = moveNextLambda
         ilGenerator.Emit( OpCodes.Ret ); 
     }
 
@@ -315,9 +315,9 @@ public class StateMachineBuilder<TResult>
         //
         //     ST_0000:
         //     stateMachine.var1 = 1;
-        //     stateMachine.awaiter<0> = Task<int>.GetAwaiter();
+        //     stateMachine.__awaiter<0> = Task<int>.GetAwaiter();
         //
-        //     if ( !stateMachine.awaiter<0>.IsCompleted )
+        //     if ( !stateMachine.__awaiter<0>.IsCompleted )
         //     {
         //         stateMachine.__state<> = 0;
         //         stateMachine.__builder<>.AwaitUnsafeOnCompleted( ref stateMachine.awaiter<0>, ref stateMachine );
@@ -331,7 +331,7 @@ public class StateMachineBuilder<TResult>
         //     goto ST_0004;
         //
         //     ST_0002:
-        //     stateMachine.<>s__2 = stateMachine.awaiter<0>.GetResult();
+        //     stateMachine.<>s__2 = stateMachine.__awaiter<0>.GetResult();
         //     goto ST_0001;
         //
         //     ST_0003:

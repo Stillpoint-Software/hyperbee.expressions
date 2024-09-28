@@ -212,7 +212,8 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
         return resultExpression;
 
-        // Helper method to create an awaiter variable
+        // Helper method
+        //
         static void AddAwaiterVariableExpression( StateNode sourceState, AwaitExpression expression, out ParameterExpression variable )
         {
             // Add variable to source state
@@ -233,10 +234,12 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             sourceState.Expressions.Add( assign );
         }
 
-        // Helper method to create the GetResult call
+        // Helper method
+        //
         static void AddGetResultExpression( StateNode sourceState, StateNode joinState, AwaitExpression expression, ParameterExpression awaiter, out ParameterExpression variable )
         {
             sourceState.Variables.Add( awaiter );
+            
             if ( expression.Type == typeof(void) )
             {
                 variable = null;
