@@ -23,8 +23,7 @@ public class AsyncBlockExpression: Expression
     {
         if ( expressions == null || expressions.Length == 0 )
         {
-            throw new ArgumentException( "AsyncBlockExpression must contain at least one expression.",
-                nameof(expressions) );
+            throw new ArgumentException( $"{nameof(AsyncBlockExpression)} must contain at least one expression.", nameof(expressions) );
         }
 
         _variables = variables;
