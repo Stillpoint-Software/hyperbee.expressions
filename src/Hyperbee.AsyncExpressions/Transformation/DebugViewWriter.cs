@@ -1,4 +1,6 @@
 ﻿using System.Linq.Expressions;
+using System.Runtime.InteropServices.JavaScript;
+using System.Text;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
@@ -12,15 +14,18 @@ internal static class DebugViewWriter
                 continue;
 
             // label
-
-            writer.WriteLine( node.Label.Name + ":" );
+            writer.WriteLine( $"{node.Label.Name}:" );
 
             // variables
 
             if ( node.Variables.Count > 0 )
             {
                 writer.WriteLine( "\tVariables" );
-                writer.WriteLine( $"\t\t[{VariablesToString( node.Variables )}]" );
+
+                foreach ( var expr in node.Variables )
+                {
+                    writer.WriteLine( $"\t\t{VariableToString( expr )}" );
+                }
             }
 
             // expressions
@@ -31,65 +36,177 @@ internal static class DebugViewWriter
 
                 foreach ( var expr in node.Expressions )
                 {
-                    writer.WriteLine( $"\t\t{expr}" );
+                    writer.WriteLine( $"\t\t{ExpressionToString(expr)}" );
                 }
             }
 
             // transitions
 
-            var transition = node.Transition;
-
-            writer.WriteLine( $"\t{transition?.GetType().Name ?? "Terminal"}" );
-
-            if ( transition != null )
-            {
-                switch ( transition )
-                {
-                    case ConditionalTransition condNode:
-                        writer.WriteLine( $"\t\tIfTrue -> {condNode.IfTrue?.Label}" );
-                        writer.WriteLine( $"\t\tIfFalse -> {condNode.IfFalse?.Label}" );
-                        break;
-                    case SwitchTransition switchNode:
-                        foreach ( var caseNode in switchNode.CaseNodes )
-                        {
-                            writer.WriteLine( $"\t\tCase -> {caseNode?.Label}" );
-                        }
-
-                        writer.WriteLine( $"\t\tDefault -> {switchNode.DefaultNode?.Label}" );
-                        break;
-                    case TryCatchTransition tryNode:
-                        writer.WriteLine( $"\t\tTry -> {tryNode.TryNode?.Label}" );
-                        foreach ( var catchNode in tryNode.CatchNodes )
-                        {
-                            writer.WriteLine( $"\t\tCatch -> {catchNode?.Label}" );
-                        }
-
-                        writer.WriteLine( $"\t\tFinally -> {tryNode.FinallyNode?.Label}" );
-                        break;
-                    case AwaitTransition awaitNode:
-                        writer.WriteLine( $"\t\tCompletion -> {awaitNode.CompletionNode?.Label}" );
-                        break;
-                    case AwaitResultTransition awaitResultNode:
-                        writer.WriteLine( $"\t\tGoto -> {awaitResultNode.TargetNode?.Label}" );
-                        break;
-                    case GotoTransition gotoNode:
-                        writer.WriteLine( $"\t\tGoto -> {gotoNode.TargetNode?.Label}" );
-                        break;
-                }
-            }
-
-            if ( node.Transition == null )
-            {
-                writer.WriteLine( "\t\tExit" );
-            }
+            writer.WriteLine( "\tTransition" );
+            writer.WriteLine( $"\t\t{node.Transition?.GetType().Name ?? "Exit"}" );
 
             writer.WriteLine();
         }
     }
 
-    private static string VariablesToString( IEnumerable<ParameterExpression> parameterExpressions )
+    private static string ExpressionToString( Expression expr )
     {
-        return string.Join( ", ", parameterExpressions.Select( x => $"{TypeToString( x.Type )} {x.Name}" ) );
+        return expr switch
+        {
+            BinaryExpression binary => FormatBinaryExpression( binary ),
+            MethodCallExpression methodCall => FormatMethodCallExpression( methodCall ),
+            ConstantExpression constant => FormatConstantExpression( constant ),
+            ParameterExpression param => FormatParameterExpression( param ),
+            LabelExpression label => FormatLabelExpression( label ),
+            ConditionalExpression conditional => FormatConditionalExpression( conditional ),
+            LambdaExpression lambda => FormatLambdaExpression( lambda ),
+            UnaryExpression unary => FormatUnaryExpression( unary ),
+            MemberExpression member => FormatMemberExpression( member ),
+            SwitchExpression cases => FormatSwitchExpression( cases ),
+            _ => expr.ToString()
+        };
+    }
+
+    private static string FormatBinaryExpression( BinaryExpression binary )
+    {
+        return $"{binary.Left} {GetBinaryOperator( binary.NodeType )} {binary.Right}";
+    }
+
+    private static string FormatConditionalExpression( ConditionalExpression conditional )
+    {
+        var test = ExpressionToString( conditional.Test );
+        var ifTrue = ExpressionToString( conditional.IfTrue );
+        var ifFalse = ExpressionToString( conditional.IfFalse );
+
+        return $"if ({test}) {{ {ifTrue} }} else {{ {ifFalse} }}";
+    }
+
+    private static string FormatConstantExpression( ConstantExpression constant )
+    {
+        switch ( constant.Value )
+        {
+            case string stringValue:
+                return $"Constant String \"{stringValue}\"";
+            default:
+            {
+                var typeName = constant.Type.Name;
+                return $"Constant {typeName} {constant.Value}";
+            }
+        }
+    }
+
+    private static string FormatLabelExpression( LabelExpression label )
+    {
+        return $"Label {label.Target.Name}";
+    }
+
+    private static string FormatLambdaExpression( LambdaExpression lambda )
+    {
+        var parameters = string.Join( ", ", lambda.Parameters.Select( p => p.Name ) );
+        var body = ExpressionToString( lambda.Body );
+
+        return $"Lambda ({parameters}) => {body}";
+    }
+
+    private static string FormatMemberExpression( MemberExpression member )
+    {
+        return $"{member.Expression}.{member.Member.Name}";
+    }
+
+    private static string FormatMethodCallExpression( MethodCallExpression methodCall )
+    {
+        var declaringTypeName = methodCall.Method.DeclaringType?.Name;
+        var methodName = methodCall.Method.Name;
+        var arguments = string.Join( ", ", methodCall.Arguments.Select( ExpressionToString ) );
+
+        return $"{declaringTypeName}.{methodName}({arguments})";
+    }
+
+    private static string FormatParameterExpression( ParameterExpression param )
+    {
+        return $"{param.Type.Name} {param.Name}";
+    }
+
+    private static string FormatSwitchExpression( SwitchExpression switchExpr )
+    {
+        var builder = new StringBuilder();
+
+        builder.Append( $"switch ({ExpressionToString( switchExpr.SwitchValue )})" );
+
+        foreach ( var caseExpr in switchExpr.Cases )
+        {
+            var caseValues = string.Join( ", ", caseExpr.TestValues.Select( ExpressionToString ) );
+
+            builder.AppendLine();
+            builder.Append( Repeat( '\t', 3 ) );
+            builder.Append( $"case {caseValues}:" );
+            builder.AppendLine();
+            builder.Append( Repeat( '\t', 4 ) );
+            builder.Append( ExpressionToString( caseExpr.Body ) );
+        }
+
+        if ( switchExpr.DefaultBody != null )
+        {
+            builder.AppendLine();
+            builder.Append( Repeat( '\t', 3 ) );
+            builder.Append( "default:" );
+            builder.AppendLine();
+            builder.Append( Repeat( '\t', 4 ) );
+            builder.Append( ExpressionToString( switchExpr.DefaultBody ) );
+        }
+
+        return builder.ToString();
+
+        static string Repeat( char c, int count ) => new ( c, count );
+    }
+    private static string FormatUnaryExpression( UnaryExpression unary )
+    {
+        return $"{GetUnaryOperator( unary.NodeType )}({ExpressionToString( unary.Operand )})";
+    }
+
+    private static string GetBinaryOperator( ExpressionType nodeType )
+    {
+        return nodeType switch
+        {
+            ExpressionType.Add => "+",
+            ExpressionType.Subtract => "-",
+            ExpressionType.Multiply => "*",
+            ExpressionType.Divide => "/",
+            ExpressionType.Modulo => "%",
+            ExpressionType.AndAlso => "&&",
+            ExpressionType.OrElse => "||",
+            ExpressionType.Equal => "==",
+            ExpressionType.NotEqual => "!=",
+            ExpressionType.GreaterThan => ">",
+            ExpressionType.GreaterThanOrEqual => ">=",
+            ExpressionType.LessThan => "<",
+            ExpressionType.LessThanOrEqual => "<=",
+            ExpressionType.Assign => "=",
+            ExpressionType.AddAssign => "+=",
+            ExpressionType.SubtractAssign => "-=",
+            ExpressionType.MultiplyAssign => "*=",
+            ExpressionType.DivideAssign => "/=",
+            ExpressionType.ModuloAssign => "%=",
+            _ => nodeType.ToString()
+        };
+    }
+
+    private static string GetUnaryOperator( ExpressionType nodeType )
+    {
+        return nodeType switch
+        {
+            ExpressionType.Negate => "-",
+            ExpressionType.Not => "!",
+            ExpressionType.Increment => "++",
+            ExpressionType.Decrement => "--",
+            ExpressionType.UnaryPlus => "+",
+            _ => nodeType.ToString()
+        };
+    }
+
+    private static string VariableToString( ParameterExpression expr )
+    {
+        return $"{TypeToString( expr.Type )} {expr.Name}";
 
         static string TypeToString( Type type )
         {

@@ -298,7 +298,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
                 break;
 
             default:
-                // Cannot pass this in as it's updated after visiting.
+                // Warning: visitation mutates the leaf state.
                 if ( !blockAddExpression )
                     _states.GetVisitedLeafState().Expressions.Add( result );
                 break;
