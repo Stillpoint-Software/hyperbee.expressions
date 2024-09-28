@@ -5,7 +5,7 @@ using Hyperbee.AsyncExpressions.Transformation;
 
 namespace Hyperbee.AsyncExpressions;
 
-[DebuggerDisplay( "Await({Target})" )]
+[DebuggerDisplay( "Await {Target?.ToString(),nq}" )]
 [DebuggerTypeProxy( typeof(AwaitExpressionProxy) )]
 public class AwaitExpression : Expression
 {

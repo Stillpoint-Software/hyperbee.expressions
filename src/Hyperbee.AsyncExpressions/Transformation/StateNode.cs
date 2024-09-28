@@ -1,7 +1,9 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
+[DebuggerDisplay( "State = {Label?.Name,nq}, Transition = {Transition?.GetType().Name,nq}" )]
 public class StateNode
 {
     public int StateId { get; }

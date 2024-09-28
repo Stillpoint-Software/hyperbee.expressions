@@ -4,15 +4,29 @@ using System.Reflection.Emit;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-internal class FieldResolverVisitor( 
-    Expression instance, 
-    List<FieldBuilder> fields, 
-    LabelTarget returnLabel, 
-    MemberExpression stateIdField,
-    MemberExpression stateMachineBuilderField ) : ExpressionVisitor
+internal class FieldResolverVisitor : ExpressionVisitor
 {
     private readonly Dictionary<Expression, MemberExpression> _mappingCache = [];
-    private readonly string[] _fieldNames = fields.Select( x => x.Name ).ToArray();
+    private readonly string[] _fieldNames;
+    private readonly List<FieldBuilder> _fields;
+    private readonly Expression _instance;
+    private readonly LabelTarget _returnLabel;
+    private readonly MemberExpression _stateIdField;
+    private readonly MemberExpression _stateMachineBuilderField;
+
+    public FieldResolverVisitor(Expression instance, 
+        List<FieldBuilder> fields, 
+        LabelTarget returnLabel, 
+        MemberExpression stateIdField,
+        MemberExpression stateMachineBuilderField)
+    {
+        _returnLabel = returnLabel;
+        _stateIdField = stateIdField;
+        _stateMachineBuilderField = stateMachineBuilderField;
+        _fieldNames = fields.Select( x => x.Name ).ToArray();
+        _fields = fields;
+        _instance = instance;
+    }
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
@@ -22,25 +36,25 @@ internal class FieldResolverVisitor(
         if ( !TryGetFieldInfo( node, out var fieldInfo ) )
             return node;
 
-        var fieldExpression = Expression.Field( instance, fieldInfo );
+        var fieldExpression = Expression.Field( _instance, fieldInfo );
         _mappingCache.Add( node, fieldExpression );
 
         return fieldExpression;
+    }
 
-        bool TryGetFieldInfo( ParameterExpression parameterExpression, out FieldInfo field )
+    private bool TryGetFieldInfo( ParameterExpression parameterExpression, out FieldInfo field )
+    {
+        var name = $"{parameterExpression.Name ?? parameterExpression.ToString()}";
+
+        var builderField = _fields.FirstOrDefault( f => f.Name == name );
+        if ( builderField != null )
         {
-            var name = $"{parameterExpression.Name ?? parameterExpression.ToString()}";
-
-            var builderField = fields.FirstOrDefault( f => f.Name == name );
-            if ( builderField != null )
-            {
-                field = instance.Type.GetField( builderField.Name, BindingFlags.Instance | BindingFlags.Public )!;
-                return true;
-            }
-
-            field = null;
-            return false;
+            field = _instance.Type.GetField( builderField.Name, BindingFlags.Instance | BindingFlags.Public )!;
+            return true;
         }
+
+        field = null;
+        return false;
     }
 
     protected override Expression VisitBlock( BlockExpression node )
@@ -48,7 +62,8 @@ internal class FieldResolverVisitor(
         // Update each expression in a block to use only state machine fields/variables
         return node.Update(
             node.Variables.Where( v => !_fieldNames.Contains( v.Name ) ),
-            node.Expressions.Select( Visit ) );
+            node.Expressions.Select( Visit ) 
+        );
     }
     
     protected override Expression VisitExtension( Expression node )
@@ -57,12 +72,13 @@ internal class FieldResolverVisitor(
         {
             case AwaitCompletionExpression awaitCompletionExpression:
                 // TODO: clean up how we initialize the await completion expression
-                awaitCompletionExpression.Initialize( instance, fields, returnLabel, stateIdField, stateMachineBuilderField );
+                awaitCompletionExpression.Initialize( _instance, _fields, _returnLabel, _stateIdField, _stateMachineBuilderField );
                 return awaitCompletionExpression.Reduce();
+
             case AwaitExpression awaitExpression:
                 return Visit( awaitExpression.Target )!;
-            default:
-                return base.VisitExtension( node );
         }
+
+        return base.VisitExtension( node );
     }
 }

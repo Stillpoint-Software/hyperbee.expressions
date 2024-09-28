@@ -1,4 +1,8 @@
-﻿namespace Hyperbee.AsyncExpressions.Transformation;
+﻿using System.Diagnostics;
+
+namespace Hyperbee.AsyncExpressions.Transformation;
+
+[DebuggerDisplay( "Transition = {this.GetType().Name,nq}" )]
 
 public abstract class Transition;
 

@@ -70,7 +70,6 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
-        //var updatedTest = Visit( node.Test );
         var updatedTest = VisitInternal( node.Test );
 
         var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
@@ -97,7 +96,6 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     protected override Expression VisitSwitch( SwitchExpression node )
     {
-        //var updatedSwitchValue = Visit( node.SwitchValue );
         var updatedSwitchValue = VisitInternal( node.SwitchValue );
 
         var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
