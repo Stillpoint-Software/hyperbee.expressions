@@ -13,7 +13,7 @@ internal static class DebugViewWriter
 
             // label
 
-            Console.WriteLine( node.Label.Name + ":" );
+            writer.WriteLine( node.Label.Name + ":" );
 
             // variables
 
