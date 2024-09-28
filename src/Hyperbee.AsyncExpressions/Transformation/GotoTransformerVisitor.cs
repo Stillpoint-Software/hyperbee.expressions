@@ -47,8 +47,8 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         else
             VisitInternal( expression );
 
-        // Set a default Transition if the visit didn't join
-        var leafState = _states.GetLeafState(); // The last StateNode visited for this branch (the branch leaf)
+        // Set a default Transition if the branch leaf didn't join
+        var leafState = _states.GetLeafState(); 
 
         if ( leafState.Transition != null )
             return branchState;
