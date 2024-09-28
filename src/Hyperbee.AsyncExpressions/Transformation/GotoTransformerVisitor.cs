@@ -5,8 +5,6 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 internal class GotoTransformerVisitor : ExpressionVisitor
 {
-    private readonly Dictionary<LabelTarget, int> _jumpCases = new();
-
     private ParameterExpression _returnValue;
     private ParameterExpression[] _variables;
     private int _awaitCount;
@@ -26,7 +24,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         return new GotoTransformerResult 
         { 
             Nodes = _states.GetNodes(), 
-            JumpCases = _jumpCases, 
+            JumpCases = _states.JumpCases, 
             ReturnValue = _returnValue, 
             AwaitCount = _awaitCount 
         };
@@ -42,13 +40,10 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         // Create a new state for the branch
         var branchState = _states.AddBranchState();
 
-        if ( isAsyncResult )
-            Visit( expression );
-        else
-            VisitInternal( expression );
+        VisitInternal( expression, blockAddExpression: isAsyncResult );
 
         // Set a default Transition if the branch leaf didn't join
-        var leafState = _states.GetLeafState(); 
+        var leafState = _states.GetVisitedLeafState(); 
 
         if ( leafState.Transition != null )
             return branchState;
@@ -75,7 +70,8 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
-        var updatedTest = Visit( node.Test );
+        //var updatedTest = Visit( node.Test );
+        var updatedTest = VisitInternal( node.Test );
 
         var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
 
@@ -101,7 +97,8 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     protected override Expression VisitSwitch( SwitchExpression node )
     {
-        var updatedSwitchValue = Visit( node.SwitchValue );
+        //var updatedSwitchValue = Visit( node.SwitchValue );
+        var updatedSwitchValue = VisitInternal( node.SwitchValue );
 
         var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
 
@@ -195,77 +192,80 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
         var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
 
-        // Create awaiter variable
         var awaiterState = nodes[sourceIndex];
-        var awaiterVariable = CreateAwaiterVariable( awaitExpression, awaiterState );
+        var joinState = nodes[joinIndex];
 
-        awaiterState.Expressions.Add( Expression.Assign( 
-            awaiterVariable,
-            Expression.Call( awaitExpression.Target, awaitExpression.Target.Type.GetMethod( "GetAwaiter" )! ) ) 
-        );
-
-        // Add a lazy expression to build the continuation
-        awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, sourceIndex ) );
+        // Assign awaiter 
+        AddAwaiterVariableExpression( awaiterState, awaitExpression, out var awaiterVariable );
+        awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, sourceIndex ) ); // Add a lazy expression to build the continuation
 
         var awaitResultState = VisitBranch( awaitExpression.Target, joinIndex, true );
-
         awaiterState.Expressions.Add( Expression.Goto( awaitResultState.Label ) );
 
-        // Keep awaiter variable in scope for results
-        CreateGetResults( awaitResultState, awaitExpression, awaiterVariable, out var localVariable );
+        // Assign results
+        AddGetResultExpression( awaitResultState, joinState, awaitExpression, awaiterVariable, out var localVariable );
+        var resultExpression = (Expression) localVariable ?? Expression.Empty();
         
-        if( localVariable != null )
-            awaitResultState.Variables.Add( localVariable );
-
-        awaitResultState.Expressions.Add( Expression.Goto( nodes[joinIndex].Label ) );
-        awaitResultState.Transition = new AwaitResultTransition { TargetNode = nodes[joinIndex] };
-
-        _jumpCases.Add( awaitResultState.Label, sourceIndex );
-
-        // get awaiter
+        // Create completion transition
         var awaitTransition = new AwaitTransition { CompletionNode = awaitResultState };
+        _states.JumpCases.Add( awaitResultState.Label, sourceIndex );
 
         _states.ExitBranchState( sourceIndex, awaitTransition );
 
-        return (Expression) localVariable ?? Expression.Empty();
+        return resultExpression;
 
         // Helper method to create an awaiter variable
-        ParameterExpression CreateAwaiterVariable( AwaitExpression expression, StateNode stateNode )
+        static void AddAwaiterVariableExpression( StateNode sourceState, AwaitExpression expression, out ParameterExpression variable )
         {
-            var variable = Expression.Variable(
-                expression.Type == typeof(void)
-                    ? typeof(TaskAwaiter)
-                    : typeof(TaskAwaiter<>).MakeGenericType( expression.Type ),
-                $"awaiter<{stateNode.StateId}>" );
+            // Add variable to source state
+            var type = expression.Type == typeof(void)
+                ? typeof(TaskAwaiter)
+                : typeof(TaskAwaiter<>).MakeGenericType( expression.Type );
 
-            stateNode.Variables.Add( variable );
-            return variable;
+            variable = Expression.Variable( type, $"awaiter<{sourceState.StateId}>" );
+            sourceState.Variables.Add( variable );
+
+            // Add GetAwaiter call to source state
+            var getAwaiterMethod = expression.Target.Type.GetMethod( "GetAwaiter" )!;
+            var assign = Expression.Assign(
+                variable,
+                Expression.Call( expression.Target, getAwaiterMethod )
+            );
+            
+            sourceState.Expressions.Add( assign );
         }
 
         // Helper method to create the GetResult call
-        void CreateGetResults( StateNode state, AwaitExpression expression, ParameterExpression awaiter, out ParameterExpression variable )
+        static void AddGetResultExpression( StateNode sourceState, StateNode joinState, AwaitExpression expression, ParameterExpression awaiter, out ParameterExpression variable )
         {
-            state.Variables.Add( awaiter );
+            sourceState.Variables.Add( awaiter );
             if ( expression.Type == typeof(void) )
             {
                 variable = null;
                 var expr = Expression.Call( awaiter, "GetResult", Type.EmptyTypes );
-                state.Expressions.Add( expr );
+                sourceState.Expressions.Add( expr );
             }
             else
             {
-                variable = Expression.Variable( expression.Type, $"<>s__{state.StateId}" );
-                state.Variables.Add( variable );
+                variable = Expression.Variable( expression.Type, $"<>s__{sourceState.StateId}" );
+                sourceState.Variables.Add( variable );
                 var expr = Expression.Assign( variable, Expression.Call( awaiter, "GetResult", Type.EmptyTypes ) );
-                state.Expressions.Add( expr );
+                sourceState.Expressions.Add( expr );
             }
+
+            // Add transition to join state
+            if ( variable != null )
+                sourceState.Variables.Add( variable );
+
+            sourceState.Expressions.Add( Expression.Goto( joinState.Label ) );
+            sourceState.Transition = new AwaitResultTransition { TargetNode = joinState };
         }
     }
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
         if ( _variables.Contains( node ) )
-            _states.GetLeafState().Variables.Add( node );
+            _states.GetVisitedLeafState().Variables.Add( node );
         
         return base.VisitParameter( node );
     }
@@ -283,8 +283,10 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         return Expression.Assign( _returnValue, gotoExpression.Value! );
     }
 
-    private Expression VisitInternal( Expression expr )
+    private Expression VisitInternal( Expression expr, bool blockAddExpression = false )
     {
+        var result = Visit( expr );
+
         switch ( expr )
         {
             case BlockExpression:
@@ -293,14 +295,16 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             case TryExpression:
             case AwaitExpression:
             case AsyncBlockExpression:
-                return Visit( expr );
+                break;
 
             default:
-                var updateNode = Visit( expr );
                 // Cannot pass this in as it's updated after visiting.
-                _states.GetLeafState().Expressions.Add( updateNode );
-                return updateNode;
+                if ( !blockAddExpression )
+                    _states.GetVisitedLeafState().Expressions.Add( result );
+                break;
         }
+
+        return result;
     }
 
     private class StateContext
@@ -309,10 +313,12 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         private readonly Stack<int> _joinIndexes = new();
         private int _leafIndex;
 
+        public Dictionary<LabelTarget, int> JumpCases { get; } = new();
+
         public List<StateNode> GetNodes() => _nodes;
 
         public StateNode GetState( int index ) => _nodes[index];
-        public StateNode GetLeafState() => _nodes[_leafIndex];
+        public StateNode GetVisitedLeafState() => _nodes[_leafIndex];
 
         public StateNode AddState()
         {
