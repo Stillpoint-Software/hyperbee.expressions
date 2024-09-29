@@ -40,7 +40,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         // Create a new state for the branch
         var branchState = _states.AddBranchState();
 
-        VisitInternal( expression, blockAddExpression: isAsyncResult );
+        VisitInternal( expression, denyAddExpression: isAsyncResult );
 
         // Set a default Transition if the branch leaf didn't join
         var leafState = _states.GetVisitedLeafState(); 
@@ -284,7 +284,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         return Expression.Assign( _returnValue, gotoExpression.Value! );
     }
 
-    private Expression VisitInternal( Expression expr, bool blockAddExpression = false )
+    private Expression VisitInternal( Expression expr, bool denyAddExpression = false )
     {
         var result = Visit( expr );
 
@@ -300,7 +300,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
             default:
                 // Warning: visitation mutates the leaf state.
-                if ( !blockAddExpression )
+                if ( !denyAddExpression )
                     _states.GetVisitedLeafState().Expressions.Add( result );
                 break;
         }
