@@ -10,6 +10,9 @@ internal class AwaitCompletionExpression : Expression
     private readonly ParameterExpression _awaiter;
     private readonly int _stateId;
 
+    private bool _isReduced;
+    private Expression _expression;
+
     // initialize before reduce
     private FieldResolverSource _resolverSource;
 
@@ -31,13 +34,19 @@ internal class AwaitCompletionExpression : Expression
 
     public override Expression Reduce()
     {
+        if ( _isReduced )
+            return _expression;
+
+        if ( _resolverSource == null )
+            throw new InvalidOperationException( $"Reduce requires a {nameof(FieldResolverSource)} instance." );
+
         var (stateMachine, fields, returnLabel, stateIdField, builderField) = _resolverSource;
 
         var awaiterField = fields.First( x => x.Name == _awaiter.Name );
         var awaiterFieldInfo = GetFieldInfo( stateMachine.Type, awaiterField );
         var stateMachineAwaiterField = Field( stateMachine, awaiterFieldInfo );
 
-        return IfThen(
+        _expression = IfThen(
             IsFalse( Property( stateMachineAwaiterField, "IsCompleted" ) ),
             Block(
                 Assign( stateIdField, Constant( _stateId ) ),
@@ -51,6 +60,9 @@ internal class AwaitCompletionExpression : Expression
                 Return( returnLabel )
             )
         );
+
+        _isReduced = true;
+        return _expression;
     }
 
     private static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
