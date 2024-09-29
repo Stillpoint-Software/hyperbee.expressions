@@ -14,7 +14,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
     private static class VariableName
     {
         // use special names to prevent collisions
-        public static string Awaiter( int stateId ) => $"awaiter<{stateId}>";
+        public static string Awaiter( int stateId ) => $"__awaiter<{stateId}>";
         public static string Result( int stateId ) => $"<>s__{stateId}";
     }
 
