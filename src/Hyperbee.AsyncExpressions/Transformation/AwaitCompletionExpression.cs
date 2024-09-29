@@ -11,11 +11,7 @@ internal class AwaitCompletionExpression : Expression
     private readonly int _stateId;
 
     // initialize before reduce
-    private Expression _stateMachine;
-    private List<FieldBuilder> _fields;
-    private LabelTarget _returnLabel;
-    private MemberExpression _stateIdField;
-    private MemberExpression _builderField;
+    private FieldResolverSource _resolverSource;
 
     public AwaitCompletionExpression( ParameterExpression awaiter, int stateId )
     {
@@ -27,39 +23,38 @@ internal class AwaitCompletionExpression : Expression
     public override Type Type => typeof( void );
     public override bool CanReduce => true;
 
+    public Expression Reduce( FieldResolverSource resolverSource )
+    {
+        _resolverSource = resolverSource;
+        return Reduce();
+    }
+
     public override Expression Reduce()
     {
-        var awaiterField = _fields.First( x => x.Name == _awaiter.Name );
-        var awaiterFieldInfo = GetFieldInfo( _stateMachine.Type, awaiterField );
-        var stateMachineAwaiterField = Field( _stateMachine, awaiterFieldInfo );
+        var (stateMachine, fields, returnLabel, stateIdField, builderField) = _resolverSource;
+
+        var awaiterField = fields.First( x => x.Name == _awaiter.Name );
+        var awaiterFieldInfo = GetFieldInfo( stateMachine.Type, awaiterField );
+        var stateMachineAwaiterField = Field( stateMachine, awaiterFieldInfo );
 
         return IfThen(
             IsFalse( Property( stateMachineAwaiterField, "IsCompleted" ) ),
             Block(
-                Assign( _stateIdField, Constant( _stateId ) ),
+                Assign( stateIdField, Constant( _stateId ) ),
                 Call(
-                    _builderField,
+                    builderField,
                     "AwaitUnsafeOnCompleted",
                     [awaiterField.FieldType, typeof(IAsyncStateMachine)],
                     stateMachineAwaiterField,
-                    _stateMachine
+                    stateMachine
                 ),
-                Return( _returnLabel )
+                Return( returnLabel )
             )
         );
-
-        static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
-        {
-            return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
-        }
     }
 
-    public void Initialize( Expression stateMachine, List<FieldBuilder> fields, LabelTarget returnLabel, MemberExpression stateIdField, MemberExpression buildField )
+    private static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
     {
-        _stateMachine = stateMachine;
-        _fields = fields;
-        _returnLabel = returnLabel;
-        _stateIdField = stateIdField;
-        _builderField = buildField;
+        return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
     }
 }

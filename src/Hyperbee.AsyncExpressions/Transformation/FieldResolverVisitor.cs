@@ -9,23 +9,25 @@ internal class FieldResolverVisitor : ExpressionVisitor
     private readonly Dictionary<Expression, MemberExpression> _mappingCache = [];
     private readonly string[] _fieldNames;
     private readonly List<FieldBuilder> _fields;
-    private readonly Expression _instance;
+    private readonly Expression _stateMachine;
     private readonly LabelTarget _returnLabel;
     private readonly MemberExpression _stateIdField;
-    private readonly MemberExpression _stateMachineBuilderField;
+    private readonly MemberExpression _builderField;
 
-    public FieldResolverVisitor(Expression instance, 
+
+    public FieldResolverVisitor(Expression stateMachine, 
         List<FieldBuilder> fields, 
         LabelTarget returnLabel, 
         MemberExpression stateIdField,
-        MemberExpression stateMachineBuilderField)
+        MemberExpression builderField)
     {
+        _stateMachine = stateMachine;
         _returnLabel = returnLabel;
         _stateIdField = stateIdField;
-        _stateMachineBuilderField = stateMachineBuilderField;
-        _fieldNames = fields.Select( x => x.Name ).ToArray();
+        _builderField = builderField;
         _fields = fields;
-        _instance = instance;
+        
+        _fieldNames = fields.Select( x => x.Name ).ToArray();
     }
 
     protected override Expression VisitParameter( ParameterExpression node )
@@ -36,7 +38,7 @@ internal class FieldResolverVisitor : ExpressionVisitor
         if ( !TryGetFieldInfo( node, out var fieldInfo ) )
             return node;
 
-        var fieldExpression = Expression.Field( _instance, fieldInfo );
+        var fieldExpression = Expression.Field( _stateMachine, fieldInfo );
         _mappingCache.Add( node, fieldExpression );
 
         return fieldExpression;
@@ -49,7 +51,7 @@ internal class FieldResolverVisitor : ExpressionVisitor
         var builderField = _fields.FirstOrDefault( f => f.Name == name );
         if ( builderField != null )
         {
-            field = _instance.Type.GetField( builderField.Name, BindingFlags.Instance | BindingFlags.Public )!;
+            field = _stateMachine.Type.GetField( builderField.Name, BindingFlags.Instance | BindingFlags.Public )!;
             return true;
         }
 
@@ -71,14 +73,24 @@ internal class FieldResolverVisitor : ExpressionVisitor
         switch (node)
         {
             case AwaitCompletionExpression awaitCompletionExpression:
-                // TODO: clean up how we initialize the await completion expression
-                awaitCompletionExpression.Initialize( _instance, _fields, _returnLabel, _stateIdField, _stateMachineBuilderField );
-                return awaitCompletionExpression.Reduce();
+                return awaitCompletionExpression.Reduce( (FieldResolverSource) this );
 
             case AwaitExpression awaitExpression:
                 return Visit( awaitExpression.Target )!;
         }
 
         return base.VisitExtension( node );
+    }
+
+    public static explicit operator FieldResolverSource( FieldResolverVisitor visitor )
+    {
+        return new FieldResolverSource
+        {
+            StateMachine = visitor._stateMachine,
+            Fields =visitor._fields,
+            ReturnLabel = visitor._returnLabel,
+            StateIdField = visitor._stateIdField,
+            BuilderField = visitor._builderField
+        };
     }
 }
