@@ -2,7 +2,7 @@
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-[DebuggerDisplay( "Transition = {this.GetType().Name,nq}" )]
+[DebuggerDisplay( "Transition = {GetType().Name,nq}" )]
 
 public abstract class Transition;
 

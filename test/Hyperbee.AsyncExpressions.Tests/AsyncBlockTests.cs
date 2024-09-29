@@ -43,7 +43,7 @@ public class AsyncBlockTests
             assignExpr1, awaitExpr1, assignExpr2, awaitExpr2, assertExpr1, finalAssignExpr, assertExpr2 );
 
         // Act
-        var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
+        var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock.Reduce() ); //BF discuss with ME
         var compiledLambda = lambda.Compile();
         var result = await compiledLambda();
 

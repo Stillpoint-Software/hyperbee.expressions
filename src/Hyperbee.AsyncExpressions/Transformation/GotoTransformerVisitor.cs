@@ -11,6 +11,13 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     private readonly StateContext _states = new();
 
+    private static class VariableName
+    {
+        // use special names to prevent collisions
+        public static string Awaiter( int stateId ) => $"awaiter<{stateId}>";
+        public static string Result( int stateId ) => $"<>s__{stateId}";
+    }
+
     public GotoTransformerResult Transform( ParameterExpression[] variables, params Expression[] expressions )
     {
         _variables = variables;
@@ -221,7 +228,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
                 ? typeof(TaskAwaiter)
                 : typeof(TaskAwaiter<>).MakeGenericType( expression.Type );
 
-            variable = Expression.Variable( type, $"awaiter<{sourceState.StateId}>" );
+            variable = Expression.Variable( type, VariableName.Awaiter(sourceState.StateId) );
             sourceState.Variables.Add( variable );
 
             // Add GetAwaiter call to source state
@@ -248,7 +255,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             }
             else
             {
-                variable = Expression.Variable( expression.Type, $"<>s__{sourceState.StateId}" );
+                variable = Expression.Variable( expression.Type, VariableName.Result( sourceState.StateId ) );
                 sourceState.Variables.Add( variable );
                 var expr = Expression.Assign( variable, Expression.Call( awaiter, "GetResult", Type.EmptyTypes ) );
                 sourceState.Expressions.Add( expr );

@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Xml.Linq;
+
 using Hyperbee.AsyncExpressions.Transformation;
 
 namespace Hyperbee.AsyncExpressions;
@@ -34,9 +34,13 @@ public class AwaitExpression : Expression
     {
         var resultType = ResultType( Target.Type );
 
-        return Call( resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
-            ? AwaitMethod 
-            : AwaitResultMethod.MakeGenericMethod( resultType ), Target, Constant( _configureAwait ) );
+        return Call( 
+            resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
+                ? AwaitMethod 
+                : AwaitResultMethod.MakeGenericMethod( resultType ), 
+            Target, 
+            Constant( _configureAwait ) 
+        );
     }
 
     private static Type ResultType( Type taskType )

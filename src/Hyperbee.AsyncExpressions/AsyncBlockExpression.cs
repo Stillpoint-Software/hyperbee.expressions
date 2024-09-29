@@ -35,6 +35,17 @@ public class AsyncBlockExpression: Expression
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
+    public override Type Type
+    {
+        get
+        {
+            if ( !_isReduced )
+                Reduce();
+
+            return _stateMachine.Type;
+        }
+    }
+
     public override Expression Reduce()
     {
         if ( _isReduced )
@@ -55,17 +66,6 @@ public class AsyncBlockExpression: Expression
             throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
 
         return StateMachineBuilder.Create( resultType, source );
-    }
-
-    public override Type Type
-    {
-        get
-        {
-            if ( !_isReduced )
-                Reduce();
-
-            return _stateMachine.Type;
-        }
     }
 
     internal Type GetResultType()
