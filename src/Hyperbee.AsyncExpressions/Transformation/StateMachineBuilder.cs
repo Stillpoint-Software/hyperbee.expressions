@@ -148,11 +148,11 @@ public class StateMachineBuilder<TResult>
     {
         // Define the state machine derived type
         //
-        // public class StateMachineType : StateMachineBaseType
+        // public class StateMachineType: StateMachineBaseType
         // {
         //      private Action<StateMachineBaseType> __moveNextLambda<>;
         //
-        //      public StateMachineType() {}
+        //      public StateMachineType(): base() {}
         //      public void SetMoveNext(Action<StateMachineBaseType> moveNext) => __moveNextLambda<> = moveNext;
         //      public override void MoveNext() => __moveNextLambda<>((StateMachineBaseType) this);
         // }
@@ -273,6 +273,13 @@ public class StateMachineBuilder<TResult>
 
     private void ImplementMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
     {
+        // Define the MoveNext method
+        //
+        // public override void MoveNext()
+        // {
+        //    __moveNextLambda<>((StateMachineBaseType) this);
+        // }
+
         var moveNextMethod = typeBuilder.DefineMethod(
             "MoveNext",
             MethodAttributes.Public | MethodAttributes.Virtual,
@@ -391,6 +398,7 @@ public class StateMachineBuilder<TResult>
         bodyExpressions.Add( jumpTableExpression );
 
         // Iterate through the blocks (each block corresponds to a state)
+
         foreach ( var (blockVariables, blockExpressions, blockTransition) in result.Nodes )
         {
             // TODO: Creating block just for visiting?
@@ -449,6 +457,7 @@ public class StateMachineBuilder<TResult>
             : [];
 
         // Create a try-catch block to handle exceptions
+        
         var exceptionParameter = Expression.Parameter( typeof(Exception), "ex" );
         var tryCatchBlock = Expression.TryCatch(
             Expression.Block( typeof( void ), variables, bodyExpressions ), // Try block returns void
@@ -467,12 +476,13 @@ public class StateMachineBuilder<TResult>
             )
         );
 
-        // Combine the try-catch block with the return label
-        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
+        // Combine the try-catch block with the return label and
+        // return the lambda expression for MoveNext
 
-        // Return the lambda expression for MoveNext
+        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
         return Expression.Lambda( moveNextBody, stateMachineInstance );
 
+        // Helper methods
         static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
         {
             return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
