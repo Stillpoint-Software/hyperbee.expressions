@@ -5,8 +5,8 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 internal class GotoTransformerVisitor : ExpressionVisitor
 {
-    private ParameterExpression _returnValue;
-    private ParameterExpression[] _variables;
+    private ParameterExpression _returnValue;   //BF move to StateNode?
+    private ParameterExpression[] _variables;   //BF move to StateNode?
     private int _awaitCount;
 
     private readonly StateContext _states = new();
