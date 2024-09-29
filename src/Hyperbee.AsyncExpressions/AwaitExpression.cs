@@ -1,18 +1,22 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Xml.Linq;
 using Hyperbee.AsyncExpressions.Transformation;
 
 namespace Hyperbee.AsyncExpressions;
 
 [DebuggerDisplay( "Await {Target?.ToString(),nq}" )]
-[DebuggerTypeProxy( typeof(AwaitExpressionProxy) )]
+[DebuggerTypeProxy( typeof(AwaitExpressionDebuggerProxy) )]
 public class AwaitExpression : Expression
 {
     private readonly bool _configureAwait;
 
-    private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression).GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
-    private static readonly MethodInfo AwaitResultMethod = typeof(AwaitExpression).GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
+    private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression)
+        .GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
+
+    private static readonly MethodInfo AwaitResultMethod = typeof(AwaitExpression)
+        .GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
 
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
@@ -56,7 +60,7 @@ public class AwaitExpression : Expression
         return task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
     }
 
-    private class AwaitExpressionProxy( AwaitExpression node )
+    private class AwaitExpressionDebuggerProxy( AwaitExpression node )
     {
         public Expression Target => node.Target;
         public Type Type => node.Type;

@@ -82,18 +82,14 @@ public class AsyncBlockExpression: Expression
         return type;
     }
 
-    private class AsyncBlockExpressionDebuggerProxy
+    private class AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node )
     {
-        private readonly AsyncBlockExpression _node;
+        public Expression StateMachine => node._stateMachine;
+        public bool IsReduced => node._isReduced;
+        public Type ReturnType => node._resultType;
 
-        public AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node ) => _node = node;
-
-        public Expression StateMachine => _node._stateMachine;
-        public bool IsReduced => _node._isReduced;
-        public Type ReturnType => _node._resultType;
-
-        public Expression[] Expressions => _node._expressions;
-        public ParameterExpression[] Variables => _node._variables;
+        public Expression[] Expressions => node._expressions;
+        public ParameterExpression[] Variables => node._variables;
     }
 }
 

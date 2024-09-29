@@ -1,10 +1,12 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
+[DebuggerTypeProxy( typeof(AwaitCompletionExpressionDebuggerProxy) )]
 internal class AwaitCompletionExpression : Expression
 {
     private readonly ParameterExpression _awaiter;
@@ -68,5 +70,14 @@ internal class AwaitCompletionExpression : Expression
     private static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
     {
         return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
+    }
+
+    private class AwaitCompletionExpressionDebuggerProxy( AwaitCompletionExpression node )
+    {
+        public int StateId => node._stateId;
+        public ParameterExpression Awaiter => node._awaiter;
+        public bool IsReduced => node._isReduced;
+        public Expression Expression => node._expression;
+        public FieldResolverSource ResolverSource => node._resolverSource;
     }
 }
