@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using System.Runtime.InteropServices.JavaScript;
 using System.Text;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
@@ -8,11 +7,8 @@ internal static class DebugViewWriter
 {
     public static void WriteTo( StringWriter writer, List<StateNode> nodes )
     {
-        foreach ( var node in nodes )
+        foreach ( var node in nodes.Where( node => node != null ) )
         {
-            if ( node == null )
-                continue;
-
             // label
             writer.WriteLine( $"{node.Label.Name}:" );
 
@@ -87,6 +83,7 @@ internal static class DebugViewWriter
         {
             case string stringValue:
                 return $"Constant String \"{stringValue}\"";
+
             default:
             {
                 var typeName = constant.Type.Name;
@@ -159,6 +156,7 @@ internal static class DebugViewWriter
 
         static string Repeat( char c, int count ) => new ( c, count );
     }
+
     private static string FormatUnaryExpression( UnaryExpression unary )
     {
         return $"{GetUnaryOperator( unary.NodeType )}({ExpressionToString( unary.Operand )})";

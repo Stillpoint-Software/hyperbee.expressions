@@ -19,10 +19,4 @@ public record GotoTransformerResult
             return writer.ToString();
         }
     }
-
-    public void Deconstruct( out List<StateNode> states, out IReadOnlyDictionary<LabelTarget, int> jumpCases )
-    {
-        states = Nodes;
-        jumpCases = JumpCases;
-    }
 }

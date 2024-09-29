@@ -11,7 +11,12 @@ internal record FieldResolverSource
     public MemberExpression StateIdField { get; init; }
     public MemberExpression BuilderField { get; init; }
 
-    public void Deconstruct( out Expression stateMachine, out List<FieldBuilder> fields, out LabelTarget returnLabel, out MemberExpression stateIdField, out MemberExpression builderField )
+    public void Deconstruct( 
+        out Expression stateMachine, 
+        out List<FieldBuilder> fields, 
+        out LabelTarget returnLabel, 
+        out MemberExpression stateIdField, 
+        out MemberExpression builderField )
     {
         stateMachine = StateMachine;
         fields = Fields;
