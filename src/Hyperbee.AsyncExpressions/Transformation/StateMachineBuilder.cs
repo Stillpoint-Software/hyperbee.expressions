@@ -204,7 +204,7 @@ public class StateMachineBuilder<TResult>
         {
             ilGenerator.Emit( OpCodes.Ldarg_0 );
             ilGenerator.Emit( OpCodes.Ldc_I4_M1 ); // load -1
-            ilGenerator.Emit( OpCodes.Stfld, stateFieldInfo ); 
+            ilGenerator.Emit( OpCodes.Stfld, stateFieldInfo );
         }
 
         // Call the base constructor 

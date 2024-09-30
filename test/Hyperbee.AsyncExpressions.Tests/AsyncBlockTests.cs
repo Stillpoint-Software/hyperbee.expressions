@@ -340,8 +340,6 @@ public class AsyncBlockTests
         Assert.IsTrue( result );
     }
 
-
-
     [TestMethod]
     public async Task TestAsyncBlock_MultipleAwaitAndVariableUpdate()
     {
