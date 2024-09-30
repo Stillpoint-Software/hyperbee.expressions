@@ -10,6 +10,7 @@ internal static class DebugViewWriter
 
         // variables
         var parameterExpressions = variables as ParameterExpression[] ?? variables.ToArray();
+
         if ( parameterExpressions.Length != 0 )
         {
             writer.WriteLine( "Variables" );

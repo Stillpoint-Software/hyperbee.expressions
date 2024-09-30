@@ -51,18 +51,18 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
         VisitInternal( expression, captureVisit );
 
-        // Set a default Transition if the branch leaf didn't join
-        var leafState = _states.GetVisitedLeafState(); 
+        // Set a default Transition if the branch tail didn't join
+        var tailState = _states.GetBranchTailState(); 
 
-        if ( leafState.Transition != null )
+        if ( tailState.Transition != null )
             return branchState;
 
         var joinState = _states.GetState( joinIndex );
 
-        leafState.Transition = new GotoTransition { TargetNode = joinState };
+        tailState.Transition = new GotoTransition { TargetNode = joinState };
         
         if( captureVisit )
-            leafState.Expressions.Add( Expression.Goto( joinState.Label ) );
+            tailState.Expressions.Add( Expression.Goto( joinState.Label ) );
 
         return branchState;
     }
@@ -304,9 +304,9 @@ internal class GotoTransformerVisitor : ExpressionVisitor
                 break;
 
             default:
-                // Warning: visitation mutates the leaf state.
+                // Warning: visitation mutates the tail state.
                 if ( captureVisit )
-                    _states.GetVisitedLeafState().Expressions.Add( result );
+                    _states.GetBranchTailState().Expressions.Add( result );
                 break;
         }
 
@@ -317,14 +317,14 @@ internal class GotoTransformerVisitor : ExpressionVisitor
     {
         private readonly List<StateNode> _nodes = new(8);
         private readonly Stack<int> _joinIndexes = new(8);
-        private int _leafIndex;
+        private int _tailIndex;
 
         public Dictionary<LabelTarget, int> JumpCases { get; } = new(8);
 
         public List<StateNode> GetNodes() => _nodes;
 
         public StateNode GetState( int index ) => _nodes[index];
-        public StateNode GetVisitedLeafState() => _nodes[_leafIndex];
+        public StateNode GetBranchTailState() => _nodes[_tailIndex];
 
         public StateNode AddState()
         {
@@ -337,7 +337,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         public StateNode AddBranchState()
         {
             var stateNode = AddState();
-            _leafIndex = stateNode.StateId;
+            _tailIndex = stateNode.StateId;
 
             return stateNode;
         }
@@ -348,7 +348,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
             _joinIndexes.Push( joinState.StateId );
 
-            sourceIndex = _leafIndex;
+            sourceIndex = _tailIndex;
             nodes = _nodes;
 
             return joinState.StateId;
@@ -357,7 +357,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         public void ExitBranchState( int sourceIndex, Transition transition )
         {
             _nodes[sourceIndex].Transition = transition;
-            _leafIndex = _joinIndexes.Pop();
+            _tailIndex = _joinIndexes.Pop();
         }
     }
 }
