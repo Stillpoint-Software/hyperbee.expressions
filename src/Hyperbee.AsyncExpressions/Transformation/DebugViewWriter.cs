@@ -7,22 +7,23 @@ internal static class DebugViewWriter
 {
     public static void WriteTo( StringWriter writer, List<StateNode> nodes, IEnumerable<ParameterExpression> variables )
     {
-
         // variables
-        var parameterExpressions = variables as ParameterExpression[] ?? variables.ToArray();
+        var parameterExpressions = variables ?? [];
 
-        if ( parameterExpressions.Length != 0 )
+        var variableCount = 0;
+
+        foreach ( var expr in parameterExpressions )
         {
-            writer.WriteLine( "Variables" );
+            if ( variableCount++ == 0 )
+                writer.WriteLine( "Variables" );
 
-            foreach ( var expr in parameterExpressions )
-            {
-                writer.WriteLine( $"\t{VariableToString( expr )}" );
-            }
+            writer.WriteLine( $"\t{VariableToString( expr )}" );
         }
 
-        writer.WriteLine();
+        if ( variableCount > 0 )
+            writer.WriteLine();
 
+        // nodes
         foreach ( var node in nodes.Where( node => node != null ) )
         {
             // label
