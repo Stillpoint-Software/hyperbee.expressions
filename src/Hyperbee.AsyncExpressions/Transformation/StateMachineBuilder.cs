@@ -210,7 +210,7 @@ public class StateMachineBuilder<TResult>
         _variableFields = result.Nodes
             .SelectMany( x => x.Variables )
             .Distinct()
-            .Select( x => typeBuilder.DefineField( $"{x.Name}", x.Type, FieldAttributes.Public ) )
+            .Select( x => typeBuilder.DefineField( x.Name!, x.Type, FieldAttributes.Public ) )
             .ToList();
     }
 
