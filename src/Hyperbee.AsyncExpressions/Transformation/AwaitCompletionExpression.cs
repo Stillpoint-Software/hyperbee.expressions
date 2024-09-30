@@ -43,7 +43,7 @@ internal class AwaitCompletionExpression : Expression
             return _expression;
 
         if ( _resolverSource == null )
-            throw new InvalidOperationException( $"Reduce requires a {nameof(IFieldResolverSource)} instance." );
+            throw new InvalidOperationException( $"Reduce requires an {nameof(IFieldResolverSource)} instance." );
 
         var awaiterField = _resolverSource.Fields
             .First( x => x.Member.Name == _awaiter.Name );
