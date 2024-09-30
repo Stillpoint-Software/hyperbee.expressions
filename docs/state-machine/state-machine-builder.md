@@ -10,7 +10,7 @@ State machine generation involves converting user expression trees into state ma
 This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
 process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
 
-The second step builds the state machine based on a transformed expression tree. This involves creating a state-machine type,
+**The second step** builds the state machine based on a transformed expression tree. This involves creating a state-machine type,
 and wiring the execution flow according to the control constructs defined during the expression tree traversal.
 
 - Key Concepts:

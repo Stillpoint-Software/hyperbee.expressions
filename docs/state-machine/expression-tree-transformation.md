@@ -10,11 +10,11 @@ State machine generation involves converting user expression trees into state ma
 This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
 process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
 
-The transformation converts flow control constructs (such as if, switch, and loops) in the expression tree into a flattened goto 
+**The first step** converts flow control constructs (such as if, switch, and loops) in the expression tree into a flattened goto 
 structure. This step systematically traverses the expression tree and replaces branching constructs with state nodes that manage 
 control flow using transitions and goto operations.
 
-- Key Concetps:
+- Key Concepts:
     - **Flow Control Constructs:** Handling of flow control structures such as conditional expressions ('if'), switches, and loops.
     - **Goto-Based State Machine:** Each state is represented by a label, and transitions between states are managed using goto operations.
 
