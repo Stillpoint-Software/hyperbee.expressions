@@ -10,27 +10,28 @@ State machine generation involves converting user expression trees into state ma
 This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
 process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
 
-The first step of the transformation converts flow control constructs (such as if, switch, and loops) in the expression
-tree into a flattened goto structure. This step systematically traverses the expression tree and replaces branching constructs
-with state nodes that manage control flow using transitions and goto operations.
+The transformation converts flow control constructs (such as if, switch, and loops) in the expression tree into a flattened goto 
+structure. This step systematically traverses the expression tree and replaces branching constructs with state nodes that manage 
+control flow using transitions and goto operations.
 
 - Key Concetps:
     - **Flow Control Constructs:** Handling of flow control structures such as conditional expressions ('if'), switches, and loops.
     - **Goto-Based State Machine:** Each state is represented by a label, and transitions between states are managed using goto operations.
 
-The `GotoTransformerVisitor` is key to the transformation process, and is responsible for the conversion of expression trees into a flattened goto
-structure representing distinct 'states' that can be used to generate the final state-machine. This involves traversing the tree, identifying flow 
-control constructs, and replacing them with state nodes that manage control flow using goto operations. The transformation ensures that the state 
-machine correctly mirrors the original control flow while allowing for asynchronous execution that must suspend and resume operations.
+The `GotoTransformerVisitor` is  is responsible for the conversion of expression trees into a flattened goto structure, representing
+distinct 'states', that can be used to generate the final state-machine. This involves traversing the tree, identifying flow control
+constructs, and replacing them with state nodes that manage control flow using goto operations. The transformation ensures that the
+state machine correctly represents the original control flow while allowing for asynchronous execution that must suspend and resume
+operations.
 
 ## GotoTransformerVisitor
-The GotoTransformerVisitor is responsible for traversing the expression tree and transforming its flow control constructs into state machine
-nodes that use goto operations. This is where the flow control constructs like conditionals, switches, and loops are turned into labeled
-states.
+The GotoTransformerVisitor is responsible for traversing the expression tree and transforming its flow control constructs into 
+state machine nodes that use goto operations. This is where the flow control constructs like conditionals, switches, and loops are
+turned into labeled states.
 
 ### Traversing the Expression Tree
-The visitor pattern is employed to traverse the expression tree and create the state node representation. Each expression in the expression tree 
-is visited and potentially transformed into one or more state nodes.
+The visitor pattern is employed to traverse the expression tree and create the state node representation. Each expression in the 
+expression tree is visited and potentially transformed into one or more state nodes.
 
 ### Understanding the StateContext
 The StateContext class manages the collection of state nodes that are created durring the expression visitation, and tracks the 

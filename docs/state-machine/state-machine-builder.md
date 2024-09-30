@@ -18,12 +18,11 @@ and wiring the execution flow according to the control constructs defined during
     - **MoveNext Method:** Core execution function that controls state transitions, awaits task completion, and manages exceptions.
     - **Hoisted Variables:** Variables that persist across state transitions are hoisted into fields in the state machine type.
 
-The `StateMachineBuilder` class dynamically creates and manages state machines, primarily used for asynchronous execution. It constructs state
-machine types that manage control flow across asynchronous calls by creating appropriate state transitions and handling task results or 
-exceptions.
+The `StateMachineBuilder` class creates and manages state machines. It constructs state machine types that manage control flow 
+across asynchronous calls by creating appropriate state transitions and handling task results or exceptions.
 
-# StateMachineBuilder
-The `StateMachineBuilder` creates the state machine by emitting Types, IL, and building expression trees that correspond to the transformed states. 
+## StateMachineBuilder
+The `StateMachineBuilder` creates a state machine by emitting Types, IL, and building expression trees that correspond to the transformed states. 
 It ensures that the state machine can handle asynchronous tasks, manage state transitions, and resolve variables across different states. This 
 transformation allows for asynchronous tasks to be suspended and resumed without blocking the main execution thread.
 
