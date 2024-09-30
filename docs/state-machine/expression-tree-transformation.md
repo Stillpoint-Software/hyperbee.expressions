@@ -61,40 +61,40 @@ branching, ensuring that all possible branches are visited and correctly mapped 
   in the state machine.
 - **Join States:** Eventually, diverging branches must be re-joined. Joining, especially in the context of nesting, must be carefully handled.
 
-### Join States and the Branch Leaf Node
+### Join States and the Branch Tail Node
 
 Every branching construct must eventually rejoin the main flow of execution. The join state represents the point where diverging branches
 reunite, ensuring that the state machine continues to execute correctly.
 
-The purpose of the branching leaf node (represented by `_leafIndex` in the `GotoTransformerVisitor` `StateContext` class)
+The purpose of the branching tail node (represented by `_tailIndex` in the `GotoTransformerVisitor.StateContext` class)
 is to keep track of the current state node at the end of the current branch path during the traversal of the expression
 tree so we can correctly re-join branches to the main flow. This is crucial for managing state transitions in branching constructs 
 (e.g. `Conditional`, `Switch`, `Try`, and `Await`).
 
-#### Key Roles of the Leaf Node
+#### Key Roles of the Tail Node
 
 1. **Tracking the Current State**:
-   - The leaf node represents the last state node in the current branch path. It is updated as the traversal
+   - The tail node represents the last state node in the current branch path. It is updated as the traversal
      progresses through different branches of the expression tree.
-   - It is important to note that the `_leafIndex` tracks the current branch segment from the last branching
+   - It is important to note that `_tailIndex` tracks the current branch segment from the last branching
      state node, not from the root of the state tree. This ensures that state transitions are managed correctly
-   - within nested branching constructs.
+     within nested branching constructs.
 
 2. **Managing Transitions**:
-   - When a branch is visited, a new state node is created, and `_leafIndex` is updated to point to this new state.
-   - After visiting a branch, the leaf node's transition is set to point to the join state or the next state in the sequence.
+   - When a branch is visited, a new state node is created, and `_tailIndex` is updated to point to this new state.
+   - After visiting a branch, the tail node's transition is set to point to the join state or the next state in the sequence.
 
 3. **Handling Nested Branches**:
-   - In nested branching constructs, the leaf node helps in maintaining the correct state transitions by ensuring
-     that each branch's end state correctly points to the join state or the next relevant state.
+   - In nested branching constructs, the tail node helps maintain correct state transitions by ensuring that each branch's 
+     end state correctly points to the join state or the next relevant state.
 
 4. **Ensuring Correct Execution Flow**:
-   - By keeping track of the leaf node, the traversal ensures that the execution flow of the transformed expression tree
+   - By keeping track of the tail node, the traversal ensures that the execution flow of the transformed expression tree
      correctly mirrors the original structure, with appropriate transitions between states.
 
 #### Example: `VisitConditional` Method
 
-Let's rereview the `VisitConditional` method to see how the leaf node is used:
+Let's rereview the `VisitConditional` method to see how the tail node is used:
 
 ```csharp
 protected override Expression VisitConditional(ConditionalExpression node) 
@@ -126,29 +126,27 @@ protected override Expression VisitConditional(ConditionalExpression node)
 #### Step-by-Step Breakdown
 
 1. **Before Entering the Conditional Expression**:
-   - `_leafIndex` points to the current state node where the traversal is at. This state node is the source state for the conditional branch.
+   - `_tailIndex` points to the current traversal state node. This state node is the source state for the conditional branch.
 
 2. **Entering the Conditional Expression**:
    - `EnterBranchState` is called, which creates a new join state.
-   - The current `_leafIndex` (source state) is saved as `sourceIndex`.
-   - `_leafIndex` is updated to point to the new join state.
+   - The current `_tailIndex` (source state) is saved as `sourceIndex`.
+   - `_tailIndex` is updated to point to the new join state.
 
 3. **Visiting Branches**:
    - For the `IfTrue` and `IfFalse` branches, `VisitBranch` is called.
-   - `VisitBranch` creates new branch states and updates `_leafIndex` to point to these new states.
-   - The branch expressions are visited, and any nested branches will further update `_leafIndex`.
+   - `VisitBranch` creates new branch states and updates `_tailIndex` to point to these new states.
+   - The branch expressions are visited, and any nested branches will further update `_tailIndex`.
 
 4. **Exiting the Conditional Expression**:
    - After visiting all branches, `ExitBranchState` is called.
-   - This method pops the last join index from the `_joinIndexes` stack and sets `_leafIndex` to this value.
+   - This method pops the last join index from the `_joinIndexes` stack and sets `_tailIndex` to this value.
    - The transition for the source state is set, and the traversal continues.
 
 ### Summary
 
-- The leaf node (`_leafIndex`)  represents the index of the current leaf state node within the current branch being visited.
+- The tail node (`_tailIndex`)  represents the index of the last state node within the current branch being visited.
 - It ensures that state transitions are correctly managed, in branching constructs.
-- It is updated when new states are added and when entering or exiting branching constructs.
-- The `_leafIndex` tracks the current branch segment from the last branching state node, not from the root of the state tree,
+- It is updated when new branching states are added, and when entering or exiting branching constructs.
+- The `_tailIndex` tracks the current branch segment from the last branching state node, not from the root of the state tree,
   ensuring correct state transitions within nested branches. 
-
-
