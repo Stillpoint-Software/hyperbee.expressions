@@ -5,8 +5,8 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 internal class GotoTransformerVisitor : ExpressionVisitor
 {
-    private ParameterExpression _returnValue;   //BF move to StateNode?
-    private ParameterExpression[] _initialVariables;
+    private ParameterExpression _returnValue;
+    private ParameterExpression[] _definedVariables;
     private readonly HashSet<ParameterExpression> _variables = new(8); 
     private int _awaitCount;
 
@@ -16,12 +16,12 @@ internal class GotoTransformerVisitor : ExpressionVisitor
     {
         // use special names to prevent collisions
         public static string Awaiter( int stateId ) => $"__awaiter<{stateId}>";
-        public static string Result( int stateId ) => $"<>s__{stateId}";
+        public static string Result( int stateId ) => $"__m<{stateId}>";
     }
 
     public GotoTransformerResult Transform( ParameterExpression[] variables, params Expression[] expressions )
     {
-        _initialVariables = variables;
+        _definedVariables = variables;
         _states.AddState();
 
         foreach ( var expr in expressions )
@@ -44,12 +44,12 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         return Transform( [], expressions );
     }
 
-    private StateNode VisitBranch( Expression expression, int joinIndex, bool isAsyncResult = false )
+    private StateNode VisitBranch( Expression expression, int joinIndex, bool captureVisit = true )
     {
         // Create a new state for the branch
         var branchState = _states.AddBranchState();
 
-        VisitInternal( expression, !isAsyncResult );
+        VisitInternal( expression, captureVisit );
 
         // Set a default Transition if the branch leaf didn't join
         var leafState = _states.GetVisitedLeafState(); 
@@ -61,7 +61,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
         leafState.Transition = new GotoTransition { TargetNode = joinState };
         
-        if( !isAsyncResult )
+        if( captureVisit )
             leafState.Expressions.Add( Expression.Goto( joinState.Label ) );
 
         return branchState;
@@ -79,7 +79,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
-        var updatedTest = VisitInternal( node.Test, false );
+        var updatedTest = VisitInternal( node.Test, captureVisit: false );
 
         var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
 
@@ -105,7 +105,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     protected override Expression VisitSwitch( SwitchExpression node )
     {
-        var updatedSwitchValue = VisitInternal( node.SwitchValue, false );
+        var updatedSwitchValue = VisitInternal( node.SwitchValue, captureVisit: false );
 
         var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
 
@@ -206,7 +206,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         AddAwaiterVariableExpression( awaiterState, _variables, awaitExpression, out var awaiterVariable );
         awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, sourceIndex ) ); // Add a lazy expression to build the continuation
 
-        var awaitResultState = VisitBranch( awaitExpression.Target, joinIndex, true );
+        var awaitResultState = VisitBranch( awaitExpression.Target, joinIndex, captureVisit: false );
         awaiterState.Expressions.Add( Expression.Goto( awaitResultState.Label ) );
 
         // Assign results
@@ -223,7 +223,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
         // Helper method
         //
-        void AddAwaiterVariableExpression( StateNode sourceState, HashSet<ParameterExpression> variables, AwaitExpression expression, out ParameterExpression variable )
+        static void AddAwaiterVariableExpression( StateNode sourceState, HashSet<ParameterExpression> variables, AwaitExpression expression, out ParameterExpression variable )
         {
             // Add variable to source state
             var type = expression.Type == typeof(void)
@@ -270,8 +270,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( _initialVariables.Contains( node ) )
-            //_states.GetVisitedLeafState().Variables.Add( node );
+        if ( _definedVariables.Contains( node ) )
             _variables.Add( node );
 
         return base.VisitParameter( node );

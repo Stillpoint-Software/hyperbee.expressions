@@ -5,8 +5,23 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 internal static class DebugViewWriter
 {
-    public static void WriteTo( StringWriter writer, List<StateNode> nodes )
+    public static void WriteTo( StringWriter writer, List<StateNode> nodes, IEnumerable<ParameterExpression> variables )
     {
+
+        // variables
+        var parameterExpressions = variables as ParameterExpression[] ?? variables.ToArray();
+        if ( parameterExpressions.Length != 0 )
+        {
+            writer.WriteLine( "Variables" );
+
+            foreach ( var expr in parameterExpressions )
+            {
+                writer.WriteLine( $"\t{VariableToString( expr )}" );
+            }
+        }
+
+        writer.WriteLine();
+
         foreach ( var node in nodes.Where( node => node != null ) )
         {
             // label
@@ -189,4 +204,22 @@ internal static class DebugViewWriter
             _ => nodeType.ToString()
         };
     }
+    private static string VariableToString( ParameterExpression expr )
+    {
+        return $"{TypeToString( expr.Type )} {expr.Name}";
+
+        static string TypeToString( Type type )
+        {
+            return type switch
+            {
+                null => "null",
+                { IsGenericType: true } => $"{type.Name.Split( '`' )[0]}<{string.Join( ", ", type.GetGenericArguments().Select( TypeToString ) )}>",
+                { IsArray: true } => $"{TypeToString( type.GetElementType() )}[]",
+                { IsByRef: true } => $"{TypeToString( type.GetElementType() )}&",
+                { IsPointer: true } => $"{TypeToString( type.GetElementType() )}*",
+                { IsGenericType: false } => type.Name
+            };
+        }
+    }
+
 }

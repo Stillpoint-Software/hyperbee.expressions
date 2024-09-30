@@ -1,33 +1,30 @@
 ﻿using System.Linq.Expressions;
-using System.Reflection;
-using System.Reflection.Emit;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-internal class FieldResolverVisitor : ExpressionVisitor
+internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
 {
-    private readonly Dictionary<Expression, MemberExpression> _mappingCache = [];
-    private readonly string[] _fieldNames;
-    private readonly List<FieldBuilder> _fields;
-    private readonly Expression _stateMachine;
-    private readonly LabelTarget _returnLabel;
-    private readonly MemberExpression _stateIdField;
-    private readonly MemberExpression _builderField;
+    private readonly Dictionary<string, MemberExpression> _mappingCache;
 
+    public Expression StateMachine { get; init; }
+    public MemberExpression[] Fields { get; init; }
+    public LabelTarget ReturnLabel { get; init; }
+    public MemberExpression StateIdField { get; init; }
+    public MemberExpression BuilderField { get; init; }
 
     public FieldResolverVisitor(Expression stateMachine, 
-        List<FieldBuilder> fields, 
+        MemberExpression[] fields,
         LabelTarget returnLabel, 
         MemberExpression stateIdField,
         MemberExpression builderField)
     {
-        _stateMachine = stateMachine;
-        _returnLabel = returnLabel;
-        _stateIdField = stateIdField;
-        _builderField = builderField;
-        _fields = fields;
-        
-        _fieldNames = fields.Select( x => x.Name ).ToArray();
+        StateMachine = stateMachine;
+        ReturnLabel = returnLabel;
+        StateIdField = stateIdField;
+        BuilderField = builderField;
+
+        Fields = fields;
+        _mappingCache = fields.ToDictionary( x => x.Member.Name );
     }
 
     public Expression[] Visit( IEnumerable<Expression> nodes )
@@ -37,62 +34,30 @@ internal class FieldResolverVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( _mappingCache.TryGetValue( node, out var fieldAccess ) )
-            return fieldAccess;
+        var name = node.Name ?? node.ToString();
 
-        if ( !TryGetFieldInfo( node, out var fieldInfo ) )
+        if ( !_mappingCache.TryGetValue( name, out var fieldAccess ) )
             return node;
 
-        var fieldExpression = Expression.Field( _stateMachine, fieldInfo );
-        _mappingCache.Add( node, fieldExpression );
-
-        return fieldExpression;
-    }
-
-    private bool TryGetFieldInfo( ParameterExpression parameterExpression, out FieldInfo field )
-    {
-        var name = $"{parameterExpression.Name ?? parameterExpression.ToString()}";
-
-        var builderField = _fields.FirstOrDefault( f => f.Name == name );
-        if ( builderField != null )
-        {
-            field = _stateMachine.Type.GetField( builderField.Name, BindingFlags.Instance | BindingFlags.Public )!;
-            return true;
-        }
-
-        field = null;
-        return false;
+        return fieldAccess;
     }
 
     protected override Expression VisitBlock( BlockExpression node )
     {
         // Update each expression in a block to use only state machine fields/variables
         return node.Update(
-            node.Variables.Where( v => !_fieldNames.Contains( v.Name ) ),
+            node.Variables.Where( v => !_mappingCache.ContainsKey( v.Name ?? v.ToString() ) ),
             node.Expressions.Select( Visit ) 
         );
     }
-    
+
     protected override Expression VisitExtension( Expression node )
     {
         return node switch
         {
-            AwaitCompletionExpression awaitCompletionExpression => awaitCompletionExpression.Reduce(
-                (FieldResolverSource) this ),
+            AwaitCompletionExpression awaitCompletionExpression => awaitCompletionExpression.Reduce( this ),
             AwaitExpression awaitExpression => Visit( awaitExpression.Target )!,
             _ => base.VisitExtension( node )
-        };
-    }
-
-    public static explicit operator FieldResolverSource( FieldResolverVisitor visitor )
-    {
-        return new FieldResolverSource
-        {
-            StateMachine = visitor._stateMachine,
-            Fields = visitor._fields,
-            ReturnLabel = visitor._returnLabel,
-            StateIdField = visitor._stateIdField,
-            BuilderField = visitor._builderField
         };
     }
 }

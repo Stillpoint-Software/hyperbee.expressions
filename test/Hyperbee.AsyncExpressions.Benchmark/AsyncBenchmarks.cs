@@ -55,7 +55,6 @@ public class AsyncBenchmarks
         await _compileLambda();
     }
 
-
     [Benchmark]
     public async Task Compiled_Async_Execute()
     {
@@ -78,7 +77,7 @@ public class AsyncBenchmarks
         return Task.FromResult( a + b );
     }
 
-    public async Task<int> CompiledTestAsync()
+    public static async Task<int> CompiledTestAsync()
     {
         var variable = await InitVariableAsync();
         if ( await IsTrueAsync() )

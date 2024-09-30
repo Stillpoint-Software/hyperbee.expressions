@@ -1,7 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
-using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
@@ -16,7 +14,12 @@ internal class AwaitCompletionExpression : Expression
     private Expression _expression;
 
     // initialize before reduce
-    private FieldResolverSource _resolverSource;
+    private IFieldResolverSource _resolverSource;
+    internal static class Constants
+    {
+        internal const string AwaiterIsCompleted = "IsCompleted";
+        internal const string BuilderAwaitUnsafeOnCompleted = "AwaitUnsafeOnCompleted";
+    }
 
     public AwaitCompletionExpression( ParameterExpression awaiter, int stateId )
     {
@@ -28,7 +31,7 @@ internal class AwaitCompletionExpression : Expression
     public override Type Type => typeof( void );
     public override bool CanReduce => true;
 
-    public Expression Reduce( FieldResolverSource resolverSource )
+    public Expression Reduce( IFieldResolverSource resolverSource )
     {
         _resolverSource = resolverSource;
         return Reduce();
@@ -40,36 +43,28 @@ internal class AwaitCompletionExpression : Expression
             return _expression;
 
         if ( _resolverSource == null )
-            throw new InvalidOperationException( $"Reduce requires a {nameof(FieldResolverSource)} instance." );
+            throw new InvalidOperationException( $"Reduce requires a {nameof(IFieldResolverSource)} instance." );
 
-        var (stateMachine, fields, returnLabel, stateIdField, builderField) = _resolverSource;
+        var awaiterField = _resolverSource.Fields
+            .First( x => x.Member.Name == _awaiter.Name );
 
-        var awaiterField = fields.First( x => x.Name == _awaiter.Name );
-        var awaiterFieldInfo = GetFieldInfo( stateMachine.Type, awaiterField );
-        var stateMachineAwaiterField = Field( stateMachine, awaiterFieldInfo );
-        
         _expression = IfThen(
-            IsFalse( Property( stateMachineAwaiterField, "IsCompleted" ) ),
+            IsFalse( Property( awaiterField, Constants.AwaiterIsCompleted ) ),
             Block(
-                Assign( stateIdField, Constant( _stateId ) ),
+                Assign( _resolverSource.StateIdField, Constant( _stateId ) ),
                 Call(
-                    builderField,
-                    "AwaitUnsafeOnCompleted",
-                    [stateMachineAwaiterField.Type, typeof(IAsyncStateMachine)],
-                    stateMachineAwaiterField,
-                    stateMachine
+                    _resolverSource.BuilderField,
+                    Constants.BuilderAwaitUnsafeOnCompleted,
+                    [awaiterField.Type, typeof(IAsyncStateMachine)],
+                    awaiterField,
+                    _resolverSource.StateMachine
                 ),
-                Return( returnLabel )
+                Return( _resolverSource.ReturnLabel )
             )
         );
 
         _isReduced = true;
         return _expression;
-    }
-
-    private static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
-    {
-        return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
     }
 
     private class AwaitCompletionExpressionDebuggerProxy( AwaitCompletionExpression node )
@@ -78,6 +73,7 @@ internal class AwaitCompletionExpression : Expression
         public ParameterExpression Awaiter => node._awaiter;
         public bool IsReduced => node._isReduced;
         public Expression Expression => node._expression;
-        public FieldResolverSource ResolverSource => node._resolverSource;
+        public IFieldResolverSource ResolverSource => node._resolverSource;
     }
+
 }

@@ -16,7 +16,7 @@ public record GotoTransformerResult
         get
         {
             using StringWriter writer = new StringWriter( CultureInfo.CurrentCulture );
-            DebugViewWriter.WriteTo( writer, Nodes );
+            DebugViewWriter.WriteTo( writer, Nodes, Variables );
             return writer.ToString();
         }
     }

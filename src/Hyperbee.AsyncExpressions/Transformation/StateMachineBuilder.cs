@@ -13,7 +13,6 @@ public class StateMachineBuilder<TResult>
     private readonly string _typeName;
     private FieldBuilder _builderField;
     private FieldBuilder _finalResultField;
-    private List<FieldBuilder> _variableFields;
 
     private static class FieldName
     {
@@ -44,11 +43,12 @@ public class StateMachineBuilder<TResult>
         //
         // stateMachine.SetMoveNext( moveNextLambda );
         
-        var stateMachineBaseType = CreateStateMachineBaseType( source );
+        var stateMachineBaseType = CreateStateMachineBaseType( source, out var fields );
         var stateMachineType = CreateStateMachineDerivedType( stateMachineBaseType );
-        var moveNextLambda = CreateMoveNextBody( source, stateMachineBaseType );
+        var moveNextLambda = CreateMoveNextBody( source, stateMachineBaseType, fields );
 
         var stateMachineVariable = Expression.Variable( stateMachineType, "stateMachine" );
+
         var setMoveNextMethod = stateMachineType.GetMethod( "SetMoveNext" )!;
 
         var stateMachineExpression = Expression.Block(
@@ -92,7 +92,7 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private Type CreateStateMachineBaseType( GotoTransformerResult results )
+    private Type CreateStateMachineBaseType( GotoTransformerResult results, out IEnumerable<FieldInfo> fields )
     {
         // Define the state machine base type
         //
@@ -127,10 +127,11 @@ public class StateMachineBuilder<TResult>
         );
 
         var state = typeBuilder.DefineField( FieldName.State, typeof(int), FieldAttributes.Public );
-        _builderField = typeBuilder.DefineField( FieldName.Builder, typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ), FieldAttributes.Public );
+        _builderField = typeBuilder.DefineField( FieldName.Builder,
+            typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ), FieldAttributes.Public );
         _finalResultField = typeBuilder.DefineField( FieldName.FinalResult, typeof(TResult), FieldAttributes.Public );
 
-        ImplementFields( typeBuilder, results );
+        var fieldNames = ImplementFields( typeBuilder, results );
         ImplementConstructor( typeBuilder, typeof(object), state );
         ImplementSetStateMachine( typeBuilder );
 
@@ -141,7 +142,15 @@ public class StateMachineBuilder<TResult>
             Type.EmptyTypes
         );
 
-        return typeBuilder.CreateType();
+        var stateMachineBaseType = typeBuilder.CreateType();
+
+        // Build the runtime field info for each variable
+        fields = fieldNames.Select( name =>
+            stateMachineBaseType.GetField( name, BindingFlags.Instance | BindingFlags.Public )!
+        ).ToArray();
+
+        return stateMachineBaseType;
+
     }
 
     private Type CreateStateMachineDerivedType( Type stateMachineBaseType )
@@ -177,7 +186,7 @@ public class StateMachineBuilder<TResult>
         return typeBuilder.CreateType();
     }
 
-    private void ImplementConstructor( TypeBuilder typeBuilder, Type baseType, FieldInfo stateFieldInfo = null )
+    private static void ImplementConstructor( TypeBuilder typeBuilder, Type baseType, FieldInfo stateFieldInfo = null )
     {
         // Define the constructor 
         //
@@ -204,15 +213,16 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private void ImplementFields( TypeBuilder typeBuilder, GotoTransformerResult result )
+    private static string[] ImplementFields( TypeBuilder typeBuilder, GotoTransformerResult result )
     {
         // Define: variable fields
-        _variableFields = result.Variables
+        return result.Variables
             .Select( x => typeBuilder.DefineField( $"{x.Name}", x.Type, FieldAttributes.Public ) )
-            .ToList();
+            .Select( x => x.Name )
+            .ToArray();
     }
 
-    private void ImplementSetMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
+    private static void ImplementSetMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
     {
         // Define the SetMoveNext method
         //
@@ -269,7 +279,7 @@ public class StateMachineBuilder<TResult>
             typeof(IAsyncStateMachine).GetMethod( "SetStateMachine" )! );
     }
 
-    private void ImplementMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
+    private static void ImplementMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
     {
         // Define the MoveNext method
         //
@@ -299,7 +309,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private LambdaExpression CreateMoveNextBody( GotoTransformerResult result, Type stateMachineBaseType )
+    private LambdaExpression CreateMoveNextBody( GotoTransformerResult result, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
     {
         // Example of a typical state-machine:
         //
@@ -370,9 +380,11 @@ public class StateMachineBuilder<TResult>
         var stateIdFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
         var stateMachineBuilderFieldExpression = Expression.Field( stateMachineInstance, buildFieldInfo );
         
+        var fieldMembers = fields.Select( x => Expression.Field( stateMachineInstance, x ) ).ToArray();
+
         var fieldResolverVisitor = new FieldResolverVisitor( 
-            stateMachineInstance, 
-            _variableFields, 
+            stateMachineInstance,
+            fieldMembers,
             returnLabel,
             stateIdFieldExpression,
             stateMachineBuilderFieldExpression );
