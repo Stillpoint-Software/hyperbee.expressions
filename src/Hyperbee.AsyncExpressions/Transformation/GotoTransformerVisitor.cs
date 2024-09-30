@@ -16,7 +16,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
     {
         // use special names to prevent collisions
         public static string Awaiter( int stateId ) => $"__awaiter<{stateId}>";
-        public static string Result( int stateId ) => $"__m<{stateId}>";
+        public static string Result( int stateId ) => $"__result<{stateId}>";
     }
 
     public GotoTransformerResult Transform( ParameterExpression[] variables, params Expression[] expressions )
@@ -202,9 +202,9 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         var awaiterState = nodes[sourceIndex];
         var joinState = nodes[joinIndex];
 
-        // Assign awaiter 
+        // Assign awaiter and add await completion
         AddAwaiterVariableExpression( awaiterState, _variables, awaitExpression, out var awaiterVariable );
-        awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, sourceIndex ) ); // Add a lazy expression to build the continuation
+        awaiterState.Expressions.Add( new AwaitCompletionExpression( awaiterVariable, sourceIndex ) ); 
 
         var awaitResultState = VisitBranch( awaitExpression.Target, joinIndex, captureVisit: false );
         awaiterState.Expressions.Add( Expression.Goto( awaitResultState.Label ) );
@@ -221,9 +221,11 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
         return resultExpression;
 
-        // Helper method
-        //
-        static void AddAwaiterVariableExpression( StateNode sourceState, HashSet<ParameterExpression> variables, AwaitExpression expression, out ParameterExpression variable )
+        // Helper method that adds an awaiter variable to the source state
+        static void AddAwaiterVariableExpression( StateNode sourceState, 
+            HashSet<ParameterExpression> variables, 
+            AwaitExpression expression, 
+            out ParameterExpression variable )
         {
             // Add variable to source state
             var type = expression.Type == typeof(void)
@@ -243,9 +245,13 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             sourceState.Expressions.Add( assign );
         }
 
-        // Helper method
-        //
-        static void AddGetResultExpression( StateNode sourceState, HashSet<ParameterExpression> variables, StateNode joinState, AwaitExpression expression, ParameterExpression awaiter, out ParameterExpression variable )
+        // Helper method that adds a GetResult call to the source state
+        static void AddGetResultExpression( StateNode sourceState, 
+            HashSet<ParameterExpression> variables, 
+            StateNode joinState, 
+            AwaitExpression expression, 
+            ParameterExpression awaiter, 
+            out ParameterExpression variable )
         {
             variables.Add( awaiter );
 

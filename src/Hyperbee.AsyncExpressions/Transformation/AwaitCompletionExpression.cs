@@ -75,5 +75,4 @@ internal class AwaitCompletionExpression : Expression
         public Expression Expression => node._expression;
         public IFieldResolverSource ResolverSource => node._resolverSource;
     }
-
 }
