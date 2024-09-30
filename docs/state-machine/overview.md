@@ -6,6 +6,14 @@ nav_order: 1
 ---
 ## Introduction
 
+In C#, the `async` and `await` keywords are used to simplify asynchronous programming. Under the hood, the compiler transforms 
+asynchronous methods into state machines. This transformation allows the method to pause execution at `await` points and resume 
+later without blocking the main thread. The state machine keeps track of the current state of the method, enabling it to handle 
+asynchronous operations seamlessly.
+
+In normal, non-expression tree scenarios, the compiler generates the state machine automatically. However, when working with
+expression trees, the compiler does not provide this functionality. As a result, developers must manually generate state machines.
+
 State machine generation involves converting user expression trees into state machine representations and executing them.
 This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
 process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
@@ -17,7 +25,7 @@ The first pass converts flow control constructs (such as if, switch, and loops) 
 structure. This step systematically traverses the expression tree and replaces branching constructs with state nodes that manage 
 control flow using transitions and goto operations.
 
-- Key Concetps:
+- Key Concepts:
     - **Flow Control Constructs:** Handling of flow control structures such as conditional expressions ('if'), switches, and loops.
     - **Goto-Based State Machine:** Each state is represented by a label, and transitions between states are managed using goto operations.
  

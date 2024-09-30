@@ -23,3 +23,16 @@ The following example demonstrates how to create an asynchronous expression tree
 
 ```csharp
 ```
+
+## Credits
+
+Special thanks to:
+
+- Sergey Tepliakov - [Dissecting the async methods in C#](https://devblogs.microsoft.com/premier-developer/dissecting-the-async-methods-in-c/).
+- [Just The Docs](https://github.com/just-the-docs/just-the-docs) for the documentation theme.
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](https://github.com/Stillpoint-Software/.github/blob/main/.github/CONTRIBUTING.md) 
+for more details.
+
