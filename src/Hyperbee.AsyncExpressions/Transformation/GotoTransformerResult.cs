@@ -9,6 +9,7 @@ public record GotoTransformerResult
     public IReadOnlyDictionary<LabelTarget, int> JumpCases { get; init; }
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
+    public HashSet<ParameterExpression> Variables { get; init; }
 
     internal string DebugView
     {

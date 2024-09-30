@@ -207,9 +207,7 @@ public class StateMachineBuilder<TResult>
     private void ImplementFields( TypeBuilder typeBuilder, GotoTransformerResult result )
     {
         // Define: variable fields
-        _variableFields = result.Nodes
-            .SelectMany( x => x.Variables )
-            .Distinct()
+        _variableFields = result.Variables
             .Select( x => typeBuilder.DefineField( $"{x.Name}", x.Type, FieldAttributes.Public ) )
             .ToList();
     }
@@ -399,19 +397,15 @@ public class StateMachineBuilder<TResult>
 
         // Iterate through the blocks (each block corresponds to a state)
 
-        foreach ( var (blockVariables, blockExpressions, blockTransition) in result.Nodes )
+        foreach ( var (blockExpressions, blockTransition) in result.Nodes )
         {
-            // TODO: Creating block just for visiting?
-            var block = Expression.Block( blockVariables, blockExpressions );
-
-            // Visit and map parameters to fields for the current block
-            var expr = fieldResolverVisitor.Visit( block );
+            var resolvedExpressions = fieldResolverVisitor.Visit( blockExpressions );
 
             var finalBlock = blockTransition == null;
-            if ( finalBlock && expr is BlockExpression finalBlockExpression )
+            if ( finalBlock )
             {
                 // TODO: fix final block (add lazy expression?)
-                bodyExpressions.Add( finalBlockExpression.Expressions.First() );
+                bodyExpressions.Add( resolvedExpressions[0] );
 
                 if ( result.ReturnValue != null )
                 {
@@ -424,7 +418,7 @@ public class StateMachineBuilder<TResult>
                 {
                     bodyExpressions.Add( Expression.Assign(
                         Expression.Field( stateMachineInstance, finalResultFieldInfo ),
-                        Expression.Block( finalBlockExpression.Expressions.Skip( 1 ).ToArray() )
+                        Expression.Block( resolvedExpressions[1..] )
                     ) );
                 }
 
@@ -442,14 +436,11 @@ public class StateMachineBuilder<TResult>
 
                 bodyExpressions.Add( Expression.Goto( returnLabel ) );
             }
-            else if ( expr is BlockExpression blockExpression )
-            {
-                bodyExpressions.AddRange( blockExpression.Expressions );
-            }
             else
             {
-                throw new InvalidOperationException( "Unexpected expression type." );
+                bodyExpressions.AddRange( resolvedExpressions );
             }
+
         }
 
         ParameterExpression[] variables = (result.ReturnValue != null)

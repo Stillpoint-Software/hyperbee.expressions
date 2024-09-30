@@ -47,7 +47,7 @@ internal class AwaitCompletionExpression : Expression
         var awaiterField = fields.First( x => x.Name == _awaiter.Name );
         var awaiterFieldInfo = GetFieldInfo( stateMachine.Type, awaiterField );
         var stateMachineAwaiterField = Field( stateMachine, awaiterFieldInfo );
-
+        
         _expression = IfThen(
             IsFalse( Property( stateMachineAwaiterField, "IsCompleted" ) ),
             Block(
@@ -55,7 +55,7 @@ internal class AwaitCompletionExpression : Expression
                 Call(
                     builderField,
                     "AwaitUnsafeOnCompleted",
-                    [awaiterField.FieldType, typeof(IAsyncStateMachine)],
+                    [stateMachineAwaiterField.Type, typeof(IAsyncStateMachine)],
                     stateMachineAwaiterField,
                     stateMachine
                 ),

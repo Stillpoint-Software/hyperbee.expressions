@@ -12,18 +12,6 @@ internal static class DebugViewWriter
             // label
             writer.WriteLine( $"{node.Label.Name}:" );
 
-            // variables
-
-            if ( node.Variables.Count > 0 )
-            {
-                writer.WriteLine( "\tVariables" );
-
-                foreach ( var expr in node.Variables )
-                {
-                    writer.WriteLine( $"\t\t{VariableToString( expr )}" );
-                }
-            }
-
             // expressions
 
             if ( node.Expressions.Count > 0 )
@@ -200,23 +188,5 @@ internal static class DebugViewWriter
             ExpressionType.UnaryPlus => "+",
             _ => nodeType.ToString()
         };
-    }
-
-    private static string VariableToString( ParameterExpression expr )
-    {
-        return $"{TypeToString( expr.Type )} {expr.Name}";
-
-        static string TypeToString( Type type )
-        {
-            return type switch
-            {
-                null => "null",
-                { IsGenericType: true } => $"{type.Name.Split( '`' )[0]}<{string.Join( ", ", type.GetGenericArguments().Select( TypeToString ) )}>",
-                { IsArray: true } => $"{TypeToString( type.GetElementType() )}[]",
-                { IsByRef: true } => $"{TypeToString( type.GetElementType() )}&",
-                { IsPointer: true } => $"{TypeToString( type.GetElementType() )}*",
-                { IsGenericType: false } => type.Name
-            };
-        }
     }
 }

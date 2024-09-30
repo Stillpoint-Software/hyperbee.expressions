@@ -30,6 +30,11 @@ internal class FieldResolverVisitor : ExpressionVisitor
         _fieldNames = fields.Select( x => x.Name ).ToArray();
     }
 
+    public Expression[] Visit( IEnumerable<Expression> nodes )
+    {
+        return nodes.Select(Visit).ToArray();
+    }
+
     protected override Expression VisitParameter( ParameterExpression node )
     {
         if ( _mappingCache.TryGetValue( node, out var fieldAccess ) )
@@ -70,16 +75,13 @@ internal class FieldResolverVisitor : ExpressionVisitor
     
     protected override Expression VisitExtension( Expression node )
     {
-        switch (node)
+        return node switch
         {
-            case AwaitCompletionExpression awaitCompletionExpression:
-                return awaitCompletionExpression.Reduce( (FieldResolverSource) this );
-
-            case AwaitExpression awaitExpression:
-                return Visit( awaitExpression.Target )!;
-        }
-
-        return base.VisitExtension( node );
+            AwaitCompletionExpression awaitCompletionExpression => awaitCompletionExpression.Reduce(
+                (FieldResolverSource) this ),
+            AwaitExpression awaitExpression => Visit( awaitExpression.Target )!,
+            _ => base.VisitExtension( node )
+        };
     }
 
     public static explicit operator FieldResolverSource( FieldResolverVisitor visitor )
@@ -87,7 +89,7 @@ internal class FieldResolverVisitor : ExpressionVisitor
         return new FieldResolverSource
         {
             StateMachine = visitor._stateMachine,
-            Fields =visitor._fields,
+            Fields = visitor._fields,
             ReturnLabel = visitor._returnLabel,
             StateIdField = visitor._stateIdField,
             BuilderField = visitor._builderField

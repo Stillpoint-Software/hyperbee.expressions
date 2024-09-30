@@ -253,6 +253,34 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
+    public async Task TestAsyncBlock_Conditional_AwaitTest()
+    {
+        // Arrange
+        var var1 = Expression.Variable( typeof( int ), "var1" );
+        var var2 = Expression.Variable( typeof( int ), "var2" );
+
+        var exp1 = Expression.Assign( var1, Expression.Constant( 1 ) );
+        var awaitConditionTest = AsyncExpression.Await( Expression.Constant( Task.FromResult( true ) ) );
+        var conditionalAdd = Expression.IfThenElse( awaitConditionTest,
+            Expression.Assign( var2, Expression.Add( var2, var1 ) ),
+            Expression.Assign( var2, Expression.Add( var1, Expression.Add( var2, var2 ) ) )
+        );
+
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [var1, var2],
+            exp1, conditionalAdd, var2
+        );
+
+        // Act
+        var lambda = Expression.Lambda<Func<Task<int>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda(  );
+
+        // Assert
+        Assert.AreEqual( 1, result );
+    }
+
+    [TestMethod]
     public async Task TestAsyncBlock_ConditionalWithParameters_ReturnsResult()
     {
         // Arrange

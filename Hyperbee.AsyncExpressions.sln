@@ -37,6 +37,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hyperbee.AsyncExpressions",
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "docs", "docs\docs.shproj", "{20E826AE-B347-4B31-979F-A58BD97ACDC7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hyperbee.AsyncExpressions.Benchmark", "test\Hyperbee.AsyncExpressions.Benchmark\Hyperbee.AsyncExpressions.Benchmark.csproj", "{2395D9E4-67D9-4903-8C64-AFCF42A60B51}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{9F20A665-4CEB-4260-AD9B-FA30522878A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F20A665-4CEB-4260-AD9B-FA30522878A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F20A665-4CEB-4260-AD9B-FA30522878A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2395D9E4-67D9-4903-8C64-AFCF42A60B51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2395D9E4-67D9-4903-8C64-AFCF42A60B51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2395D9E4-67D9-4903-8C64-AFCF42A60B51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2395D9E4-67D9-4903-8C64-AFCF42A60B51}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -60,6 +66,7 @@ Global
 		{639ADCDD-E258-40E6-BBC3-70D71DE97191} = {23A52623-C45D-4588-A695-C40CD8EC1EB0}
 		{842C5608-1B04-4287-B46B-5C57C064F936} = {FCA0C3C6-AA4C-4EB8-869B-9B12913518FF}
 		{20E826AE-B347-4B31-979F-A58BD97ACDC7} = {6103145C-EC79-4B5F-9CE6-8F10BFC6ACC5}
+		{2395D9E4-67D9-4903-8C64-AFCF42A60B51} = {FCA0C3C6-AA4C-4EB8-869B-9B12913518FF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9C364B22-809B-45B7-8A8F-2B7A66D3A098}
