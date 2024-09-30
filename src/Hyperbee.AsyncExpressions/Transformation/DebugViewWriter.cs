@@ -138,26 +138,26 @@ internal static class DebugViewWriter
             var caseValues = string.Join( ", ", caseExpr.TestValues.Select( ExpressionToString ) );
 
             builder.AppendLine();
-            builder.Append( Repeat( '\t', 3 ) );
+            builder.Append( Indent( 3 ) );
             builder.Append( $"case {caseValues}:" );
             builder.AppendLine();
-            builder.Append( Repeat( '\t', 4 ) );
+            builder.Append( Indent( 4 ) );
             builder.Append( ExpressionToString( caseExpr.Body ) );
         }
 
         if ( switchExpr.DefaultBody != null )
         {
             builder.AppendLine();
-            builder.Append( Repeat( '\t', 3 ) );
+            builder.Append( Indent( 3 ) );
             builder.Append( "default:" );
             builder.AppendLine();
-            builder.Append( Repeat( '\t', 4 ) );
+            builder.Append( Indent( 4 ) );
             builder.Append( ExpressionToString( switchExpr.DefaultBody ) );
         }
 
         return builder.ToString();
 
-        static string Repeat( char c, int count ) => new ( c, count );
+        static string Indent( int count ) => new('\t', count);
     }
 
     private static string FormatUnaryExpression( UnaryExpression unary )

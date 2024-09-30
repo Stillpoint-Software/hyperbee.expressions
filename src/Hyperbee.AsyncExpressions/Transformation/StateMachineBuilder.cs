@@ -217,7 +217,7 @@ public class StateMachineBuilder<TResult>
     {
         // Define: variable fields
         return result.Variables
-            .Select( x => typeBuilder.DefineField( $"{x.Name}", x.Type, FieldAttributes.Public ) )
+            .Select( x => typeBuilder.DefineField( x.Name ?? x.ToString(), x.Type, FieldAttributes.Public ) )
             .Select( x => x.Name )
             .ToArray();
     }
