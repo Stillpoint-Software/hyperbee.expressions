@@ -11,5 +11,5 @@ asynchronous methods into state machines. This transformation allows the method 
 later without blocking the main thread. The state machine keeps track of the current state of the method, enabling it to handle 
 asynchronous operations seamlessly.
 
-In normal, non-expression tree scenarios, the compiler generates the state machine automatically. However, when working with
-expression trees, the compiler does not provide this functionality. As a result, developers must manually generate state machines.
+The C# compiler generates state machines automatically. However, when working with runtime expression trees, the compiler does 
+not provide this functionality. As a result, developers must manually generate state machines.
