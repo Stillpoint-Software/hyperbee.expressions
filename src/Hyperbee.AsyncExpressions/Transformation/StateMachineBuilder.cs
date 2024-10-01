@@ -2,7 +2,6 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using System.Xml.Linq;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
@@ -127,7 +126,7 @@ public class StateMachineBuilder<TResult>
         );
 
         ImplementSystemFields( typeBuilder, out var stateField, out var builderField );
-        ImplementVariableFields( typeBuilder, source, out var fieldNames );
+        ImplementVariableFields( typeBuilder, source );
         ImplementConstructor( typeBuilder, typeof(object), stateField );
         ImplementSetStateMachine( typeBuilder, builderField );
 
@@ -231,13 +230,17 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private static void ImplementVariableFields( TypeBuilder typeBuilder, GotoTransformerResult result, out string[] fieldNames )
+    private static void ImplementVariableFields( TypeBuilder typeBuilder, GotoTransformerResult result )
     {
         // Define: variable fields
-        fieldNames = result.Variables
-            .Select( x => typeBuilder.DefineField( x.Name ?? x.ToString(), x.Type, FieldAttributes.Public ) )
-            .Select( x => x.Name )
-            .ToArray();
+        foreach ( var parameterExpression in result.Variables )
+        {
+            typeBuilder.DefineField( 
+                parameterExpression.Name ?? parameterExpression.ToString(), 
+                parameterExpression.Type, 
+                FieldAttributes.Public 
+            );
+        }
     }
 
     private static void ImplementSetMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
@@ -433,7 +436,7 @@ public class StateMachineBuilder<TResult>
             
             if ( finalBlock )
             {
-                // TODO: fix final block (add lazy expression?)
+                // TODO: fix final block
                 bodyExpressions.Add( resolvedExpressions[0] );
 
                 if ( source.ReturnValue != null )
@@ -505,10 +508,14 @@ public class StateMachineBuilder<TResult>
 
 public static class StateMachineBuilder
 {
-    private static readonly MethodInfo BuildStateMachineMethod =
-        typeof( StateMachineBuilder )
+    private static readonly MethodInfo BuildStateMachineMethod;
+
+    static StateMachineBuilder()
+    {
+        BuildStateMachineMethod = typeof(StateMachineBuilder)
             .GetMethods( BindingFlags.Public | BindingFlags.Static )
-            .First( x => x.Name == nameof( Create ) && x.IsGenericMethod );
+            .First( x => x.Name == nameof(Create) && x.IsGenericMethod );
+    }
 
     public static Expression Create( Type resultType, GotoTransformerResult source, bool createRunner = true )
     {

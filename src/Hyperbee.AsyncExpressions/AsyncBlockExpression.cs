@@ -38,10 +38,10 @@ public class AsyncBlockExpression: Expression
 
     public override Expression Reduce()
     {
-        return _stateMachine ??= Transform( _resultType, _variables, _expressions );
+        return _stateMachine ??= GenerateStateMachine( _resultType, _variables, _expressions );
     }
 
-    private static Expression Transform( Type resultType, ParameterExpression[] variables, Expression[] expressions )
+    private static Expression GenerateStateMachine( Type resultType, ParameterExpression[] variables, Expression[] expressions )
     {
         var transformer = new GotoTransformerVisitor();
         var source = transformer.Transform( variables, expressions );
