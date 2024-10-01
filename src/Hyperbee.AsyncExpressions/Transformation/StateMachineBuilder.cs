@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -27,7 +27,7 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( GotoTransformerResult source, bool createRunner = true )
+    public Expression CreateStateMachine( LoweringResult source, bool createRunner = true )
     {
         if ( source.Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
@@ -90,7 +90,7 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private Type CreateStateMachineBaseType( GotoTransformerResult source, out IEnumerable<FieldInfo> fields )
+    private Type CreateStateMachineBaseType( LoweringResult source, out IEnumerable<FieldInfo> fields )
     {
         // Define the state machine base type
         //
@@ -230,7 +230,7 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private static void ImplementVariableFields( TypeBuilder typeBuilder, GotoTransformerResult result )
+    private static void ImplementVariableFields( TypeBuilder typeBuilder, LoweringResult result )
     {
         // Define: variable fields
         foreach ( var parameterExpression in result.Variables )
@@ -330,7 +330,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private static LambdaExpression CreateMoveNextBody( GotoTransformerResult source, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
+    private static LambdaExpression CreateMoveNextBody( LoweringResult source, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
     {
         // Example of a typical state-machine:
         //
@@ -517,7 +517,7 @@ public static class StateMachineBuilder
             .First( x => x.Name == nameof(Create) && x.IsGenericMethod );
     }
 
-    public static Expression Create( Type resultType, GotoTransformerResult source, bool createRunner = true )
+    public static Expression Create( Type resultType, LoweringResult source, bool createRunner = true )
     {
         // If the result type is void, use the internal VoidTaskResult type
         if ( resultType == typeof(void) )
@@ -527,7 +527,7 @@ public static class StateMachineBuilder
         return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
     }
 
-    public static Expression Create<TResult>( GotoTransformerResult source, bool createRunner = true )
+    public static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
     {
         // Create the state machine
         var assemblyName = new AssemblyName( "DynamicStateMachineAssembly" );

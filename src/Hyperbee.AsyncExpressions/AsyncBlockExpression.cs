@@ -43,8 +43,8 @@ public class AsyncBlockExpression: Expression
 
     private static Expression GenerateStateMachine( Type resultType, ParameterExpression[] variables, Expression[] expressions )
     {
-        var transformer = new GotoTransformerVisitor();
-        var source = transformer.Transform( variables, expressions );
+        var visitor = new LoweringVisitor();
+        var source = visitor.Transform( variables, expressions );
 
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );

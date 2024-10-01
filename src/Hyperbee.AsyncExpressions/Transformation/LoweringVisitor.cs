@@ -1,10 +1,9 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
-using Microsoft.VisualBasic;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-internal class GotoTransformerVisitor : ExpressionVisitor
+internal class LoweringVisitor : ExpressionVisitor
 {
     private ParameterExpression _returnValue;
     private ParameterExpression[] _definedVariables;
@@ -21,7 +20,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         public static string Result( int stateId ) => $"__result<{stateId}>";
     }
 
-    public GotoTransformerResult Transform( ParameterExpression[] variables, params Expression[] expressions )
+    public LoweringResult Transform( ParameterExpression[] variables, params Expression[] expressions )
     {
         _definedVariables = variables;
         _states.AddState();
@@ -31,7 +30,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             VisitInternal( expr );
         }
 
-        return new GotoTransformerResult 
+        return new LoweringResult 
         { 
             Nodes = _states.GetNodes(), 
             JumpCases = _states.JumpCases, 
@@ -41,7 +40,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         };
     }
 
-    public GotoTransformerResult Transform( params Expression[] expressions )
+    public LoweringResult Transform( params Expression[] expressions )
     {
         return Transform( [], expressions );
     }
