@@ -509,6 +509,7 @@ public class StateMachineBuilder<TResult>
 public static class StateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
+    private static int __id;
 
     static StateMachineBuilder()
     {
@@ -534,7 +535,9 @@ public static class StateMachineBuilder
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
         var moduleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
 
-        var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "RuntimeStateMachine" );
+        var typeName = $"RuntimeStateMachine{Interlocked.Increment( ref __id )}";
+
+        var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, createRunner );
 
         return stateMachineExpression;
