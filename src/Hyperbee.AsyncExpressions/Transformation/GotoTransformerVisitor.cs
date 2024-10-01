@@ -321,11 +321,13 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     private class StateContext
     {
-        private readonly List<StateNode> _nodes = new(8);
-        private readonly Stack<int> _joinIndexes = new(8);
+        private const int InitialCapacity = 8;
+
+        private readonly List<StateNode> _nodes = new(InitialCapacity);
+        private readonly Stack<int> _joinIndexes = new(InitialCapacity);
         private int _tailIndex;
 
-        public Dictionary<LabelTarget, int> JumpCases { get; } = new(8);
+        public Dictionary<LabelTarget, int> JumpCases { get; } = new(InitialCapacity);
 
         public List<StateNode> GetNodes() => _nodes;
 

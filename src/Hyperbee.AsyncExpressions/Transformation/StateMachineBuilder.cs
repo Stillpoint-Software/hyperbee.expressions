@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
@@ -140,9 +141,10 @@ public class StateMachineBuilder<TResult>
         var stateMachineBaseType = typeBuilder.CreateType();
 
         // Build the runtime field info for each variable
-        fields = fieldNames.Select( name =>
-            stateMachineBaseType.GetField( name, BindingFlags.Instance | BindingFlags.Public )!
-        ).ToArray();
+
+        fields = stateMachineBaseType.GetFields( BindingFlags.Instance | BindingFlags.Public )
+            .Where( field => !field.Name.EndsWith("<>") ) // System fields end in <>
+            .ToArray();
 
         return stateMachineBaseType;
     }
