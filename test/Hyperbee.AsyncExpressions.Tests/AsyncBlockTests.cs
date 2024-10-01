@@ -417,7 +417,6 @@ public class AsyncBlockTests
                     Expression.IfThenElse( Expression.GreaterThanOrEqual( var1, Expression.Constant( 5 ) ),
                         Expression.Break( breakLabel, var1 ),
                         Expression.Continue( continueLabel ) )
-                    //WARNING: Anything here is unreachable code!
                 ),
                 breakLabel,
                 continueLabel
