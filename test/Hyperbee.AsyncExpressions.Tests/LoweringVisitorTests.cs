@@ -22,8 +22,8 @@ public class LoweringVisitorTests
         var assignExpr = Assign( varExpr, Add( varExpr, Constant( 2 ) ) );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( assignExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( assignExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -49,8 +49,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( blockAwaits );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( blockAwaits );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -73,8 +73,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( ifThenElseExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( ifThenElseExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -98,8 +98,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( variables );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( variables );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -133,8 +133,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( variables );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( variables );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -171,8 +171,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( conditionalParameters );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( conditionalParameters );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -207,8 +207,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( switchBlock );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( switchBlock );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -232,8 +232,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( switchBlock );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( switchBlock );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -257,8 +257,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( switchBlock );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( switchBlock );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -282,8 +282,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( methodWithParameter );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( methodWithParameter );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -307,8 +307,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( methodWithParameter );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( methodWithParameter );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -329,8 +329,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( callExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( callExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -349,8 +349,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( callExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( callExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -378,8 +378,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( whileBlockExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( whileBlockExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -404,8 +404,8 @@ public class LoweringVisitorTests
         );
 
         // Act
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( tryCatchExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( tryCatchExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -438,8 +438,8 @@ public class LoweringVisitorTests
             Constant( 5 )
         );
 
-        var transformer = new LoweringVisitor();
-        var result = transformer.Transform( ifThenElseExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( ifThenElseExpr );
 
         Console.WriteLine( result.DebugView );
     }
