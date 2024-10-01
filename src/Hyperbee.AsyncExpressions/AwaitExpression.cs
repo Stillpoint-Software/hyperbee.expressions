@@ -11,6 +11,7 @@ namespace Hyperbee.AsyncExpressions;
 public class AwaitExpression : Expression
 {
     private readonly bool _configureAwait;
+    private readonly Type _resultType;
 
     private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression)
         .GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
@@ -21,23 +22,23 @@ public class AwaitExpression : Expression
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
         Target = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
+        
         _configureAwait = configureAwait;
+        _resultType = ResultType( Target.Type );
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override bool CanReduce => true;
-    public override Type Type => ResultType( Target.Type );
+    public override Type Type => _resultType; 
 
     public Expression Target { get; }
 
     public override Expression Reduce()
     {
-        var resultType = ResultType( Target.Type );
-
         return Call( 
-            resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
+            _resultType == typeof(void) || _resultType == typeof( IVoidTaskResult )  
                 ? AwaitMethod 
-                : AwaitResultMethod.MakeGenericMethod( resultType ), 
+                : AwaitResultMethod.MakeGenericMethod( _resultType ), 
             Target, 
             Constant( _configureAwait ) 
         );
