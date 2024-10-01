@@ -27,7 +27,7 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( LoweringResult source, bool createRunner = true )
+    public Expression CreateStateMachine( LoweringResult source, int id, bool createRunner = true )
     {
         if ( source.Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
@@ -43,9 +43,9 @@ public class StateMachineBuilder<TResult>
         
         var stateMachineBaseType = CreateStateMachineBaseType( source, out var fields );
         var stateMachineType = CreateStateMachineDerivedType( stateMachineBaseType );
-        var moveNextLambda = CreateMoveNextBody( source, stateMachineBaseType, fields );
+        var moveNextLambda = CreateMoveNextBody( source, stateMachineBaseType, id, fields );
 
-        var stateMachineVariable = Expression.Variable( stateMachineType, "stateMachine" );
+        var stateMachineVariable = Expression.Variable( stateMachineType, $"stateMachine<{id}>" );
 
         var setMoveNextMethod = stateMachineType.GetMethod( "SetMoveNext" )!;
 
@@ -330,7 +330,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private static LambdaExpression CreateMoveNextBody( LoweringResult source, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
+    private static LambdaExpression CreateMoveNextBody( LoweringResult source, Type stateMachineBaseType, int id, IEnumerable<FieldInfo> fields )
     {
         // Example of a typical state-machine:
         //
@@ -391,7 +391,7 @@ public class StateMachineBuilder<TResult>
         // ST_FINAL:
 
         var returnLabel = Expression.Label( "ST_FINAL" );
-        var stateMachineInstance = Expression.Parameter( stateMachineBaseType, "stateMachine" );
+        var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
 
         var bodyExpressions = new List<Expression>();
 
@@ -539,7 +539,7 @@ public static class StateMachineBuilder
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, createRunner );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, createRunner );
 
         return stateMachineExpression;
     }
