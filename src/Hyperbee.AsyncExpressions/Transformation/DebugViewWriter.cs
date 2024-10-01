@@ -5,6 +5,11 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 internal static class DebugViewWriter
 {
+    private const string Indent1 = "\t";
+    private const string Indent2 = "\t\t";
+    private const string Indent3 = "\t\t\t";
+    private const string Indent4 = "\t\t\t\t";
+
     public static void WriteTo( StringWriter writer, List<StateNode> nodes, IEnumerable<ParameterExpression> variables )
     {
         // variables
@@ -17,7 +22,7 @@ internal static class DebugViewWriter
             if ( variableCount++ == 0 )
                 writer.WriteLine( "Variables" );
 
-            writer.WriteLine( $"\t{VariableToString( expr )}" );
+            writer.WriteLine( $"{Indent1}{VariableToString( expr )}" );
         }
 
         if ( variableCount > 0 )
@@ -33,18 +38,18 @@ internal static class DebugViewWriter
 
             if ( node.Expressions.Count > 0 )
             {
-                writer.WriteLine( "\tExpressions" );
+                writer.WriteLine( $"{Indent1}Expressions" );
 
                 foreach ( var expr in node.Expressions )
                 {
-                    writer.WriteLine( $"\t\t{ExpressionToString(expr)}" );
+                    writer.WriteLine( $"{Indent2}{ExpressionToString(expr)}" );
                 }
             }
 
             // transitions
 
-            writer.WriteLine( "\tTransition" );
-            writer.WriteLine( $"\t\t{node.Transition?.GetType().Name ?? "Exit"}" );
+            writer.WriteLine( $"{Indent1}Transition" );
+            writer.WriteLine( $"{Indent2}{node.Transition?.GetType().Name ?? "Exit"}" );
 
             writer.WriteLine();
         }
@@ -78,19 +83,12 @@ internal static class DebugViewWriter
 
         foreach ( var blockExpression in block.Expressions )
         {
-            builder.Append( Indent( 3 ) );
+            builder.Append( Indent3 );
             builder.Append( ExpressionToString( blockExpression ) );
             builder.AppendLine();
         }
 
         return builder.ToString();
-    }
-
-    private static string FormatLoopExpression( LoopExpression loop )
-    {
-        var body = ExpressionToString( loop.Body );
-
-        return $"loop => {body} \n\t\tbreak: {loop.BreakLabel?.Name} \n\t\tcontinue: {loop.ContinueLabel?.Name}";
     }
 
     private static string FormatBinaryExpression( BinaryExpression binary )
@@ -135,6 +133,19 @@ internal static class DebugViewWriter
         return $"Lambda ({parameters}) => {body}";
     }
 
+    private static string FormatLoopExpression( LoopExpression loop )
+    {
+        var builder = new StringBuilder();
+
+        builder.AppendLine( $"loop => {ExpressionToString( loop.Body )}" );
+        builder.Append( Indent2 );
+        builder.AppendLine( $"break: {loop.BreakLabel?.Name}" );
+        builder.Append( Indent2 );
+        builder.AppendLine( $"continue: {loop.ContinueLabel?.Name}" );
+
+        return builder.ToString();
+    }
+
     private static string FormatMemberExpression( MemberExpression member )
     {
         return $"{member.Expression}.{member.Member.Name}";
@@ -165,28 +176,26 @@ internal static class DebugViewWriter
             var caseValues = string.Join( ", ", caseExpr.TestValues.Select( ExpressionToString ) );
 
             builder.AppendLine();
-            builder.Append( Indent( 3 ) );
+            builder.Append( Indent3 );
             builder.Append( $"case {caseValues}:" );
             builder.AppendLine();
-            builder.Append( Indent( 4 ) );
+            builder.Append( Indent4 );
             builder.Append( ExpressionToString( caseExpr.Body ) );
         }
 
         if ( switchExpr.DefaultBody != null )
         {
             builder.AppendLine();
-            builder.Append( Indent( 3 ) );
+            builder.Append( Indent3 );
             builder.Append( "default:" );
             builder.AppendLine();
-            builder.Append( Indent( 4 ) );
+            builder.Append( Indent4 );
             builder.Append( ExpressionToString( switchExpr.DefaultBody ) );
         }
 
         return builder.ToString();
 
     }
-
-    private static string Indent( int count ) => new( '\t', count );
 
     private static string FormatUnaryExpression( UnaryExpression unary )
     {
