@@ -28,9 +28,9 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( GotoTransformerResult model, bool createRunner = true )
+    public Expression CreateStateMachine( GotoTransformerResult source, bool createRunner = true )
     {
-        if ( model.Nodes == null )
+        if ( source.Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
 
         // Create the state-machine
@@ -42,9 +42,9 @@ public class StateMachineBuilder<TResult>
         //
         // stateMachine.SetMoveNext( moveNextLambda );
         
-        var stateMachineBaseType = CreateStateMachineBaseType( model, out var fields );
+        var stateMachineBaseType = CreateStateMachineBaseType( source, out var fields );
         var stateMachineType = CreateStateMachineDerivedType( stateMachineBaseType );
-        var moveNextLambda = CreateMoveNextBody( model, stateMachineBaseType, fields );
+        var moveNextLambda = CreateMoveNextBody( source, stateMachineBaseType, fields );
 
         var stateMachineVariable = Expression.Variable( stateMachineType, "stateMachine" );
 
@@ -91,7 +91,7 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private Type CreateStateMachineBaseType( GotoTransformerResult model, out IEnumerable<FieldInfo> fields )
+    private Type CreateStateMachineBaseType( GotoTransformerResult source, out IEnumerable<FieldInfo> fields )
     {
         // Define the state machine base type
         //
@@ -127,7 +127,7 @@ public class StateMachineBuilder<TResult>
         );
 
         ImplementSystemFields( typeBuilder, out var stateField, out var builderField );
-        ImplementVariableFields( typeBuilder, model, out var fieldNames );
+        ImplementVariableFields( typeBuilder, source, out var fieldNames );
         ImplementConstructor( typeBuilder, typeof(object), stateField );
         ImplementSetStateMachine( typeBuilder, builderField );
 
@@ -327,7 +327,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private static LambdaExpression CreateMoveNextBody( GotoTransformerResult model, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
+    private static LambdaExpression CreateMoveNextBody( GotoTransformerResult source, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
     {
         // Example of a typical state-machine:
         //
@@ -410,7 +410,7 @@ public class StateMachineBuilder<TResult>
         var jumpTableExpression = Expression.Switch(
             stateFieldExpression, 
             Expression.Empty(),
-            model.JumpCases.Select( c =>
+            source.JumpCases.Select( c =>
                 Expression.SwitchCase(
                     Expression.Block(
                         Expression.Assign( stateFieldExpression, Expression.Constant( -1 ) ),
@@ -425,7 +425,7 @@ public class StateMachineBuilder<TResult>
 
         // Iterate through the blocks (each block corresponds to a state)
 
-        foreach ( var (blockExpressions, blockTransition) in model.Nodes )
+        foreach ( var (blockExpressions, blockTransition) in source.Nodes )
         {
             var resolvedExpressions = fieldResolverVisitor.Visit( blockExpressions );
 
@@ -436,11 +436,11 @@ public class StateMachineBuilder<TResult>
                 // TODO: fix final block (add lazy expression?)
                 bodyExpressions.Add( resolvedExpressions[0] );
 
-                if ( model.ReturnValue != null )
+                if ( source.ReturnValue != null )
                 {
                     bodyExpressions.Add( Expression.Assign(
                         finalResultFieldExpression,
-                        model.ReturnValue
+                        source.ReturnValue
                     ) );
                 }
                 else
@@ -471,8 +471,8 @@ public class StateMachineBuilder<TResult>
             }
         }
 
-        ParameterExpression[] variables = (model.ReturnValue != null)
-            ? [model.ReturnValue]
+        ParameterExpression[] variables = (source.ReturnValue != null)
+            ? [source.ReturnValue]
             : [];
 
         // Create a try-catch block to handle exceptions
@@ -510,17 +510,17 @@ public static class StateMachineBuilder
             .GetMethods( BindingFlags.Public | BindingFlags.Static )
             .First( x => x.Name == nameof( Create ) && x.IsGenericMethod );
 
-    public static Expression Create( Type resultType, GotoTransformerResult model, bool createRunner = true )
+    public static Expression Create( Type resultType, GotoTransformerResult source, bool createRunner = true )
     {
         // If the result type is void, use the internal VoidTaskResult type
         if ( resultType == typeof(void) )
             resultType = typeof(IVoidTaskResult);
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
-        return (Expression) buildStateMachine.Invoke( null, [model, createRunner] );
+        return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
     }
 
-    public static Expression Create<TResult>( GotoTransformerResult model, bool createRunner = true )
+    public static Expression Create<TResult>( GotoTransformerResult source, bool createRunner = true )
     {
         // Create the state machine
         var assemblyName = new AssemblyName( "DynamicStateMachineAssembly" );
@@ -528,7 +528,7 @@ public static class StateMachineBuilder
         var moduleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "DynamicStateMachine" );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( model, createRunner );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, createRunner );
 
         return stateMachineExpression;
     }

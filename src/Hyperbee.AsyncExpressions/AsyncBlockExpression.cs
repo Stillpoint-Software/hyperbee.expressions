@@ -11,7 +11,6 @@ public class AsyncBlockExpression: Expression
     private readonly ParameterExpression[] _variables;
     private readonly Type _resultType;
 
-    private bool _isReduced;
     private Expression _stateMachine;
 
     public AsyncBlockExpression( Expression[] expressions )
@@ -28,33 +27,18 @@ public class AsyncBlockExpression: Expression
 
         _variables = variables;
         _expressions = expressions;
-        _resultType = GetResultType();
+        _resultType = _expressions[^1].Type; 
     }
 
     public override bool CanReduce => true;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    public override Type Type
-    {
-        get
-        {
-            if ( !_isReduced )
-                Reduce();
-
-            return _stateMachine.Type;
-        }
-    }
+    public override Type Type => typeof(Task<>).MakeGenericType( _resultType );
 
     public override Expression Reduce()
     {
-        if ( _isReduced )
-            return _stateMachine;
-
-        _stateMachine = Transform( _resultType, _variables, _expressions );
-        _isReduced = true;
-
-        return _stateMachine;
+        return _stateMachine ??= Transform( _resultType, _variables, _expressions );
     }
 
     private static Expression Transform( Type resultType, ParameterExpression[] variables, Expression[] expressions )
@@ -68,24 +52,9 @@ public class AsyncBlockExpression: Expression
         return StateMachineBuilder.Create( resultType, source );
     }
 
-    internal Type GetResultType()
-    {
-        var type = _expressions[^1].Type;
-
-        if ( typeof(Task).IsAssignableFrom( type ) )
-        {
-            return type.IsGenericType
-                ? type.GetGenericArguments()[0]
-                : typeof( void ); // Task without a result
-        }
-
-        return type;
-    }
-
     private class AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node )
     {
         public Expression StateMachine => node._stateMachine;
-        public bool IsReduced => node._isReduced;
         public Type ReturnType => node._resultType;
 
         public Expression[] Expressions => node._expressions;
