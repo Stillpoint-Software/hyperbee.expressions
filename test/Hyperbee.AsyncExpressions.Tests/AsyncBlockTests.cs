@@ -398,4 +398,39 @@ public class AsyncBlockTests
         // Assert
         Assert.IsTrue( result );
     }
+
+    [TestMethod]
+    public async Task TestAsyncBlock_LoopAsyncBlock()
+    {
+        // Arrange
+        var breakLabel = Expression.Label( typeof( int ), "breakLoop" );
+        var continueLabel = Expression.Label( "continueLoop" );
+        var var1 = Expression.Variable( typeof(int), "x" );
+
+        var asyncLoopBlock = AsyncExpression.BlockAsync(
+            [var1],
+            Expression.Assign( var1, Expression.Constant( 0 ) ),
+            Expression.Loop(
+                Expression.Block(
+                    Expression.Assign( var1, Expression.Add( var1, Expression.Constant( 1 ) ) ),
+                    AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof( Task ) ) ),
+                    Expression.IfThenElse( Expression.GreaterThanOrEqual( var1, Expression.Constant( 5 ) ),
+                        Expression.Break( breakLabel, var1 ),
+                        Expression.Continue( continueLabel ) )
+                    //WARNING: Anything here is unreachable code!
+                ),
+                breakLabel,
+                continueLabel
+            ),
+            var1  // TODO: Should this be required?
+        );
+
+        // Act
+        var lambda = Expression.Lambda<Func<Task<int>>>( asyncLoopBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 5, result );
+    }
 }

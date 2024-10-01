@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using Microsoft.VisualBasic;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
@@ -11,6 +12,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
     private int _awaitCount;
 
     private readonly StateContext _states = new();
+    private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private static class VariableName
     {
@@ -182,9 +184,47 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         return node;
     }
 
+    protected override Expression VisitLoop(LoopExpression node)
+    {
+        var joinIndex = _states.EnterBranchState(out var sourceIndex, out var nodes);
+
+        var joinState = _states.GetState( joinIndex );
+
+        var loopTransition = new LoopTransition { TargetNode = joinState };
+
+        // Create a new state for the branch
+        var branchState = _states.AddBranchState();
+
+        var continueGoto = Expression.Goto( branchState.Label );
+        var breakGoto = Expression.Goto( joinState.Label );
+
+        if ( node.BreakLabel != null )
+            _labels[node.BreakLabel] = breakGoto;
+        if ( node.ContinueLabel != null )
+            _labels[node.ContinueLabel] = continueGoto;
+
+        VisitInternal( node.Body, captureVisit: false );
+
+        var tailState = _states.GetBranchTailState();
+
+        if ( tailState.Transition != null )
+            return node;
+
+        tailState.Expressions.Add( breakGoto );
+        tailState.Transition = new GotoTransition { TargetNode = joinState };
+
+        loopTransition.Body = branchState;
+
+        nodes[sourceIndex].Expressions.Add( continueGoto );
+
+        _states.ExitBranchState(sourceIndex, loopTransition);
+    
+        return node;
+    }
+
     protected override Expression VisitExtension( Expression node )
     {
-        if ( node is AsyncBlockExpression )
+        if ( node is AsyncBlockExpression asyncBlockExpression )
         {
             // AsyncBlockExpression does not need to be visited because it will be transformed as part of the await expression.
             // If the block is visited it will cause the inner state/goto machine to be visited which unnecessary.
@@ -192,7 +232,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             // Additionally, the reduced expression should not be added to the tail block because that will cause entire block
             // to be part of the before and after of the outer state. The async block should only be reduced for the before/awaiter
             // of the state machine and not be included for the after/get results (which would be the current tail).
-            return node;
+            return asyncBlockExpression.Reduce();
         }
 
         if ( node is not AwaitExpression awaitExpression )
@@ -291,6 +331,11 @@ internal class GotoTransformerVisitor : ExpressionVisitor
     {
         var updateNode = base.VisitGoto( node );
 
+        if ( _labels.TryGetValue( node.Target, out var labelExpression ) )
+        {
+            return labelExpression;
+        }
+
         if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
             return updateNode;
 
@@ -312,6 +357,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
             case TryExpression:
             case AwaitExpression:
             case AsyncBlockExpression:
+            case LoopExpression:
                 break;
 
             default:

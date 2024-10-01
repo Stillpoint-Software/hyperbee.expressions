@@ -27,6 +27,12 @@ public class GotoTransition : Transition
     public StateNode TargetNode { get; set; }
 }
 
+public class LoopTransition : Transition
+{
+    public StateNode TargetNode { get; set; }
+    public StateNode Body { get; set; }
+}
+
 public class SwitchTransition : Transition
 {
     public List<StateNode> CaseNodes { get; set; } = [];

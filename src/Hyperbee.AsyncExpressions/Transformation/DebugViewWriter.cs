@@ -64,8 +64,33 @@ internal static class DebugViewWriter
             UnaryExpression unary => FormatUnaryExpression( unary ),
             MemberExpression member => FormatMemberExpression( member ),
             SwitchExpression cases => FormatSwitchExpression( cases ),
+            LoopExpression loop => FormatLoopExpression( loop ),
+            BlockExpression block => FormatBlockExpression( block ),
             _ => expr.ToString()
         };
+    }
+
+    private static string FormatBlockExpression( BlockExpression block )
+    {
+        var builder = new StringBuilder();
+        builder.Append( "block" );
+        builder.AppendLine();
+
+        foreach ( var blockExpression in block.Expressions )
+        {
+            builder.Append( Indent( 3 ) );
+            builder.Append( ExpressionToString( blockExpression ) );
+            builder.AppendLine();
+        }
+
+        return builder.ToString();
+    }
+
+    private static string FormatLoopExpression( LoopExpression loop )
+    {
+        var body = ExpressionToString( loop.Body );
+
+        return $"loop => {body} \n\t\tbreak: {loop.BreakLabel?.Name} \n\t\tcontinue: {loop.ContinueLabel?.Name}";
     }
 
     private static string FormatBinaryExpression( BinaryExpression binary )
@@ -159,8 +184,9 @@ internal static class DebugViewWriter
 
         return builder.ToString();
 
-        static string Indent( int count ) => new('\t', count);
     }
+
+    private static string Indent( int count ) => new( '\t', count );
 
     private static string FormatUnaryExpression( UnaryExpression unary )
     {
