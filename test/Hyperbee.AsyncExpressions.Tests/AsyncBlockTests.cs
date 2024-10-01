@@ -368,7 +368,6 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    [ExpectedException( typeof( NotSupportedException ) )]
     public async Task TestAsyncBlock_NestedAsyncBlock()
     {
         // Arrange

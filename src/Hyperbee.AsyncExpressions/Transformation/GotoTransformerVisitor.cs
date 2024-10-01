@@ -186,8 +186,13 @@ internal class GotoTransformerVisitor : ExpressionVisitor
     {
         if ( node is AsyncBlockExpression )
         {
-            throw new NotSupportedException( "Async blocks within async blocks are not currently supported." );
-            //TargetState.Expressions.Add( asyncBlockExpression.Reduce() );
+            // AsyncBlockExpression does not need to be visited because it will be transformed as part of the await expression.
+            // If the block is visited it will cause the inner state/goto machine to be visited which unnecessary.
+            //
+            // Additionally, the reduced expression should not be added to the tail block because that will cause entire block
+            // to be part of the before and after of the outer state. The async block should only be reduced for the before/awaiter
+            // of the state machine and not be included for the after/get results (which would be the current tail).
+            return node;
         }
 
         if ( node is not AwaitExpression awaitExpression )

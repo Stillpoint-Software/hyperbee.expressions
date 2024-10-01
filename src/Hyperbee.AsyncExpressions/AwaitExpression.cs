@@ -75,8 +75,12 @@ public static partial class AsyncExpression
 {
     public static AwaitExpression Await( Expression expression, bool configureAwait = false )
     {
+        // Do not check type of AsyncBlockExpression as it will prematurely call a reduce.
+        if ( expression is AsyncBlockExpression )
+            return new AwaitExpression( expression, configureAwait );
+
         if ( !typeof(Task).IsAssignableFrom( expression.Type ) )
-            throw new ArgumentException( "Expression must be of type Task.", nameof( expression ) );
+            throw new ArgumentException( "Expression must be of type Task.", nameof(expression) );
 
         return new AwaitExpression( expression, configureAwait );
     }
