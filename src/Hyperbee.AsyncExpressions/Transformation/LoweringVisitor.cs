@@ -80,6 +80,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         if ( breakLabel != null )
             _labels[breakLabel] = breakGoto;
+
         if ( continueLabel != null )
             _labels[continueLabel] = continueGoto;
 
