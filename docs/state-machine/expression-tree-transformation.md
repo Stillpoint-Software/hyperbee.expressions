@@ -12,8 +12,8 @@ process is essential for handling complex branching scenarios like conditional e
 
 **The first step** in this process uses a Lowering Technique to transform flow control constructs (such as if, switch, loops, and 
 awaits) into a state tree that can be used to generate a flattened goto state machine. This step systematically traverses the 
-expression tree and replaces branching constructs with state nodes that manage control flow using transitions and goto operations.
-This step also identifies variables that persist across state transitions and which need to be hoisted ny the builder.
+expression tree and replaces branching constructs with simplified state nodes that manage control flow using transitions and goto 
+operations. This step also identifies variables that persist across state transitions and which need to be hoisted ny the builder.
 
 - Key Concepts:
     - **Lowering:** Traverse the Expression tree and create a Lowered representation that can be used to manage asynchronous execution.
