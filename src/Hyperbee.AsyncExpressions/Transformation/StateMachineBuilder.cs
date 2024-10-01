@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -90,7 +90,7 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private Type CreateStateMachineBaseType( GotoTransformerResult results, out IEnumerable<FieldInfo> fields )
+    private Type CreateStateMachineBaseType( GotoTransformerResult source, out IEnumerable<FieldInfo> fields )
     {
         // Define the state machine base type
         //
@@ -126,7 +126,7 @@ public class StateMachineBuilder<TResult>
         );
 
         ImplementSystemFields( typeBuilder, out var stateField, out var builderField );
-        ImplementVariableFields( typeBuilder, results );
+        ImplementVariableFields( typeBuilder, source );
         ImplementConstructor( typeBuilder, typeof(object), stateField );
         ImplementSetStateMachine( typeBuilder, builderField );
 
@@ -235,8 +235,11 @@ public class StateMachineBuilder<TResult>
         // Define: variable fields
         foreach ( var parameterExpression in result.Variables )
         {
-            typeBuilder.DefineField( parameterExpression.Name ?? parameterExpression.ToString(),
-                parameterExpression.Type, FieldAttributes.Public );
+            typeBuilder.DefineField( 
+                parameterExpression.Name ?? parameterExpression.ToString(), 
+                parameterExpression.Type, 
+                FieldAttributes.Public 
+            );
         }
     }
 
@@ -327,7 +330,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private static LambdaExpression CreateMoveNextBody( GotoTransformerResult result, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
+    private static LambdaExpression CreateMoveNextBody( GotoTransformerResult source, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
     {
         // Example of a typical state-machine:
         //
@@ -410,7 +413,7 @@ public class StateMachineBuilder<TResult>
         var jumpTableExpression = Expression.Switch(
             stateFieldExpression, 
             Expression.Empty(),
-            result.JumpCases.Select( c =>
+            source.JumpCases.Select( c =>
                 Expression.SwitchCase(
                     Expression.Block(
                         Expression.Assign( stateFieldExpression, Expression.Constant( -1 ) ),
@@ -425,7 +428,7 @@ public class StateMachineBuilder<TResult>
 
         // Iterate through the blocks (each block corresponds to a state)
 
-        foreach ( var (blockExpressions, blockTransition) in result.Nodes )
+        foreach ( var (blockExpressions, blockTransition) in source.Nodes )
         {
             var resolvedExpressions = fieldResolverVisitor.Visit( blockExpressions );
 
@@ -434,13 +437,13 @@ public class StateMachineBuilder<TResult>
             if ( finalBlock )
             {
                 // TODO: fix final block
-                bodyExpressions.Add( resolvedExpressions[0] );  //label
+                bodyExpressions.Add( resolvedExpressions[0] );
 
-                if ( result.ReturnValue != null )
+                if ( source.ReturnValue != null )
                 {
                     bodyExpressions.Add( Expression.Assign(
                         finalResultFieldExpression,
-                        result.ReturnValue
+                        source.ReturnValue
                     ) );
                 }
                 else
@@ -471,8 +474,8 @@ public class StateMachineBuilder<TResult>
             }
         }
 
-        ParameterExpression[] variables = (result.ReturnValue != null)
-            ? [result.ReturnValue]
+        ParameterExpression[] variables = (source.ReturnValue != null)
+            ? [source.ReturnValue]
             : [];
 
         // Create a try-catch block to handle exceptions
@@ -505,10 +508,14 @@ public class StateMachineBuilder<TResult>
 
 public static class StateMachineBuilder
 {
-    private static readonly MethodInfo BuildStateMachineMethod =
-        typeof( StateMachineBuilder )
+    private static readonly MethodInfo BuildStateMachineMethod;
+
+    static StateMachineBuilder()
+    {
+        BuildStateMachineMethod = typeof(StateMachineBuilder)
             .GetMethods( BindingFlags.Public | BindingFlags.Static )
-            .First( x => x.Name == nameof( Create ) && x.IsGenericMethod );
+            .First( x => x.Name == nameof(Create) && x.IsGenericMethod );
+    }
 
     public static Expression Create( Type resultType, GotoTransformerResult source, bool createRunner = true )
     {

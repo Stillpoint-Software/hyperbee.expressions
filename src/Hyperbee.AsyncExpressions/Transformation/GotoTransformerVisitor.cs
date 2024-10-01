@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Microsoft.VisualBasic;
 
@@ -224,15 +224,10 @@ internal class GotoTransformerVisitor : ExpressionVisitor
 
     protected override Expression VisitExtension( Expression node )
     {
-        if ( node is AsyncBlockExpression asyncBlockExpression )
+        if ( node is AsyncBlockExpression )
         {
-            // AsyncBlockExpression does not need to be visited because it will be transformed as part of the await expression.
-            // If the block is visited it will cause the inner state/goto machine to be visited which unnecessary.
-            //
-            // Additionally, the reduced expression should not be added to the tail block because that will cause entire block
-            // to be part of the before and after of the outer state. The async block should only be reduced for the before/awaiter
-            // of the state machine and not be included for the after/get results (which would be the current tail).
-            return asyncBlockExpression.Reduce();
+            // return the complete inner state machine for nested async blocks
+            return node.Reduce();
         }
 
         if ( node is not AwaitExpression awaitExpression )

@@ -10,15 +10,16 @@ State machine generation involves converting user expression trees into state ma
 This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
 process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
 
-**The second step** builds the state machine based on a transformed expression tree. This involves creating a state-machine type,
-and wiring the execution flow according to the control constructs defined during the expression tree traversal.
+**The second step** in the process builds the state machine based on the transformed structure. This involves creating a state-machine 
+type, hoisting variables, and wiring the execution flow according to the control constructs defined during the expression tree 
+traversal.
 
 - Key Concepts:
-    - **State Machine Type:** Dynamically generating a state machine type that manages asynchronous execution.
+    - **State Machine Type:** Dynamically generate a state machine type to manages asynchronous execution.
     - **MoveNext Method:** Core execution function that controls state transitions, awaits task completion, and manages exceptions.
-    - **Hoisted Variables:** Variables that persist across state transitions are hoisted into fields in the state machine type.
+    - **Hoist Variables:** Variables that persist across state transitions are hoisted into fields in the state machine type.
 
-The `StateMachineBuilder` class creates and manages state machines. It constructs state machine types that manage control flow 
+The `StateMachineBuilder` creates and manages state machines. It constructs state machine types that manage control flow 
 across asynchronous calls by creating appropriate state transitions and handling task results or exceptions.
 
 ## Implementation Overview

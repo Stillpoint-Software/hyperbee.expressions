@@ -11,47 +11,43 @@ namespace Hyperbee.AsyncExpressions;
 public class AwaitExpression : Expression
 {
     private readonly bool _configureAwait;
+    private readonly Type _resultType;
 
-    private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression)
-        .GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
+    private static readonly MethodInfo AwaitMethod;
+    private static readonly MethodInfo AwaitResultMethod;
 
-    private static readonly MethodInfo AwaitResultMethod = typeof(AwaitExpression)
-        .GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
+    static AwaitExpression()
+    {
+        AwaitMethod = typeof(AwaitExpression)
+            .GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
+
+        AwaitResultMethod = typeof(AwaitExpression)
+            .GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
+    }
 
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
         Target = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
+        
         _configureAwait = configureAwait;
+        _resultType = ResultType( Target.Type );
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override bool CanReduce => true;
-    public override Type Type => ResultType( Target.Type );
+    public override Type Type => _resultType; 
 
     public Expression Target { get; }
 
     public override Expression Reduce()
     {
-        var resultType = ResultType( Target.Type );
-
         return Call( 
-            resultType == typeof(void) || resultType == typeof( IVoidTaskResult )  
+            _resultType == typeof(void) || _resultType == typeof( IVoidTaskResult )  
                 ? AwaitMethod 
-                : AwaitResultMethod.MakeGenericMethod( resultType ), 
+                : AwaitResultMethod.MakeGenericMethod( _resultType ), 
             Target, 
             Constant( _configureAwait ) 
         );
-    }
-
-    private static Type ResultType( Type taskType )
-    {
-        return taskType.IsGenericType switch
-        {
-            true when taskType == typeof( Task<IVoidTaskResult> ) => typeof( void ),
-            true when taskType.GetGenericTypeDefinition() == typeof( Task<> ) => taskType.GetGenericArguments()[0],
-            false => typeof( void ),
-            _ => throw new InvalidOperationException( $"Unsupported type in {nameof( AwaitExpression )}." )
-        };
     }
 
     private static void Await( Task task, bool configureAwait )
@@ -62,6 +58,17 @@ public class AwaitExpression : Expression
     private static T AwaitResult<T>( Task<T> task, bool configureAwait )
     {
         return task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
+    }
+
+    private static Type ResultType( Type taskType )
+    {
+        return taskType.IsGenericType switch
+        {
+            true when taskType == typeof(Task<IVoidTaskResult>) => typeof(void),
+            true when taskType.GetGenericTypeDefinition() == typeof(Task<>) => taskType.GetGenericArguments()[0],
+            false => typeof(void),
+            _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
+        };
     }
 
     private class AwaitExpressionDebuggerProxy( AwaitExpression node )
@@ -75,7 +82,6 @@ public static partial class AsyncExpression
 {
     public static AwaitExpression Await( Expression expression, bool configureAwait = false )
     {
-        // Do not check type of AsyncBlockExpression as it will prematurely call a reduce.
         if ( expression is AsyncBlockExpression )
             return new AwaitExpression( expression, configureAwait );
 
