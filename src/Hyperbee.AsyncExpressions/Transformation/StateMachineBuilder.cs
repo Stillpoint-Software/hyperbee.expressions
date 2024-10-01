@@ -19,9 +19,10 @@ public class StateMachineBuilder<TResult>
         public const string FinalResult = "__finalResult<>";
         public const string MoveNextLambda = "__moveNextLambda<>";
         public const string State = "__state<>";
-    }
 
-    private static bool IsSystemField( string name ) => name.EndsWith( "<>" ); // System fields end in <>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsSystemField( string name ) => name.EndsWith( "<>" ); // System fields end in <>
+    }
 
     public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
     {
@@ -144,7 +145,7 @@ public class StateMachineBuilder<TResult>
         // Build the runtime field info for each variable
 
         fields = stateMachineBaseType.GetFields( BindingFlags.Instance | BindingFlags.Public )
-            .Where( field => !IsSystemField( field.Name ) )
+            .Where( field => !FieldName.IsSystemField( field.Name ) )
             .ToArray();
 
         return stateMachineBaseType;
