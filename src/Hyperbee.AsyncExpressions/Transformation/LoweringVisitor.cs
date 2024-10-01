@@ -346,7 +346,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
             return updateNode;
 
-        _returnValue ??= Expression.Variable( gotoExpression.Value!.Type, "returnValue" );
+        _returnValue ??= Expression.Variable( gotoExpression.Value!.Type, "return<>" );
 
         // update this to assign to a return value versus a goto
         return Expression.Assign( _returnValue, gotoExpression.Value! );
