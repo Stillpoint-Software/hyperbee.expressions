@@ -509,6 +509,7 @@ public class StateMachineBuilder<TResult>
 public static class StateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
+    private static readonly ModuleBuilder ModuleBuilder;
     private static int __id;
 
     static StateMachineBuilder()
@@ -516,6 +517,11 @@ public static class StateMachineBuilder
         BuildStateMachineMethod = typeof(StateMachineBuilder)
             .GetMethods( BindingFlags.Public | BindingFlags.Static )
             .First( x => x.Name == nameof(Create) && x.IsGenericMethod );
+
+        // Create the state machine module
+        var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
+        var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
+        ModuleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
     }
 
     public static Expression Create( Type resultType, LoweringResult source, bool createRunner = true )
@@ -530,14 +536,9 @@ public static class StateMachineBuilder
 
     public static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
     {
-        // Create the state machine
-        var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
-        var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
-        var moduleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
+        var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
-        var typeName = $"RuntimeStateMachine{Interlocked.Increment( ref __id )}";
-
-        var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, typeName );
+        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, createRunner );
 
         return stateMachineExpression;
