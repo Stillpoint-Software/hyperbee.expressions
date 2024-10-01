@@ -10,7 +10,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
     private readonly HashSet<ParameterExpression> _variables = new(8); 
     private int _awaitCount;
 
-    private readonly StateContext _states = new();
+    private readonly StateModel _states = new();
 
     private static class VariableName
     {
@@ -324,7 +324,7 @@ internal class GotoTransformerVisitor : ExpressionVisitor
         return result;
     }
 
-    private class StateContext
+    private class StateModel
     {
         private const int InitialCapacity = 8;
 
