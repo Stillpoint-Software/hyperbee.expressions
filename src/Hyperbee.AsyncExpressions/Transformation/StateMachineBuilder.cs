@@ -21,6 +21,8 @@ public class StateMachineBuilder<TResult>
         public const string State = "__state<>";
     }
 
+    private static bool IsSystemField( string name ) => name.EndsWith( "<>" ); // System fields end in <>
+
     public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
     {
         _moduleBuilder = moduleBuilder;
@@ -142,7 +144,7 @@ public class StateMachineBuilder<TResult>
         // Build the runtime field info for each variable
 
         fields = stateMachineBaseType.GetFields( BindingFlags.Instance | BindingFlags.Public )
-            .Where( field => !field.Name.EndsWith("<>") ) // System fields end in <>
+            .Where( field => !IsSystemField( field.Name ) )
             .ToArray();
 
         return stateMachineBaseType;
@@ -286,7 +288,7 @@ public class StateMachineBuilder<TResult>
         var ilGenerator = setStateMachineMethod.GetILGenerator();
 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Ldfld, builderField ); // __builder<>
+        ilGenerator.Emit( OpCodes.Ldfld, builderField ); 
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // argument: stateMachine
 
         var setStateMachineOnBuilder = typeof(AsyncTaskMethodBuilder<>)
@@ -319,7 +321,7 @@ public class StateMachineBuilder<TResult>
         var ilGenerator = moveNextMethod.GetILGenerator();
 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField ); // __moveNextExpression<>
+        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField ); 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // argument: this
 
         var invokeMethod = typeof(Action<>)
@@ -426,7 +428,7 @@ public class StateMachineBuilder<TResult>
 
         bodyExpressions.Add( jumpTableExpression );
 
-        // Iterate through the blocks (each block corresponds to a state)
+        // Iterate through each state block
 
         foreach ( var (blockExpressions, blockTransition) in source.Nodes )
         {
@@ -482,7 +484,7 @@ public class StateMachineBuilder<TResult>
         
         var exceptionParameter = Expression.Parameter( typeof(Exception), "ex" );
         var tryCatchBlock = Expression.TryCatch(
-            Expression.Block( typeof( void ), variables, bodyExpressions ), // Try block returns void
+            Expression.Block( typeof( void ), variables, bodyExpressions ), 
             Expression.Catch(
                 exceptionParameter,
                 Expression.Block(
@@ -493,7 +495,7 @@ public class StateMachineBuilder<TResult>
                         null,
                         exceptionParameter
                     ),
-                    Expression.Return( returnLabel ) // Return after setting the exception
+                    Expression.Return( returnLabel ) 
                 )
             )
         );
