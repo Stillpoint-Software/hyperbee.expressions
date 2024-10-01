@@ -530,11 +530,11 @@ public static class StateMachineBuilder
     public static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
     {
         // Create the state machine
-        var assemblyName = new AssemblyName( "DynamicStateMachineAssembly" );
+        var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
         var moduleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
 
-        var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "DynamicStateMachine" );
+        var stateMachineBuilder = new StateMachineBuilder<TResult>( moduleBuilder, "RuntimeStateMachine" );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, createRunner );
 
         return stateMachineExpression;

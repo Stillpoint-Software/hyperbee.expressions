@@ -10,9 +10,9 @@ State machine generation involves converting user expression trees into state ma
 This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
 process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
 
-**The second step** in the process builds the state machine based on the transformed structure. This involves creating a state-machine 
-type, hoisting variables, and wiring the execution flow according to the control constructs defined during the expression tree 
-traversal.
+**The second step** in the process builds the state machine based on a transformed expression tree structure. This involves 
+creating a state-machine type, hoisting variables, and wiring the execution flow according to the control constructs defined during the 
+expression tree lowering traversal.
 
 - Key Concepts:
     - **State Machine Type:** Dynamically generate a state machine type to manages asynchronous execution.
@@ -47,7 +47,7 @@ hoisting variables, and managing asynchronous operations.
   resumes. These fields are essential for managing the progress of asynchronous tasks.
 
 - **Deferred Initialization:** The state machine type must be fully defined before it can be used in method calls. To handle this, the type
-  is created first, and a lambda expression containing the `MoveNext` method is stored in the `SetMoveNext` method. The actual `MoveNext`` method 
+  is created first, and a lambda expression containing the `MoveNext` method is stored in the `SetMoveNext` method. The actual `MoveNext` method 
   is executed when the state machine is ready.
 
 Here is a simplified version of a generated state machine type:
@@ -82,13 +82,13 @@ public class StateMachineType : StateMachineBaseType
 
 #### Building the MoveNext Expression
 The MoveNext method is the core execution function of the state machine. It controls the state transitions, handles task completions, and 
-manages exceptions. Below is a visualization of the MoveNext method you provided.
+manages exceptions. Below is a visualization of a generated MoveNext method.
 
-Here is an example c# state machine invocation of a generated MoveNext:
+Here is an example of a generated MoveNext (expressed as c# code):
 ```csharp
-var stateMachine = new DynamicStateMachine(); 
+var stateMachine = new RuntimeStateMachine(); 
     
-stateMachine.SetMoveNext( (DynamicStateMachineBase stateMachine) => 
+stateMachine.SetMoveNext( (RuntimeStateMachineBase stateMachine) => 
 { 
     try 
     { 
