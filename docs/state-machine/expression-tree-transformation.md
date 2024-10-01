@@ -10,36 +10,43 @@ State machine generation involves converting user expression trees into state ma
 This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
 process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
 
-**The first step** in this process transforms flow control constructs (such as if, switch, loops, and awaits) in the expression 
-tree into a state tree that can be used to generate a flattened goto state machine. This step systematically traverses the expression 
-tree and replaces branching constructs with state nodes that manage control flow using transitions and goto operations. This step 
-also identifies variables that persist across state transitions.
+**The first step** in this process uses a Lowering Technique to transform flow control constructs (such as if, switch, loops, and 
+awaits) into a state tree that can be used to generate a flattened goto state machine. This step systematically traverses the 
+expression tree and replaces branching constructs with state nodes that manage control flow using transitions and goto operations.
+This step also identifies variables that persist across state transitions and which need to be hoisted ny the builder.
+
+- Key Concepts:
+    - **Lowering:** Traverse the Expression tree and create a Lowered representation that can be used to manage asynchronous execution.
+    - **Hoist Variables:** Identify variables that persist across state transitions.
+    - **State Tree Result:** Returns a Lowered state tree that is used to generate the final state-machine.
+
 
 ## Implementation Overview
 
-The `GotoTransformerVisitor` is responsible for traversing the expression tree and transforming its flow control constructs into  
-state machine nodes that use goto operations. This is where flow control constructs like conditionals, switches, and loops are
-turned into labeled states. The conversion to a state node structure enables the state machine to correctly represent the original 
-control flow while allowing for asynchronous execution that must suspend and resume operations.
+The `GotoTransformerVisitor` is responsible for traversing the expression tree and transforming its flow control constructs into a 
+Lowered representation of states that use goto operations. This is where flow control constructs like conditionals, switches, and loops 
+are Lowered into a state tree that will be used to generate the final state machine. The conversion to a state tree will enable the state
+machine to correctly represent the original control flow while allowing for asynchronous execution that must suspend and resume operations.
 
 ### Traversing the Expression Tree
-The Expression visitor pattern is employed to traverse the expression tree and create the state node representation. Each expression
+The Expression visitor pattern is employed to traverse the expression tree and create the state tree representation. Each expression
 in the expression tree is visited and potentially transformed into one or more state nodes.
 
 ### The StateContext
 `GotoTransformerVisitor` uses a `StateContext` to manage the collection of state nodes that are created durring the expression 
-visit, and to track the transitions between them. The context keeps track of branching nodes, await continuations, and variables, 
-and links states into a tree based goto flow that will be used to generate the final state machine.
+visit, and to track the transitions between them. The context keeps track of branching nodes, await continuations, and variable
+scope, and links states with goto based transitions that will be used to generate the final state machine.
 
 ### Handling Await Expressions
 Await expressions introduce additional complexity because they suspend execution until the awaited task completes. Each `await` 
-may complete immediately, or complete eventually. Eventual completions require the state machine to suspend until the awaited result
-has been completed. The transformation process must handle these paths correctly by generating state nodes that represent the 
-awaiting and resumption of execution.
+may complete immediately, or it may complete eventually. Eventual completions require the state machine to suspend until the awaited 
+result is available. The transformation process must handle these execution paths correctly by generating state nodes and flow, that 
+represent the awaiting and resumption paths of execution.
 
 ### Handling Branching
 Branching in the expression tree is one of the most important transformations. The state machine must correctly handle various types of
-branching, ensuring that all possible branches are visited and correctly mapped to states.
+branching, ensuring that all possible branches are visited and correctly mapped to states. It Lowers the implementation by unnesting higher
+level flow control constructs into a flattened representation.
 
 - **Conditional, Switch, Try, and Await:** Branches in constructs such as conditionals (if), switches, and try/catch blocks must be visited, 
   and the states created for these constructs must be correctly linked.
@@ -56,14 +63,15 @@ branching, ensuring that all possible branches are visited and correctly mapped 
 Every branching construct must eventually rejoin the main flow of execution. The join state represents the point where diverging branches
 reunite, ensuring that the state machine continues to execute correctly.
 
-The purpose of the branching tail node (represented by `_tailIndex` in the `GotoTransformerVisitor.StateContext` class)
-is to keep track of the current state node at the end of the current branch path during the traversal of the expression
-tree so we can correctly re-join branches to the main flow. This is crucial for managing state transitions in branching constructs 
-(e.g. `Conditional`, `Switch`, `Try`, and `Await`).
+If you think about each unique branch segment (e.g. the 'if' or 'else' path in a conditional expression) as a single linked list, the 
+branch tail node (represented internally by `_tailIndex` in the `GotoTransformerVisitor.StateContext` class), is the last node in the 
+conditional path. This tail node must be re-joined to the main execution path; the place where the 'if' and 'else' branches begin to execute 
+the same code again. This re-convergance is non-trivial, as branching structure are often nested, and all of the potential paths in a nesting
+structure must be correctly re-joined.
 
 #### Key Roles of the Tail Node
 
-1. **Tracking the Current State**:
+1. **Tracking the final state in a Branch**:
    - The tail node represents the last state node in the current branch path. It is updated as the traversal
      progresses through different branches of the expression tree.
    - It is important to note that `_tailIndex` tracks the current branch segment from the last branching
@@ -76,11 +84,11 @@ tree so we can correctly re-join branches to the main flow. This is crucial for 
 
 3. **Handling Nested Branches**:
    - In nested branching constructs, the tail node helps maintain correct state transitions by ensuring that each branch's 
-     end state correctly points to the join state or the next relevant state.
+     end state correctly points its associated join state.
 
 4. **Ensuring Correct Execution Flow**:
    - By keeping track of the tail node, the traversal ensures that the execution flow of the transformed expression tree
-     correctly mirrors the original structure, with appropriate transitions between states.
+     correctly mirrors the original structure, with appropriate transitions, and re-joins, between states.
 
 #### Example: `VisitConditional` Method
 
@@ -121,22 +129,27 @@ protected override Expression VisitConditional(ConditionalExpression node)
 2. **Entering the Conditional Expression**:
    - `EnterBranchState` is called, which creates a new join state.
    - The current `_tailIndex` (source state) is saved as `sourceIndex`.
-   - `_tailIndex` is updated to point to the new join state.
+   - `_tailIndex` is then updated to point to the new join state.
 
 3. **Visiting Branches**:
    - For the `IfTrue` and `IfFalse` branches, `VisitBranch` is called.
    - `VisitBranch` creates new branch states and updates `_tailIndex` to point to these new states.
-   - The branch expressions are visited, and any nested branches will further update `_tailIndex`.
+   - The branch expressions are individually visited, and any nested branches will further update `_tailIndex`.
 
 4. **Exiting the Conditional Expression**:
    - After visiting all branches, `ExitBranchState` is called.
    - This method pops the last join index from the `_joinIndexes` stack and sets `_tailIndex` to this value.
    - The transition for the source state is set, and the traversal continues.
 
-### Summary
+#### Key Points
 
 - The tail node (`_tailIndex`)  represents the index of the last state node within the current branch being visited.
 - It ensures that state transitions are correctly managed, in branching constructs.
 - It is updated when new branching states are added, and when entering or exiting branching constructs.
 - The `_tailIndex` tracks the current branch segment from the last branching state node, not from the root of the state tree,
   ensuring correct state transitions within nested branches. 
+
+### Summary
+
+The result of the transformation is a Lowered state tree that will be used by the `StateMachineBuilder` to generate the final
+state machine expression.
