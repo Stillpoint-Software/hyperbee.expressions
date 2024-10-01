@@ -356,29 +356,6 @@ public class LoweringVisitorTests
         Console.WriteLine( result.DebugView );
     }
 
-    // [TestMethod]
-    // public void GotoTransformer_WithGoto()
-    // {
-    //     // Arrange
-    //     var gotoLabel = Label( "gotoLabel" );
-    //     var gotoExpr = Block(
-    //
-    //         Constant( "before goto" ),
-    //         Goto( gotoLabel ),
-    //         Constant( "after goto" ),
-    //
-    //         Label( gotoLabel ),
-    //         Constant( "after label" )
-    //     );
-    //
-    //     // Act
-    //     var transformer = new GotoTransformerVisitor();
-    //     var result = transformer.Transform( gotoExpr );
-    //
-    //     // Assert
-    //             Console.WriteLine( result.DebugView );
-    // }
-
     [TestMethod]
     public void GotoTransformer_WithLoop()
     {
@@ -466,5 +443,4 @@ public class LoweringVisitorTests
 
         Console.WriteLine( result.DebugView );
     }
-
 }
