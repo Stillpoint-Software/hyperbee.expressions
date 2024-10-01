@@ -10,23 +10,24 @@ State machine generation involves converting user expression trees into state ma
 This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
 process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
 
-**The first step** transforms flow control constructs (such as if, switch, loops, and awaits) in the expression tree into a 
-state tree that can be used to generate a flattened goto state machine. This step systematically traverses the expression tree
-and replaces branching constructs with state nodes that manage control flow using transitions and goto operations. This step also 
-identifies variables that persist across state transitions.
+**The first step** in this process transforms flow control constructs (such as if, switch, loops, and awaits) in the expression 
+tree into a state tree that can be used to generate a flattened goto state machine. This step systematically traverses the expression 
+tree and replaces branching constructs with state nodes that manage control flow using transitions and goto operations. This step 
+also identifies variables that persist across state transitions.
 
-## GotoTransformerVisitor
+## Implementation Overview
+
 The `GotoTransformerVisitor` is responsible for traversing the expression tree and transforming its flow control constructs into  
 state machine nodes that use goto operations. This is where flow control constructs like conditionals, switches, and loops are
 turned into labeled states. The conversion to a state node structure enables the state machine to correctly represent the original 
 control flow while allowing for asynchronous execution that must suspend and resume operations.
 
 ### Traversing the Expression Tree
-The visitor pattern is employed to traverse the expression tree and create the state node representation. Each expression in the 
-expression tree is visited and potentially transformed into one or more state nodes.
+The Expression visitor pattern is employed to traverse the expression tree and create the state node representation. Each expression
+in the expression tree is visited and potentially transformed into one or more state nodes.
 
-### Understanding the StateContext
-The `GotoTransformerVisitor` uses a `StateContext` to manage the collection of state nodes that are created durring the expression 
+### The StateContext
+`GotoTransformerVisitor` uses a `StateContext` to manage the collection of state nodes that are created durring the expression 
 visit, and to track the transitions between them. The context keeps track of branching nodes, await continuations, and variables, 
 and links states into a tree based goto flow that will be used to generate the final state machine.
 
@@ -35,9 +36,6 @@ Await expressions introduce additional complexity because they suspend execution
 may complete immediately, or complete eventually. Eventual completions require the state machine to suspend until the awaited result
 has been completed. The transformation process must handle these paths correctly by generating state nodes that represent the 
 awaiting and resumption of execution.
-
-- **Understanding the AwaitExpression:** The AwaitExpression is an asynchronous construct that represents an await operation. 
-  It requires special handling to ensure the state machine properly pauses and resumes.
 
 ### Handling Branching
 Branching in the expression tree is one of the most important transformations. The state machine must correctly handle various types of
@@ -86,7 +84,7 @@ tree so we can correctly re-join branches to the main flow. This is crucial for 
 
 #### Example: `VisitConditional` Method
 
-Let's rereview the `VisitConditional` method to see how the tail node is used:
+Let's rereview the `VisitConditional` method to see how branching is managed:
 
 ```csharp
 protected override Expression VisitConditional(ConditionalExpression node) 

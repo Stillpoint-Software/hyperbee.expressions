@@ -21,8 +21,8 @@ and wiring the execution flow according to the control constructs defined during
 The `StateMachineBuilder` class creates and manages state machines. It constructs state machine types that manage control flow 
 across asynchronous calls by creating appropriate state transitions and handling task results or exceptions.
 
-## StateMachineBuilder
-The `StateMachineBuilder` creates a state machine by emitting Types, IL, and building expression trees that correspond to the transformed states. 
+## Implementation Overview
+`StateMachineBuilder` creates a state machine by emitting Types, IL, and building expression trees that correspond to the transformed states. 
 It ensures that the state machine can handle asynchronous tasks, manage state transitions, and resolve variables across different states. This 
 transformation allows for asynchronous tasks to be suspended and resumed without blocking the main execution thread.
 
