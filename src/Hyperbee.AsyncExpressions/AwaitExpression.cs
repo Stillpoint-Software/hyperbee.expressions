@@ -13,11 +13,17 @@ public class AwaitExpression : Expression
     private readonly bool _configureAwait;
     private readonly Type _resultType;
 
-    private static readonly MethodInfo AwaitMethod = typeof(AwaitExpression)
-        .GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
+    private static readonly MethodInfo AwaitMethod;
+    private static readonly MethodInfo AwaitResultMethod;
 
-    private static readonly MethodInfo AwaitResultMethod = typeof(AwaitExpression)
-        .GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
+    static AwaitExpression()
+    {
+        AwaitMethod = typeof(AwaitExpression)
+            .GetMethod( nameof(Await), BindingFlags.NonPublic | BindingFlags.Static );
+
+        AwaitResultMethod = typeof(AwaitExpression)
+            .GetMethod( nameof(AwaitResult), BindingFlags.NonPublic | BindingFlags.Static );
+    }
 
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
@@ -44,17 +50,6 @@ public class AwaitExpression : Expression
         );
     }
 
-    private static Type ResultType( Type taskType )
-    {
-        return taskType.IsGenericType switch
-        {
-            true when taskType == typeof( Task<IVoidTaskResult> ) => typeof( void ),
-            true when taskType.GetGenericTypeDefinition() == typeof( Task<> ) => taskType.GetGenericArguments()[0],
-            false => typeof( void ),
-            _ => throw new InvalidOperationException( $"Unsupported type in {nameof( AwaitExpression )}." )
-        };
-    }
-
     private static void Await( Task task, bool configureAwait )
     {
         task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
@@ -63,6 +58,17 @@ public class AwaitExpression : Expression
     private static T AwaitResult<T>( Task<T> task, bool configureAwait )
     {
         return task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
+    }
+
+    private static Type ResultType( Type taskType )
+    {
+        return taskType.IsGenericType switch
+        {
+            true when taskType == typeof(Task<IVoidTaskResult>) => typeof(void),
+            true when taskType.GetGenericTypeDefinition() == typeof(Task<>) => taskType.GetGenericArguments()[0],
+            false => typeof(void),
+            _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
+        };
     }
 
     private class AwaitExpressionDebuggerProxy( AwaitExpression node )
