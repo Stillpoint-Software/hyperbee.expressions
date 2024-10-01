@@ -29,7 +29,7 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
 
     public Expression[] Visit( IEnumerable<Expression> nodes )
     {
-        return nodes.Select(Visit).ToArray();
+        return nodes.Select( Visit ).ToArray();
     }
 
     protected override Expression VisitParameter( ParameterExpression node )

@@ -11,8 +11,8 @@ public class StateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
-    private FieldBuilder _builderField;
-    private FieldBuilder _finalResultField;
+    //private FieldBuilder _builderField;
+    //private FieldBuilder _finalResultField;
 
     private static class FieldName
     {
@@ -98,6 +98,7 @@ public class StateMachineBuilder<TResult>
         //
         // public class StateMachineBaseType : IAsyncStateMachine
         // {
+        //      // System fields
         //      public int __state<>;
         //      public AsyncTaskMethodBuilder<TResult> __builder<>;
         //      public TResult __finalResult<>;
@@ -126,14 +127,10 @@ public class StateMachineBuilder<TResult>
             [typeof(IAsyncStateMachine)]
         );
 
-        var state = typeBuilder.DefineField( FieldName.State, typeof(int), FieldAttributes.Public );
-        _builderField = typeBuilder.DefineField( FieldName.Builder,
-            typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ), FieldAttributes.Public );
-        _finalResultField = typeBuilder.DefineField( FieldName.FinalResult, typeof(TResult), FieldAttributes.Public );
-
-        var fieldNames = ImplementFields( typeBuilder, results );
-        ImplementConstructor( typeBuilder, typeof(object), state );
-        ImplementSetStateMachine( typeBuilder );
+        ImplementSystemFields( typeBuilder, out var stateField, out var builderField );
+        ImplementVariableFields( typeBuilder, results, out var fieldNames );
+        ImplementConstructor( typeBuilder, typeof(object), stateField );
+        ImplementSetStateMachine( typeBuilder, builderField );
 
         typeBuilder.DefineMethod(
             "MoveNext",
@@ -150,7 +147,6 @@ public class StateMachineBuilder<TResult>
         ).ToArray();
 
         return stateMachineBaseType;
-
     }
 
     private Type CreateStateMachineDerivedType( Type stateMachineBaseType )
@@ -213,10 +209,32 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private static string[] ImplementFields( TypeBuilder typeBuilder, GotoTransformerResult result )
+    private static void ImplementSystemFields( TypeBuilder typeBuilder, out FieldBuilder stateField, out FieldBuilder builderField )
+    {
+        // Define: system fields
+        stateField = typeBuilder.DefineField(
+            FieldName.State,
+            typeof(int),
+            FieldAttributes.Public
+        );
+
+        builderField = typeBuilder.DefineField(
+            FieldName.Builder,
+            typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ),
+            FieldAttributes.Public
+        );
+
+        typeBuilder.DefineField(
+            FieldName.FinalResult,
+            typeof(TResult),
+            FieldAttributes.Public
+        );
+    }
+
+    private static void ImplementVariableFields( TypeBuilder typeBuilder, GotoTransformerResult result, out string[] fieldNames )
     {
         // Define: variable fields
-        return result.Variables
+        fieldNames = result.Variables
             .Select( x => typeBuilder.DefineField( x.Name ?? x.ToString(), x.Type, FieldAttributes.Public ) )
             .Select( x => x.Name )
             .ToArray();
@@ -246,7 +264,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret ); 
     }
 
-    private void ImplementSetStateMachine( TypeBuilder typeBuilder )
+    private void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldBuilder builderField )
     {
         // Define the IAsyncStateMachine.SetStateMachine method
         //
@@ -265,7 +283,7 @@ public class StateMachineBuilder<TResult>
         var ilGenerator = setStateMachineMethod.GetILGenerator();
 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Ldfld, _builderField ); // __builder<>
+        ilGenerator.Emit( OpCodes.Ldfld, builderField ); // __builder<>
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // argument: stateMachine
 
         var setStateMachineOnBuilder = typeof(AsyncTaskMethodBuilder<>)
@@ -372,32 +390,30 @@ public class StateMachineBuilder<TResult>
         var returnLabel = Expression.Label( "ST_FINAL" );
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, "stateMachine" );
 
-        var buildFieldInfo = GetFieldInfo( stateMachineBaseType, _builderField );
-        var finalResultFieldInfo = GetFieldInfo( stateMachineBaseType, _finalResultField );
-
         var bodyExpressions = new List<Expression>();
 
-        var stateIdFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
-        var stateMachineBuilderFieldExpression = Expression.Field( stateMachineInstance, buildFieldInfo );
-        
+        var stateFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
+        var builderFieldExpression = Expression.Field( stateMachineInstance, FieldName.Builder );
+        var finalResultFieldExpression = Expression.Field( stateMachineInstance, FieldName.FinalResult );
+
         var fieldMembers = fields.Select( x => Expression.Field( stateMachineInstance, x ) ).ToArray();
 
         var fieldResolverVisitor = new FieldResolverVisitor( 
             stateMachineInstance,
             fieldMembers,
             returnLabel,
-            stateIdFieldExpression,
-            stateMachineBuilderFieldExpression );
+            stateFieldExpression,
+            builderFieldExpression );
 
         // Create the jump table
 
         var jumpTableExpression = Expression.Switch(
-            stateIdFieldExpression, 
+            stateFieldExpression, 
             Expression.Empty(),
             result.JumpCases.Select( c =>
                 Expression.SwitchCase(
                     Expression.Block(
-                        Expression.Assign( stateIdFieldExpression, Expression.Constant( -1 ) ),
+                        Expression.Assign( stateFieldExpression, Expression.Constant( -1 ) ),
                         Expression.Goto( c.Key )
                     ),
                     Expression.Constant( c.Value ) 
@@ -422,27 +438,27 @@ public class StateMachineBuilder<TResult>
                 if ( result.ReturnValue != null )
                 {
                     bodyExpressions.Add( Expression.Assign(
-                        Expression.Field( stateMachineInstance, finalResultFieldInfo ),
+                        finalResultFieldExpression,
                         result.ReturnValue
                     ) );
                 }
                 else
                 {
                     bodyExpressions.Add( Expression.Assign(
-                        Expression.Field( stateMachineInstance, finalResultFieldInfo ),
+                        finalResultFieldExpression,
                         Expression.Block( resolvedExpressions[1..] )
                     ) );
                 }
 
-                bodyExpressions.Add( Expression.Assign( stateIdFieldExpression, Expression.Constant( -2 ) ) );
+                bodyExpressions.Add( Expression.Assign( stateFieldExpression, Expression.Constant( -2 ) ) );
 
                 // Set the final result on the builder
                 bodyExpressions.Add( Expression.Call(
-                    Expression.Field( stateMachineInstance, buildFieldInfo ),
+                    builderFieldExpression,
                     nameof(AsyncTaskMethodBuilder<TResult>.SetResult),
                     null,
                     typeof(TResult) != typeof(IVoidTaskResult)
-                        ? Expression.Field( stateMachineInstance, finalResultFieldInfo )
+                        ? finalResultFieldExpression
                         : Expression.Constant( null, typeof(TResult) ) // No result for IVoidTaskResult
                 ) );
 
@@ -467,9 +483,9 @@ public class StateMachineBuilder<TResult>
             Expression.Catch(
                 exceptionParameter,
                 Expression.Block(
-                    Expression.Assign( stateIdFieldExpression, Expression.Constant( -2 ) ),
+                    Expression.Assign( stateFieldExpression, Expression.Constant( -2 ) ),
                     Expression.Call(
-                        Expression.Field( stateMachineInstance, buildFieldInfo ),
+                        builderFieldExpression,
                         nameof(AsyncTaskMethodBuilder<TResult>.SetException),
                         null,
                         exceptionParameter
@@ -484,12 +500,6 @@ public class StateMachineBuilder<TResult>
 
         var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
         return Expression.Lambda( moveNextBody, stateMachineInstance );
-
-        // Helper methods
-        static FieldInfo GetFieldInfo( Type runtimeType, FieldBuilder field )
-        {
-            return runtimeType.GetField( field.Name, BindingFlags.Instance | BindingFlags.Public )!;
-        }
     }
 }
 
