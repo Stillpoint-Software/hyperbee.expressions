@@ -13,8 +13,8 @@ internal class AwaitCompletionExpression : Expression
     private bool _isReduced;
     private Expression _expression;
 
-    // initialize before reduce
-    private IFieldResolverSource _resolverSource;
+    private IFieldResolverSource _resolverSource; // initialize before reduce
+    
     internal static class Constants
     {
         internal const string AwaiterIsCompleted = "IsCompleted";
