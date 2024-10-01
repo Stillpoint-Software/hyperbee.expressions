@@ -6,12 +6,12 @@ using static Hyperbee.AsyncExpressions.AsyncExpression;
 namespace Hyperbee.AsyncExpressions.Tests;
 
 [TestClass]
-public class GotoTransformerVisitorTests
+public class LoweringVisitorTests
 {
     static int Test( int a, int b ) => a + b;
     static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
 
-    public static MethodInfo GetMethod( string name ) => typeof(GotoTransformerVisitorTests).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic );
+    public static MethodInfo GetMethod( string name ) => typeof(LoweringVisitorTests).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic );
 
 
     [TestMethod]
