@@ -35,19 +35,19 @@ transformation allows for asynchronous tasks to be suspended and resumed without
 The TypeBuilder constructs the state machine type dynamically at runtime. This type includes several fields necessary for tracking state, 
 hoisting variables, and managing asynchronous operations.
 
-- **State Field:** The __state<> field keeps track of the current state of the machine. It dictates which part of the state machine to execute next.
+- **State Field:** The `__state<>`` field keeps track of the current state of the machine. It dictates which part of the state machine to execute next.
 
-- **Builder Field:** The __builder<> field is an instance of AsyncTaskMethodBuilder<TResult>, which manages the lifecycle of the async 
+- **Builder Field:** The `__builder<>` field is an instance of `AsyncTaskMethodBuilder<TResult>`, which manages the lifecycle of the async 
   operation, including completing the task and handling exceptions.
 
 - **Hoisted Variables:** Variables that need to persist across await points are lifted to fields in the state machine type. These fields 
   store values across state transitions.
 
-- **Awaiter Fields:** Awaiters, such as awaiter<0> and awaiter<1>, are stored in fields so they can be accessed before and after the task 
+- **Awaiter Fields:** Awaiters, such as `awaiter<0>` and `awaiter<1>`, are stored in fields so they can be accessed before and after the task 
   resumes. These fields are essential for managing the progress of asynchronous tasks.
 
 - **Deferred Initialization:** The state machine type must be fully defined before it can be used in method calls. To handle this, the type
-  is created first, and a lambda expression containing the MoveNext method is stored in the SetMoveNext method. The actual MoveNext method 
+  is created first, and a lambda expression containing the `MoveNext` method is stored in the `SetMoveNext` method. The actual `MoveNext`` method 
   is executed when the state machine is ready.
 
 Here is a simplified version of a generated state machine type:
@@ -169,18 +169,18 @@ return stateMachine.__builder<>.Task;
 #### Breakdown of MoveNext
 Breakdown of MoveNext
 
-- **State Tracking:** The __state<> field directs which block of code the method should jump to after an await completes. 
+- **State Tracking:** The `__state<>` field directs which block of code the method should jump to after an await completes. 
   Different case blocks correspond to different states in the state machine.
 
-- **Awaiter Management:** Each TaskAwaiter (awaiter<0>, awaiter<1>) checks if the corresponding task has completed. If not, 
-  the state is updated, and execution is suspended using AwaitUnsafeOnCompleted. When the task completes, execution resumes 
+- **Awaiter Management:** Each `TaskAwaiter` (`awaiter<0>`, `awaiter<1>`) checks if the corresponding task has completed. If not, 
+  the state is updated, and execution is suspended using `AwaitUnsafeOnCompleted`. When the task completes, execution resumes 
   at the corresponding state.
 
 - **Goto Statements:** The goto labels (e.g., ST_0001, ST_0002) handle jumping between different execution points in the state
   machine, simulating the flow of code that would normally occur after await.
 
 - **Exception Handling:** The try-catch block ensures that exceptions during the execution are caught, and the task is marked 
-  as faulted by calling SetException.
+  as faulted by calling `SetException`.
 
 - **Task Completion:** When the state machine reaches the final state (ST_0003), it calls SetResult to complete the task 
   successfully. If an exception occurs, SetException is called instead, signaling task failure.
@@ -197,7 +197,7 @@ maps these variables to fields, ensuring that their values are maintained across
   multiple states or async operations.
 
 ## Summary
-The StateMachineBuilder constructs a dynamic state machine that manages asynchronous execution. By transforming control flow constructs into 
-state transitions and handling tasks using AsyncTaskMethodBuilder<TResult>, the builder creates an efficient runtime representation of the 
+The `StateMachineBuilder` constructs a dynamic state machine that manages asynchronous execution. By transforming control flow constructs into 
+state transitions and handling tasks using `AsyncTaskMethodBuilder<TResult>`, the builder creates an efficient runtime representation of the 
 state machine. This process involves managing state transitions, hoisting variables across state boundaries, and handling exceptions to ensure
 correct task completion.
