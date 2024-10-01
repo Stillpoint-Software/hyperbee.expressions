@@ -75,7 +75,6 @@ public static partial class AsyncExpression
 {
     public static AwaitExpression Await( Expression expression, bool configureAwait = false )
     {
-        // Do not check type of AsyncBlockExpression as it will prematurely call a reduce.
         if ( expression is AsyncBlockExpression )
             return new AwaitExpression( expression, configureAwait );
 
