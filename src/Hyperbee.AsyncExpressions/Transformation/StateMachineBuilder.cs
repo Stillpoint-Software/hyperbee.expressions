@@ -11,8 +11,6 @@ public class StateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
-    //private FieldBuilder _builderField;
-    //private FieldBuilder _finalResultField;
 
     private static class FieldName
     {
@@ -264,7 +262,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret ); 
     }
 
-    private void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldBuilder builderField )
+    private static void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldBuilder builderField )
     {
         // Define the IAsyncStateMachine.SetStateMachine method
         //
@@ -327,7 +325,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ret );
     }
 
-    private LambdaExpression CreateMoveNextBody( GotoTransformerResult result, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
+    private static LambdaExpression CreateMoveNextBody( GotoTransformerResult result, Type stateMachineBaseType, IEnumerable<FieldInfo> fields )
     {
         // Example of a typical state-machine:
         //
@@ -430,6 +428,7 @@ public class StateMachineBuilder<TResult>
             var resolvedExpressions = fieldResolverVisitor.Visit( blockExpressions );
 
             var finalBlock = blockTransition == null;
+            
             if ( finalBlock )
             {
                 // TODO: fix final block (add lazy expression?)
@@ -468,7 +467,6 @@ public class StateMachineBuilder<TResult>
             {
                 bodyExpressions.AddRange( resolvedExpressions );
             }
-
         }
 
         ParameterExpression[] variables = (result.ReturnValue != null)
