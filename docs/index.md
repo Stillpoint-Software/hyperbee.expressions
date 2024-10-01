@@ -22,53 +22,60 @@ Async Expressions are supported using two classes:
 The following example demonstrates how to create an asynchronous expression tree that performs an asynchronous operation.
 
 ```csharp
-```csharp
 using System;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 public class AsyncExample
 {
-    public static async Task ExampleAsync()
+    public async Task ExampleAsync()
     {
-        // Define two async methods
-        var awaitExpr1 = AsyncExpression.Await(Expression.Constant(FirstAsyncMethod(), typeof(Task<int>)));
-        var awaitExpr2 = AsyncExpression.Await(Expression.Constant(SecondAsyncMethod(), typeof(Task<int>)));
-
         // Variables to store the results
-        var result1 = Expression.Variable(typeof(int), "result1");
-        var result2 = Expression.Variable(typeof(int), "result2");
+        var result1 = Expression.Variable( typeof( int ), "result1" );
+        var result2 = Expression.Variable( typeof( int ), "result2" );
+
+        // Define two async methods
+        var firstMethodInfo = typeof( AsyncExample )
+            .GetMethod( nameof( FirstAsyncMethod ) );
+        var secondMethodInfo = typeof( AsyncExample )
+            .GetMethod( nameof( SecondAsyncMethod ) );
+
+        var awaitExpr1 = AsyncExpression.Await( 
+            Expression.Call( firstMethodInfo ) 
+        );
+        var awaitExpr2 = AsyncExpression.Await( 
+            Expression.Call( secondMethodInfo, result1 ) 
+        );
 
         // Assign the results of the await expressions to the variables
-        var assignResult1 = Expression.Assign(result1, awaitExpr1);
-        var assignResult2 = Expression.Assign(result2, awaitExpr2);
+        var assignResult1 = Expression.Assign( result1, awaitExpr1 );
+        var assignResult2 = Expression.Assign( result2, awaitExpr2 );
 
         // Create an async block that calls both methods and assigns their results
         var asyncBlock = AsyncExpression.BlockAsync(
-            new[] { result1, result2 },
+            [result1, result2],
             assignResult1,
             assignResult2
         );
 
         // Compile and execute the async block
-        var lambda = Expression.Lambda<Func<Task>>(asyncBlock);
+        var lambda = Expression.Lambda<Func<Task<int>>>( asyncBlock );
         var compiledLambda = lambda.Compile();
-        await compiledLambda();
+        var resultValue2 = await compiledLambda();
 
-        Console.WriteLine($"First async method result: {result1}");
-        Console.WriteLine($"Second async method result: {result2}");
+        Console.WriteLine( $"Second async method result: {resultValue2}" );
     }
 
     public static async Task<int> FirstAsyncMethod()
     {
-        await Task.Delay(1000); // Simulate async work
+        await Task.Delay( 1000 ); // Simulate async work
         return 42; // Example result
     }
 
-    public static async Task<int> SecondAsyncMethod()
+    public static async Task<int> SecondAsyncMethod( int value )
     {
-        await Task.Delay(1000); // Simulate async work
-        return 84; // Example result
+        await Task.Delay( 1000 ); // Simulate async work
+        return value * 2; // Example result
     }
 }
 ```
