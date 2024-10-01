@@ -11,7 +11,7 @@ This library extends the capabilities of standard expression trees to handle asy
 ## Features
 
 * Asynchronous Expression Trees: Create expression trees that can easily handle complex `async` and `await` operations.
-* State Machine Generation: Automatically transforms asynchronous code blocks into awaitable state machines.
+* State Machine Generation: Automatically transform asynchronous expression blocks into awaitable state machines.
 
 Async Expressions are supported using two classes:
 * `AwaitExpression`: An expression that represents an await operation.
@@ -19,7 +19,7 @@ Async Expressions are supported using two classes:
 
 ## Usage
 
-The following example demonstrates how to create an asynchronous expression tree that performs an asynchronous operation.
+The following example demonstrates how to create an asynchronous expression tree.
 
 ```csharp
 using System;
