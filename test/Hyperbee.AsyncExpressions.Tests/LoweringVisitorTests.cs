@@ -6,12 +6,12 @@ using static Hyperbee.AsyncExpressions.AsyncExpression;
 namespace Hyperbee.AsyncExpressions.Tests;
 
 [TestClass]
-public class GotoTransformerVisitorTests
+public class LoweringVisitorTests
 {
     static int Test( int a, int b ) => a + b;
     static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
 
-    public static MethodInfo GetMethod( string name ) => typeof(GotoTransformerVisitorTests).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic );
+    public static MethodInfo GetMethod( string name ) => typeof(LoweringVisitorTests).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic );
 
 
     [TestMethod]
@@ -22,8 +22,8 @@ public class GotoTransformerVisitorTests
         var assignExpr = Assign( varExpr, Add( varExpr, Constant( 2 ) ) );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( assignExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( assignExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -49,8 +49,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( blockAwaits );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( blockAwaits );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -73,8 +73,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( ifThenElseExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( ifThenElseExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -98,8 +98,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( variables );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( variables );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -133,8 +133,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( variables );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( variables );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -171,8 +171,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( conditionalParameters );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( conditionalParameters );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -207,8 +207,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( switchBlock );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( switchBlock );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -232,8 +232,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( switchBlock );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( switchBlock );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -257,8 +257,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( switchBlock );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( switchBlock );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -282,8 +282,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( methodWithParameter );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( methodWithParameter );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -307,8 +307,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( methodWithParameter );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( methodWithParameter );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -329,8 +329,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( callExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( callExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -349,35 +349,12 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( callExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( callExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
     }
-
-    // [TestMethod]
-    // public void GotoTransformer_WithGoto()
-    // {
-    //     // Arrange
-    //     var gotoLabel = Label( "gotoLabel" );
-    //     var gotoExpr = Block(
-    //
-    //         Constant( "before goto" ),
-    //         Goto( gotoLabel ),
-    //         Constant( "after goto" ),
-    //
-    //         Label( gotoLabel ),
-    //         Constant( "after label" )
-    //     );
-    //
-    //     // Act
-    //     var transformer = new GotoTransformerVisitor();
-    //     var result = transformer.Transform( gotoExpr );
-    //
-    //     // Assert
-    //             Console.WriteLine( result.DebugView );
-    // }
 
     [TestMethod]
     public void GotoTransformer_WithLoop()
@@ -401,8 +378,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( whileBlockExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( whileBlockExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -427,8 +404,8 @@ public class GotoTransformerVisitorTests
         );
 
         // Act
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( tryCatchExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( tryCatchExpr );
 
         // Assert
         Console.WriteLine( result.DebugView );
@@ -461,10 +438,9 @@ public class GotoTransformerVisitorTests
             Constant( 5 )
         );
 
-        var transformer = new GotoTransformerVisitor();
-        var result = transformer.Transform( ifThenElseExpr );
+        var visitor = new LoweringVisitor();
+        var result = visitor.Transform( ifThenElseExpr );
 
         Console.WriteLine( result.DebugView );
     }
-
 }

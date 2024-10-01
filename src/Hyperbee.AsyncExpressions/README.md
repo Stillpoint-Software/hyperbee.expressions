@@ -6,7 +6,7 @@ This library extends the capabilities of standard expression trees to handle asy
 ## Features
 
 * Asynchronous Expression Trees: Create expression trees that can easily handle complex `async` and `await` operations.
-* State Machine Generation: Automatically transforms asynchronous code blocks into awaitable state machines.
+* State Machine Generation: Automatically transform asynchronous expression blocks into awaitable state machines.
 
 Async Expressions are supported using two classes:
 * `AwaitExpression`: An expression that represents an await operation.
@@ -26,21 +26,15 @@ public class AsyncExample
     public async Task ExampleAsync()
     {
         // Variables to store the results
-        var result1 = Expression.Variable( typeof( int ), "result1" );
-        var result2 = Expression.Variable( typeof( int ), "result2" );
+        var result1 = Expression.Variable( typeof(int), "result1" );
+        var result2 = Expression.Variable( typeof(int), "result2" );
 
         // Define two async methods
-        var firstMethodInfo = typeof( AsyncExample )
-            .GetMethod( nameof( FirstAsyncMethod ) );
-        var secondMethodInfo = typeof( AsyncExample )
-            .GetMethod( nameof( SecondAsyncMethod ) );
 
-        var awaitExpr1 = AsyncExpression.Await( 
-            Expression.Call( firstMethodInfo ) 
-        );
-        var awaitExpr2 = AsyncExpression.Await( 
-            Expression.Call( secondMethodInfo, result1 ) 
-        );
+        var instance = Expression.Constant( this );
+
+        var awaitExpr1 = Expression.Call( instance, nameof(FirstAsyncMethod), Type.EmptyTypes );
+        var awaitExpr2 = Expression.Call( instance, nameof(SecondAsyncMethod), Type.EmptyTypes, result1 );
 
         // Assign the results of the await expressions to the variables
         var assignResult1 = Expression.Assign( result1, awaitExpr1 );

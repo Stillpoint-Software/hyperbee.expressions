@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-public record GotoTransformerResult
+public record LoweringResult
 {
     public List<StateNode> Nodes { get; init; }
     public IReadOnlyDictionary<LabelTarget, int> JumpCases { get; init; }
