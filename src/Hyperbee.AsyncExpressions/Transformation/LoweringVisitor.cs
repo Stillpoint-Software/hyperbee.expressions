@@ -143,12 +143,10 @@ internal class LoweringVisitor : ExpressionVisitor
 
         foreach ( var switchCase in node.Cases )
         {
-            var caseTransition = new SwitchCaseTransition
-            {
-                Body = VisitBranch( switchCase.Body, joinIndex ), 
-                TestValues = [..switchCase.TestValues] // TODO: Visit these because they could be async
-            };
-            switchTransition.CaseNodes.Add( caseTransition );
+            switchTransition.AddSwitchCase(
+                [.. switchCase.TestValues], // TODO: Visit these because they could be async
+                VisitBranch( switchCase.Body, joinIndex )
+            );
         }
 
         _states.ExitBranchState( sourceIndex, switchTransition );
@@ -169,12 +167,9 @@ internal class LoweringVisitor : ExpressionVisitor
 
         foreach ( var catchBlock in node.Handlers )
         {
-            tryCatchTransition.CatchBlocks.Add(
-                new CatchBlockTransition
-                {
-                    Body = VisitBranch( catchBlock.Body, joinIndex ), 
-                    Test = catchBlock.Test
-                } );
+            tryCatchTransition.AddCatchBlock(
+                catchBlock.Test,
+                VisitBranch( catchBlock.Body, joinIndex ) );
         }
 
         if ( node.Finally != null )

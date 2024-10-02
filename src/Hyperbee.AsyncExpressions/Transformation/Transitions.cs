@@ -105,7 +105,7 @@ public class LoopTransition : Transition
 
 public class SwitchTransition : Transition
 {
-    public List<SwitchCaseTransition> CaseNodes { get; set; } = [];
+    private readonly List<SwitchCaseDefinition> _caseNodes = [];
     public StateNode DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
 
@@ -115,8 +115,8 @@ public class SwitchTransition : Transition
             ? Goto( DefaultNode.Label )
             : null;
 
-        var cases = CaseNodes
-            .Select( switchCase => switchCase.ReduceSwitchCase() );
+        var cases = _caseNodes
+            .Select( switchCase => switchCase.Reduce() );
 
         return Switch(
             SwitchValue,
@@ -124,29 +124,30 @@ public class SwitchTransition : Transition
             [.. cases]
         );
     }
-}
 
-public class SwitchCaseTransition
-{
-    public List<Expression> TestValues { get; set; } = [];
-    public StateNode Body { get; set; }
-
-    public SwitchCase ReduceSwitchCase()
+    public void AddSwitchCase( List<Expression> testValues, StateNode body )
     {
-        return SwitchCase( Goto( Body.Label ), TestValues );
+        _caseNodes.Add( new SwitchCaseDefinition( testValues, body ) );
+    }
+
+    internal record SwitchCaseDefinition( List<Expression> TestValues, StateNode Body )
+    {
+        public SwitchCase Reduce() => SwitchCase( Goto( Body.Label ), TestValues );
     }
 }
 
+
+
 public class TryCatchTransition : Transition
 {
+    private readonly List<CatchBlockDefinition> _catchBlocks = [];
     public StateNode TryNode { get; set; }
-    public List<CatchBlockTransition> CatchBlocks { get; set; } = [];
     public StateNode FinallyNode { get; set; }
 
     internal override Expression Reduce( IFieldResolverSource resolverSource )
     {
-        var catches = CatchBlocks
-            .Select( catchBlock => catchBlock.ReduceCatchBlock() );
+        var catches = _catchBlocks
+            .Select( catchBlock => catchBlock.Reduce() );
 
         var finallyBody = (FinallyNode != null)
             ? Goto( FinallyNode.Label )
@@ -158,15 +159,15 @@ public class TryCatchTransition : Transition
             [.. catches]
         );
     }
-}
 
-public class CatchBlockTransition
-{
-    public Type Test { get; set; }
-    public StateNode Body { get; set; }
-
-    public CatchBlock ReduceCatchBlock()
+    public void AddCatchBlock( Type test, StateNode body )
     {
-        return Catch( Test, Goto( Body.Label ) );
+        _catchBlocks.Add( new CatchBlockDefinition( test, body ) );
+    }
+
+    internal record CatchBlockDefinition( Type Test, StateNode Body )
+    {
+        public CatchBlock Reduce() => Catch( Test, Goto( Body.Label ) );
     }
 }
+

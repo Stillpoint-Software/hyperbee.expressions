@@ -427,6 +427,7 @@ public class StateMachineBuilder<TResult>
             builderFieldExpression,
             finalResultFieldExpression,
             source.ReturnValue );
+
         bodyExpressions.AddRange( source.Nodes.Select( fieldResolverVisitor.Visit ) );
 
         ParameterExpression[] variables = (source.ReturnValue != null)
