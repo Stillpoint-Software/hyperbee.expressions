@@ -213,17 +213,29 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
 
-        _awaitCount++;
-
         var completionState = VisitBranch( node.Target, joinIndex, captureVisit: false );
 
-        // Add variable to source state
-        var type = node.Type == typeof( void )
-            ? typeof( TaskAwaiter )
-            : typeof( TaskAwaiter<> ).MakeGenericType( node.Type );
+        _awaitCount++;
 
-        var awaiterVariable = Expression.Variable( type, VariableName.Awaiter( sourceIndex ) );
+        var awaiterVariable = Expression.Variable( GetAwaiterType(), VariableName.Awaiter( sourceIndex ) );
         _variables.Add( awaiterVariable );
+
+        ParameterExpression resultVariable = null;
+
+        if ( node.Type != typeof( void ) )
+        {
+            resultVariable = Expression.Variable( node.Type, VariableName.Result( completionState.StateId ) );
+            _variables.Add( resultVariable );
+        }
+
+        completionState.Transition = new AwaitResultTransition
+        {
+            TargetNode = nodes[joinIndex],
+            AwaiterVariable = awaiterVariable,
+            ResultVariable = resultVariable
+        };
+
+        _states.JumpCases.Add( completionState.NodeLabel, sourceIndex );
 
         var awaitTransition = new AwaitTransition
         {
@@ -233,34 +245,14 @@ internal class LoweringVisitor : ExpressionVisitor
             CompletionNode = completionState
         };
 
-        var awaitResultTransition = new AwaitResultTransition
-        {
-            TargetNode = nodes[joinIndex],
-            AwaiterVariable = awaiterVariable
-        };
-
-        Expression resultExpression;
-        if ( node.Type == typeof( void ) )
-        {
-            resultExpression = Expression.Empty();
-        }
-        else
-        {
-            var variable = Expression.Variable( node.Type, VariableName.Result( completionState.StateId ) );
-            _variables.Add( variable );
-            resultExpression = variable;
-
-            awaitResultTransition.ResultVariable = variable;
-        }
-
-        completionState.Transition = awaitResultTransition;
-
-        _states.JumpCases.Add( completionState.NodeLabel, sourceIndex );
-
         _states.ExitBranchState( sourceIndex, awaitTransition );
 
-        return resultExpression;
+        return (Expression) resultVariable ?? Expression.Empty();
 
+        // Helper method to get the awaiter type
+        Type GetAwaiterType() => node.Type == typeof(void)
+            ? typeof(TaskAwaiter)
+            : typeof(TaskAwaiter<>).MakeGenericType( node.Type );
     }
 
     protected override Expression VisitExtension( Expression node )
