@@ -9,7 +9,7 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 public abstract class Transition
 {
-    internal abstract Expression Reduce( IFieldResolverSource resolverSource );
+    internal abstract Expression Reduce( int order, IFieldResolverSource resolverSource );
     internal abstract NodeExpression LogicalNextNode { get; }
 }
 
@@ -19,7 +19,7 @@ public class AwaitResultTransition : Transition
     public ParameterExpression ResultVariable { get; set; }
     public NodeExpression TargetNode { get; set; }
 
-    internal override Expression Reduce( IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
         Expression getResult = (ResultVariable == null)
             ? Call( AwaiterVariable, "GetResult", Type.EmptyTypes )
@@ -42,7 +42,7 @@ public class AwaitTransition : Transition
     public ParameterExpression AwaiterVariable { get; set; }
     public NodeExpression CompletionNode { get; set; }
 
-    internal override Expression Reduce( IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
         return Block(
             Assign(
@@ -63,7 +63,10 @@ public class AwaitTransition : Transition
                     Return( resolverSource.ReturnLabel )
                 )
             ),
-            Goto( CompletionNode.NodeLabel )
+            //Goto( CompletionNode.NodeLabel )
+            order + 1 == CompletionNode.Order //BF ugly but works - we can clean up :)
+                ? Empty()
+                : Goto( CompletionNode.NodeLabel )
         );
     }
 
@@ -77,7 +80,7 @@ public class ConditionalTransition : Transition
     public NodeExpression IfTrue { get; set; }
     public NodeExpression IfFalse { get; set; }
 
-    internal override Expression Reduce( IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
         return IfThenElse(
             Test,
@@ -93,9 +96,11 @@ public class GotoTransition : Transition
 {
     public NodeExpression TargetNode { get; set; }
 
-    internal override Expression Reduce( IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
-        return Goto( TargetNode.NodeLabel );
+        return order + 1 == TargetNode.Order //BF ugly but works - we can clean up :)
+            ? Empty() 
+            : Goto( TargetNode.NodeLabel );
     }
 
     internal override NodeExpression LogicalNextNode => TargetNode;
@@ -107,7 +112,7 @@ public class LoopTransition : Transition
     public NodeExpression BodyNode { get; set; }
     public Expression ContinueGoto { get; set; }
 
-    internal override Expression Reduce( IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
         return ContinueGoto;
     }
@@ -121,7 +126,7 @@ public class SwitchTransition : Transition
     public NodeExpression DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
 
-    internal override Expression Reduce( IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
         var defaultBody = (DefaultNode != null)
             ? Goto( DefaultNode.NodeLabel )
@@ -150,15 +155,13 @@ public class SwitchTransition : Transition
     }
 }
 
-
-
 public class TryCatchTransition : Transition
 {
     private readonly List<CatchBlockDefinition> _catchBlocks = [];
     public NodeExpression TryNode { get; set; }
     public NodeExpression FinallyNode { get; set; }
 
-    internal override Expression Reduce( IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
         var catches = _catchBlocks
             .Select( catchBlock => catchBlock.Reduce() );

@@ -463,42 +463,50 @@ public class StateMachineBuilder<TResult>
         return Expression.Lambda( moveNextBody, stateMachineInstance );
     }
 
-    
-    private static List<NodeExpression> OptimizeNodeOrder(List<NodeExpression> nodes)
+
+    private static List<NodeExpression> OptimizeNodeOrder( List<NodeExpression> nodes )
     {
-       var ordered = new List<NodeExpression>(nodes.Count);
-       var visited = new HashSet<NodeExpression>(nodes.Count);
+        var ordered = new List<NodeExpression>( nodes.Count );
+        var visited = new HashSet<NodeExpression>( nodes.Count );
 
-       // Perform greedy DFS for every unvisited node
+        // Perform greedy DFS for every unvisited node
 
-       for ( var index = 0; index < nodes.Count; index++ )
-       {
-           var node = nodes[index];
+        for ( var index = 0; index < nodes.Count; index++ )
+        {
+            var node = nodes[index];
 
-           if ( !visited.Contains( node ) )
-               Visit( node );
-       }
+            if ( !visited.Contains( node ) )
+                Visit( node );
+        }
 
-       // Make sure the final state is last
+        // Make sure the final state is last
 
-       var finalNode = nodes.First( x => x.Transition == null);
+        var finalNode = nodes.First( x => x.Transition == null );
 
-       if ( ordered.Last() == finalNode )
-           return ordered;
+        if ( ordered.Last() != finalNode )
+        {
+            ordered.Remove( finalNode );
+            ordered.Add( finalNode );
+        }
 
-       ordered.Remove(finalNode);
-       ordered.Add(finalNode);
+        // Update the order of each node
 
-       return ordered;
+        for ( var index = 0; index < ordered.Count; index++ )
+        {
+            ordered[index].Order = index;
+        }
 
-       void Visit( NodeExpression node)
-       {
-           while ( node != null && visited.Add(node) )
-           {
-               ordered.Add(node);
-               node = node.Transition?.LogicalNextNode;
-           }
-       }
+        return ordered;
+
+        void Visit( NodeExpression node )
+        {
+            while ( node != null && visited.Add( node ) )
+            {
+                ordered.Add( node );
+                node = node.Transition?.LogicalNextNode;
+            }
+        }
+
     }
 }
 
