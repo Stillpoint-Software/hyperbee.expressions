@@ -5,12 +5,14 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 internal class LoweringVisitor : ExpressionVisitor
 {
+    private const int InitialCapacity = 8;
+
     private ParameterExpression _returnValue;
     private ParameterExpression[] _definedVariables;
-    private readonly HashSet<ParameterExpression> _variables = new(8); 
+    private readonly HashSet<ParameterExpression> _variables = new(InitialCapacity); 
     private int _awaitCount;
 
-    private readonly StateContext _states = new();
+    private readonly StateContext _states = new(InitialCapacity);
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private static class VariableName
@@ -18,6 +20,8 @@ internal class LoweringVisitor : ExpressionVisitor
         // use special names to prevent collisions
         public static string Awaiter( int stateId ) => $"__awaiter<{stateId}>";
         public static string Result( int stateId ) => $"__result<{stateId}>";
+
+        public const string Return = "return<>";
     }
 
     public LoweringResult Transform( ParameterExpression[] variables, params Expression[] expressions )
@@ -116,17 +120,17 @@ internal class LoweringVisitor : ExpressionVisitor
         var conditionalTransition = new ConditionalTransition
         {
             IfTrue = VisitBranch( node.IfTrue, joinIndex ),
-            IfFalse = (node.IfFalse is not DefaultExpression)
+            IfFalse = node.IfFalse is not DefaultExpression
                 ? VisitBranch( node.IfFalse, joinIndex )
                 : nodes[joinIndex]
         };
 
-        var gotoConditional = Expression.IfThenElse(
-            updatedTest,
-            Expression.Goto( conditionalTransition.IfTrue.Label ),
-            Expression.Goto( conditionalTransition.IfFalse.Label ) );
-
-        nodes[sourceIndex].Expressions.Add( gotoConditional );
+        nodes[sourceIndex].Expressions.Add(
+            Expression.IfThenElse(
+                updatedTest,
+                Expression.Goto( conditionalTransition.IfTrue.Label ),
+                Expression.Goto( conditionalTransition.IfFalse.Label )
+            ) );
 
         _states.ExitBranchState( sourceIndex, conditionalTransition );
 
@@ -158,12 +162,12 @@ internal class LoweringVisitor : ExpressionVisitor
             cases.Add( Expression.SwitchCase( Expression.Goto( caseNode.Label ), switchCase.TestValues ) );
         }
 
-        var gotoSwitch = Expression.Switch(
-            updatedSwitchValue,
-            defaultBody,
-            [.. cases] );
-
-        nodes[sourceIndex].Expressions.Add( gotoSwitch );
+        nodes[sourceIndex].Expressions.Add(
+            Expression.Switch(
+                updatedSwitchValue,
+                defaultBody,
+                [.. cases] 
+            ) );
 
         _states.ExitBranchState( sourceIndex, switchTransition );
 
@@ -192,6 +196,7 @@ internal class LoweringVisitor : ExpressionVisitor
         }
 
         Expression finallyBody = null;
+
         if ( node.Finally != null )
         {
             tryCatchTransition.FinallyNode = VisitBranch( node.Finally, joinIndex );
@@ -199,13 +204,12 @@ internal class LoweringVisitor : ExpressionVisitor
             tryCatchTransition.FinallyNode.Expressions.Add( Expression.Goto( joinLabel ) );
         }
 
-        var newTry = Expression.TryCatchFinally(
-            Expression.Goto( tryCatchTransition.TryNode.Label ),
-            finallyBody,
-            [.. catches]
-        );
-
-        nodes[sourceIndex].Expressions.Add( newTry );
+        nodes[sourceIndex].Expressions.Add(
+            Expression.TryCatchFinally(
+                Expression.Goto( tryCatchTransition.TryNode.Label ),
+                finallyBody,
+                [.. catches] 
+            ) );
 
         _states.ExitBranchState( sourceIndex, tryCatchTransition );
 
@@ -346,7 +350,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
             return updateNode;
 
-        _returnValue ??= Expression.Variable( gotoExpression.Value!.Type, "return<>" );
+        _returnValue ??= Expression.Variable( gotoExpression.Value!.Type, VariableName.Return );
 
         // update this to assign to a return value versus a goto
         return Expression.Assign( _returnValue, gotoExpression.Value! );
@@ -379,14 +383,21 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private class StateContext
     {
-        private const int InitialCapacity = 8;
-
-        private readonly List<StateNode> _nodes = new(InitialCapacity);
-        private readonly Stack<int> _joinIndexes = new(InitialCapacity);
+        private readonly List<StateNode> _nodes;
+        private readonly Stack<int> _joinIndexes;
         private int _tailIndex;
 
-        public Dictionary<LabelTarget, int> JumpCases { get; } = new(InitialCapacity);
+        public Dictionary<LabelTarget, int> JumpCases { get; }
 
+        public StateContext( int initialCapacity )
+        {
+            _tailIndex = 0;
+            _nodes = new List<StateNode>( initialCapacity );
+            _joinIndexes = new Stack<int>( initialCapacity );
+
+            JumpCases = new Dictionary<LabelTarget, int>( initialCapacity );
+        }
+        
         public List<StateNode> GetNodes() => _nodes;
 
         public StateNode GetState( int index ) => _nodes[index];

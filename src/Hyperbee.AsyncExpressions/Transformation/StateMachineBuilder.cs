@@ -321,14 +321,13 @@ public class StateMachineBuilder<TResult>
 
         var ilGenerator = moveNextMethod.GetILGenerator();
 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField ); 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // argument: this
-
         var invokeMethod = typeof(Action<>)
-            .MakeGenericType( typeBuilder.BaseType! ) 
+            .MakeGenericType( typeBuilder.BaseType! )
             .GetMethod( "Invoke" );
 
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
+        ilGenerator.Emit( OpCodes.Ldfld, moveNextExpressionField );
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // argument: this
         ilGenerator.Emit( OpCodes.Callvirt, invokeMethod! );
         ilGenerator.Emit( OpCodes.Ret );
     }
