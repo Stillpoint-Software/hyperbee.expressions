@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
