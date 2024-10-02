@@ -85,11 +85,15 @@ public class ConditionalTransition : Transition
         return IfThenElse(
             Test,
             Goto( IfTrue.NodeLabel ),
-            Goto( IfFalse.NodeLabel ) 
+            //Goto( IfFalse.NodeLabel )
+            order + 1 == IfFalse.Order //BF ugly but works - we can clean up :)
+                ? Empty()
+                : Goto( IfFalse.NodeLabel )
+
         );
     }
 
-    internal override NodeExpression LogicalNextNode => IfTrue;
+    internal override NodeExpression LogicalNextNode => IfFalse;
 }
 
 public class GotoTransition : Transition
@@ -98,6 +102,7 @@ public class GotoTransition : Transition
 
     internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
+        //return Goto( TargetNode.NodeLabel );
         return order + 1 == TargetNode.Order //BF ugly but works - we can clean up :)
             ? Empty() 
             : Goto( TargetNode.NodeLabel );
