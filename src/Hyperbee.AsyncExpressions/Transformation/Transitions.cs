@@ -16,7 +16,7 @@ public class AwaitResultTransition : Transition
 {
     public ParameterExpression AwaiterVariable { get; set; }
     public ParameterExpression ResultVariable { get; set; }
-    public StateNode TargetNode { get; set; }
+    public NodeExpression TargetNode { get; set; }
 
     internal override Expression Reduce( IFieldResolverSource resolverSource )
     {
@@ -26,7 +26,7 @@ public class AwaitResultTransition : Transition
 
         return Block(
             getResult,
-            Goto( TargetNode.Label )
+            Goto( TargetNode.NodeLabel )
         );
     }
 }
@@ -36,7 +36,7 @@ public class AwaitTransition : Transition
     public Expression Target { get; set; }
     public ParameterExpression AwaiterVariable { get; set; }
     public int StateId { get; set; }
-    public StateNode CompletionNode { get; set; }
+    public NodeExpression CompletionNode { get; set; }
 
     internal override Expression Reduce( IFieldResolverSource resolverSource )
     {
@@ -59,7 +59,7 @@ public class AwaitTransition : Transition
                     Return( resolverSource.ReturnLabel )
                 )
             ),
-            Goto( CompletionNode.Label )
+            Goto( CompletionNode.NodeLabel )
         );
 
     }
@@ -68,33 +68,33 @@ public class AwaitTransition : Transition
 public class ConditionalTransition : Transition
 {
     public Expression Test { get; set; }
-    public StateNode IfTrue { get; set; }
-    public StateNode IfFalse { get; set; }
+    public NodeExpression IfTrue { get; set; }
+    public NodeExpression IfFalse { get; set; }
 
     internal override Expression Reduce( IFieldResolverSource resolverSource )
     {
         return IfThenElse(
             Test,
-            Goto( IfTrue.Label ),
-            Goto( IfFalse.Label ) 
+            Goto( IfTrue.NodeLabel ),
+            Goto( IfFalse.NodeLabel ) 
         );
     }
 }
 
 public class GotoTransition : Transition
 {
-    public StateNode TargetNode { get; set; }
+    public NodeExpression TargetNode { get; set; }
 
     internal override Expression Reduce( IFieldResolverSource resolverSource )
     {
-        return Goto( TargetNode.Label );
+        return Goto( TargetNode.NodeLabel );
     }
 }
 
 public class LoopTransition : Transition
 {
-    public StateNode TargetNode { get; set; }
-    public StateNode Body { get; set; }
+    public NodeExpression TargetNode { get; set; }
+    public NodeExpression Body { get; set; }
     public Expression ContinueGoto { get; set; }
 
     internal override Expression Reduce( IFieldResolverSource resolverSource )
@@ -106,13 +106,13 @@ public class LoopTransition : Transition
 public class SwitchTransition : Transition
 {
     private readonly List<SwitchCaseDefinition> _caseNodes = [];
-    public StateNode DefaultNode { get; set; }
+    public NodeExpression DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
 
     internal override Expression Reduce( IFieldResolverSource resolverSource )
     {
         var defaultBody = (DefaultNode != null)
-            ? Goto( DefaultNode.Label )
+            ? Goto( DefaultNode.NodeLabel )
             : null;
 
         var cases = _caseNodes
@@ -125,14 +125,14 @@ public class SwitchTransition : Transition
         );
     }
 
-    public void AddSwitchCase( List<Expression> testValues, StateNode body )
+    public void AddSwitchCase( List<Expression> testValues, NodeExpression body )
     {
         _caseNodes.Add( new SwitchCaseDefinition( testValues, body ) );
     }
 
-    internal record SwitchCaseDefinition( List<Expression> TestValues, StateNode Body )
+    internal record SwitchCaseDefinition( List<Expression> TestValues, NodeExpression Body )
     {
-        public SwitchCase Reduce() => SwitchCase( Goto( Body.Label ), TestValues );
+        public SwitchCase Reduce() => SwitchCase( Goto( Body.NodeLabel ), TestValues );
     }
 }
 
@@ -141,8 +141,8 @@ public class SwitchTransition : Transition
 public class TryCatchTransition : Transition
 {
     private readonly List<CatchBlockDefinition> _catchBlocks = [];
-    public StateNode TryNode { get; set; }
-    public StateNode FinallyNode { get; set; }
+    public NodeExpression TryNode { get; set; }
+    public NodeExpression FinallyNode { get; set; }
 
     internal override Expression Reduce( IFieldResolverSource resolverSource )
     {
@@ -150,24 +150,24 @@ public class TryCatchTransition : Transition
             .Select( catchBlock => catchBlock.Reduce() );
 
         var finallyBody = (FinallyNode != null)
-            ? Goto( FinallyNode.Label )
+            ? Goto( FinallyNode.NodeLabel )
             : null;
 
         return TryCatchFinally(
-            Goto( TryNode.Label ),
+            Goto( TryNode.NodeLabel ),
             finallyBody,
             [.. catches]
         );
     }
 
-    public void AddCatchBlock( Type test, StateNode body )
+    public void AddCatchBlock( Type test, NodeExpression body )
     {
         _catchBlocks.Add( new CatchBlockDefinition( test, body ) );
     }
 
-    internal record CatchBlockDefinition( Type Test, StateNode Body )
+    internal record CatchBlockDefinition( Type Test, NodeExpression Body )
     {
-        public CatchBlock Reduce() => Catch( Test, Goto( Body.Label ) );
+        public CatchBlock Reduce() => Catch( Test, Goto( Body.NodeLabel ) );
     }
 }
 

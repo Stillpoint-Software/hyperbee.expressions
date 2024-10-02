@@ -30,7 +30,7 @@ public class LoweringVisitorTests
         // Assert
         AssertTransition.AssertResult( result, nodes: 1, variables: 1 );
 
-        AssertTransition.AssertLabel( result.Nodes[0].Label, "ST_0000", typeof(void) );
+        AssertTransition.AssertLabel( result.Nodes[0].NodeLabel, "ST_0000", typeof(void) );
     }
 
     [TestMethod]
@@ -53,7 +53,7 @@ public class LoweringVisitorTests
 
         // Assert
         AssertTransition.AssertResult( result, nodes: 5, variables: 4, jumps: 2 );
-        AssertTransition.AssertLabel( result.Nodes[0].Label, "ST_0000", typeof(void) );
+        AssertTransition.AssertLabel( result.Nodes[0].NodeLabel, "ST_0000", typeof(void) );
 
         var firstBefore = AssertTransition.AssertAwait( result.Nodes[0].Transition, "ST_0002" );
         var firstAfter = AssertTransition.AssertAwaitResult( firstBefore.Transition, "ST_0001" );
@@ -85,7 +85,7 @@ public class LoweringVisitorTests
 
         // Assert
         AssertTransition.AssertResult( result, nodes: 6 );
-        AssertTransition.AssertLabel( result.Nodes[0].Label, "ST_0000", typeof( void ) );
+        AssertTransition.AssertLabel( result.Nodes[0].NodeLabel, "ST_0000", typeof( void ) );
 
         var (ifThenTrue, ifThenFalse) =
             AssertTransition.AssertConditional( result.Nodes[0].Transition, "ST_0002", "ST_0001" );
@@ -488,39 +488,39 @@ public class LoweringVisitorTests
             Assert.AreEqual( jumps, result.JumpCases.Count );
         }
 
-        public static StateNode AssertGoto( Transition transition, string labelName )
+        public static NodeExpression AssertGoto( Transition transition, string labelName )
         {
             Assert.AreEqual( TransitionType.Goto, transition.GetType() );
             var gotoTransition = (GotoTransition) transition;
-            Assert.AreEqual( labelName, gotoTransition.TargetNode.Label.Name );
+            Assert.AreEqual( labelName, gotoTransition.TargetNode.NodeLabel.Name );
             return gotoTransition.TargetNode;
         }
 
-        public static StateNode AssertAwait( Transition transition, string labelName )
+        public static NodeExpression AssertAwait( Transition transition, string labelName )
         {
             Assert.AreEqual( TransitionType.Await, transition.GetType() );
             var awaitTransition = (AwaitTransition) transition;
-            Assert.AreEqual( labelName, awaitTransition.CompletionNode.Label.Name );
+            Assert.AreEqual( labelName, awaitTransition.CompletionNode.NodeLabel.Name );
             return awaitTransition.CompletionNode;
         }
 
-        public static StateNode AssertAwaitResult( Transition transition, string labelName )
+        public static NodeExpression AssertAwaitResult( Transition transition, string labelName )
         {
             Assert.AreEqual( TransitionType.AwaitResult, transition.GetType() );
             var awaitTransition = (AwaitResultTransition) transition;
-            Assert.AreEqual( labelName, awaitTransition.TargetNode.Label.Name );
+            Assert.AreEqual( labelName, awaitTransition.TargetNode.NodeLabel.Name );
             return awaitTransition.TargetNode;
         }
 
-        public static (StateNode IfTrueNode, StateNode IfFalseNode) AssertConditional(
+        public static (NodeExpression IfTrueNode, NodeExpression IfFalseNode) AssertConditional(
             Transition transition,
             string trueLabelName,
             string falseLabelName )
         {
             Assert.AreEqual( TransitionType.Conditional, transition.GetType() );
             var conditionalTransition = (ConditionalTransition) transition;
-            Assert.AreEqual( trueLabelName, conditionalTransition.IfTrue.Label.Name );
-            Assert.AreEqual( falseLabelName, conditionalTransition.IfFalse.Label.Name );
+            Assert.AreEqual( trueLabelName, conditionalTransition.IfTrue.NodeLabel.Name );
+            Assert.AreEqual( falseLabelName, conditionalTransition.IfFalse.NodeLabel.Name );
             return (conditionalTransition.IfTrue, conditionalTransition.IfFalse);
         }
 
@@ -530,7 +530,7 @@ public class LoweringVisitorTests
             Assert.AreEqual( expectedType, label.Type );
         }
 
-        public static void AssertFinal( StateNode finalNode )
+        public static void AssertFinal( NodeExpression finalNode )
         {
             Assert.IsTrue( finalNode.Transition == null );
         }

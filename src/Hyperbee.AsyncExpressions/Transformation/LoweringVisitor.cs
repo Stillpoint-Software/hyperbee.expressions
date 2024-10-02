@@ -49,7 +49,7 @@ internal class LoweringVisitor : ExpressionVisitor
         return Transform( [], expressions );
     }
 
-    private StateNode VisitBranch( Expression expression, int joinIndex, bool captureVisit = true )
+    private NodeExpression VisitBranch( Expression expression, int joinIndex, bool captureVisit = true )
     {
         // Create a new state for the branch
         var branchState = _states.AddBranchState();
@@ -69,15 +69,15 @@ internal class LoweringVisitor : ExpressionVisitor
         return branchState;
     }
 
-    private StateNode VisitLoopBranch( Expression expression, LabelTarget breakLabel, LabelTarget continueLabel, out Expression continueGoto, int joinIndex )
+    private NodeExpression VisitLoopBranch( Expression expression, LabelTarget breakLabel, LabelTarget continueLabel, out Expression continueGoto, int joinIndex )
     {
         // Create a new state for the branch
         var branchState = _states.AddBranchState();
 
         var joinState = _states.GetState( joinIndex );
 
-        var breakGoto = Expression.Goto( joinState.Label );
-        continueGoto = Expression.Goto( branchState.Label );
+        var breakGoto = Expression.Goto( joinState.NodeLabel );
+        continueGoto = Expression.Goto( branchState.NodeLabel );
 
         if ( breakLabel != null )
             _labels[breakLabel] = breakGoto;
@@ -163,7 +163,7 @@ internal class LoweringVisitor : ExpressionVisitor
             TryNode = VisitBranch( node.Body, joinIndex )
         };
 
-        var joinLabel = nodes[joinIndex].Label;
+        var joinLabel = nodes[joinIndex].NodeLabel;
 
         foreach ( var catchBlock in node.Handlers )
         {
@@ -255,7 +255,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         completionState.Transition = awaitResultTransition;
 
-        _states.JumpCases.Add( completionState.Label, sourceIndex );
+        _states.JumpCases.Add( completionState.NodeLabel, sourceIndex );
 
         _states.ExitBranchState( sourceIndex, awaitTransition );
 
@@ -326,7 +326,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private class StateContext
     {
-        private readonly List<StateNode> _nodes;
+        private readonly List<NodeExpression> _nodes;
         private readonly Stack<int> _joinIndexes;
         private int _tailIndex;
 
@@ -335,26 +335,26 @@ internal class LoweringVisitor : ExpressionVisitor
         public StateContext( int initialCapacity )
         {
             _tailIndex = 0;
-            _nodes = new List<StateNode>( initialCapacity );
+            _nodes = new List<NodeExpression>( initialCapacity );
             _joinIndexes = new Stack<int>( initialCapacity );
 
             JumpCases = new Dictionary<LabelTarget, int>( initialCapacity );
         }
         
-        public List<StateNode> GetNodes() => _nodes;
+        public List<NodeExpression> GetNodes() => _nodes;
 
-        public StateNode GetState( int index ) => _nodes[index];
-        public StateNode GetBranchTailState() => _nodes[_tailIndex];
+        public NodeExpression GetState( int index ) => _nodes[index];
+        public NodeExpression GetBranchTailState() => _nodes[_tailIndex];
 
-        public StateNode AddState()
+        public NodeExpression AddState()
         {
-            var stateNode = new StateNode( _nodes.Count );
+            var stateNode = new NodeExpression( _nodes.Count );
             _nodes.Add( stateNode );
 
             return stateNode;
         }
 
-        public StateNode AddBranchState()
+        public NodeExpression AddBranchState()
         {
             var stateNode = AddState();
             _tailIndex = stateNode.StateId;
@@ -362,7 +362,7 @@ internal class LoweringVisitor : ExpressionVisitor
             return stateNode;
         }
 
-        public int EnterBranchState( out int sourceIndex, out List<StateNode> nodes )
+        public int EnterBranchState( out int sourceIndex, out List<NodeExpression> nodes )
         {
             var joinState = AddState();
 

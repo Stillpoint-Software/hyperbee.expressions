@@ -59,7 +59,7 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
         return node switch
         {
             AwaitExpression awaitExpression => Visit( awaitExpression.Target )!,
-            StateNode stateNode => Visit( stateNode.Reduce( this ) ),
+            NodeExpression stateNode => Visit( stateNode.Reduce( this ) ),
             _ => base.VisitExtension( node )
         } ?? Expression.Empty();
     }

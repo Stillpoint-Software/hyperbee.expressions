@@ -4,21 +4,21 @@ using System.Linq.Expressions;
 namespace Hyperbee.AsyncExpressions.Transformation;
 
 [DebuggerDisplay( "State = {Label?.Name,nq}, Transition = {Transition?.GetType().Name,nq}" )]
-public class StateNode : Expression
+public class NodeExpression : Expression
 {
     public int StateId { get; }
-    public LabelTarget Label { get; set; }
+    public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; } = new (8);
     public Transition Transition { get; set; }
 
     private Expression _expression;
     private IFieldResolverSource _resolverSource;
 
-    public StateNode( int stateId )
+    public NodeExpression( int stateId )
     {
         StateId = stateId;
-        Label = Expression.Label( $"ST_{StateId:0000}" );
-        Expressions.Add( Expression.Label( Label ) );
+        NodeLabel = Expression.Label( $"ST_{StateId:0000}" );
+        Expressions.Add( Expression.Label( NodeLabel ) );
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
