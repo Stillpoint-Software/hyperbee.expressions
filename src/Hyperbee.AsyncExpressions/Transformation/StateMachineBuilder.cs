@@ -428,7 +428,9 @@ public class StateMachineBuilder<TResult>
             finalResultFieldExpression,
             source.ReturnValue );
 
-        bodyExpressions.AddRange( source.Nodes.Select( fieldResolverVisitor.Visit ) );
+        var nodes = OptimizeNodeOrder( source.Nodes );
+
+        bodyExpressions.AddRange( nodes.Select( fieldResolverVisitor.Visit ) );
 
         ParameterExpression[] variables = (source.ReturnValue != null)
             ? [source.ReturnValue]
@@ -459,6 +461,44 @@ public class StateMachineBuilder<TResult>
 
         var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
         return Expression.Lambda( moveNextBody, stateMachineInstance );
+    }
+
+    
+    private static List<NodeExpression> OptimizeNodeOrder(List<NodeExpression> nodes)
+    {
+       var ordered = new List<NodeExpression>(nodes.Count);
+       var visited = new HashSet<NodeExpression>(nodes.Count);
+
+       // Perform greedy DFS for every unvisited node
+
+       for ( var index = 0; index < nodes.Count; index++ )
+       {
+           var node = nodes[index];
+
+           if ( !visited.Contains( node ) )
+               Visit( node );
+       }
+
+       // Make sure the final state is last
+
+       var finalNode = nodes.First( x => x.Transition == null);
+
+       if ( ordered.Last() == finalNode )
+           return ordered;
+
+       ordered.Remove(finalNode);
+       ordered.Add(finalNode);
+
+       return ordered;
+
+       void Visit( NodeExpression node)
+       {
+           while ( node != null && visited.Add(node) )
+           {
+               ordered.Add(node);
+               node = node.Transition?.LogicalNextNode;
+           }
+       }
     }
 }
 

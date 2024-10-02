@@ -189,7 +189,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var loopTransition = new LoopTransition
         {
-            Body = VisitLoopBranch( 
+            BodyNode = VisitLoopBranch( 
                 node.Body, 
                 node.BreakLabel, 
                 node.ContinueLabel, 

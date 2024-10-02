@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-[DebuggerDisplay( "State = {Label?.Name,nq}, Transition = {Transition?.GetType().Name,nq}" )]
+[DebuggerDisplay( "State = {NodeLabel?.Name,nq}, Transition = {Transition?.GetType().Name,nq}" )]
 public class NodeExpression : Expression
 {
     public int StateId { get; }
