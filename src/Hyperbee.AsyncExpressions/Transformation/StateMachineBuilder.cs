@@ -338,16 +338,13 @@ public class StateMachineBuilder<TResult>
         //
         // try
         // {
-        //     int returnValue;
+        //     int return<>;
         //
         //     switch ( stateMachine.__state<> )
         //     {
         //         case 0:
         //             stateMachine.__state<> = -1;
         //             goto ST_0002;
-        //             break;
-        //
-        //         default:
         //             break;
         //     }
         //
@@ -379,7 +376,7 @@ public class StateMachineBuilder<TResult>
         //     goto ST_FINAL;
         //
         //     ST_0004:
-        //     returnValue = stateMachine.var2 + param1;
+        //     return<> = stateMachine.var2 + param1;
         //     goto ST_0003;
         //
         // }
@@ -414,7 +411,7 @@ public class StateMachineBuilder<TResult>
 
         var jumpTableExpression = Expression.Switch(
             stateFieldExpression, 
-            Expression.Empty(),
+            null,
             source.JumpCases.Select( c =>
                 Expression.SwitchCase(
                     Expression.Block(
