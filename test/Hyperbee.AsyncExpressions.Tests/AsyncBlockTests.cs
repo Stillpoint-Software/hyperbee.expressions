@@ -274,7 +274,7 @@ public class AsyncBlockTests
         // Act
         var lambda = Expression.Lambda<Func<Task<int>>>( asyncBlock );
         var compiledLambda = lambda.Compile();
-        var result = await compiledLambda(  );
+        var result = await compiledLambda();
 
         // Assert
         Assert.AreEqual( 1, result );

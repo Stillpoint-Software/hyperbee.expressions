@@ -400,15 +400,7 @@ public class StateMachineBuilder<TResult>
 
         var fieldMembers = fields.Select( x => Expression.Field( stateMachineInstance, x ) ).ToArray();
 
-        var fieldResolverVisitor = new FieldResolverVisitor( 
-            stateMachineInstance,
-            fieldMembers,
-            returnLabel,
-            stateFieldExpression,
-            builderFieldExpression );
-
         // Create the jump table
-
         var jumpTableExpression = Expression.Switch(
             stateFieldExpression, 
             null,
@@ -426,52 +418,16 @@ public class StateMachineBuilder<TResult>
         bodyExpressions.Add( jumpTableExpression );
 
         // Iterate through each state block
-
-        foreach ( var (blockExpressions, blockTransition) in source.Nodes )
-        {
-            var resolvedExpressions = fieldResolverVisitor.Visit( blockExpressions );
-
-            var finalBlock = blockTransition == null;
-            
-            if ( finalBlock )
-            {
-                // TODO: fix final block
-                bodyExpressions.Add( resolvedExpressions[0] );
-
-                if ( source.ReturnValue != null )
-                {
-                    bodyExpressions.Add( Expression.Assign(
-                        finalResultFieldExpression,
-                        source.ReturnValue
-                    ) );
-                }
-                else
-                {
-                    bodyExpressions.Add( Expression.Assign(
-                        finalResultFieldExpression,
-                        Expression.Block( resolvedExpressions[1..] )
-                    ) );
-                }
-
-                bodyExpressions.Add( Expression.Assign( stateFieldExpression, Expression.Constant( -2 ) ) );
-
-                // Set the final result on the builder
-                bodyExpressions.Add( Expression.Call(
-                    builderFieldExpression,
-                    nameof(AsyncTaskMethodBuilder<TResult>.SetResult),
-                    null,
-                    typeof(TResult) != typeof(IVoidTaskResult)
-                        ? finalResultFieldExpression
-                        : Expression.Constant( null, typeof(TResult) ) // No result for IVoidTaskResult
-                ) );
-
-                bodyExpressions.Add( Expression.Goto( returnLabel ) );
-            }
-            else
-            {
-                bodyExpressions.AddRange( resolvedExpressions );
-            }
-        }
+        var fieldResolverVisitor = new FieldResolverVisitor(
+            typeof( TResult ),
+            stateMachineInstance,
+            fieldMembers,
+            returnLabel,
+            stateFieldExpression,
+            builderFieldExpression,
+            finalResultFieldExpression,
+            source.ReturnValue );
+        bodyExpressions.AddRange( source.Nodes.Select( fieldResolverVisitor.Visit ) );
 
         ParameterExpression[] variables = (source.ReturnValue != null)
             ? [source.ReturnValue]
