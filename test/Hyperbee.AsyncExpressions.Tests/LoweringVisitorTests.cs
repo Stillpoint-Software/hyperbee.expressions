@@ -1,5 +1,7 @@
-﻿using System.Reflection;
+﻿using System.Linq.Expressions;
+using System.Reflection;
 using Hyperbee.AsyncExpressions.Transformation;
+
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.AsyncExpressions.AsyncExpression;
 
@@ -15,7 +17,7 @@ public class LoweringVisitorTests
 
 
     [TestMethod]
-    public void GotoTransformer_CollectExpressions()
+    public void Transform_ShouldHaveSingleSingle_WhenAssigningVariable()
     {
         // Arrange
         var varExpr = Variable( typeof( int ), "x" );
@@ -23,15 +25,16 @@ public class LoweringVisitorTests
 
         // Act
         var visitor = new LoweringVisitor();
-        var result = visitor.Transform( assignExpr );
+        var result = visitor.Transform( [varExpr], assignExpr );
 
         // Assert
-        Console.WriteLine( result.DebugView );
+        AssertTransition.AssertResult( result, nodes: 1, variables: 1 );
+
+        AssertTransition.AssertLabel( result.Nodes[0].Label, "ST_0000", typeof(void) );
     }
 
-
     [TestMethod]
-    public void GotoTransformer_WithBodyAwaits()
+    public void Transform_ShouldSplitAwaits_WhenBlockHasMultipleAwaits()
     {
         // Arrange
         var blockAwaits = Block(
@@ -41,11 +44,7 @@ public class LoweringVisitorTests
 
             Constant( "before await2" ),
             Await( Constant( Task.FromResult( "await2" ) ) ),
-            Constant( "after await2" ),
-
-            Constant( "before await3" ),
-            Await( Constant( Task.FromResult( "await3" ) ) ),
-            Constant( "after await3" )
+            Constant( "after await2" )
         );
 
         // Act
@@ -53,11 +52,19 @@ public class LoweringVisitorTests
         var result = visitor.Transform( blockAwaits );
 
         // Assert
-        Console.WriteLine( result.DebugView );
+        AssertTransition.AssertResult( result, nodes: 5, variables: 4, jumps: 2 );
+        AssertTransition.AssertLabel( result.Nodes[0].Label, "ST_0000", typeof(void) );
+
+        var firstBefore = AssertTransition.AssertAwait( result.Nodes[0].Transition, "ST_0002" );
+        var firstAfter = AssertTransition.AssertAwaitResult( firstBefore.Transition, "ST_0001" );
+        var secondBefore = AssertTransition.AssertAwait( firstAfter.Transition, "ST_0004" );
+        var secondAfter = AssertTransition.AssertAwaitResult( secondBefore.Transition, "ST_0003" );
+        AssertTransition.AssertFinal( secondAfter );
+
     }
 
     [TestMethod]
-    public void GotoTransformer_WithIfThen()
+    public void Transform_ShouldBranchAndMerge_WithIfThen()
     {
         // Arrange
         var ifThenElseExpr = Block(
@@ -77,8 +84,26 @@ public class LoweringVisitorTests
         var result = visitor.Transform( ifThenElseExpr );
 
         // Assert
-        Console.WriteLine( result.DebugView );
+        AssertTransition.AssertResult( result, nodes: 6 );
+        AssertTransition.AssertLabel( result.Nodes[0].Label, "ST_0000", typeof( void ) );
+
+        var (ifThenTrue, ifThenFalse) =
+            AssertTransition.AssertConditional( result.Nodes[0].Transition, "ST_0002", "ST_0001" );
+        var (ifThenElseTrue, ifThenElseFalse) =
+            AssertTransition.AssertConditional( ifThenTrue.Transition, "ST_0004", "ST_0005" );
+        Assert.IsNull( ifThenFalse.Transition ); // No else block
+
+        Assert.AreEqual( 3, ifThenElseTrue.Expressions.Count );
+        var joinNode = AssertTransition.AssertGoto( ifThenElseTrue.Transition, "ST_0003" );
+        var finalNodes = AssertTransition.AssertGoto( joinNode.Transition, "ST_0001" );
+        AssertTransition.AssertFinal( finalNodes );
+
+        Assert.AreEqual( 4, ifThenElseFalse.Expressions.Count );
+        joinNode = AssertTransition.AssertGoto( ifThenElseFalse.Transition, "ST_0003" );
+        finalNodes = AssertTransition.AssertGoto( joinNode.Transition, "ST_0001" );
+        AssertTransition.AssertFinal( finalNodes );
     }
+
 
     [TestMethod]
     public void GotoTransformer_WithParameters()
@@ -442,5 +467,72 @@ public class LoweringVisitorTests
         var result = visitor.Transform( ifThenElseExpr );
 
         Console.WriteLine( result.DebugView );
+    }
+
+    public static class AssertTransition
+    {
+
+        public static class TransitionType
+        {
+            public static Type Goto => typeof(GotoTransition);
+            public static Type Await => typeof(AwaitTransition);
+            public static Type AwaitResult => typeof(AwaitResultTransition);
+            public static Type Conditional => typeof(ConditionalTransition);
+
+        }
+
+        public static void AssertResult( LoweringResult result, int nodes = 0, int variables = 0, int jumps = 0 )
+        {
+            Assert.AreEqual( nodes, result.Nodes.Count );
+            Assert.AreEqual( variables, result.Variables.Count );
+            Assert.AreEqual( jumps, result.JumpCases.Count );
+        }
+
+        public static StateNode AssertGoto( Transition transition, string labelName )
+        {
+            Assert.AreEqual( TransitionType.Goto, transition.GetType() );
+            var gotoTransition = (GotoTransition) transition;
+            Assert.AreEqual( labelName, gotoTransition.TargetNode.Label.Name );
+            return gotoTransition.TargetNode;
+        }
+
+        public static StateNode AssertAwait( Transition transition, string labelName )
+        {
+            Assert.AreEqual( TransitionType.Await, transition.GetType() );
+            var awaitTransition = (AwaitTransition) transition;
+            Assert.AreEqual( labelName, awaitTransition.CompletionNode.Label.Name );
+            return awaitTransition.CompletionNode;
+        }
+
+        public static StateNode AssertAwaitResult( Transition transition, string labelName )
+        {
+            Assert.AreEqual( TransitionType.AwaitResult, transition.GetType() );
+            var awaitTransition = (AwaitResultTransition) transition;
+            Assert.AreEqual( labelName, awaitTransition.TargetNode.Label.Name );
+            return awaitTransition.TargetNode;
+        }
+
+        public static (StateNode IfTrueNode, StateNode IfFalseNode) AssertConditional(
+            Transition transition,
+            string trueLabelName,
+            string falseLabelName )
+        {
+            Assert.AreEqual( TransitionType.Conditional, transition.GetType() );
+            var conditionalTransition = (ConditionalTransition) transition;
+            Assert.AreEqual( trueLabelName, conditionalTransition.IfTrue.Label.Name );
+            Assert.AreEqual( falseLabelName, conditionalTransition.IfFalse.Label.Name );
+            return (conditionalTransition.IfTrue, conditionalTransition.IfFalse);
+        }
+
+        public static void AssertLabel( LabelTarget label, string expectedName, Type expectedType )
+        {
+            Assert.AreEqual( expectedName, label.Name );
+            Assert.AreEqual( expectedType, label.Type );
+        }
+
+        public static void AssertFinal( StateNode finalNode )
+        {
+            Assert.IsTrue( finalNode.Transition == null );
+        }
     }
 }
