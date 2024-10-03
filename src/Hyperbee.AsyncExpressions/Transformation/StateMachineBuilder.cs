@@ -544,6 +544,6 @@ public static class StateMachineBuilder
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, createRunner );
 
-        return stateMachineExpression;
+        return stateMachineExpression; // the-best expression breakpoint ever
     }
 }
