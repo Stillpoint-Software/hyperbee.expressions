@@ -7,6 +7,13 @@ namespace Hyperbee.AsyncExpressions.Tests;
 public class AsyncBlockTests
 {
     public static bool AreEqual(int a, int b) => a == b;
+
+    public static async Task<bool> AreEqualAsync( int a, int b )
+    {
+        await Task.Delay( 100 );
+        return a == b;
+    }
+
     public static MethodInfo GetMethod(string name) => typeof(AsyncBlockTests).GetMethod(name);
 
     [TestMethod]
@@ -432,4 +439,27 @@ public class AsyncBlockTests
         // Assert
         Assert.AreEqual( 5, result );
     }
+
+    // [TestMethod]
+    // public async Task TestAsyncBlock_ContinueOnDelay()
+    // {
+    //     // Arrange
+    //     var areEqualAsyncMethodInfo = GetMethod( nameof(AreEqualAsync) );
+    //
+    //     var awaitExpr = AsyncExpression.Await(
+    //         Expression.Call(
+    //             areEqualAsyncMethodInfo,
+    //             Expression.Constant( 1 ),
+    //             Expression.Constant( 1 ) ) );
+    //
+    //     var asyncBlock = AsyncExpression.BlockAsync( awaitExpr );
+    //
+    //     // Act
+    //     var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
+    //     var compiledLambda = lambda.Compile();
+    //     var result = await compiledLambda();
+    //
+    //     // Assert
+    //     Assert.IsTrue( result );
+    // }
 }

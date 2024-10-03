@@ -385,6 +385,7 @@ public class StateMachineBuilder<TResult>
         // }
 
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
+        var returnLabel = Expression.Label( "ST_FINAL" );
 
         var bodyExpressions = new List<Expression>();
 
@@ -413,7 +414,9 @@ public class StateMachineBuilder<TResult>
 
         // Iterate through each state block
         var fieldResolverVisitor = new FieldResolverVisitor(
+            typeof( TResult ),
             stateMachineInstance,
+            returnLabel,
             fieldMembers,
             stateFieldExpression,
             builderFieldExpression,
@@ -448,8 +451,8 @@ public class StateMachineBuilder<TResult>
         );
 
         // return the lambda expression for MoveNext
-
-        return Expression.Lambda( tryCatchBlock, stateMachineInstance );
+        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
+        return Expression.Lambda( moveNextBody, stateMachineInstance );
     }
 
     private static List<NodeExpression> OrderNodes( List<NodeExpression> nodes )

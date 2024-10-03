@@ -52,8 +52,6 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceFinal()
     {
-        var stateMachineType = _resolverSource.StateMachine.Type;
-
         return Block(
             Expressions[0],  // Hack: move goto to the top
             _resolverSource.ReturnValue != null 
@@ -64,9 +62,9 @@ public class NodeExpression : Expression
                 _resolverSource.BuilderField,
                 "SetResult",
                 null,
-                stateMachineType != typeof( IVoidTaskResult )
+                _resolverSource.StateMachineType != typeof( IVoidTaskResult )
                     ? _resolverSource.ResultField
-                    : Constant( null, stateMachineType ) // No result for IVoidTaskResult
+                    : Constant( null, _resolverSource.StateMachineType ) // No result for IVoidTaskResult
             )
         );
     }

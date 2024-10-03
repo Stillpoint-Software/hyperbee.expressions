@@ -29,7 +29,8 @@ public class AwaitTransition : Transition
                         [AwaiterVariable.Type, typeof( IAsyncStateMachine )],
                         AwaiterVariable,
                         resolverSource.StateMachine
-                    )
+                    ),
+                    Return( resolverSource.ReturnLabel )
                 )
             ),
             //Goto( CompletionNode.NodeLabel )
