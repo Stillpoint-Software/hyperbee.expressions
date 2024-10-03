@@ -10,10 +10,10 @@ public abstract class Transition
     internal abstract Expression Reduce( int order, IFieldResolverSource resolverSource );
     internal abstract NodeExpression LogicalNextNode { get; }
 
-    protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool emptyAsNull = false )
+    protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )
     {
         return order + 1 == node.Order
-            ? emptyAsNull
+            ? allowNull
                 ? null
                 : Expression.Empty()
             : Expression.Goto( node.NodeLabel );

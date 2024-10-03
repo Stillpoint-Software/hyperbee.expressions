@@ -13,7 +13,7 @@ public class SwitchTransition : Transition
     {
         var defaultBody = DefaultNode != null
             //? Goto( DefaultNode.NodeLabel )
-            ? GotoOrFallThrough( order, DefaultNode, emptyAsNull: true ) //BF
+            ? GotoOrFallThrough( order, DefaultNode, allowNull: true ) //BF
             : null;
 
         var cases = _caseNodes
