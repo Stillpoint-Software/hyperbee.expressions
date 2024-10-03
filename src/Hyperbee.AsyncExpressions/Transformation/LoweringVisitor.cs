@@ -50,45 +50,17 @@ internal class LoweringVisitor : ExpressionVisitor
         return Transform( [], expressions );
     }
 
-    private NodeExpression VisitBranch( Expression expression, int joinIndex, bool captureVisit = true )
+    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState, Action<NodeExpression> init = null, bool captureVisit = true )
     {
         // Create a new state for the branch
         var branchState = _states.AddBranchState();
+
+        init?.Invoke( branchState );
 
         VisitInternal( expression, captureVisit );
 
         // Set a default Transition if the branch tail didn't join
         var tailState = _states.GetBranchTailState(); 
-
-        if ( tailState.Transition != null )
-            return branchState;
-
-        var joinState = _states.GetState( joinIndex );
-
-        tailState.Transition = new GotoTransition { TargetNode = joinState };
-
-        return branchState;
-    }
-
-    private NodeExpression VisitLoopBranch( Expression expression, LabelTarget breakLabel, LabelTarget continueLabel, int joinIndex )
-    {
-        // Create a new state for the branch
-        var branchState = _states.AddBranchState();
-
-        var joinState = _states.GetState( joinIndex );
-
-        var breakGoto = Expression.Goto( joinState.NodeLabel );
-        var continueGoto = Expression.Goto( branchState.NodeLabel );
-
-        if ( breakLabel != null )
-            _labels[breakLabel] = breakGoto;
-
-        if ( continueLabel != null )
-            _labels[continueLabel] = continueGoto;
-
-        VisitInternal( expression, captureVisit: false );
-
-        var tailState = _states.GetBranchTailState();
 
         if ( tailState.Transition != null )
             return branchState;
@@ -112,18 +84,18 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var updatedTest = VisitInternal( node.Test, captureVisit: false );
 
-        var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
+        var joinState = _states.EnterBranchState( out var sourceState );
 
         var conditionalTransition = new ConditionalTransition
         {
             Test = updatedTest,
-            IfTrue = VisitBranch( node.IfTrue, joinIndex ),
+            IfTrue = VisitBranch( node.IfTrue, joinState ),
             IfFalse = node.IfFalse is not DefaultExpression
-                ? VisitBranch( node.IfFalse, joinIndex )
-                : nodes[joinIndex]
+                ? VisitBranch( node.IfFalse, joinState )
+                : joinState
         };
 
-        _states.ExitBranchState( sourceIndex, conditionalTransition );
+        _states.ExitBranchState( sourceState, conditionalTransition );
 
         return node;
     }
@@ -132,73 +104,77 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var updatedSwitchValue = VisitInternal( node.SwitchValue, captureVisit: false );
 
-        var joinIndex = _states.EnterBranchState( out var sourceIndex, out _ );
+        var joinState = _states.EnterBranchState( out var sourceState );
 
         var switchTransition = new SwitchTransition { SwitchValue = updatedSwitchValue };
 
         if ( node.DefaultBody != null )
         {
-            switchTransition.DefaultNode = VisitBranch( node.DefaultBody, joinIndex );
+            switchTransition.DefaultNode = VisitBranch( node.DefaultBody, joinState );
         }
 
         foreach ( var switchCase in node.Cases )
         {
             switchTransition.AddSwitchCase(
                 [.. switchCase.TestValues], // TODO: Visit these because they could be async
-                VisitBranch( switchCase.Body, joinIndex )
+                VisitBranch( switchCase.Body, joinState )
             );
         }
 
-        _states.ExitBranchState( sourceIndex, switchTransition );
+        _states.ExitBranchState( sourceState, switchTransition );
 
         return node;
     }
 
     protected override Expression VisitTry( TryExpression node )
     {
-        var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
+        var joinState = _states.EnterBranchState( out var sourceState );
 
         var tryCatchTransition = new TryCatchTransition
         {
-            TryNode = VisitBranch( node.Body, joinIndex )
+            TryNode = VisitBranch( node.Body, joinState )
         };
-
-        var joinLabel = nodes[joinIndex].NodeLabel;
 
         foreach ( var catchBlock in node.Handlers )
         {
             tryCatchTransition.AddCatchBlock(
                 catchBlock.Test,
-                VisitBranch( catchBlock.Body, joinIndex ) );
+                VisitBranch( catchBlock.Body, joinState ) );
         }
 
         if ( node.Finally != null )
         {
-            tryCatchTransition.FinallyNode = VisitBranch( node.Finally, joinIndex );
-            tryCatchTransition.FinallyNode.Expressions.Add( Expression.Goto( joinLabel ) );
+            tryCatchTransition.FinallyNode = VisitBranch( node.Finally, joinState );
+            tryCatchTransition.FinallyNode.Expressions.Add( Expression.Goto( joinState.NodeLabel ) );
         }
 
-        _states.ExitBranchState( sourceIndex, tryCatchTransition );
+        _states.ExitBranchState( sourceState, tryCatchTransition );
 
         return node;
     }
 
     protected override Expression VisitLoop( LoopExpression node )
     {
-        var joinIndex = _states.EnterBranchState( out var sourceIndex, out _ );
+        var joinState = _states.EnterBranchState( out var sourceState );
 
         var loopTransition = new LoopTransition
         {
-            BodyNode = VisitLoopBranch( 
-                node.Body, 
-                node.BreakLabel, 
-                node.ContinueLabel, 
-                joinIndex )
+            BodyNode = VisitBranch( node.Body, joinState, InitializeLabels )
         };
 
-        _states.ExitBranchState( sourceIndex, loopTransition );
+        _states.ExitBranchState( sourceState, loopTransition );
 
         return node;
+
+        // Helper function for fixing loop labels
+        void InitializeLabels( NodeExpression branchState )
+        {
+            if ( node.ContinueLabel != null )
+                _labels[node.ContinueLabel] = Expression.Goto( branchState.NodeLabel );
+
+            if ( node.BreakLabel != null )
+                _labels[node.BreakLabel] = Expression.Goto( joinState.NodeLabel );
+        }
     }
 
     protected static Expression VisitAsyncBlock( AsyncBlockExpression node )
@@ -208,13 +184,13 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected Expression VisitAwait( AwaitExpression node )
     {
-        var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
+        var joinState = _states.EnterBranchState( out var sourceState );
 
-        var completionState = VisitBranch( node.Target, joinIndex, captureVisit: false );
+        var completionState = VisitBranch( node.Target, joinState, captureVisit: false );
 
         _awaitCount++;
 
-        var awaiterVariable = Expression.Variable( GetAwaiterType(), VariableName.Awaiter( sourceIndex ) );
+        var awaiterVariable = Expression.Variable( GetAwaiterType(), VariableName.Awaiter( sourceState.StateId ) );
         _variables.Add( awaiterVariable );
 
         ParameterExpression resultVariable = null;
@@ -227,22 +203,27 @@ internal class LoweringVisitor : ExpressionVisitor
 
         completionState.Transition = new AwaitResultTransition
         {
-            TargetNode = nodes[joinIndex],
+            TargetNode = joinState,
             AwaiterVariable = awaiterVariable,
             ResultVariable = resultVariable
         };
 
-        _states.JumpCases.Add( completionState.NodeLabel, sourceIndex );
+        _states.JumpCases.Add( completionState.NodeLabel, sourceState.StateId );
 
         var awaitTransition = new AwaitTransition
         {
             Target = node.Target,
-            StateId = sourceIndex,
+            StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
             CompletionNode = completionState
         };
 
-        _states.ExitBranchState( sourceIndex, awaitTransition );
+        _states.ExitBranchState( sourceState, awaitTransition );
+
+        if ( resultVariable != null )
+        {
+            joinState.Expressions.Add( resultVariable );
+        }
 
         return (Expression) resultVariable ?? Expression.Empty();
 
@@ -332,7 +313,6 @@ internal class LoweringVisitor : ExpressionVisitor
         
         public List<NodeExpression> GetNodes() => _nodes;
 
-        public NodeExpression GetState( int index ) => _nodes[index];
         public NodeExpression GetBranchTailState() => _nodes[_tailIndex];
 
         public NodeExpression AddState()
@@ -351,21 +331,20 @@ internal class LoweringVisitor : ExpressionVisitor
             return stateNode;
         }
 
-        public int EnterBranchState( out int sourceIndex, out List<NodeExpression> nodes )
+        public NodeExpression EnterBranchState( out NodeExpression sourceState )
         {
             var joinState = AddState();
 
             _joinIndexes.Push( joinState.StateId );
 
-            sourceIndex = _tailIndex;
-            nodes = _nodes;
+            sourceState = _nodes[_tailIndex];
 
-            return joinState.StateId;
+            return joinState;
         }
 
-        public void ExitBranchState( int sourceIndex, Transition transition )
+        public void ExitBranchState( NodeExpression sourceState, Transition transition )
         {
-            _nodes[sourceIndex].Transition = transition;
+            sourceState.Transition = transition;
             _tailIndex = _joinIndexes.Pop();
         }
     }
