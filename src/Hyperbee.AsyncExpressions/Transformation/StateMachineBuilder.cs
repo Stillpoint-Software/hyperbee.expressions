@@ -387,7 +387,7 @@ public class StateMachineBuilder<TResult>
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
         var returnLabel = Expression.Label( "ST_FINAL" );
 
-        var bodyExpressions = new List<Expression>();
+        var bodyExpressions = new List<Expression>( 16 ); // preallocate slots for expressions
 
         var stateFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
         var builderFieldExpression = Expression.Field( stateMachineInstance, FieldName.Builder );
