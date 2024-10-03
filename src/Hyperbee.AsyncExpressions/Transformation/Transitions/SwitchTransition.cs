@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
@@ -11,20 +12,21 @@ public class SwitchTransition : Transition
     internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
         var defaultBody = DefaultNode != null
-            ? Expression.Goto( DefaultNode.NodeLabel )
+            //? Goto( DefaultNode.NodeLabel )
+            ? GotoOrFallThrough( order, DefaultNode, emptyAsNull: true ) //BF
             : null;
 
         var cases = _caseNodes
             .Select( switchCase => switchCase.Reduce() );
 
-        return Expression.Switch(
+        return Switch(
             SwitchValue,
             defaultBody,
             [.. cases]
         );
     }
 
-    internal override NodeExpression LogicalNextNode => DefaultNode;
+    internal override NodeExpression LogicalNextNode => DefaultNode; 
 
     public void AddSwitchCase( List<Expression> testValues, NodeExpression body )
     {
@@ -33,6 +35,6 @@ public class SwitchTransition : Transition
 
     private record SwitchCaseDefinition( List<Expression> TestValues, NodeExpression Body )
     {
-        public SwitchCase Reduce() => Expression.SwitchCase( Expression.Goto( Body.NodeLabel ), TestValues );
+        public SwitchCase Reduce() => SwitchCase( Goto( Body.NodeLabel ), TestValues );
     }
 }
