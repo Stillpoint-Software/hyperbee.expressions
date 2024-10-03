@@ -414,7 +414,6 @@ public class StateMachineBuilder<TResult>
 
         // Iterate through each state block
         var fieldResolverVisitor = new FieldResolverVisitor(
-            typeof( TResult ),
             stateMachineInstance,
             fieldMembers,
             stateFieldExpression,

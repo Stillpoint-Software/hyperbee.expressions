@@ -13,7 +13,6 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
     public ParameterExpression ReturnValue { get; init; }
 
     public FieldResolverVisitor(
-        Type stateMachineType,
         Expression stateMachine, 
         MemberExpression[] fields,
         MemberExpression stateIdField,
