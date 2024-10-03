@@ -19,5 +19,5 @@ public class ConditionalTransition : Transition
         );
     }
 
-    internal override NodeExpression LogicalNextNode => IfFalse;
+    internal override NodeExpression FallThroughNode => IfFalse;
 }

@@ -13,5 +13,5 @@ public class LoopTransition : Transition
         return ContinueGoto;
     }
 
-    internal override NodeExpression LogicalNextNode => BodyNode;
+    internal override NodeExpression FallThroughNode => BodyNode;
 }

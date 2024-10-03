@@ -37,6 +37,6 @@ public class AwaitTransition : Transition
         );
     }
 
-    internal override NodeExpression LogicalNextNode => CompletionNode;
+    internal override NodeExpression FallThroughNode => CompletionNode;
 
 }

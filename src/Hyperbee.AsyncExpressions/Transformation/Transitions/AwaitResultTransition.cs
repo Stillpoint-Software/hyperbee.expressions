@@ -22,5 +22,5 @@ public class AwaitResultTransition : Transition
         );
     }
 
-    internal override NodeExpression LogicalNextNode => TargetNode;
+    internal override NodeExpression FallThroughNode => TargetNode;
 }

@@ -12,5 +12,5 @@ public class GotoTransition : Transition
         return GotoOrFallThrough( order, TargetNode ); //BF
     }
 
-    internal override NodeExpression LogicalNextNode => TargetNode;
+    internal override NodeExpression FallThroughNode => TargetNode;
 }

@@ -26,7 +26,7 @@ public class TryCatchTransition : Transition
         );
     }
 
-    internal override NodeExpression LogicalNextNode => TryNode;
+    internal override NodeExpression FallThroughNode => TryNode;
 
     public void AddCatchBlock( Type test, NodeExpression body )
     {

@@ -498,7 +498,7 @@ public class StateMachineBuilder<TResult>
             while ( node != null && visited.Add( node ) )
             {
                 ordered.Add( node );
-                node = node.Transition?.LogicalNextNode;
+                node = node.Transition?.FallThroughNode;
             }
         }
     }
