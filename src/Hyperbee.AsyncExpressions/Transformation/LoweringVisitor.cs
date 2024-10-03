@@ -70,7 +70,7 @@ internal class LoweringVisitor : ExpressionVisitor
         return branchState;
     }
 
-    private NodeExpression VisitLoopBranch( Expression expression, LabelTarget breakLabel, LabelTarget continueLabel, out Expression continueGoto, int joinIndex )
+    private NodeExpression VisitLoopBranch( Expression expression, LabelTarget breakLabel, LabelTarget continueLabel, int joinIndex )
     {
         // Create a new state for the branch
         var branchState = _states.AddBranchState();
@@ -78,7 +78,7 @@ internal class LoweringVisitor : ExpressionVisitor
         var joinState = _states.GetState( joinIndex );
 
         var breakGoto = Expression.Goto( joinState.NodeLabel );
-        continueGoto = Expression.Goto( branchState.NodeLabel );
+        var continueGoto = Expression.Goto( branchState.NodeLabel );
 
         if ( breakLabel != null )
             _labels[breakLabel] = breakGoto;
@@ -93,7 +93,6 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( tailState.Transition != null )
             return branchState;
 
-        tailState.Expressions.Add( breakGoto );
         tailState.Transition = new GotoTransition { TargetNode = joinState };
 
         return branchState;
@@ -186,7 +185,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitLoop( LoopExpression node )
     {
-        var joinIndex = _states.EnterBranchState( out var sourceIndex, out var nodes );
+        var joinIndex = _states.EnterBranchState( out var sourceIndex, out _ );
 
         var loopTransition = new LoopTransition
         {
@@ -194,10 +193,7 @@ internal class LoweringVisitor : ExpressionVisitor
                 node.Body, 
                 node.BreakLabel, 
                 node.ContinueLabel, 
-                out var continueGoto,
-                joinIndex ),
-            TargetNode = nodes[joinIndex],
-            ContinueGoto = continueGoto
+                joinIndex )
         };
 
         _states.ExitBranchState( sourceIndex, loopTransition );

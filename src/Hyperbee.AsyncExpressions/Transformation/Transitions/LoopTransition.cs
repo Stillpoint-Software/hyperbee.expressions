@@ -4,14 +4,12 @@ namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 public class LoopTransition : Transition
 {
-    public NodeExpression TargetNode { get; set; }
     public NodeExpression BodyNode { get; set; }
-    public Expression ContinueGoto { get; set; }
 
     internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
-        return ContinueGoto;
+        return Expression.Empty();
     }
 
-    internal override NodeExpression FallThroughNode => BodyNode;
+    internal override NodeExpression FallThroughNode => BodyNode; // We won't reduce, but we need to provide a value for ordering
 }

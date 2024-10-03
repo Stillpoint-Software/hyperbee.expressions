@@ -423,7 +423,8 @@ public class AsyncBlockTests
                     AsyncExpression.Await( Expression.Constant( Task.CompletedTask, typeof( Task ) ) ),
                     Expression.IfThenElse( Expression.GreaterThanOrEqual( var1, Expression.Constant( 5 ) ),
                         Expression.Break( breakLabel, var1 ),
-                        Expression.Continue( continueLabel ) )
+                        Expression.Continue( continueLabel ) ),
+                    Expression.Constant( "This is unreachable code." ) // This code is unreachable
                 ),
                 breakLabel,
                 continueLabel

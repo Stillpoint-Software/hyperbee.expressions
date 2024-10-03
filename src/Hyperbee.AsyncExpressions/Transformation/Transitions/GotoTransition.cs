@@ -8,8 +8,7 @@ public class GotoTransition : Transition
 
     internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
-        //return Goto( TargetNode.NodeLabel );
-        return GotoOrFallThrough( order, TargetNode ); //BF
+        return GotoOrFallThrough( order, TargetNode );
     }
 
     internal override NodeExpression FallThroughNode => TargetNode;

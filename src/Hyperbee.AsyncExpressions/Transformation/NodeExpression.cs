@@ -45,12 +45,16 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceTransition()
     {
+        //Check if the last expression is a Goto and skip the transition if so
+        if ( Expressions.Last() is GotoExpression )
+            return Block( Expressions );
+
         return Transition == null
-            ? ReduceFinal()
+            ? ReduceFinalNode()
             : Block( Expressions.Concat( [Transition.Reduce( MachineOrder, _resolverSource )] ) );
     }
 
-    private BlockExpression ReduceFinal()
+    private BlockExpression ReduceFinalNode()
     {
         return Block(
             Expressions[0],  // Hack: move goto to the top
