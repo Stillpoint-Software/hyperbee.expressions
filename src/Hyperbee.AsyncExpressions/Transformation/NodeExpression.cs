@@ -45,30 +45,39 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceTransition()
     {
-        //Check if the last expression is a Goto and skip the transition if so
+        // Skip the transition if the last expression is a Goto
         if ( Expressions.Last() is GotoExpression )
             return Block( Expressions );
 
         return Transition == null
             ? ReduceFinalNode()
-            : Block( Expressions.Concat( [Transition.Reduce( MachineOrder, _resolverSource )] ) );
+            : ReduceNode();
+    }
+
+    private BlockExpression ReduceNode()
+    {
+        return Block( 
+            Expressions.Concat( [Transition.Reduce( MachineOrder, _resolverSource )] ) 
+        );
     }
 
     private BlockExpression ReduceFinalNode()
     {
+        var ( stateMachineType, _, _, stateIdField, builderField, resultField, returnValue ) = _resolverSource;
+
         return Block(
             Expressions[0],  // Hack: move goto to the top
-            _resolverSource.ReturnValue != null 
-                ? Assign( _resolverSource.ResultField, _resolverSource.ReturnValue ) 
-                : Assign( _resolverSource.ResultField, Block( Expressions[1..] ) ),
-            Assign( _resolverSource.StateIdField, Constant( -2 ) ),
+            returnValue != null 
+                ? Assign( resultField, returnValue ) 
+                : Assign( resultField, Block( Expressions[1..] ) ),
+            Assign( stateIdField, Constant( -2 ) ),
             Call(
-                _resolverSource.BuilderField,
+                builderField,
                 "SetResult",
                 null,
-                _resolverSource.StateMachineType != typeof( IVoidTaskResult )
-                    ? _resolverSource.ResultField
-                    : Constant( null, _resolverSource.StateMachineType ) // No result for IVoidTaskResult
+                stateMachineType != typeof( IVoidTaskResult )
+                    ? resultField
+                    : Constant( null, stateMachineType ) // No result for IVoidTaskResult
             )
         );
     }

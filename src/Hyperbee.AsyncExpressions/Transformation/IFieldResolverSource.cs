@@ -11,4 +11,18 @@ internal interface IFieldResolverSource
     MemberExpression BuilderField { get; init; }
     MemberExpression ResultField { get; init; }
     ParameterExpression ReturnValue { get; init; }
+
+    public void Deconstruct( out Type stateMachineType, 
+        out Expression stateMachine, out LabelTarget returnLabel, 
+        out MemberExpression stateIdField, out MemberExpression builderField,
+        out MemberExpression resultField, out ParameterExpression returnValue )
+    {
+        stateMachineType = StateMachineType;
+        stateMachine = StateMachine;
+        returnLabel = ReturnLabel;
+        stateIdField = StateIdField;
+        builderField = BuilderField;
+        resultField = ResultField;
+        returnValue = ReturnValue;
+    }
 }

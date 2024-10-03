@@ -17,8 +17,7 @@ public class AwaitResultTransition : Transition
 
         return Block(
             getResult,
-            //Expression.Goto( TargetNode.NodeLabel )
-            GotoOrFallThrough( order, TargetNode ) //BF
+            GotoOrFallThrough( order, TargetNode )
         );
     }
 
