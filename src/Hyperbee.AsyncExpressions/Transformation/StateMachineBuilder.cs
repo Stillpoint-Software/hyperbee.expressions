@@ -369,16 +369,13 @@ public class StateMachineBuilder<TResult>
         //     stateMachine.<>s__2 = stateMachine.__awaiter<0>.GetResult();
         //     goto ST_0001;
         //
+        //     ST_0004:
+        //     return<> = stateMachine.var2 + param1;
+        //
         //     ST_0003:
         //     stateMachine.__finalResult<> = returnValue;
         //     stateMachine.__state<> = -2;
         //     stateMachine.__builder<>.SetResult( stateMachine.__finalResult<> );
-        //     goto ST_FINAL;
-        //
-        //     ST_0004:
-        //     return<> = stateMachine.var2 + param1;
-        //     goto ST_0003;
-        //
         // }
         // catch ( Exception ex )
         // {
@@ -386,10 +383,8 @@ public class StateMachineBuilder<TResult>
         //     stateMachine.__builder<>.SetException( ex );
         //     return;
         // }
-        //
-        // ST_FINAL:
 
-        var returnLabel = Expression.Label( "ST_FINAL" );
+
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
 
         var bodyExpressions = new List<Expression>();
@@ -422,7 +417,6 @@ public class StateMachineBuilder<TResult>
             typeof( TResult ),
             stateMachineInstance,
             fieldMembers,
-            returnLabel,
             stateFieldExpression,
             builderFieldExpression,
             finalResultFieldExpression,
@@ -450,17 +444,14 @@ public class StateMachineBuilder<TResult>
                         nameof(AsyncTaskMethodBuilder<TResult>.SetException),
                         null,
                         exceptionParameter
-                    ),
-                    Expression.Return( returnLabel ) 
+                    )
                 )
             )
         );
 
-        // Combine the try-catch block with the return label and
         // return the lambda expression for MoveNext
 
-        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
-        return Expression.Lambda( moveNextBody, stateMachineInstance );
+        return Expression.Lambda( tryCatchBlock, stateMachineInstance );
     }
 
     private static List<NodeExpression> OrderNodes( List<NodeExpression> nodes )

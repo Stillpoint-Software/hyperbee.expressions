@@ -42,14 +42,14 @@ public class NodeExpression : Expression
         return _expression ??= ReduceTransition();
     }
 
-    private Expression ReduceTransition()
+    private BlockExpression ReduceTransition()
     {
         return Transition == null
             ? ReduceFinal()
             : Block( Expressions.Concat( [Transition.Reduce( Order, _resolverSource )] ) );
     }
 
-    private Expression ReduceFinal()
+    private BlockExpression ReduceFinal()
     {        
         return Block(
             Expressions[0],  // Hack: move goto to the top
@@ -64,8 +64,7 @@ public class NodeExpression : Expression
                 _resolverSource.StateMachineType != typeof( IVoidTaskResult )
                     ? _resolverSource.ResultField
                     : Constant( null, _resolverSource.StateMachineType ) // No result for IVoidTaskResult
-            ),
-            Goto( _resolverSource.ReturnLabel )
+            )
         );
     }
 }

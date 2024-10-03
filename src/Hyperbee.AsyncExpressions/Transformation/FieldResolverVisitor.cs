@@ -8,7 +8,6 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
 
     public Type StateMachineType { get; init; }
     public Expression StateMachine { get; init; }
-    public LabelTarget ReturnLabel { get; init; }
     public MemberExpression StateIdField { get; init; }
     public MemberExpression BuilderField { get; init; }
     public MemberExpression ResultField { get; init; }
@@ -18,7 +17,6 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
         Type stateMachineType,
         Expression stateMachine, 
         MemberExpression[] fields,
-        LabelTarget returnLabel, 
         MemberExpression stateIdField,
         MemberExpression builderField,
         MemberExpression resultField,
@@ -26,7 +24,6 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
     {
         StateMachineType = stateMachineType;
         StateMachine = stateMachine;
-        ReturnLabel = returnLabel;
         StateIdField = stateIdField;
         BuilderField = builderField;
         ResultField = resultField;
