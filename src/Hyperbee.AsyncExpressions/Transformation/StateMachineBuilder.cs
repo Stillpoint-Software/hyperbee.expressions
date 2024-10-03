@@ -489,7 +489,7 @@ public class StateMachineBuilder<TResult>
             ordered.Add( finalNode );
         }
 
-        // Update the order of each node
+        // Update the order property of each node
 
         for ( var index = 0; index < ordered.Count; index++ )
         {
