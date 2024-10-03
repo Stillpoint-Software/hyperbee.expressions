@@ -373,7 +373,7 @@ public class StateMachineBuilder<TResult>
         //     return<> = stateMachine.var2 + param1;
         //
         //     ST_0003:
-        //     stateMachine.__finalResult<> = returnValue;
+        //     stateMachine.__finalResult<> = return<>;
         //     stateMachine.__state<> = -2;
         //     stateMachine.__builder<>.SetResult( stateMachine.__finalResult<> );
         // }
@@ -383,7 +383,6 @@ public class StateMachineBuilder<TResult>
         //     stateMachine.__builder<>.SetException( ex );
         //     return;
         // }
-
 
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
 
@@ -421,7 +420,7 @@ public class StateMachineBuilder<TResult>
             finalResultFieldExpression,
             source.ReturnValue );
 
-        var nodes = OrderNodes( source.Nodes );
+        var nodes = OrderNodes( source.Nodes ); // optimize node ordering to reduce goto calls
 
         bodyExpressions.AddRange( nodes.Select( fieldResolverVisitor.Visit ) );
 
