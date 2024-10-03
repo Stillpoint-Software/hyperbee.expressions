@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
@@ -10,9 +11,9 @@ public class ConditionalTransition : Transition
 
     internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
-        return Expression.IfThenElse(
+        return IfThenElse(
             Test,
-            Expression.Goto( IfTrue.NodeLabel ),
+            Goto( IfTrue.NodeLabel ),
             //Goto( IfFalse.NodeLabel )
             GotoOrFallThrough( order, IfFalse ) //BF
         );

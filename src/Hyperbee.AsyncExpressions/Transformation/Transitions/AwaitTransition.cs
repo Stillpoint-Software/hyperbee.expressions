@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
@@ -13,23 +14,23 @@ public class AwaitTransition : Transition
 
     internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
-        return Expression.Block(
-            Expression.Assign(
+        return Block(
+            Assign(
                 AwaiterVariable,
-                Expression.Call( Target, Target.Type.GetMethod( "GetAwaiter" )! )
+                Call( Target, Target.Type.GetMethod( "GetAwaiter" )! )
             ),
-            Expression.IfThen(
-                Expression.IsFalse( Expression.Property( AwaiterVariable, "IsCompleted" ) ),
-                Expression.Block(
-                    Expression.Assign( resolverSource.StateIdField, Expression.Constant( StateId ) ),
-                    Expression.Call(
+            IfThen(
+                IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
+                Block(
+                    Assign( resolverSource.StateIdField, Constant( StateId ) ),
+                    Call(
                         resolverSource.BuilderField,
                         "AwaitUnsafeOnCompleted",
                         [AwaiterVariable.Type, typeof( IAsyncStateMachine )],
                         AwaiterVariable,
                         resolverSource.StateMachine
                     ),
-                    Expression.Return( resolverSource.ReturnLabel )
+                    Return( resolverSource.ReturnLabel )
                 )
             ),
             //Goto( CompletionNode.NodeLabel )

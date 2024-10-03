@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
@@ -14,10 +15,10 @@ public class TryCatchTransition : Transition
             .Select( catchBlock => catchBlock.Reduce() );
 
         var finallyBody = FinallyNode != null
-            ? Expression.Goto( FinallyNode.NodeLabel )
+            ? Goto( FinallyNode.NodeLabel )
             : null;
 
-        return Expression.TryCatchFinally(
+        return TryCatchFinally(
             //Expression.Goto( TryNode.NodeLabel )
             GotoOrFallThrough( order, TryNode ), //BF
             finallyBody,
@@ -34,6 +35,6 @@ public class TryCatchTransition : Transition
 
     private record CatchBlockDefinition( Type Test, NodeExpression Body )
     {
-        public CatchBlock Reduce() => Expression.Catch( Test, Expression.Goto( Body.NodeLabel ) );
+        public CatchBlock Reduce() => Catch( Test, Goto( Body.NodeLabel ) );
     }
 }

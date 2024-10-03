@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
@@ -15,7 +16,7 @@ public abstract class Transition
         return order + 1 == node.Order
             ? allowNull
                 ? null
-                : Expression.Empty()
-            : Expression.Goto( node.NodeLabel );
+                : Empty()
+            : Goto( node.NodeLabel );
     }
 }
