@@ -6,7 +6,6 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
 {
     private readonly Dictionary<string, MemberExpression> _mappingCache;
 
-    public Type StateMachineType { get; init; }
     public Expression StateMachine { get; init; }
     public MemberExpression StateIdField { get; init; }
     public MemberExpression BuilderField { get; init; }
@@ -22,7 +21,6 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
         MemberExpression resultField,
         ParameterExpression returnValue )
     {
-        StateMachineType = stateMachineType;
         StateMachine = stateMachine;
         StateIdField = stateIdField;
         BuilderField = builderField;
