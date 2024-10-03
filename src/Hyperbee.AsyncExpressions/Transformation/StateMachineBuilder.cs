@@ -488,7 +488,7 @@ public class StateMachineBuilder<TResult>
 
         for ( var order = 0; order < ordered.Count; order++ )
         {
-            ordered[order].Order = order;
+            ordered[order].MachineOrder = order;
         }
 
         return ordered;

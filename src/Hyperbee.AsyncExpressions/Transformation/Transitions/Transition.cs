@@ -13,7 +13,7 @@ public abstract class Transition
 
     protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )
     {
-        return order + 1 == node.Order
+        return order + 1 == node.MachineOrder
             ? allowNull
                 ? null
                 : Empty()

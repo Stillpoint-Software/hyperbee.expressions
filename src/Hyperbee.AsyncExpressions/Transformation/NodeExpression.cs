@@ -8,7 +8,7 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 public class NodeExpression : Expression
 {
     public int StateId { get; }
-    internal int Order { get; set; }
+    internal int MachineOrder { get; set; }
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; } = new (8);
@@ -20,8 +20,9 @@ public class NodeExpression : Expression
     public NodeExpression( int stateId )
     {
         StateId = stateId;
-        NodeLabel = Expression.Label( $"ST_{StateId:0000}" );
-        Expressions.Add( Expression.Label( NodeLabel ) );
+
+        NodeLabel = Label( $"ST_{StateId:0000}" );
+        Expressions.Add( Label( NodeLabel ) );
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
@@ -46,7 +47,7 @@ public class NodeExpression : Expression
     {
         return Transition == null
             ? ReduceFinal()
-            : Block( Expressions.Concat( [Transition.Reduce( Order, _resolverSource )] ) );
+            : Block( Expressions.Concat( [Transition.Reduce( MachineOrder, _resolverSource )] ) );
     }
 
     private BlockExpression ReduceFinal()
