@@ -14,10 +14,7 @@ public class ConditionalTransition : Transition
             Test,
             Expression.Goto( IfTrue.NodeLabel ),
             //Goto( IfFalse.NodeLabel )
-            order + 1 == IfFalse.Order //BF ugly but works - we can clean up :)
-                ? Expression.Empty()
-                : Expression.Goto( IfFalse.NodeLabel )
-
+            GotoOrFallThrough( order, IfFalse ) //BF
         );
     }
 

@@ -33,9 +33,7 @@ public class AwaitTransition : Transition
                 )
             ),
             //Goto( CompletionNode.NodeLabel )
-            order + 1 == CompletionNode.Order //BF ugly but works - we can clean up :)
-                ? Expression.Empty()
-                : Expression.Goto( CompletionNode.NodeLabel )
+            GotoOrFallThrough( order, CompletionNode ) //BF
         );
     }
 

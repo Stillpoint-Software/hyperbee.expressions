@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
@@ -11,12 +12,13 @@ public class AwaitResultTransition : Transition
     internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
         Expression getResult = ResultVariable == null
-            ? Expression.Call( AwaiterVariable, "GetResult", Type.EmptyTypes )
-            : Expression.Assign( ResultVariable, Expression.Call( AwaiterVariable, "GetResult", Type.EmptyTypes ) );
+            ? Call( AwaiterVariable, "GetResult", Type.EmptyTypes )
+            : Assign( ResultVariable, Call( AwaiterVariable, "GetResult", Type.EmptyTypes ) );
 
-        return Expression.Block(
+        return Block(
             getResult,
-            Expression.Goto( TargetNode.NodeLabel )
+            //Expression.Goto( TargetNode.NodeLabel )
+            GotoOrFallThrough( order, TargetNode ) //BF
         );
     }
 

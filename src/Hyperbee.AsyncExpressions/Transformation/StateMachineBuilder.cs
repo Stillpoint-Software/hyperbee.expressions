@@ -428,7 +428,7 @@ public class StateMachineBuilder<TResult>
             finalResultFieldExpression,
             source.ReturnValue );
 
-        var nodes = OptimizeNodeOrder( source.Nodes );
+        var nodes = OrderNodes( source.Nodes );
 
         bodyExpressions.AddRange( nodes.Select( fieldResolverVisitor.Visit ) );
 
@@ -463,9 +463,13 @@ public class StateMachineBuilder<TResult>
         return Expression.Lambda( moveNextBody, stateMachineInstance );
     }
 
-
-    private static List<NodeExpression> OptimizeNodeOrder( List<NodeExpression> nodes )
+    private static List<NodeExpression> OrderNodes( List<NodeExpression> nodes )
     {
+        // Optimize node order for better performance by performing a greedy depth-first
+        // search to find the best order of execution for each node.
+        //
+        // The first node is always the start node, and the last node is always the final node.
+
         var ordered = new List<NodeExpression>( nodes.Count );
         var visited = new HashSet<NodeExpression>( nodes.Count );
 
@@ -491,9 +495,9 @@ public class StateMachineBuilder<TResult>
 
         // Update the order of each node
 
-        for ( var index = 0; index < ordered.Count; index++ )
+        for ( var order = 0; order < ordered.Count; order++ )
         {
-            ordered[index].Order = index;
+            ordered[order].Order = order;
         }
 
         return ordered;
@@ -506,7 +510,6 @@ public class StateMachineBuilder<TResult>
                 node = node.Transition?.LogicalNextNode;
             }
         }
-
     }
 }
 
