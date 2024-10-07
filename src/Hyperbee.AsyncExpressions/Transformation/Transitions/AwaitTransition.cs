@@ -33,8 +33,7 @@ public class AwaitTransition : Transition
                     Return( resolverSource.ReturnLabel )
                 )
             ),
-            //Goto( CompletionNode.NodeLabel )
-            GotoOrFallThrough( order, CompletionNode ) //BF
+            GotoOrFallThrough( order, CompletionNode )
         );
     }
 

@@ -19,8 +19,7 @@ public class TryCatchTransition : Transition
             : null;
 
         return TryCatchFinally(
-            //Expression.Goto( TryNode.NodeLabel )
-            GotoOrFallThrough( order, TryNode ), //BF
+            GotoOrFallThrough( order, TryNode ),
             finallyBody,
             [.. catches]
         );

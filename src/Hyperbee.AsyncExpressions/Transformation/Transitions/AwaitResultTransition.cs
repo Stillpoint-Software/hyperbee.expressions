@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
@@ -21,9 +21,6 @@ public class AwaitResultTransition : Transition
 
         return Block(
             getResult,
-            // (expression.ResultVariable != null) 
-            //     ? Assign( expression.ResultVariable, ResultVariable ) 
-            //     : Empty(),
             GotoOrFallThrough( order, TargetNode )
         );
     }

@@ -387,7 +387,7 @@ public class StateMachineBuilder<TResult>
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
         var returnLabel = Expression.Label( "ST_FINAL" );
 
-        var bodyExpressions = new List<Expression>();
+        var bodyExpressions = new List<Expression>( 16 ); // preallocate slots for expressions
 
         var stateFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
         var builderFieldExpression = Expression.Field( stateMachineInstance, FieldName.Builder );
@@ -412,7 +412,10 @@ public class StateMachineBuilder<TResult>
 
         bodyExpressions.Add( jumpTableExpression );
 
-        // Iterate through each state block
+        // Create the states
+
+        var nodes = OrderNodes( source.Nodes ); // optimize node ordering to reduce goto calls
+
         var fieldResolverVisitor = new FieldResolverVisitor(
             typeof( TResult ),
             stateMachineInstance,
@@ -422,8 +425,6 @@ public class StateMachineBuilder<TResult>
             builderFieldExpression,
             finalResultFieldExpression,
             source.ReturnValue );
-
-        var nodes = OrderNodes( source.Nodes ); // optimize node ordering to reduce goto calls
 
         bodyExpressions.AddRange( nodes.Select( fieldResolverVisitor.Visit ) );
 
@@ -451,6 +452,7 @@ public class StateMachineBuilder<TResult>
         );
 
         // return the lambda expression for MoveNext
+
         var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
         return Expression.Lambda( moveNextBody, stateMachineInstance );
     }
@@ -459,6 +461,8 @@ public class StateMachineBuilder<TResult>
     {
         // Optimize node order for better performance by performing a greedy depth-first
         // search to find the best order of execution for each node.
+        //
+        // Doing this will allow us to reduce the number of goto calls in the final machine.
         //
         // The first node is always the start node, and the last node is always the final node.
 
@@ -485,11 +489,11 @@ public class StateMachineBuilder<TResult>
             ordered.Add( finalNode );
         }
 
-        // Update the order of each node
+        // Update the order property of each node
 
-        for ( var order = 0; order < ordered.Count; order++ )
+        for ( var index = 0; index < ordered.Count; index++ )
         {
-            ordered[order].MachineOrder = order;
+            ordered[index].MachineOrder = index;
         }
 
         return ordered;
@@ -540,6 +544,6 @@ public static class StateMachineBuilder
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, createRunner );
 
-        return stateMachineExpression;
+        return stateMachineExpression; // the-best expression breakpoint ever
     }
 }

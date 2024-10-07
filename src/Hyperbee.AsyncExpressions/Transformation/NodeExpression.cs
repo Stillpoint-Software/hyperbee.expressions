@@ -75,6 +75,8 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceFinalNode()
     {
+        var (stateMachineType, _, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
+
         var blockBody = Expressions.Count switch
         {
             > 0 when ResultValue == null => Block( Expressions ),
@@ -83,18 +85,18 @@ public class NodeExpression : Expression
         };
 
         return Block(
-            Label( NodeLabel ),  
-            _resolverSource.ReturnValue != null 
-                ? Assign( _resolverSource.ResultField, _resolverSource.ReturnValue ) 
-                : Assign( _resolverSource.ResultField, blockBody ),
-            Assign( _resolverSource.StateIdField, Constant( -2 ) ),
+            Label( NodeLabel ),
+            returnValue != null
+                ? Assign( resultField, returnValue )
+                : Assign( resultField, blockBody ),
+            Assign( stateIdField, Constant( -2 ) ),
             Call(
-                _resolverSource.BuilderField,
+                builderField,
                 "SetResult",
                 null,
-                _resolverSource.StateMachineType != typeof( IVoidTaskResult )
-                    ? _resolverSource.ResultField
-                    : Constant( null, _resolverSource.StateMachineType ) // No result for IVoidTaskResult
+                stateMachineType != typeof(IVoidTaskResult)
+                    ? resultField
+                    : Constant( null, stateMachineType ) // No result for IVoidTaskResult
             )
         );
     }
