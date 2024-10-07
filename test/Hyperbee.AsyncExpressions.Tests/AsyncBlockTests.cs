@@ -85,7 +85,7 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    public async Task TestAsyncBlock_SimpleBlockSplitting()
+    public async Task TestAsyncBlock_SimpleBlockAwait()
     {
         // Arrange
         var expr1 = Expression.Constant( 1 );
