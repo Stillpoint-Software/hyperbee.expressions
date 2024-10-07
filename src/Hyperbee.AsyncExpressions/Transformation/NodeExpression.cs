@@ -45,44 +45,36 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceTransition()
     {
-        //Check if the last expression is a Goto and skip the transition if so
-        if ( Expressions.Count > 1 && Expressions[^1] is GotoExpression )
-            return Block( Expressions );
+        return Transition != null
+            ? ReduceBlock()
+            : ReduceFinalBlock();
+    }
 
-        if ( Transition == null )
-        {
-            return ReduceFinalNode();
-        }
-
+    private BlockExpression ReduceBlock()
+    {
         if ( ResultValue != null && ResultVariable != null )
-        {
             Expressions.Add( Assign( ResultVariable, ResultValue ) );
-            Expressions.Add( Transition.Reduce( MachineOrder, this, _resolverSource ) );
-        }
-        else if ( ResultVariable != null && ResultVariable.Type == Type )
-        {
-            Expressions.Add( Assign( ResultVariable, Transition.Reduce( MachineOrder, this, _resolverSource ) ) );
-        }
-        else
-        {
-            Expressions.Add( Transition.Reduce( MachineOrder, this, _resolverSource ) );
-        }
 
+        Expressions.Add( Transition.Reduce( MachineOrder, this, _resolverSource ) );
+
+        // Add the label to the beginning of the block
         Expressions.Insert( 0, Label( NodeLabel ) );
 
         return Block( Expressions );
     }
 
-    private BlockExpression ReduceFinalNode()
+    private BlockExpression ReduceFinalBlock()
     {
         var (stateMachineType, _, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
 
-        var blockBody = Expressions.Count switch
-        {
-            > 0 when ResultValue == null => Block( Expressions ),
-            > 0 when ResultValue != null => Block( Expressions[1..].Concat( [ResultValue] ) ),
-            _ => ResultValue ?? Empty()
-        };
+        Expression blockBody;
+
+        if ( Expressions.Count > 0 )
+            blockBody = Block( Expressions );
+        else if ( ResultValue != null )
+            blockBody = Block( ResultValue );
+        else
+            blockBody = Empty();
 
         return Block(
             Label( NodeLabel ),
