@@ -71,6 +71,11 @@ transitions efficiently between states.
 The `StateMachineBuilder` optimizes state transitions by reordering nodes and reducing unnecessary transitions. This ensures that 
 the state machine runs efficiently, reducing the performance impact of transitioning between states.
 
+The optimization process analyzing the default 'fallthrough' state transitions using a DFS search, and reorders the physical state
+order accordingly. This will arrange the greatest possible number of states, such that their transition targets are ordered 
+immediately after them. In these cases we can eliminate the goto instructions, and allow code execution to 'fall through' to the 
+next state (thereby saving unnecessary instructions).
+
 ### Solution
 By optimizing state transitions, the `StateMachineBuilder` ensures that the machine executes efficiently. This reduces the overhead 
 associated with state transitions, leading to better performance.
@@ -87,7 +92,9 @@ managed correctly across different states.
 
 ### Discussion
 The `StateMachineBuilder` uses the `AsyncTaskMethodBuilder` to manage task execution within the state machine. This builder starts the 
-state machine, manages its state, and ensures that the result is returned once the machine finishes executing.
+state machine, manages its state, and ensures that the result is returned once the machine finishes executing. This builder is the 
+same builder used by standard async methods in C#, allowing for consistent task management, and correct handling of asynchronous
+operations and capturing of the execution context.
 
 ### Solution
 By using the `AsyncTaskMethodBuilder`, the `StateMachineBuilder` manages task execution across states. This ensures that asynchronous 
