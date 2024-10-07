@@ -11,7 +11,7 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)state-machine\overview.md" />
     <None Include="$(MSBuildThisFileDirectory)state-machine\state-machine-builder.md" />
-    <None Include="$(MSBuildThisFileDirectory)state-machine\expression-tree-transformation.md" />
+    <None Include="$(MSBuildThisFileDirectory)state-machine\lowering-visitor.md" />
     <None Include="$(MSBuildThisFileDirectory)state-machine\state-machine.md" />
     <None Include="$(MSBuildThisFileDirectory)index.md" />
     <None Include="$(MSBuildThisFileDirectory).todo.md" />
