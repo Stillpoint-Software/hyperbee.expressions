@@ -65,7 +65,7 @@ Every branching construct must eventually rejoin the main flow of execution. The
 reunite, ensuring that the state machine continues to execute correctly.
 
 If you think about each unique branch segment (e.g. the 'if' or 'else' path in a conditional expression) as a single linked list of states, 
-the branch tail node (represented internally by `_tailIndex` in the `GotoTransformerVisitor.StateContext`), is the last node in the conditional 
+the branch tail node (represented internally by `_tailIndex` in the `LoweringVisitor.StateContext`), is the last node in the conditional 
 path. This tail node must be re-joined to the main execution path; the place where the 'if' and 'else' branches again begin to execute the
 same code again. This re-convergance is non-trivial, as branching structures are often nested, and all of the potential paths in a nesting
 structure must be correctly re-joined.
@@ -98,25 +98,25 @@ Let's rereview the `VisitConditional` method to see how branching is managed:
 ```csharp
 protected override Expression VisitConditional(ConditionalExpression node) 
 { 
-    var updatedTest = VisitInternal(node.Test);
-    var joinIndex = _states.EnterBranchState(out var sourceIndex, out var nodes);
+    var updatedTest = VisitInternal( node.Test, captureVisit: false );
+
+    var joinState = _states.EnterBranchState( out var sourceState );
+
+    var resultVariable = GetResultVariable( node, sourceState.StateId );
 
     var conditionalTransition = new ConditionalTransition
     {
-        IfTrue = VisitBranch(node.IfTrue, joinIndex),
-        IfFalse = (node.IfFalse is not DefaultExpression)
-            ? VisitBranch(node.IfFalse, joinIndex)
-            : nodes[joinIndex]
+        Test = updatedTest,
+        IfTrue = VisitBranch( node.IfTrue, joinState, resultVariable ),
+        IfFalse = node.IfFalse is not DefaultExpression
+            ? VisitBranch( node.IfFalse, joinState, resultVariable )
+            : joinState,
     };
 
-    var gotoConditional = Expression.IfThenElse(
-        updatedTest,
-        Expression.Goto(conditionalTransition.IfTrue.Label),
-        Expression.Goto(conditionalTransition.IfFalse.Label));
+    sourceState.ResultVariable = resultVariable;
+    joinState.ResultValue = resultVariable;
 
-    nodes[sourceIndex].Expressions.Add(gotoConditional);
-
-    _states.ExitBranchState(sourceIndex, conditionalTransition);
+    _states.ExitBranchState( sourceState, conditionalTransition );
 
     return node;
 }
@@ -137,7 +137,11 @@ protected override Expression VisitConditional(ConditionalExpression node)
    - `VisitBranch` creates new branch states and updates `_tailIndex` to point to these new states.
    - The branch expressions are individually visited, and any nested branches will further update `_tailIndex`.
 
-4. **Exiting the Conditional Expression**:
+4. **Expression Assignment**:
+   - The result variable for the conditional expression is obtained.
+   - The result variable is set for the source state and join state.
+   
+5. **Exiting the Conditional Expression**:
    - After visiting all branches, `ExitBranchState` is called.
    - This method pops the last join index from the `_joinIndexes` stack and sets `_tailIndex` to this value.
    - The transition for the source state is set, and the traversal continues.
