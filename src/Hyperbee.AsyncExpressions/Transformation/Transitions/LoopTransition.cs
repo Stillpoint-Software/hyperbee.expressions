@@ -6,7 +6,7 @@ public class LoopTransition : Transition
 {
     public NodeExpression BodyNode { get; set; }
 
-    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         return Expression.Empty();
     }

@@ -9,7 +9,7 @@ public class TryCatchTransition : Transition
     public NodeExpression TryNode { get; set; }
     public NodeExpression FinallyNode { get; set; }
 
-    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         var catches = _catchBlocks
             .Select( catchBlock => catchBlock.Reduce() );

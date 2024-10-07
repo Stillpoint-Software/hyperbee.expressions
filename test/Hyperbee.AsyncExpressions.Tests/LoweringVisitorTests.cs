@@ -93,12 +93,12 @@ public class LoweringVisitorTests
             AssertTransition.AssertConditional( ifThenTrue.Transition, "ST_0004", "ST_0005" );
         Assert.IsNull( ifThenFalse.Transition ); // No else block
 
-        Assert.AreEqual( 2, ifThenElseTrue.Expressions.Count );
+        Assert.AreEqual( 1, ifThenElseTrue.Expressions.Count );
         var joinNode = AssertTransition.AssertGoto( ifThenElseTrue.Transition, "ST_0003" );
         var finalNodes = AssertTransition.AssertGoto( joinNode.Transition, "ST_0001" );
         AssertTransition.AssertFinal( finalNodes );
 
-        Assert.AreEqual( 3, ifThenElseFalse.Expressions.Count );
+        Assert.AreEqual( 2, ifThenElseFalse.Expressions.Count );
         joinNode = AssertTransition.AssertGoto( ifThenElseFalse.Transition, "ST_0003" );
         finalNodes = AssertTransition.AssertGoto( joinNode.Transition, "ST_0001" );
         AssertTransition.AssertFinal( finalNodes );

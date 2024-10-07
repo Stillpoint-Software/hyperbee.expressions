@@ -9,7 +9,7 @@ public class AwaitResultTransition : Transition
     public ParameterExpression ResultVariable { get; set; }
     public NodeExpression TargetNode { get; set; }
 
-    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         if ( ResultVariable == null )
             return Block(
@@ -21,6 +21,9 @@ public class AwaitResultTransition : Transition
 
         return Block(
             getResult,
+            // (expression.ResultVariable != null) 
+            //     ? Assign( expression.ResultVariable, ResultVariable ) 
+            //     : Empty(),
             GotoOrFallThrough( order, TargetNode )
         );
     }

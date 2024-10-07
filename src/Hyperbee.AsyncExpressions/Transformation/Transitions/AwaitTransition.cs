@@ -12,7 +12,7 @@ public class AwaitTransition : Transition
     public ParameterExpression AwaiterVariable { get; set; }
     public NodeExpression CompletionNode { get; set; }
 
-    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         return Block(
             Assign(

@@ -6,7 +6,7 @@ public class GotoTransition : Transition
 {
     public NodeExpression TargetNode { get; set; }
 
-    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         return GotoOrFallThrough( order, TargetNode );
     }

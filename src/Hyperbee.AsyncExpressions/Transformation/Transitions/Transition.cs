@@ -12,7 +12,7 @@ public abstract class Transition
     // internal Expression ReturnValue { get; set; }
     //
 
-    internal abstract Expression Reduce( int order, IFieldResolverSource resolverSource );
+    internal abstract Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource );
     internal abstract NodeExpression FallThroughNode { get; } // this node is used to optimize state order
 
     protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )

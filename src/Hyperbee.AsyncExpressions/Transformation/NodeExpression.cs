@@ -22,9 +22,7 @@ public class NodeExpression : Expression
     public NodeExpression( int stateId )
     {
         StateId = stateId;
-
         NodeLabel = Label( $"ST_{StateId:0000}" );
-        Expressions.Add( Label( NodeLabel ) );
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
@@ -48,7 +46,7 @@ public class NodeExpression : Expression
     private BlockExpression ReduceTransition()
     {
         //Check if the last expression is a Goto and skip the transition if so
-        if ( Expressions.Last() is GotoExpression )
+        if ( Expressions.Count > 1 && Expressions[^1] is GotoExpression )
             return Block( Expressions );
 
         if ( Transition == null )
@@ -56,49 +54,40 @@ public class NodeExpression : Expression
             return ReduceFinalNode();
         }
 
-        // Temporary hack to handle final node
-        
         if ( ResultValue != null && ResultVariable != null )
+        {
             Expressions.Add( Assign( ResultVariable, ResultValue ) );
+            Expressions.Add( Transition.Reduce( MachineOrder, this, _resolverSource ) );
+        }
+        else if ( ResultVariable != null && ResultVariable.Type == Type )
+        {
+            Expressions.Add( Assign( ResultVariable, Transition.Reduce( MachineOrder, this, _resolverSource ) ) );
+        }
+        else
+        {
+            Expressions.Add( Transition.Reduce( MachineOrder, this, _resolverSource ) );
+        }
 
-        Expressions.Add( Transition.Reduce( MachineOrder, _resolverSource ) );
-
+        Expressions.Insert( 0, Label( NodeLabel ) );
 
         return Block( Expressions );
-        //
-        // return Transition == null
-        //     ? ReduceFinalNode()
-        //     : Block( 
-        //         Expressions.Concat( 
-        //             [Transition.Reduce( MachineOrder, _resolverSource )] ) );
     }
-
-
-    public static void WriteLine( string value )
-    {
-        Console.WriteLine( value );
-    }
-
 
     private BlockExpression ReduceFinalNode()
     {
-        var methodInfo = typeof( NodeExpression ).GetMethod( nameof( WriteLine ) );
-        var log = Call( methodInfo, Constant( "Before SetResult" ) );
-
-
-
-        var blockLabel = Expressions[0]; // Hack: move goto to the top
-        Expression blockBody = (Expressions.Count > 1)
-            ? Block(Expressions[1..].Concat( [ResultVariable] ))
-            : ResultVariable;
+        var blockBody = Expressions.Count switch
+        {
+            > 0 when ResultValue == null => Block( Expressions ),
+            > 0 when ResultValue != null => Block( Expressions[1..].Concat( [ResultValue] ) ),
+            _ => ResultValue ?? Empty()
+        };
 
         return Block(
-            blockLabel,  
+            Label( NodeLabel ),  
             _resolverSource.ReturnValue != null 
                 ? Assign( _resolverSource.ResultField, _resolverSource.ReturnValue ) 
                 : Assign( _resolverSource.ResultField, blockBody ),
             Assign( _resolverSource.StateIdField, Constant( -2 ) ),
-            log,
             Call(
                 _resolverSource.BuilderField,
                 "SetResult",

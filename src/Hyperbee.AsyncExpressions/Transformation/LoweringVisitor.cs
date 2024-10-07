@@ -10,7 +10,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private ParameterExpression _returnValue;
     private ParameterExpression[] _definedVariables;
-    private readonly HashSet<ParameterExpression> _variables = new(InitialCapacity); 
+    private readonly HashSet<ParameterExpression> _variables = new(InitialCapacity);
     private int _awaitCount;
 
     private readonly StateContext _states = new(InitialCapacity);
@@ -35,13 +35,13 @@ internal class LoweringVisitor : ExpressionVisitor
             VisitInternal( expr );
         }
 
-        return new LoweringResult 
-        { 
-            Nodes = _states.GetNodes(), 
-            JumpCases = _states.JumpCases, 
-            ReturnValue = _returnValue, 
+        return new LoweringResult
+        {
+            Nodes = _states.GetNodes(),
+            JumpCases = _states.JumpCases,
+            ReturnValue = _returnValue,
             AwaitCount = _awaitCount,
-            Variables =  _variables
+            Variables = _variables
         };
     }
 
@@ -50,7 +50,8 @@ internal class LoweringVisitor : ExpressionVisitor
         return Transform( [], expressions );
     }
 
-    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState, ParameterExpression resultVariable = null, Action<NodeExpression> init = null, bool captureVisit = true )
+    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState,
+        ParameterExpression resultVariable = null, Action<NodeExpression> init = null, bool captureVisit = true )
     {
         // Create a new state for the branch
         var branchState = _states.AddBranchState();
@@ -61,33 +62,14 @@ internal class LoweringVisitor : ExpressionVisitor
 
         // Set a default Transition if the branch tail didn't join
         var tailState = _states.GetBranchTailState();
-
-
-        /** ?? Assign( ReturnVariable, ReturnResult )
-         *
-         * ST_0003 => __result<0> = __result<2>
-         * ST_0006 => __result<0> = __result<5>
-         *
-         * ST_0001 => ?? = __result<0>
-         */
-        //joinState.ReturnVariable = returnVariable;  
-        joinState.ResultValue = resultVariable;
-
-        // THIS IS RIGHT!
-        //  - (ST_0004 return _result<2>)
-        //  - (ST_0007 return _result<5>)
-        //tailState.ReturnResult = returnVariable;
-
         tailState.ResultVariable = resultVariable;
+
         if ( tailState.Transition != null )
         {
             return branchState;
         }
 
-        tailState.Transition = new GotoTransition
-        {
-            TargetNode = joinState
-        };
+        tailState.Transition = new GotoTransition { TargetNode = joinState };
 
         return branchState;
     }
@@ -98,7 +80,7 @@ internal class LoweringVisitor : ExpressionVisitor
         {
             VisitInternal( expression );
         }
-    
+
         return node;
     }
 
@@ -108,7 +90,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var joinState = _states.EnterBranchState( out var sourceState );
 
-        var resultVariable = GetResultVariable( node, sourceState );
+        var resultVariable = GetResultVariable( node, sourceState.StateId );
 
         var conditionalTransition = new ConditionalTransition
         {
@@ -119,21 +101,13 @@ internal class LoweringVisitor : ExpressionVisitor
                 : joinState,
         };
 
-        /**
-         * ST_0003 => __result<0> = __result<2>
-         * ST_0006 => __result<0> = __result<5>
-         *
-         * ST_0001 => ?? = __result<0>
-         */
-
-        sourceState.ResultValue = resultVariable; // what I return?
-        joinState.ResultVariable = resultVariable; // what the merge needs to set?
+        sourceState.ResultVariable = resultVariable;
+        joinState.ResultValue = resultVariable;
 
         _states.ExitBranchState( sourceState, conditionalTransition );
 
-        return sourceState; //node;
+        return node;
     }
-
 
     protected override Expression VisitSwitch( SwitchExpression node )
     {
@@ -165,10 +139,7 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var joinState = _states.EnterBranchState( out var sourceState );
 
-        var tryCatchTransition = new TryCatchTransition
-        {
-            TryNode = VisitBranch( node.Body, joinState )
-        };
+        var tryCatchTransition = new TryCatchTransition { TryNode = VisitBranch( node.Body, joinState ) };
 
         foreach ( var catchBlock in node.Handlers )
         {
@@ -219,39 +190,11 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected Expression VisitAwait( AwaitExpression node )
     {
-
         var joinState = _states.EnterBranchState( out var sourceState );
 
-        var resultVariable = GetResultVariable( node, sourceState );
+        var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        //-- BEGIN VisitBranch COPY
-        //var completionState = VisitBranch( node.Target, joinState, resultVariable, captureVisit: false );
-
-        // Create a new state for the branch
-        var completionState = _states.AddBranchState();
-
-        VisitInternal( node.Target, captureVisit: false );
-
-        /**
-         * ST_0003 => __result<0> = __result<2>
-         * ST_0006 => __result<0> = __result<5>
-         *
-         * ST_0001 => ?? = __result<0>
-         */
-
-        // Set a default Transition if the branch tail didn't join
-        var tailState = _states.GetBranchTailState();
-        //tailState.ResultValue = resultVariable; // Should be ReturnResult?
-        joinState.ResultValue = resultVariable;
-        if ( tailState.Transition == null )
-        {
-            // condition should be ReturnVariable?
-            // await should be ReturnResult?
-            tailState.Transition = new GotoTransition { TargetNode = joinState };
-        }
-
-        //--- END VisitBranch COPY
-
+        var completionState = VisitBranch( node.Target, joinState, resultVariable, captureVisit: false );
 
         _awaitCount++;
 
@@ -260,11 +203,10 @@ internal class LoweringVisitor : ExpressionVisitor
 
         completionState.Transition = new AwaitResultTransition
         {
-            TargetNode = joinState,
-            AwaiterVariable = awaiterVariable,
+            TargetNode = joinState, 
+            AwaiterVariable = awaiterVariable, 
             ResultVariable = resultVariable
         };
-        completionState.ResultValue = resultVariable;
 
         _states.JumpCases.Add( completionState.NodeLabel, sourceState.StateId );
 
@@ -276,15 +218,12 @@ internal class LoweringVisitor : ExpressionVisitor
             CompletionNode = completionState
         };
 
+        sourceState.ResultVariable = resultVariable;
+        joinState.ResultValue = resultVariable;
+
         _states.ExitBranchState( sourceState, awaitTransition );
 
-
-        // if ( resultVariable != null )
-        // {
-        //     joinState.Expressions.Add( resultVariable );
-        // }
-
-        return completionState; //( Expression) resultVariable ?? Expression.Empty();
+        return (Expression) resultVariable ?? Expression.Empty();
 
         // Helper method to get the awaiter type
         Type GetAwaiterType() => node.Type == typeof(void)
@@ -353,12 +292,13 @@ internal class LoweringVisitor : ExpressionVisitor
         return result;
     }
 
-    private ParameterExpression GetResultVariable( Expression node, NodeExpression sourceState )
+    private ParameterExpression GetResultVariable( Expression node, int stateId )
     {
-        if ( node.Type == typeof( void ) )
+        if ( node.Type == typeof(void) )
             return null;
 
-        ParameterExpression returnVariable = Expression.Parameter( node.Type, VariableName.Result( sourceState.StateId ) );
+        ParameterExpression returnVariable =
+            Expression.Parameter( node.Type, VariableName.Result( stateId ) );
         _variables.Add( returnVariable );
 
         return returnVariable;
@@ -380,7 +320,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
             JumpCases = new Dictionary<LabelTarget, int>( initialCapacity );
         }
-        
+
         public List<NodeExpression> GetNodes() => _nodes;
 
         public NodeExpression GetBranchTailState() => _nodes[_tailIndex];

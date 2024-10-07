@@ -9,7 +9,7 @@ public class ConditionalTransition : Transition
     public NodeExpression IfTrue { get; set; }
     public NodeExpression IfFalse { get; set; }
 
-    internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         return IfThenElse(
             Test,
