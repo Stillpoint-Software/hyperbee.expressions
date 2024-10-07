@@ -441,26 +441,74 @@ public class AsyncBlockTests
         Assert.AreEqual( 5, result );
     }
 
-    // [TestMethod]
-    // public async Task TestAsyncBlock_ContinueOnDelay()
-    // {
-    //     // Arrange
-    //     var areEqualAsyncMethodInfo = GetMethod( nameof(AreEqualAsync) );
-    //
-    //     var awaitExpr = AsyncExpression.Await(
-    //         Expression.Call(
-    //             areEqualAsyncMethodInfo,
-    //             Expression.Constant( 1 ),
-    //             Expression.Constant( 1 ) ) );
-    //
-    //     var asyncBlock = AsyncExpression.BlockAsync( awaitExpr );
-    //
-    //     // Act
-    //     var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
-    //     var compiledLambda = lambda.Compile();
-    //     var result = await compiledLambda();
-    //
-    //     // Assert
-    //     Assert.IsTrue( result );
-    // }
+    [TestMethod]
+    public async Task TestAsyncBlock_NestedConditional()
+    {
+        // Arrange
+        var ifTrue = Expression.Condition(
+            Expression.Constant( true ),
+            AsyncExpression.Await( Expression.Constant( Task.FromResult( 1 ) ) ),
+            AsyncExpression.Await( Expression.Constant( Task.FromResult( 2 ) ) ) );
+
+        var ifFalse = Expression.Condition( Expression.Constant( false ),
+            AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ) ),
+            AsyncExpression.Await( Expression.Constant( Task.FromResult( 4 ) ) ) );
+
+        var block = AsyncExpression.BlockAsync(
+            Expression.Condition( Expression.Constant( true ),
+                ifTrue,
+                ifFalse
+            ) );
+
+        // Act
+        var lambda = Expression.Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 1, result );
+    }
+
+    [TestMethod]
+    public async Task TestAsyncBlock_NestedConditionalSimple()
+    {
+        // Arrange
+        var block = AsyncExpression.BlockAsync(
+            Expression.Condition( Expression.Constant( true ),
+                AsyncExpression.Await( Expression.Constant( Task.FromResult( 1 ) ) ),
+                AsyncExpression.Await( Expression.Constant( Task.FromResult( 2 ) ) )
+            ) );
+
+        // Act
+        var lambda = Expression.Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 1, result );
+    }
+
+    [TestMethod]
+    public async Task TestAsyncBlock_ContinueOnDelay()
+    {
+        // Arrange
+        var areEqualAsyncMethodInfo = GetMethod( nameof( AreEqualAsync ) );
+
+        var awaitExpr = AsyncExpression.Await(
+            Expression.Call(
+                areEqualAsyncMethodInfo,
+                Expression.Constant( 1 ),
+                Expression.Constant( 1 ) ) );
+
+        var asyncBlock = AsyncExpression.BlockAsync( awaitExpr );
+
+        // Act
+        var lambda = Expression.Lambda<Func<Task<bool>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.IsTrue( result );
+    }
+
 }

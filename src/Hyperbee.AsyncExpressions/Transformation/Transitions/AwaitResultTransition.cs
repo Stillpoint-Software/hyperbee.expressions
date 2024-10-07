@@ -11,14 +11,17 @@ public class AwaitResultTransition : Transition
 
     internal override Expression Reduce( int order, IFieldResolverSource resolverSource )
     {
-        Expression getResult = ResultVariable == null
-            ? Call( AwaiterVariable, "GetResult", Type.EmptyTypes )
-            : Assign( ResultVariable, Call( AwaiterVariable, "GetResult", Type.EmptyTypes ) );
+        if ( ResultVariable == null )
+            return Block(
+                Call( AwaiterVariable, "GetResult", Type.EmptyTypes ),
+                GotoOrFallThrough( order, TargetNode )
+            );
+
+        var getResult = Assign( ResultVariable, Call( AwaiterVariable, "GetResult", Type.EmptyTypes ) );
 
         return Block(
             getResult,
-            //Expression.Goto( TargetNode.NodeLabel )
-            GotoOrFallThrough( order, TargetNode ) //BF
+            GotoOrFallThrough( order, TargetNode )
         );
     }
 

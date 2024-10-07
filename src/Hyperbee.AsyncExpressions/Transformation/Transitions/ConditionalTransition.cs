@@ -14,8 +14,7 @@ public class ConditionalTransition : Transition
         return IfThenElse(
             Test,
             Goto( IfTrue.NodeLabel ),
-            //Goto( IfFalse.NodeLabel )
-            GotoOrFallThrough( order, IfFalse ) //BF
+            GotoOrFallThrough( order, IfFalse )
         );
     }
 

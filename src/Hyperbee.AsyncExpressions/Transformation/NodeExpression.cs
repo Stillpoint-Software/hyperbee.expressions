@@ -9,6 +9,8 @@ public class NodeExpression : Expression
 {
     public int StateId { get; }
     internal int MachineOrder { get; set; }
+    public ParameterExpression ResultVariable { get; set; }
+    public Expression ResultValue { get; set; }
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; } = new (8);
@@ -26,7 +28,7 @@ public class NodeExpression : Expression
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof( void );
+    public override Type Type => ResultValue?.Type ?? typeof( void );
     public override bool CanReduce => true;
 
     internal Expression Reduce( IFieldResolverSource resolverSource )
@@ -49,19 +51,54 @@ public class NodeExpression : Expression
         if ( Expressions.Last() is GotoExpression )
             return Block( Expressions );
 
-        return Transition == null
-            ? ReduceFinalNode()
-            : Block( Expressions.Concat( [Transition.Reduce( MachineOrder, _resolverSource )] ) );
+        if ( Transition == null )
+        {
+            return ReduceFinalNode();
+        }
+
+        // Temporary hack to handle final node
+        
+        if ( ResultValue != null && ResultVariable != null )
+            Expressions.Add( Assign( ResultVariable, ResultValue ) );
+
+        Expressions.Add( Transition.Reduce( MachineOrder, _resolverSource ) );
+
+
+        return Block( Expressions );
+        //
+        // return Transition == null
+        //     ? ReduceFinalNode()
+        //     : Block( 
+        //         Expressions.Concat( 
+        //             [Transition.Reduce( MachineOrder, _resolverSource )] ) );
     }
+
+
+    public static void WriteLine( string value )
+    {
+        Console.WriteLine( value );
+    }
+
 
     private BlockExpression ReduceFinalNode()
     {
+        var methodInfo = typeof( NodeExpression ).GetMethod( nameof( WriteLine ) );
+        var log = Call( methodInfo, Constant( "Before SetResult" ) );
+
+
+
+        var blockLabel = Expressions[0]; // Hack: move goto to the top
+        Expression blockBody = (Expressions.Count > 1)
+            ? Block(Expressions[1..].Concat( [ResultVariable] ))
+            : ResultVariable;
+
         return Block(
-            Expressions[0],  // Hack: move goto to the top
+            blockLabel,  
             _resolverSource.ReturnValue != null 
                 ? Assign( _resolverSource.ResultField, _resolverSource.ReturnValue ) 
-                : Assign( _resolverSource.ResultField, Block( Expressions[1..] ) ),
+                : Assign( _resolverSource.ResultField, blockBody ),
             Assign( _resolverSource.StateIdField, Constant( -2 ) ),
+            log,
             Call(
                 _resolverSource.BuilderField,
                 "SetResult",

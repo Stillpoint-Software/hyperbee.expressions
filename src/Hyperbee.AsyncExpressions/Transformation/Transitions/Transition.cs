@@ -8,6 +8,10 @@ namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 public abstract class Transition
 {
+    // internal ParameterExpression ReturnVariable { get; set; }
+    // internal Expression ReturnValue { get; set; }
+    //
+
     internal abstract Expression Reduce( int order, IFieldResolverSource resolverSource );
     internal abstract NodeExpression FallThroughNode { get; } // this node is used to optimize state order
 
