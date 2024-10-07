@@ -191,6 +191,94 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
+    public async Task TestAsyncBlock_SwitchWithParameters_Result()
+    {
+        var param1 = Expression.Parameter( typeof( int ), "param1" );
+
+        var switchCase = Expression.Switch(
+            param1,
+            AsyncExpression.Await( Expression.Constant( Task.FromResult( 2 ) ) ),
+            [
+                Expression.SwitchCase(
+                    AsyncExpression.Await( Expression.Constant( Task.FromResult( 5 ) ) ),
+                    Expression.Constant( 1 ) ),
+                Expression.SwitchCase(
+                    AsyncExpression.Await( Expression.Constant( Task.FromResult( 7 ) ) ),
+                    Expression.Constant( 2 ) )
+            ]
+        );
+
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [],
+            switchCase
+        );
+
+        // Act
+        var lambda = Expression.Lambda<Func<int, Task<int>>>( asyncBlock, param1 );
+        var compiledLambda = lambda.Compile();
+        var switch1 = await compiledLambda( 1 );
+        var switch2 = await compiledLambda( 2 );
+
+        // Assert
+        Assert.AreEqual( 5, switch1 );
+        Assert.AreEqual( 7, switch2 );
+    }
+
+    [TestMethod]
+    public async Task TestAsyncBlock_SwitchWithParameters_NestedResult()
+    {
+        var param1 = Expression.Parameter( typeof( int ), "param1" );
+        var param2 = Expression.Parameter( typeof( int ), "param2" );
+
+        var innerSwitchCase = Expression.Switch(
+            param2,
+            AsyncExpression.Await( Expression.Constant( Task.FromResult( 1 ) ) ),
+            [
+                Expression.SwitchCase(
+                    AsyncExpression.Await( Expression.Constant( Task.FromResult( 3 ) ) ),
+                    Expression.Constant( 1 ) ),
+                Expression.SwitchCase(
+                    AsyncExpression.Await( Expression.Constant( Task.FromResult( 4 ) ) ),
+                    Expression.Constant( 2 ) )
+            ]
+        );
+
+        var switchCase = Expression.Switch(
+            param1,
+            AsyncExpression.Await( Expression.Constant( Task.FromResult( 2 ) ) ),
+            [
+                Expression.SwitchCase(
+                    innerSwitchCase,
+                    Expression.Constant( 1 ) ),
+                Expression.SwitchCase(
+                    AsyncExpression.Await( Expression.Constant( Task.FromResult( 5 ) ) ),
+                    Expression.Constant( 2 ) )
+            ]
+        );
+
+        var asyncBlock = AsyncExpression.BlockAsync(
+            [],
+            switchCase
+        );
+
+        // Act
+        var lambda = Expression.Lambda<Func<int, int, Task<int>>>( asyncBlock, param1, param2 );
+        var compiledLambda = lambda.Compile();
+        var switch1 = await compiledLambda( 1,1 );
+        var switch2 = await compiledLambda( 1,2 );
+        var switch3 = await compiledLambda( 1, 100 );
+        var switch4 = await compiledLambda( 2, 100 );
+        var switch5 = await compiledLambda( 100, 100 );
+
+        // Assert
+        Assert.AreEqual( 3, switch1 );
+        Assert.AreEqual( 4, switch2 );
+        Assert.AreEqual( 1, switch3 );
+        Assert.AreEqual( 5, switch4 );
+        Assert.AreEqual( 2, switch5 );
+    }
+
+    [TestMethod]
     public async Task TestAsyncBlock_SwitchWithParameters_ReturnsResult()
     {
         var param1 = Expression.Parameter( typeof( int ), "param1" );
@@ -280,6 +368,25 @@ public class AsyncBlockTests
 
         // Act
         var lambda = Expression.Lambda<Func<Task<int>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 1, result );
+    }
+
+    [TestMethod]
+    public async Task TestAsyncBlock_Conditional_Result()
+    {
+        // Arrange
+        var block = AsyncExpression.BlockAsync(
+            Expression.Condition( Expression.Constant( true ),
+                AsyncExpression.Await( Expression.Constant( Task.FromResult( 1 ) ) ),
+                AsyncExpression.Await( Expression.Constant( Task.FromResult( 2 ) ) )
+            ) );
+
+        // Act
+        var lambda = Expression.Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
         var result = await compiledLambda();
 
@@ -442,7 +549,7 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
-    public async Task TestAsyncBlock_NestedConditional()
+    public async Task TestAsyncBlock_Conditional_NestedResult()
     {
         // Arrange
         var ifTrue = Expression.Condition(
@@ -458,25 +565,6 @@ public class AsyncBlockTests
             Expression.Condition( Expression.Constant( true ),
                 ifTrue,
                 ifFalse
-            ) );
-
-        // Act
-        var lambda = Expression.Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
-        var result = await compiledLambda();
-
-        // Assert
-        Assert.AreEqual( 1, result );
-    }
-
-    [TestMethod]
-    public async Task TestAsyncBlock_NestedConditionalSimple()
-    {
-        // Arrange
-        var block = AsyncExpression.BlockAsync(
-            Expression.Condition( Expression.Constant( true ),
-                AsyncExpression.Await( Expression.Constant( Task.FromResult( 1 ) ) ),
-                AsyncExpression.Await( Expression.Constant( Task.FromResult( 2 ) ) )
             ) );
 
         // Act

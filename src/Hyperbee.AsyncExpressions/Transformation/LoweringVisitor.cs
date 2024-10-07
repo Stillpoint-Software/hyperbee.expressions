@@ -115,20 +115,25 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var joinState = _states.EnterBranchState( out var sourceState );
 
+        var resultVariable = GetResultVariable( node, sourceState.StateId );
+
         var switchTransition = new SwitchTransition { SwitchValue = updatedSwitchValue };
 
         if ( node.DefaultBody != null )
         {
-            switchTransition.DefaultNode = VisitBranch( node.DefaultBody, joinState );
+            switchTransition.DefaultNode = VisitBranch( node.DefaultBody, joinState, resultVariable );
         }
 
         foreach ( var switchCase in node.Cases )
         {
             switchTransition.AddSwitchCase(
                 [.. switchCase.TestValues], // TODO: Visit these because they could be async
-                VisitBranch( switchCase.Body, joinState )
+                VisitBranch( switchCase.Body, joinState, resultVariable )
             );
         }
+
+        sourceState.ResultVariable = resultVariable;
+        joinState.ResultValue = resultVariable;
 
         _states.ExitBranchState( sourceState, switchTransition );
 
@@ -139,7 +144,9 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var joinState = _states.EnterBranchState( out var sourceState );
 
-        var tryCatchTransition = new TryCatchTransition { TryNode = VisitBranch( node.Body, joinState ) };
+        var resultVariable = GetResultVariable( node, sourceState.StateId );
+
+        var tryCatchTransition = new TryCatchTransition { TryNode = VisitBranch( node.Body, joinState, resultVariable ) };
 
         foreach ( var catchBlock in node.Handlers )
         {
@@ -154,6 +161,9 @@ internal class LoweringVisitor : ExpressionVisitor
             tryCatchTransition.FinallyNode.Expressions.Add( Expression.Goto( joinState.NodeLabel ) );
         }
 
+        sourceState.ResultVariable = resultVariable;
+        joinState.ResultValue = resultVariable;
+
         _states.ExitBranchState( sourceState, tryCatchTransition );
 
         return node;
@@ -163,10 +173,15 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var joinState = _states.EnterBranchState( out var sourceState );
 
+        var resultVariable = GetResultVariable( node, sourceState.StateId );
+
         var loopTransition = new LoopTransition
         {
-            BodyNode = VisitBranch( node.Body, joinState, resultVariable: null, InitializeLabels )
+            BodyNode = VisitBranch( node.Body, joinState, resultVariable, InitializeLabels )
         };
+
+        sourceState.ResultVariable = resultVariable;
+        joinState.ResultValue = resultVariable;
 
         _states.ExitBranchState( sourceState, loopTransition );
 

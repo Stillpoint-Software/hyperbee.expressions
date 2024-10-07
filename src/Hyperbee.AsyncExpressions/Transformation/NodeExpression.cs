@@ -52,8 +52,11 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceBlock()
     {
-        if ( ResultValue != null && ResultVariable != null )
+        if ( ResultValue != null && ResultVariable != null &&
+             ResultValue.Type == ResultVariable.Type )
+        {
             Expressions.Add( Assign( ResultVariable, ResultValue ) );
+        }
 
         Expressions.Add( Transition.Reduce( MachineOrder, this, _resolverSource ) );
 
