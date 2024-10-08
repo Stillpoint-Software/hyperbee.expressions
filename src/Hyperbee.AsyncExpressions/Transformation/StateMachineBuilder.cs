@@ -398,7 +398,7 @@ public class StateMachineBuilder<TResult>
         // Create the jump table
         var jumpTableExpression = Expression.Switch(
             stateFieldExpression, 
-            null,
+            Expression.Empty(),  // FastCompile doesn't support null default case
             source.JumpCases.Select( c =>
                 Expression.SwitchCase(
                     Expression.Block(

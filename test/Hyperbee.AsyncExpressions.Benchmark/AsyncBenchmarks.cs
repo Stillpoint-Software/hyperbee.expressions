@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using BenchmarkDotNet.Attributes;
 using FastExpressionCompiler;
+using Microsoft.Diagnostics.Runtime;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.AsyncExpressions.AsyncExpression;
 
@@ -9,6 +10,7 @@ namespace Hyperbee.AsyncExpressions.Benchmark;
 public class AsyncBenchmarks
 {
     private Func<Task<int>> _compileLambda = null!;
+    private Func<Task<int>> _fastCompileLambda = null!;
     private Expression<Func<Task<int>>> _lambda = null!;
 
     [GlobalSetup]
@@ -32,6 +34,8 @@ public class AsyncBenchmarks
         _lambda = Lambda<Func<Task<int>>>( asyncBlock );
 
         _compileLambda = _lambda.Compile();
+
+        _fastCompileLambda = _lambda.CompileFast();
     }
 
     [Benchmark]
@@ -52,6 +56,12 @@ public class AsyncBenchmarks
     public async Task Hyperbee_AsyncBlock_Execute()
     {
         await _compileLambda();
+    }
+
+    [Benchmark]
+    public async Task Hyperbee_AsyncBlock_FastExecute()
+    {
+        await _fastCompileLambda();
     }
 
     [Benchmark]
