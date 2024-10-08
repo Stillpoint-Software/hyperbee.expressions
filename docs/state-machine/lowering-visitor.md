@@ -6,22 +6,18 @@ nav_order: 2
 ---
 # Lowering Visitor: Transforming Expressions into States
 
-State machine generation involves converting user expression trees into state machine representations and executing them.
-This process involves several steps, including tree traversal, state creation, and managing state transitions. The transformation
-process is essential for handling complex branching scenarios like conditional expressions and asynchronous operations.
+To support asynchronous code, we must convert user expression trees into state machine representations that can suspend and 
+resume operations. 
 
-We employ a Lowering Technique to transform flow control constructs (such as if, switch, loops, and awaits) into a state tree that
-can be used to generate a flattened goto state machine. This step systematically traverses the expression tree and replaces branching 
-constructs with simplified state nodes that manage control flow using transitions and goto operations. This step also identifies 
-variables that persist across state transitions and which need to be hoisted ny the builder.
-
+This conversion process is known as "lowering" and it is responsible for transforming flow control constructs (such as if, switch,
+loops, and awaits) into a state tree that can be used to generate a flattened state machine. This step systematically traverses the
+expression tree and replaces branching constructs with state nodes that manage control flow using transitions and goto operations. 
+It also identifies variables that need to be hoisted so that variable scope is correctly maintained.
 
 ## Introduction
 
-The `LoweringVisitor` is responsible for traversing the expression tree and transforming its flow control constructs into a lowered 
-representation of discrete states for a state machine. Lowering turns complex flow control constructs like conditionals, switches, and 
-loops into a simplified state tree that will be used to generate the final state machine. This is essential in scenarios involving 
-asynchronous operations and branching logic, where execution may need to be paused and resumed.
+The `LoweringVisitor` is responsible for transforming an expression tree into discrete states that will be used to generate the 
+final state machine. 
 
 The purpose of this phase is to "lower" high-level constructs, such as `await`, `if/else`, `switch`, and loops, into individual 
 `NodeExpression` objects that the state machine can later process.
@@ -33,30 +29,31 @@ The `LoweringVisitor` handles control flow constructs like conditionals (`if/els
 Each construct is transformed into a state, and transitions are defined to manage the execution flow between branches and loops.
 
 ### Problem
-Branching and looping introduce multiple execution paths that require the program to pause execution at certain points and resume it 
-later. These paths must be preserved accurately within a state machine to ensure correct execution flow.
+Branching and looping introduce multiple execution paths that require the program to pause execution at certain points and resume
+it later. These paths must be preserved accurately within a state machine to ensure correct execution flow.
 
 ### Discussion
-The `LoweringVisitor` uses the `VisitBranch` method to create distinct states for each branch and loop. For each conditional or loop, a 
-new state is created, and transitions are added to connect these states. The visitor maintains a `JoinState` that serves as the 
-reconnection point after the conditional or loop is executed. Additionally, the `SourceState` represents the state before the branch or 
-loop is executed.
+The `LoweringVisitor` uses the `VisitBranch` method to create distinct states for each branch and loop. For each conditional or loop,
+a new state is created, and transitions are added to connect these states. The visitor maintains a `JoinState` that serves as the 
+reconnection point after the conditional or loop is executed. Additionally, the `SourceState` represents the state before the branch
+or loop is executed.
 
-Every branching construct must eventually rejoin the main flow of execution. The join state represents the point where diverging branches
-reunite, ensuring that the state machine continues to execute correctly.
+Every branching construct must eventually rejoin the main flow of execution. The join state represents the point where diverging 
+branches reunite, ensuring that the state machine continues to execute correctly.
 
-If you think about each unique branch segment (e.g. the 'if' or 'else' path in a conditional expression) as a single linked list of states, 
-the `BranchTailState`, is the last node in the conditional or loop path. This tail node must be re-joined to the main execution path; the place where the 'if' and 'else' branches again begin to execute the
-same code again. This re-convergance is critical, as branching structures are often nested, and all of the potential paths in a nesting
-structure must be correctly re-joined.
+If you think about each unique branch segment (e.g. the 'if' or 'else' path in a conditional expression) as a single linked list of
+states, the `BranchTailState`, is the last node in the conditional or loop path. This tail node must be re-joined to the main 
+execution path; the place where the 'if' and 'else' branches again begin to execute the same code again. This re-convergance is 
+critical, as branching structures are often nested, and all of the potential paths in a nesting structure must be correctly 
+re-joined.
 
-Each branch (such as `if/else` or the body of a loop) becomes a distinct state, and the transitions ensure that the state machine can 
-resume from the correct point when execution continues.
+Each branch (such as `if/else` or the body of a loop) becomes a distinct state, and the transitions ensure that the state machine 
+can resume from the correct point when execution continues.
 
 ### Solution
-By creating separate states for each branch and loop, and by using `JoinState` and `SourceState`, the state machine can accurately manage
-control flow across complex branching and looping structures. This ensures that execution can pause and resume from the correct points, 
-preserving the integrity of the program's logic.
+By creating separate states for each branch and loop, and by using `JoinState` and `SourceState`, the state machine can accurately
+manage control flow across complex branching and looping structures. This ensures that execution can pause and resume from the correct
+points, preserving the integrity of the program's logic.
 
 ## 2. Handling Await
 
