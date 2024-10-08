@@ -107,6 +107,27 @@ public class AsyncBlockTests
     }
 
     [TestMethod]
+    public async Task TestAsyncBlock_NestedBlockAwait()
+    {
+        // Arrange
+        var awaitExpr2 = Await( Constant( Task.FromResult( 2 ) ) );
+        var awaitExpr3 = Await( Constant( Task.FromResult( 3 ) ) );
+
+        var asyncBlock = BlockAsync(
+            Block( Constant( 1 ), awaitExpr2 ),
+            IfThen( Constant( true ), Block( Constant( 2 ) ) ),
+            Block( awaitExpr3, Constant( 4 ) )
+        );
+
+        // Act
+        var lambda = Lambda<Func<Task<int>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 4, result );
+    }
+    [TestMethod]
     public async Task TestAsyncBlock_WithoutParameters()
     {
         // Arrange
