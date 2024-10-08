@@ -1,11 +1,11 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 [DebuggerDisplay( "Transition = {GetType().Name,nq}" )]
-
 public abstract class Transition
 {
     internal abstract Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource );

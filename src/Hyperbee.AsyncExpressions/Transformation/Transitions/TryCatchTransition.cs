@@ -5,13 +5,13 @@ namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 public class TryCatchTransition : Transition
 {
-    private readonly List<CatchBlockDefinition> _catchBlocks = [];
+    internal readonly List<CatchBlockDefinition> CatchBlocks = [];
     public NodeExpression TryNode { get; set; }
     public NodeExpression FinallyNode { get; set; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
-        var catches = _catchBlocks
+        var catches = CatchBlocks
             .Select( catchBlock => catchBlock.Reduce() );
 
         var finallyBody = FinallyNode != null
@@ -29,10 +29,10 @@ public class TryCatchTransition : Transition
 
     public void AddCatchBlock( Type test, NodeExpression body )
     {
-        _catchBlocks.Add( new CatchBlockDefinition( test, body ) );
+        CatchBlocks.Add( new CatchBlockDefinition( test, body ) );
     }
 
-    private record CatchBlockDefinition( Type Test, NodeExpression Body )
+    internal record CatchBlockDefinition( Type Test, NodeExpression Body )
     {
         public CatchBlock Reduce() => Catch( Test, Goto( Body.NodeLabel ) );
     }

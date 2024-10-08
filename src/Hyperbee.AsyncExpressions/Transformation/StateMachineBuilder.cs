@@ -409,7 +409,7 @@ public class StateMachineBuilder<TResult>
                 ) 
             )
             .ToArray() );
-
+        
         bodyExpressions.Add( jumpTableExpression );
 
         // Create the states

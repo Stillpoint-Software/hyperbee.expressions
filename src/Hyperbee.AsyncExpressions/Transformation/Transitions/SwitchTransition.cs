@@ -5,7 +5,7 @@ namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 public class SwitchTransition : Transition
 {
-    private readonly List<SwitchCaseDefinition> _caseNodes = [];
+    internal readonly List<SwitchCaseDefinition> CaseNodes = [];
     public NodeExpression DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
 
@@ -15,7 +15,7 @@ public class SwitchTransition : Transition
             ? GotoOrFallThrough( order, DefaultNode, allowNull: true )
             : null;
 
-        var cases = _caseNodes
+        var cases = CaseNodes
             .Select( switchCase => switchCase.Reduce() );
 
         return Switch(
@@ -29,10 +29,10 @@ public class SwitchTransition : Transition
 
     public void AddSwitchCase( List<Expression> testValues, NodeExpression body )
     {
-        _caseNodes.Add( new SwitchCaseDefinition( testValues, body ) );
+        CaseNodes.Add( new SwitchCaseDefinition( testValues, body ) );
     }
 
-    private record SwitchCaseDefinition( List<Expression> TestValues, NodeExpression Body )
+    internal record SwitchCaseDefinition( List<Expression> TestValues, NodeExpression Body )
     {
         public SwitchCase Reduce() => SwitchCase( Goto( Body.NodeLabel ), TestValues );
     }

@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using BenchmarkDotNet.Attributes;
 using FastExpressionCompiler;
-using Microsoft.Diagnostics.Runtime;
+
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.AsyncExpressions.AsyncExpression;
 
