@@ -19,6 +19,21 @@ public class AsyncBlockTests
     public static MethodInfo GetMethod( string name ) => typeof(AsyncBlockTests).GetMethod( name );
 
     [TestMethod]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithCompletedTask()
+    {
+        // Arrange
+        var block = BlockAsync( Await( Constant( Task.FromResult( 1 ) ) ) );
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        //Assert
+        Assert.AreEqual( 1, result );
+    }
+
+    [TestMethod]
     public async Task TestAsyncBlock_VariableScopeWithMultipleAwaits()
     {
         // Arrange
@@ -127,6 +142,7 @@ public class AsyncBlockTests
         // Assert
         Assert.AreEqual( 4, result );
     }
+
     [TestMethod]
     public async Task TestAsyncBlock_WithoutParameters()
     {

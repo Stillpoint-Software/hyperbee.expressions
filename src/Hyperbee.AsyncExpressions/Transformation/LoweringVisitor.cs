@@ -157,8 +157,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         if ( node.Finally != null )
         {
-            tryCatchTransition.FinallyNode = VisitBranch( node.Finally, joinState );
-            tryCatchTransition.FinallyNode.Expressions.Add( Expression.Goto( joinState.NodeLabel ) );
+            tryCatchTransition.FinallyNode = VisitInternal( node.Finally );
         }
 
         sourceState.ResultVariable = resultVariable;
@@ -183,6 +182,11 @@ internal class LoweringVisitor : ExpressionVisitor
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
 
+        // TODO: This seems wrong
+        var tailState = _states.GetBranchTailState();
+        if ( tailState.Transition is GotoTransition gotoTransition )
+            gotoTransition.TargetNode = loopTransition.BodyNode;
+        
         _states.ExitBranchState( sourceState, loopTransition );
 
         return node;

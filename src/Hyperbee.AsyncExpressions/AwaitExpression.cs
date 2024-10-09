@@ -65,7 +65,7 @@ public class AwaitExpression : Expression
         return taskType.IsGenericType switch
         {
             true when taskType == typeof(Task<IVoidTaskResult>) => typeof(void),
-            true when taskType.GetGenericTypeDefinition() == typeof(Task<>) => taskType.GetGenericArguments()[0],
+            true when taskType.IsSubclassOf( typeof( Task ) ) => taskType.GetGenericArguments()[0],
             false => typeof(void),
             _ => throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." )
         };

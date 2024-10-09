@@ -13,7 +13,7 @@ public class NodeExpression : Expression
     public Expression ResultValue { get; set; }
 
     public LabelTarget NodeLabel { get; set; }
-    public List<Expression> Expressions { get; } = new (8);
+    public List<Expression> Expressions { get; set; } = new (8);
     public Transition Transition { get; set; }
 
     private Expression _expression;
@@ -57,6 +57,12 @@ public class NodeExpression : Expression
         {
             Expressions.Add( Assign( ResultVariable, ResultValue ) );
         }
+        else if ( ResultVariable != null && Expressions.Count > 0 && ResultVariable.Type == Expressions[^1].Type )
+        {
+            // TODO: This feels like a hack that should be moved somewhere else
+            // This might be related to go tos and Joins?
+            Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
+        }
 
         Expressions.Add( Transition.Reduce( MachineOrder, this, _resolverSource ) );
 
@@ -79,11 +85,16 @@ public class NodeExpression : Expression
         else
             blockBody = Empty();
 
+        // TODO: see if this can be improved earlier in the process
+        var finalResult = returnValue != null
+            ? Assign( resultField, returnValue )
+            : (blockBody.Type == typeof(void))
+                ? Assign( resultField, Constant( null, typeof(IVoidTaskResult) ) )
+                : Assign( resultField, blockBody );
+
         return Block(
             Label( NodeLabel ),
-            returnValue != null
-                ? Assign( resultField, returnValue )
-                : Assign( resultField, blockBody ),
+            finalResult,
             Assign( stateIdField, Constant( -2 ) ),
             Call(
                 builderField,

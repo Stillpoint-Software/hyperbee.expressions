@@ -1,5 +1,7 @@
 ﻿using System.Linq.Expressions;
 
+using static System.Linq.Expressions.Expression;
+
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 public class GotoTransition : Transition
@@ -8,7 +10,7 @@ public class GotoTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
-        return GotoOrFallThrough( order, TargetNode );
+        return Goto( TargetNode.NodeLabel ); //GotoOrFallThrough( order, TargetNode );
     }
 
     internal override NodeExpression FallThroughNode => TargetNode;

@@ -7,20 +7,22 @@ public class TryCatchTransition : Transition
 {
     internal readonly List<CatchBlockDefinition> CatchBlocks = [];
     public NodeExpression TryNode { get; set; }
-    public NodeExpression FinallyNode { get; set; }
+    public Expression FinallyNode { get; set; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         var catches = CatchBlocks
             .Select( catchBlock => catchBlock.Reduce() );
 
-        var finallyBody = FinallyNode != null
-            ? Goto( FinallyNode.NodeLabel )
-            : null;
+        // TODO: Finally blocks are not allowed to have Goto's in C#
+        // var finallyBody = FinallyNode != null
+        //     ? Goto( FinallyNode.NodeLabel )
+        //     : null;
 
+        // TODO: FallThrough is removing the rest of the body and replacing with Empty()
         return TryCatchFinally(
-            GotoOrFallThrough( order, TryNode ),
-            finallyBody,
+            TryNode, //GotoOrFallThrough( order, TryNode ),
+            FinallyNode, //finallyBody,
             [.. catches]
         );
     }

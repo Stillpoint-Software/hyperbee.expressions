@@ -27,14 +27,16 @@ public class AsyncBlockExpression: Expression
 
         _variables = variables;
         _expressions = expressions;
-        _resultType = _expressions[^1].Type; 
+        _resultType = _expressions[^1].Type;
     }
 
     public override bool CanReduce => true;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    public override Type Type => typeof(Task<>).MakeGenericType( _resultType );
+    public override Type Type => (_resultType == typeof( void )) 
+        ? typeof(Task) 
+        : typeof(Task<>).MakeGenericType( _resultType );
 
     public override Expression Reduce()
     {

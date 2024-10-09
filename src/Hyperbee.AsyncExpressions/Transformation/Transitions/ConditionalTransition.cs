@@ -11,10 +11,14 @@ public class ConditionalTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
+        var fallThrough = GotoOrFallThrough( order, IfFalse, true );
+        if ( fallThrough == null )
+            return IfThen( Test, Goto( IfTrue.NodeLabel ) );
+
         return IfThenElse(
             Test,
             Goto( IfTrue.NodeLabel ),
-            GotoOrFallThrough( order, IfFalse )
+            fallThrough
         );
     }
 
