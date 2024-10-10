@@ -14,7 +14,6 @@ public class AwaitTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
-
         var expressions = new List<Expression>
         {
             Assign(
@@ -38,10 +37,9 @@ public class AwaitTransition : Transition
         };
 
         var fallThrough = GotoOrFallThrough( order, CompletionNode, true );
+        
         if ( fallThrough != null )
-        {
             expressions.Add( fallThrough );
-        }
 
         return Block( expressions );
         /*return Block(
