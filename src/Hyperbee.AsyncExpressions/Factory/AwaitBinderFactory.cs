@@ -25,8 +25,9 @@ internal static class AwaitBinderFactory
     private static readonly MethodInfo GetResultValueTaskMethod;
     private static readonly MethodInfo GetResultValueTaskResultMethod;
 
-    const BindingFlags InstanceNonPublic = BindingFlags.Instance | BindingFlags.NonPublic;
-    const BindingFlags StaticNonPublic = BindingFlags.Static | BindingFlags.NonPublic;
+    private const BindingFlags InstanceNonPublic = BindingFlags.Instance | BindingFlags.NonPublic;
+    private const BindingFlags InstancePublicNonPublic = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    private const BindingFlags StaticNonPublic = BindingFlags.Static | BindingFlags.NonPublic;
 
     static AwaitBinderFactory()
     {
@@ -140,19 +141,18 @@ internal static class AwaitBinderFactory
         // other awaitable types
 
         var getAwaiterMethod = targetType
-            .GetMethod( GetAwaiterName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
+            .GetMethod( GetAwaiterName, InstancePublicNonPublic )
             ?? FindExtensionMethod( targetType, GetAwaiterName );
 
         if ( getAwaiterMethod == null )
             throw new InvalidOperationException( $"The type {targetType} is not awaitable." );
 
-        var awaiterType = getAwaiterMethod.ReturnType;
-        var getResultMethod = awaiterType.GetMethod( GetResultName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic );
+        var getResultMethod = getAwaiterMethod
+            .ReturnType
+            .GetMethod( GetResultName, InstancePublicNonPublic );
 
         if ( getResultMethod == null )
-        {
-            throw new InvalidOperationException( $"The awaiter for {targetType} does not have a GetResult method." );
-        }
+            throw new InvalidOperationException( $"The awaiter for {targetType} does not have a {GetResultName} method." );
 
         var awaitMethod = getResultMethod.ReturnType == typeof(void) || getResultMethod.ReturnType == typeof(IVoidTaskResult)
             ? AwaitMethod 
