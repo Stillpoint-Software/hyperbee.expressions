@@ -217,6 +217,8 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _awaitCount++;
 
+        var awaiterInfo = node.GetAwaiterInfo(); //BF
+
         var awaiterVariable = Expression.Variable( GetAwaiterType(), VariableName.Awaiter( sourceState.StateId ) );
         _variables.Add( awaiterVariable );
 
