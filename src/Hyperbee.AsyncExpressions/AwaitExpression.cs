@@ -45,8 +45,11 @@ public class AwaitExpression : Expression
 
             var genericTypeDef = awaitableType.GetGenericTypeDefinition();
 
-            if ( genericTypeDef == typeof(Task<>) || genericTypeDef == typeof(ValueTask<>) )
+            if ( genericTypeDef.IsSubclassOf( typeof(Task) ) ||
+                 genericTypeDef.IsSubclassOf( typeof(ValueTask) ) )
+            {
                 return awaitableType.GetGenericArguments()[0];
+            }
         }
 
         if ( awaitableType == typeof(Task) || awaitableType == typeof(ValueTask) )

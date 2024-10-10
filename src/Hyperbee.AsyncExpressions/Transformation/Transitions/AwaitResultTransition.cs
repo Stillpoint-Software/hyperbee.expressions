@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
@@ -8,16 +8,18 @@ public class AwaitResultTransition : Transition
     public ParameterExpression AwaiterVariable { get; set; }
     public ParameterExpression ResultVariable { get; set; }
     public NodeExpression TargetNode { get; set; }
+    public AwaitBinder AwaitBinder { get; set; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         if ( ResultVariable == null )
             return Block(
-                Call( AwaiterVariable, "GetResult", Type.EmptyTypes ),
+                Call( AwaitBinder.GetResultMethod, AwaiterVariable ),
                 GotoOrFallThrough( order, TargetNode )
             );
 
-        var getResult = Assign( ResultVariable, Call( AwaiterVariable, "GetResult", Type.EmptyTypes ) );
+        var closedMethod = AwaitBinder.GetResultMethod.MakeGenericMethod( AwaiterVariable.Type.GenericTypeArguments[0] );
+        var getResult = Assign( ResultVariable, Call( closedMethod, AwaiterVariable ) );
 
         return Block(
             getResult,

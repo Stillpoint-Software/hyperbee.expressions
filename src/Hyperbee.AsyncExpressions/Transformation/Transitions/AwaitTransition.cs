@@ -11,14 +11,19 @@ public class AwaitTransition : Transition
     public Expression Target { get; set; }
     public ParameterExpression AwaiterVariable { get; set; }
     public NodeExpression CompletionNode { get; set; }
+    public AwaitBinder AwaitBinder { get; set; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
+        var awaiterMethod = AwaitBinder.GetAwaiterMethod.IsGenericMethodDefinition
+            ? AwaitBinder.GetAwaiterMethod.MakeGenericMethod( Target.Type.GenericTypeArguments[0] )
+            : AwaitBinder.GetAwaiterMethod;
+
         var expressions = new List<Expression>
         {
             Assign(
                 AwaiterVariable,
-                Call( Target, Target.Type.GetMethod( "GetAwaiter" )! )
+                Call( awaiterMethod, Target )
             ),
             IfThen(
                 IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),

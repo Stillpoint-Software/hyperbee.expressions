@@ -226,7 +226,8 @@ internal class LoweringVisitor : ExpressionVisitor
         {
             TargetNode = joinState, 
             AwaiterVariable = awaiterVariable, 
-            ResultVariable = resultVariable
+            ResultVariable = resultVariable,
+            AwaitBinder = awaiterInfo
         };
 
         _states.JumpCases.Add( completionState.NodeLabel, sourceState.StateId );
@@ -236,7 +237,8 @@ internal class LoweringVisitor : ExpressionVisitor
             Target = node.Target,
             StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
-            CompletionNode = completionState
+            CompletionNode = completionState,
+            AwaitBinder = awaiterInfo
         };
 
         sourceState.ResultVariable = resultVariable;
