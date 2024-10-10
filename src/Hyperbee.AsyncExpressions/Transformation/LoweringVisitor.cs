@@ -219,7 +219,9 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var awaitBinder = node.GetAwaitBinder();
 
-        var awaiterVariable = Expression.Variable( GetAwaiterType(), VariableName.Awaiter( sourceState.StateId ) ); //BF: GetAwaiterType() is incorrectly Task specific 
+        var awaiterType = awaitBinder.GetAwaiterMethod.ReturnType;
+
+        var awaiterVariable = Expression.Variable( awaiterType, VariableName.Awaiter( sourceState.StateId ) ); 
         _variables.Add( awaiterVariable );
 
         completionState.Transition = new AwaitResultTransition
@@ -247,11 +249,6 @@ internal class LoweringVisitor : ExpressionVisitor
         _states.ExitBranchState( sourceState, awaitTransition );
 
         return (Expression) resultVariable ?? Expression.Empty();
-
-        // Helper method to get the awaiter type
-        Type GetAwaiterType() => node.Type == typeof(void)
-            ? typeof(TaskAwaiter)
-            : typeof(TaskAwaiter<>).MakeGenericType( node.Type );
     }
 
     protected override Expression VisitExtension( Expression node )
