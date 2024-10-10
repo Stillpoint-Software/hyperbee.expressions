@@ -3,13 +3,13 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions;
 
-public class AwaiterInfo
+public class AwaitBinder
 {
     public MethodInfo AwaitMethod { get; }
     public MethodInfo GetAwaiterMethod { get; }
     public MethodInfo GetResultMethod { get; }
 
-    public AwaiterInfo( MethodInfo awaitMethod, MethodInfo getAwaiterMethod, MethodInfo getResultMethod )
+    internal AwaitBinder( MethodInfo awaitMethod, MethodInfo getAwaiterMethod, MethodInfo getResultMethod )
     {
         AwaitMethod = awaitMethod;
         GetAwaiterMethod = getAwaiterMethod;
@@ -17,7 +17,7 @@ public class AwaiterInfo
     }
 
     // Await methods
-    public void Await<TAwaitable>( TAwaitable awaitable, bool configureAwait )
+    internal void Await<TAwaitable>( TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )
         {
@@ -38,7 +38,7 @@ public class AwaiterInfo
         }
     }
 
-    public T AwaitResult<TAwaitable, T>( TAwaitable awaitable, bool configureAwait )
+    internal T AwaitResult<TAwaitable, T>( TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )
         {
@@ -57,15 +57,15 @@ public class AwaiterInfo
     }
 
     // GetAwaiter methods
-    public static TaskAwaiter GetAwaiter( Task task ) => task.GetAwaiter();
+    internal static TaskAwaiter GetAwaiter( Task task ) => task.GetAwaiter();
 
-    public static TaskAwaiter<T> GetAwaiter<T>( Task<T> task ) => task.GetAwaiter();
+    internal static TaskAwaiter<T> GetAwaiter<T>( Task<T> task ) => task.GetAwaiter();
 
-    public static ValueTaskAwaiter GetAwaiter( ValueTask valueTask ) => valueTask.GetAwaiter();
+    internal static ValueTaskAwaiter GetAwaiter( ValueTask valueTask ) => valueTask.GetAwaiter();
 
-    public static ValueTaskAwaiter<T> GetAwaiter<T>( ValueTask<T> valueTask ) => valueTask.GetAwaiter();
+    internal static ValueTaskAwaiter<T> GetAwaiter<T>( ValueTask<T> valueTask ) => valueTask.GetAwaiter();
 
-    public object GetAwaiter( object awaitable )
+    internal object GetAwaiter( object awaitable )
     {
         return GetAwaiterMethod.IsStatic 
             ? GetAwaiterMethod.Invoke( null, [awaitable] ) 
@@ -73,15 +73,15 @@ public class AwaiterInfo
     }
 
     // GetResult methods
-    public static void GetResult( TaskAwaiter awaiter ) => awaiter.GetResult();
+    internal static void GetResult( TaskAwaiter awaiter ) => awaiter.GetResult();
 
-    public static T GetResult<T>( TaskAwaiter<T> awaiter ) => awaiter.GetResult();
+    internal static T GetResult<T>( TaskAwaiter<T> awaiter ) => awaiter.GetResult();
 
-    public static void GetResult( ValueTaskAwaiter awaiter ) => awaiter.GetResult();
+    internal static void GetResult( ValueTaskAwaiter awaiter ) => awaiter.GetResult();
 
-    public static T GetResult<T>( ValueTaskAwaiter<T> awaiter ) => awaiter.GetResult();
+    internal static T GetResult<T>( ValueTaskAwaiter<T> awaiter ) => awaiter.GetResult();
 
-    public void GetResult( object awaiter ) => GetResultMethod.Invoke( awaiter, null );
+    internal void GetResult( object awaiter ) => GetResultMethod.Invoke( awaiter, null );
 
-    public T GetResultValue<T>( object awaiter ) => (T) GetResultMethod.Invoke( awaiter, null );
+    internal T GetResultValue<T>( object awaiter ) => (T) GetResultMethod.Invoke( awaiter, null );
 }

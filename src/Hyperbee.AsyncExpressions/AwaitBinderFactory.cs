@@ -5,9 +5,9 @@ using Hyperbee.AsyncExpressions.Transformation;
 
 namespace Hyperbee.AsyncExpressions;
 
-internal static class AwaiterInfoFactory
+internal static class AwaitBinderFactory
 {
-    private static readonly ConcurrentDictionary<Type, AwaiterInfo> Cache = new();
+    private static readonly ConcurrentDictionary<Type, AwaitBinder> Cache = new();
 
     const string GetResultName = "GetResult";
     const string GetAwaiterName = "GetAwaiter";
@@ -24,38 +24,44 @@ internal static class AwaiterInfoFactory
     private static readonly MethodInfo GetResultValueTaskMethod;
     private static readonly MethodInfo GetResultValueTaskResultMethod;
 
-    static AwaiterInfoFactory()
+    static AwaitBinderFactory()
     {
         // Pre-cache methods
-        AwaitMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.Await) );
-        AwaitResultMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.AwaitResult) );
+        AwaitMethod = GetMethod( nameof(AwaitBinder.Await) );
+        AwaitResultMethod = GetMethod( nameof(AwaitBinder.AwaitResult) );
 
-        GetAwaiterTaskMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.GetAwaiter), [typeof(Task)] );
-        GetAwaiterTaskResultMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.GetAwaiter), [typeof(Task<>)] );
-        GetAwaiterValueTaskMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.GetAwaiter), [typeof(ValueTask)] );
-        GetAwaiterValueTaskResultMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.GetAwaiter), [typeof(ValueTask<>)] );
+        GetAwaiterTaskMethod = GetMethod( nameof(AwaitBinder.GetAwaiter), [typeof(Task)] );
+        GetAwaiterTaskResultMethod = GetMethod( nameof(AwaitBinder.GetAwaiter), [typeof(Task<>)] );
+        GetAwaiterValueTaskMethod = GetMethod( nameof(AwaitBinder.GetAwaiter), [typeof(ValueTask)] );
+        GetAwaiterValueTaskResultMethod = GetMethod( nameof(AwaitBinder.GetAwaiter), [typeof(ValueTask<>)] );
 
-        GetResultTaskMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.GetResult), [typeof(TaskAwaiter)] );
-        GetResultTaskResultMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.GetResult), [typeof(TaskAwaiter<>)] );
-        GetResultValueTaskMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.GetResult), [typeof(ValueTaskAwaiter)] );
-        GetResultValueTaskResultMethod = typeof(AwaiterInfo).GetMethod( nameof(AwaiterInfo.GetResult), [typeof(ValueTaskAwaiter<>)] );
+        GetResultTaskMethod = GetMethod( nameof(AwaitBinder.GetResult), [typeof(TaskAwaiter)] );
+        GetResultTaskResultMethod = GetMethod( nameof(AwaitBinder.GetResult), [typeof(TaskAwaiter<>)] );
+        GetResultValueTaskMethod = GetMethod( nameof(AwaitBinder.GetResult), [typeof(ValueTaskAwaiter)] );
+        GetResultValueTaskResultMethod = GetMethod( nameof(AwaitBinder.GetResult), [typeof(ValueTaskAwaiter<>)] );
     }
 
-    public static AwaiterInfo GetOrCreate( Type targetType )
+    private static MethodInfo GetMethod( string name ) => 
+        typeof(AwaitBinder).GetMethod( name, BindingFlags.Instance | BindingFlags.NonPublic );
+
+    private static MethodInfo GetMethod( string name, Type[] types ) => 
+        typeof(AwaitBinder).GetMethod( name, BindingFlags.Instance | BindingFlags.NonPublic, types );
+
+    public static AwaitBinder GetOrCreate( Type targetType )
     {
         return Cache.GetOrAdd( targetType, Create );
     }
 
-    public static bool TryGetOrCreate( Type targetType, out AwaiterInfo awaiterInfo )
+    public static bool TryGetOrCreate( Type targetType, out AwaitBinder awaitBinder )
     {
         try
         {
-            awaiterInfo = Cache.GetOrAdd( targetType, Create );
+            awaitBinder = Cache.GetOrAdd( targetType, Create );
             return true;
         }
         catch
         {
-            awaiterInfo = null;
+            awaitBinder = null;
             return false;
         }
     }
@@ -65,7 +71,7 @@ internal static class AwaiterInfoFactory
         Cache.Clear();
     }
 
-    private static AwaiterInfo Create( Type targetType )
+    private static AwaitBinder Create( Type targetType )
     {
         // Task or ValueTask
 
@@ -77,7 +83,7 @@ internal static class AwaiterInfoFactory
             {
                 var typeArgument = targetType.GetGenericArguments()[0];
 
-                return new AwaiterInfo(
+                return new AwaitBinder(
                     AwaitResultMethod.MakeGenericMethod( targetType, typeArgument ),
                     GetAwaiterTaskResultMethod,
                     GetResultTaskResultMethod
@@ -88,7 +94,7 @@ internal static class AwaiterInfoFactory
             {
                 var typeArgument = targetType.GetGenericArguments()[0];
 
-                return new AwaiterInfo(
+                return new AwaitBinder(
                     AwaitResultMethod.MakeGenericMethod( targetType, typeArgument ),
                     GetAwaiterValueTaskResultMethod,
                     GetResultValueTaskResultMethod
@@ -99,7 +105,7 @@ internal static class AwaiterInfoFactory
         {
             if ( targetType == typeof(Task) )
             {
-                return new AwaiterInfo(
+                return new AwaitBinder(
                     AwaitMethod.MakeGenericMethod( targetType ),
                     GetAwaiterTaskMethod,
                     GetResultTaskMethod
@@ -108,7 +114,7 @@ internal static class AwaiterInfoFactory
 
             if ( targetType == typeof(ValueTask) )
             {
-                return new AwaiterInfo(
+                return new AwaitBinder(
                     AwaitMethod.MakeGenericMethod( targetType ),
                     GetAwaiterValueTaskMethod,
                     GetResultValueTaskMethod
@@ -135,7 +141,7 @@ internal static class AwaiterInfoFactory
             ? AwaitMethod.MakeGenericMethod( targetType ) 
             : AwaitResultMethod.MakeGenericMethod( targetType, getResultMethod.ReturnType ); 
 
-        return new AwaiterInfo(
+        return new AwaitBinder(
             awaitMethod,
             getAwaiterMethod,
             getResultMethod

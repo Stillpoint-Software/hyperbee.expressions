@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.AsyncExpressions.Transformation;
 
@@ -24,13 +24,13 @@ public class AwaitExpression : Expression
 
     public Expression Target { get; }
 
-    public AwaiterInfo GetAwaiterInfo() => AwaiterInfoFactory.GetOrCreate( Target.Type );
+    public AwaitBinder GetAwaiterInfo() => AwaitBinderFactory.GetOrCreate( Target.Type );
 
     public override Expression Reduce()
     {
         var awaitableType = Target.Type;
 
-        if ( !AwaiterInfoFactory.TryGetOrCreate( awaitableType, out var awaitableInfo ) )
+        if ( !AwaitBinderFactory.TryGetOrCreate( awaitableType, out var awaitableInfo ) )
             throw new InvalidOperationException( $"Unable to resolve await method for type {awaitableType}." );
 
         return Call( Constant( awaitableInfo ), awaitableInfo.AwaitMethod, Target, Constant( _configureAwait ) );
@@ -52,7 +52,7 @@ public class AwaitExpression : Expression
         if ( awaitableType == typeof(Task) || awaitableType == typeof(ValueTask) )
             return typeof(void);
 
-        if ( AwaiterInfoFactory.TryGetOrCreate( awaitableType, out var awaiterInfo ) )
+        if ( AwaitBinderFactory.TryGetOrCreate( awaitableType, out var awaiterInfo ) )
             return awaiterInfo.GetResultMethod.ReturnType;
 
         throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." );
@@ -60,7 +60,7 @@ public class AwaitExpression : Expression
 
     internal static bool IsAwaitable( Type type )
     {
-        return typeof(Task).IsAssignableFrom( type ) || typeof(ValueTask).IsAssignableFrom( type ) || AwaiterInfoFactory.TryGetOrCreate( type, out _ );
+        return typeof(Task).IsAssignableFrom( type ) || typeof(ValueTask).IsAssignableFrom( type ) || AwaitBinderFactory.TryGetOrCreate( type, out _ );
     }
 
     private class AwaitExpressionDebuggerProxy( AwaitExpression node )
