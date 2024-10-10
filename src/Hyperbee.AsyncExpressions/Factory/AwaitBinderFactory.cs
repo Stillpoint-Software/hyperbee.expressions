@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Hyperbee.AsyncExpressions.Transformation;
 
-namespace Hyperbee.AsyncExpressions;
+namespace Hyperbee.AsyncExpressions.Factory;
 
 internal static class AwaitBinderFactory
 {
@@ -13,6 +13,7 @@ internal static class AwaitBinderFactory
     const string GetAwaiterName = "GetAwaiter";
 
     // Pre-cached MethodInfo
+
     private static readonly MethodInfo AwaitMethod;
     private static readonly MethodInfo AwaitResultMethod;
     private static readonly MethodInfo GetAwaiterTaskMethod;
@@ -24,11 +25,14 @@ internal static class AwaitBinderFactory
     private static readonly MethodInfo GetResultValueTaskMethod;
     private static readonly MethodInfo GetResultValueTaskResultMethod;
 
+    const BindingFlags InstanceNonPublic = BindingFlags.Instance | BindingFlags.NonPublic;
+    const BindingFlags StaticNonPublic = BindingFlags.Static | BindingFlags.NonPublic;
+
     static AwaitBinderFactory()
     {
-        // Pre-cache methods
-        AwaitMethod = GetMethod( nameof(AwaitBinder.Await) );
-        AwaitResultMethod = GetMethod( nameof(AwaitBinder.AwaitResult) );
+        // Pre-cache binder methods
+        AwaitMethod = GetMethod( nameof(AwaitBinder.Await), InstanceNonPublic );
+        AwaitResultMethod = GetMethod( nameof(AwaitBinder.AwaitResult), InstanceNonPublic );
 
         GetAwaiterTaskMethod = GetMethod( nameof(AwaitBinder.GetAwaiter), [typeof(Task)] );
         GetAwaiterTaskResultMethod = GetMethod( nameof(AwaitBinder.GetAwaiter), typeof(Task<>) );
@@ -41,20 +45,32 @@ internal static class AwaitBinderFactory
         GetResultValueTaskResultMethod = GetMethod( nameof(AwaitBinder.GetResult), typeof(ValueTaskAwaiter<>) );
     }
 
-    private static MethodInfo GetMethod( string name ) => 
-        typeof(AwaitBinder).GetMethod( name, BindingFlags.Instance | BindingFlags.NonPublic );
-
-    private static MethodInfo GetMethod( string name, Type[] types ) => 
-        typeof(AwaitBinder).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic, types );
-
-    private static MethodInfo GetMethod( string name, Type genericType )
+    private static MethodInfo GetMethod( string name, BindingFlags bindingAttr = StaticNonPublic )
     {
-        return typeof( AwaitBinder )
-            .GetMethods( BindingFlags.Static | BindingFlags.NonPublic )
-            .FirstOrDefault( m => m.Name == name && m.IsGenericMethodDefinition &&
-                                  m.GetGenericArguments().Length == 1 &&
-                                  m.GetParameters().Any( p => p.ParameterType.IsGenericType &&
-                                                              p.ParameterType.GetGenericTypeDefinition() == genericType ) );
+        return typeof(AwaitBinder).GetMethod( name, bindingAttr );
+    }
+
+    private static MethodInfo GetMethod( string name, Type[] types, BindingFlags bindingAttr = StaticNonPublic )
+    {
+        return typeof(AwaitBinder).GetMethod( name, bindingAttr, types );
+    }
+
+    private static MethodInfo GetMethod( string name, Type genericType, BindingFlags bindingAttr = StaticNonPublic )
+    {
+        var methods = typeof(AwaitBinder)
+            .GetMethods( StaticNonPublic )
+            .Where( method => method.Name == name && method.IsGenericMethodDefinition && method.GetGenericArguments().Length == 1 );
+
+        foreach ( var method in methods )
+        {
+            foreach ( var param in method.GetParameters() )
+            {
+                if ( param.ParameterType.IsGenericType && param.ParameterType.GetGenericTypeDefinition() == genericType ) 
+                    return method;
+            }
+        }
+
+        return null;
     }
 
     public static AwaitBinder GetOrCreate( Type targetType )
@@ -83,56 +99,45 @@ internal static class AwaitBinderFactory
 
     private static AwaitBinder Create( Type targetType )
     {
-        // Task or ValueTask
+        // Task and ValueTask types
 
         if ( targetType.IsGenericType )
         {
             var targetTypeDefinition = targetType.GetGenericTypeDefinition();
+            var typeArgument = targetType.GetGenericArguments()[0];
 
-            if ( targetTypeDefinition == typeof(Task<>) || targetTypeDefinition.IsSubclassOf( typeof(Task) ) )
+            if ( targetTypeDefinition == typeof(Task<>) )
             {
-                var typeArgument = targetType.GetGenericArguments()[0];
-
                 return new AwaitBinder(
-                    AwaitResultMethod.MakeGenericMethod( targetType, typeArgument ),
-                    GetAwaiterTaskResultMethod,
-                    GetResultTaskResultMethod
-                );
+                    AwaitResultMethod.MakeGenericMethod( targetType, typeArgument ), 
+                    GetAwaiterTaskResultMethod.MakeGenericMethod( typeArgument ),
+                    GetResultTaskResultMethod.MakeGenericMethod( typeArgument ) );
             }
 
-            if ( targetTypeDefinition == typeof( ValueTask<> ) || targetTypeDefinition.IsSubclassOf( typeof(ValueTask) ) )
+            if ( targetTypeDefinition == typeof(ValueTask<>) )
             {
-                var typeArgument = targetType.GetGenericArguments()[0];
-
                 return new AwaitBinder(
-                    AwaitResultMethod.MakeGenericMethod( targetType, typeArgument ),
-                    GetAwaiterValueTaskResultMethod,
-                    GetResultValueTaskResultMethod
-                );
+                    AwaitResultMethod.MakeGenericMethod( targetType, typeArgument ), 
+                    GetAwaiterValueTaskResultMethod.MakeGenericMethod( typeArgument ),
+                    GetResultValueTaskResultMethod.MakeGenericMethod( typeArgument ) );
             }
         }
-        else
+        else if ( targetType == typeof(Task) )
         {
-            if ( targetType == typeof( Task ) || targetType.IsSubclassOf( typeof( Task ) ) )
-            {
-                return new AwaitBinder(
-                    AwaitMethod.MakeGenericMethod( targetType ),
-                    GetAwaiterTaskMethod,
-                    GetResultTaskMethod
-                );
-            }
-
-            if ( targetType == typeof( ValueTask ) || targetType.IsSubclassOf( typeof( ValueTask ) ) )
-            {
-                return new AwaitBinder(
-                    AwaitMethod.MakeGenericMethod( targetType ),
-                    GetAwaiterValueTaskMethod,
-                    GetResultValueTaskMethod
-                );
-            }
+            return new AwaitBinder(
+                AwaitMethod.MakeGenericMethod( targetType ),
+                GetAwaiterTaskMethod,
+                GetResultTaskMethod );
+        }
+        else if ( targetType == typeof(ValueTask) )
+        {
+            return new AwaitBinder(
+                AwaitMethod.MakeGenericMethod( targetType ),
+                GetAwaiterValueTaskMethod,
+                GetResultValueTaskMethod );
         }
 
-        // Awaitable Type
+        // other awaitable types
 
         var getAwaiterMethod = targetType
             .GetMethod( GetAwaiterName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
@@ -145,17 +150,20 @@ internal static class AwaitBinderFactory
         var getResultMethod = awaiterType.GetMethod( GetResultName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic );
 
         if ( getResultMethod == null )
+        {
             throw new InvalidOperationException( $"The awaiter for {targetType} does not have a GetResult method." );
+        }
 
         var awaitMethod = getResultMethod.ReturnType == typeof(void) || getResultMethod.ReturnType == typeof(IVoidTaskResult)
-            ? AwaitMethod.MakeGenericMethod( targetType ) 
+            ? AwaitMethod 
             : AwaitResultMethod.MakeGenericMethod( targetType, getResultMethod.ReturnType ); 
 
         return new AwaitBinder(
             awaitMethod,
             getAwaiterMethod,
-            getResultMethod
-        );
+            getResultMethod,
+            getAwaiterMethod, 
+            getResultMethod );
     }
 
     private static MethodInfo FindExtensionMethod( Type targetType, string methodName )

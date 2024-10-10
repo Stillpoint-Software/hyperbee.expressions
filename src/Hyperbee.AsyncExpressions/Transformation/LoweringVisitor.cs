@@ -217,9 +217,9 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _awaitCount++;
 
-        var awaiterInfo = node.GetAwaiterInfo(); //BF
+        var awaitBinder = node.GetAwaitBinder();
 
-        var awaiterVariable = Expression.Variable( GetAwaiterType(), VariableName.Awaiter( sourceState.StateId ) );
+        var awaiterVariable = Expression.Variable( GetAwaiterType(), VariableName.Awaiter( sourceState.StateId ) ); //BF: GetAwaiterType() is incorrectly Task specific 
         _variables.Add( awaiterVariable );
 
         completionState.Transition = new AwaitResultTransition
@@ -227,7 +227,7 @@ internal class LoweringVisitor : ExpressionVisitor
             TargetNode = joinState, 
             AwaiterVariable = awaiterVariable, 
             ResultVariable = resultVariable,
-            AwaitBinder = awaiterInfo
+            GetResultMethod = awaitBinder.GetResultMethod
         };
 
         _states.JumpCases.Add( completionState.NodeLabel, sourceState.StateId );
@@ -238,7 +238,7 @@ internal class LoweringVisitor : ExpressionVisitor
             StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
             CompletionNode = completionState,
-            AwaitBinder = awaiterInfo
+            GetAwaiterMethod = awaitBinder.GetAwaiterMethod
         };
 
         sourceState.ResultVariable = resultVariable;

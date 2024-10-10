@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
+using Hyperbee.AsyncExpressions.Factory;
 using Hyperbee.AsyncExpressions.Transformation;
 
 namespace Hyperbee.AsyncExpressions;
@@ -24,7 +25,7 @@ public class AwaitExpression : Expression
 
     public Expression Target { get; }
 
-    public AwaitBinder GetAwaiterInfo() => AwaitBinderFactory.GetOrCreate( Target.Type );
+    public AwaitBinder GetAwaitBinder() => AwaitBinderFactory.GetOrCreate( Target.Type );
 
     public override Expression Reduce()
     {
