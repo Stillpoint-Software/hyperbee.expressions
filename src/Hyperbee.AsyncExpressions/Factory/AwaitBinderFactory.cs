@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Hyperbee.AsyncExpressions.Transformation;
 
@@ -147,23 +148,51 @@ internal static class AwaitBinderFactory
         if ( getAwaiterMethod == null )
             throw new InvalidOperationException( $"The type {targetType} is not awaitable." );
 
-        var getResultMethod = getAwaiterMethod
-            .ReturnType
-            .GetMethod( GetResultName, InstancePublicNonPublic );
+        var awaiterType = getAwaiterMethod.ReturnType;
+        var getResultMethod = awaiterType.GetMethod( GetResultName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic );
 
         if ( getResultMethod == null )
-            throw new InvalidOperationException( $"The awaiter for {targetType} does not have a {GetResultName} method." );
+            throw new InvalidOperationException( $"The awaiter for {targetType} does not have a GetResult method." );
 
-        var awaitMethod = getResultMethod.ReturnType == typeof(void) || getResultMethod.ReturnType == typeof(IVoidTaskResult)
-            ? AwaitMethod 
-            : AwaitResultMethod.MakeGenericMethod( targetType, getResultMethod.ReturnType ); 
+        // Create the dynamic delegates for GetAwaiter and GetResult
+        var getAwaiterDelegate = CreateDynamicMethodDelegate( getAwaiterMethod, getAwaiterMethod.IsStatic );
+        var getResultDelegate = CreateDynamicMethodDelegate( getResultMethod, getResultMethod.IsStatic );
 
         return new AwaitBinder(
-            awaitMethod,
+            AwaitMethod.MakeGenericMethod( targetType ),
             getAwaiterMethod,
             getResultMethod,
-            getAwaiterMethod, 
-            getResultMethod );
+            getAwaiterDelegate,
+            getResultDelegate );
+    }
+
+    private static AwaitBinderDelegate CreateDynamicMethodDelegate( MethodInfo methodInfo, bool isStatic )
+    {
+        var dynamicMethod = new DynamicMethod(
+            name: methodInfo.Name,
+            returnType: typeof(object),
+            parameterTypes: [typeof(object)],
+            typeof(AwaitBinder).Module,
+            skipVisibility: true );
+
+        var il = dynamicMethod.GetILGenerator();
+
+        if ( !isStatic )
+        {
+            il.Emit( OpCodes.Ldarg_0 );
+            il.Emit( OpCodes.Castclass, methodInfo.DeclaringType! ); 
+        }
+
+        il.Emit( isStatic ? OpCodes.Call : OpCodes.Callvirt, methodInfo );
+
+        if ( methodInfo.ReturnType.IsValueType ) // box value types
+        {
+            il.Emit( OpCodes.Box, methodInfo.ReturnType );
+        }
+
+        il.Emit( OpCodes.Ret );
+
+        return (AwaitBinderDelegate) dynamicMethod.CreateDelegate( typeof(AwaitBinderDelegate) );
     }
 
     private static MethodInfo FindExtensionMethod( Type targetType, string methodName )

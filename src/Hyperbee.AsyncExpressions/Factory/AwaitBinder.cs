@@ -3,27 +3,29 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions.Factory;
 
+internal delegate object AwaitBinderDelegate( object instance );
+
 public class AwaitBinder
 {
     public MethodInfo AwaitMethod { get; }
     public MethodInfo GetAwaiterMethod { get; }
     public MethodInfo GetResultMethod { get; }
 
-    private MethodInfo GetAwaiterImplMethod { get; }
-    private MethodInfo GetResultImplMethod { get; }
+    private AwaitBinderDelegate GetAwaiterImpl { get; }
+    private AwaitBinderDelegate GetResultImpl { get; }
 
     internal AwaitBinder(
         MethodInfo awaitMethod,
         MethodInfo getAwaiterMethod,
         MethodInfo getResultMethod,
-        MethodInfo getAwaiterImplMethod = null,
-        MethodInfo getResultImplMethod = null )
+        AwaitBinderDelegate getAwaiterImpl = null,
+        AwaitBinderDelegate getResultImpl = null )
     {
         AwaitMethod = awaitMethod;
         GetAwaiterMethod = getAwaiterMethod;
         GetResultMethod = getResultMethod;
-        GetAwaiterImplMethod = getAwaiterImplMethod;
-        GetResultImplMethod = getResultImplMethod;
+        GetAwaiterImpl = getAwaiterImpl;
+        GetResultImpl = getResultImpl;
     }
 
     // Await methods
@@ -83,12 +85,10 @@ public class AwaitBinder
 
     internal object GetAwaiter( object awaitable )
     {
-        if ( GetAwaiterImplMethod == null )
-            throw new InvalidOperationException( $"The {nameof(GetAwaiterImplMethod)} is not set for {awaitable.GetType()}." );
+        if ( GetAwaiterImpl == null )
+            throw new InvalidOperationException( $"The {nameof(GetAwaiterImpl)} is not set for {awaitable.GetType()}." );
 
-        return GetAwaiterImplMethod.IsStatic
-            ? GetAwaiterImplMethod.Invoke( null, [awaitable] )
-            : GetAwaiterImplMethod.Invoke( awaitable, null );
+        return GetAwaiterImpl( awaitable );
     }
 
     // GetResult methods
@@ -106,22 +106,17 @@ public class AwaitBinder
 
     internal void GetResult( object awaiter )
     {
-        if ( GetResultImplMethod == null )
-            throw new InvalidOperationException( $"The {nameof(GetResultImplMethod)} is not set for {awaiter.GetType()}." );
+        if ( GetResultImpl == null )
+            throw new InvalidOperationException( $"The {nameof(GetResultImpl)} is not set for {awaiter.GetType()}." );
 
-        if ( GetResultImplMethod.IsStatic )
-            GetResultImplMethod.Invoke( null, [awaiter] );
-        else
-            GetResultImplMethod.Invoke( awaiter, null );
+        GetResultImpl( awaiter );
     }
 
     internal T GetResultValue<T>( object awaiter )
     {
-        if ( GetResultImplMethod == null )
-            throw new InvalidOperationException( $"The GetResultImplMethod is not set for {awaiter.GetType()}." );
+        if ( GetResultImpl == null )
+            throw new InvalidOperationException( $"The {nameof(GetResultImpl)} is not set for {awaiter.GetType()}." );
 
-        return GetResultImplMethod.IsStatic
-            ? (T) GetResultImplMethod.Invoke( null, [awaiter] )
-            : (T) GetResultImplMethod.Invoke( awaiter, null );
+        return (T) GetResultImpl( awaiter );
     }
 }
