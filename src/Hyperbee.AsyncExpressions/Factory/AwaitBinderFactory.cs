@@ -154,16 +154,17 @@ internal static class AwaitBinderFactory
         if ( getResultMethod == null )
             throw new InvalidOperationException( $"The awaiter for {targetType} does not have a GetResult method." );
 
-        // Create the dynamic delegates for GetAwaiter and GetResult
-        var getAwaiterDelegate = CreateDynamicMethodDelegate( getAwaiterMethod, getAwaiterMethod.IsStatic );
-        var getResultDelegate = CreateDynamicMethodDelegate( getResultMethod, getResultMethod.IsStatic );
+        // Create delegates for GetAwaiter and GetResult Implementations
+
+        var getAwaiterImpl = CreateDynamicMethodDelegate( getAwaiterMethod, getAwaiterMethod.IsStatic );
+        var getResultImpl = CreateDynamicMethodDelegate( getResultMethod, getResultMethod.IsStatic );
 
         return new AwaitBinder(
             AwaitMethod.MakeGenericMethod( targetType ),
             getAwaiterMethod,
             getResultMethod,
-            getAwaiterDelegate,
-            getResultDelegate );
+            getAwaiterImpl,
+            getResultImpl );
     }
 
     private static AwaitBinderDelegate CreateDynamicMethodDelegate( MethodInfo methodInfo, bool isStatic )
