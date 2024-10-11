@@ -51,7 +51,9 @@ public class AsyncBlockExpression: Expression
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
 
-        return StateMachineBuilder.Create( resultType, source );
+        var stateMachine = StateMachineBuilder.Create( resultType, source );
+
+        return stateMachine;
     }
 
     private class AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node )

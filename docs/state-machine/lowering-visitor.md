@@ -9,28 +9,28 @@ nav_order: 2
 To support asynchronous code, we must convert user expression trees into state machine representations that can suspend and 
 resume operations. 
 
-This conversion process is known as "lowering" and it is responsible for transforming flow control constructs (such as if, switch,
+This conversion process is known as "lowering", and it is responsible for transforming flow control constructs (such as if, switch,
 loops, and awaits) into a state tree that can be used to generate a flattened state machine. This step systematically traverses the
 expression tree and replaces branching constructs with state nodes that manage control flow using transitions and goto operations. 
-It also identifies variables that need to be hoisted so that variable scope is correctly maintained.
+It also identifies variables that will need to be hoisted so that variable scope is correctly maintained.
 
 ## Introduction
 
-The `LoweringVisitor` is responsible for transforming an expression tree into discrete states that will be used to generate the 
-final state machine. 
+The `LoweringVisitor` is responsible for transforming an expression tree into discrete states, and transitions, that will be used 
+to generate the final state machine. 
 
-The purpose of this phase is to "lower" high-level constructs, such as `await`, `if/else`, `switch`, and loops, into individual 
+The purpose of this visitor is to "lower" high-level constructs, such as `await`, `if/else`, `switch`, and loops, into individual 
 `NodeExpression` objects that the state machine can later process.
 
 ## 1. Handling Control Flow Constructs (Branching and Loops)
 
 ### What is being done?
-The `LoweringVisitor` handles control flow constructs like conditionals (`if/else`), loops (`for`, `while`), and switches. 
+The `LoweringVisitor` handles control flow constructs like conditionals (`if/else`), loops (`for`, `while`), and switches (`case`). 
 Each construct is transformed into a state, and transitions are defined to manage the execution flow between branches and loops.
 
 ### Problem
-Branching and looping introduce multiple execution paths that require the program to pause execution at certain points and resume
-it later. These paths must be preserved accurately within a state machine to ensure correct execution flow.
+Branching and looping introduce multiple execution paths that could require the program to pause and resume execution. These paths 
+must be preserved accurately within a state machine to ensure correct execution flow.
 
 ### Discussion
 The `LoweringVisitor` uses the `VisitBranch` method to create distinct states for each branch and loop. For each conditional or loop,

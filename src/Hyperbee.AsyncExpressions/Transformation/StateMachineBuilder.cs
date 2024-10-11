@@ -518,7 +518,7 @@ public static class StateMachineBuilder
     static StateMachineBuilder()
     {
         BuildStateMachineMethod = typeof(StateMachineBuilder)
-            .GetMethods( BindingFlags.Public | BindingFlags.Static )
+            .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
             .First( x => x.Name == nameof(Create) && x.IsGenericMethod );
 
         // Create the state machine module
@@ -537,7 +537,7 @@ public static class StateMachineBuilder
         return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
     }
 
-    public static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
+    internal static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
