@@ -9,14 +9,13 @@ namespace Hyperbee.AsyncExpressions;
 [DebuggerTypeProxy( typeof(AwaitExpressionDebuggerProxy) )]
 public class AwaitExpression : Expression
 {
-    private readonly bool _configureAwait;
     private Type _resultType;
 
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
         Target = asyncExpression ?? throw new ArgumentNullException( nameof(asyncExpression) );
 
-        _configureAwait = configureAwait;
+        ConfigureAwait = configureAwait;
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
@@ -24,6 +23,8 @@ public class AwaitExpression : Expression
     public override Type Type => _resultType ??= ResultType( Target.Type );
 
     public Expression Target { get; }
+
+    public bool ConfigureAwait { get; }
 
     public AwaitBinder GetAwaitBinder() => AwaitBinderFactory.GetOrCreate( Target.Type );
 
@@ -34,7 +35,9 @@ public class AwaitExpression : Expression
         if ( !AwaitBinderFactory.TryGetOrCreate( awaitableType, out var awaitableInfo ) )
             throw new InvalidOperationException( $"Unable to resolve await method for type {awaitableType}." );
 
-        return Call( Constant( awaitableInfo ), awaitableInfo.AwaitMethod, Target, Constant( _configureAwait ) );
+        var reduced = Call( Constant( awaitableInfo ), awaitableInfo.AwaitMethod, Target, Constant( ConfigureAwait ) );
+
+        return reduced;
     }
 
     private static Type ResultType( Type awaitableType )

@@ -240,7 +240,8 @@ internal class LoweringVisitor : ExpressionVisitor
             StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
             CompletionNode = completionState,
-            GetAwaiterMethod = awaitBinder.GetAwaiterMethod
+            GetAwaiterMethod = awaitBinder.GetAwaiterMethod,
+            ConfigureAwait = node.ConfigureAwait
         };
 
         sourceState.ResultVariable = resultVariable;

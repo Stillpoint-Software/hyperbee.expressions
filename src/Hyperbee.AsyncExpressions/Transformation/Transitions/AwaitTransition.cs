@@ -1,7 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Hyperbee.AsyncExpressions.Factory;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
@@ -14,12 +13,13 @@ public class AwaitTransition : Transition
     public ParameterExpression AwaiterVariable { get; set; }
     public NodeExpression CompletionNode { get; set; }
     public MethodInfo GetAwaiterMethod { get; set; }
+    public bool ConfigureAwait { get; set; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
         var getAwaiterCall = GetAwaiterMethod.IsStatic
-            ? Call( GetAwaiterMethod, Target )
-            : Call( Target, GetAwaiterMethod );
+            ? Call( GetAwaiterMethod, Target, Constant( ConfigureAwait ) )
+            : Call( Target, GetAwaiterMethod, Constant( ConfigureAwait ) );
 
         var expressions = new List<Expression>
         {
@@ -49,27 +49,6 @@ public class AwaitTransition : Transition
             expressions.Add( fallThrough );
 
         return Block( expressions );
-        /*return Block(
-            Assign(
-                AwaiterVariable,
-                Call( Target, Target.Type.GetMethod( "GetAwaiter" )! )
-            ),
-            IfThen(
-                IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
-                Block(
-                    Assign( resolverSource.StateIdField, Constant( StateId ) ),
-                    Call(
-                        resolverSource.BuilderField,
-                        "AwaitUnsafeOnCompleted",
-                        [AwaiterVariable.Type, typeof( IAsyncStateMachine )],
-                        AwaiterVariable,
-                        resolverSource.StateMachine
-                    ),
-                    Return( resolverSource.ReturnLabel )
-                )
-            ),
-            GotoOrFallThrough( order, CompletionNode )
-        );*/
     }
 
     internal override NodeExpression FallThroughNode => CompletionNode;

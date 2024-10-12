@@ -27,6 +27,11 @@ internal static class LazyAwaiterExtensions
 [TestClass]
 public class CustomAwaiterTests
 {
+    public object GetResult( object awaiter )
+    {
+        var awaiterLocal = (LazyAwaiter<int>) awaiter;
+        return awaiterLocal.GetResult();
+    }
 
     [TestMethod]
     public void TestCustomAwaiter_Await()
