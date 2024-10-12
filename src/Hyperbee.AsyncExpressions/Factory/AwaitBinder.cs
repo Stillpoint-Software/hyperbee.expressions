@@ -1,11 +1,11 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
+using Hyperbee.AsyncExpressions.Transformation;
 
 namespace Hyperbee.AsyncExpressions.Factory;
 
-internal delegate object AwaitBinderGetAwaiterDelegate( object awaitable, bool configureAwait );
-
-internal delegate object AwaitBinderGetResultDelegate( object awaiter );
+internal delegate TAwaiter AwaitBinderGetAwaiterDelegate<in TAwaitable, out TAwaiter>( TAwaitable awaitable, bool configureAwait );
+internal delegate TResult AwaitBinderGetResultDelegate<in TAwaiter, out TResult>( TAwaiter awaiter );
 
 public class AwaitBinder
 {
@@ -13,26 +13,26 @@ public class AwaitBinder
     public MethodInfo GetAwaiterMethod { get; }
     public MethodInfo GetResultMethod { get; }
 
-    private AwaitBinderGetAwaiterDelegate GetAwaiterImpl { get; }
-    private AwaitBinderGetResultDelegate GetResultImpl { get; }
+    private Delegate GetAwaiterImplDelegate { get; }
+    private Delegate GetResultImplDelegate { get; }
 
     internal AwaitBinder(
         MethodInfo awaitMethod,
         MethodInfo getAwaiterMethod,
         MethodInfo getResultMethod,
-        AwaitBinderGetAwaiterDelegate getAwaiterImpl = null,
-        AwaitBinderGetResultDelegate getResultImpl = null )
+        Delegate getAwaiterImplDelegate = null,
+        Delegate getResultImplDelegate = null )
     {
         AwaitMethod = awaitMethod;
         GetAwaiterMethod = getAwaiterMethod;
         GetResultMethod = getResultMethod;
-        GetAwaiterImpl = getAwaiterImpl;
-        GetResultImpl = getResultImpl;
+        GetAwaiterImplDelegate = getAwaiterImplDelegate;
+        GetResultImplDelegate = getResultImplDelegate;
     }
 
     // Await methods
 
-    internal void Await<TAwaitable>( TAwaitable awaitable, bool configureAwait )
+    internal void Await<TAwaitable,TAwaiter>( TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )
         {
@@ -45,29 +45,25 @@ public class AwaitBinder
                 return;
 
             default:
-            {
-                var awaiter = GetAwaiter( awaitable, configureAwait );
+                var awaiter = GetAwaiter<TAwaitable, TAwaiter>( awaitable, configureAwait );
                 GetResult( awaiter );
                 break;
-            }
         }
     }
 
-    internal T AwaitResult<TAwaitable, T>( TAwaitable awaitable, bool configureAwait )
+    internal TResult AwaitResult<TAwaitable, TAwaiter, TResult>( TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )
         {
-            case Task<T> task:
+            case Task<TResult> task:
                 return task.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
 
-            case ValueTask<T> valueTask:
+            case ValueTask<TResult> valueTask:
                 return valueTask.ConfigureAwait( configureAwait ).GetAwaiter().GetResult();
 
             default:
-            {
-                var awaiter = GetAwaiter( awaitable, configureAwait );
-                return GetResultValue<T>( awaiter );
-            }
+                var awaiter = GetAwaiter<TAwaitable, TAwaiter>( awaitable, configureAwait );
+                return GetResultValue<TAwaiter,TResult>( awaiter );
         }
     }
 
@@ -80,30 +76,31 @@ public class AwaitBinder
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static ConfiguredTaskAwaitable<T>.ConfiguredTaskAwaiter GetAwaiter<T>( Task<T> task, bool configureAwait )
-    {
-        return task.ConfigureAwait( configureAwait ).GetAwaiter();
-    }
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal static ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter GetAwaiter( ValueTask valueTask, bool configureAwait )
     {
         return valueTask.ConfigureAwait( configureAwait ).GetAwaiter();
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static ConfiguredValueTaskAwaitable<T>.ConfiguredValueTaskAwaiter GetAwaiter<T>( ValueTask<T> valueTask, bool configureAwait )
+    internal static ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter GetAwaiter<TResult>( Task<TResult> task, bool configureAwait )
+    {
+        return task.ConfigureAwait( configureAwait ).GetAwaiter();
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    internal static ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter GetAwaiter<TResult>( ValueTask<TResult> valueTask, bool configureAwait )
     {
         return valueTask.ConfigureAwait( configureAwait ).GetAwaiter();
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal object GetAwaiter( object awaitable, bool configureAwait )
+    internal TAwaiter GetAwaiter<TAwaitable, TAwaiter>( TAwaitable awaitable, bool configureAwait )
     {
-        if ( GetAwaiterImpl == null )
-            throw new InvalidOperationException( $"The {nameof(GetAwaiterImpl)} is not set for {awaitable.GetType()}." );
+        if ( GetAwaiterImplDelegate == null )
+            throw new InvalidOperationException( $"The {nameof(GetAwaiterImplDelegate)} is not set for {awaitable.GetType()}." );
 
-        return GetAwaiterImpl( awaitable, configureAwait );
+        var getAwaiter = (AwaitBinderGetAwaiterDelegate<TAwaitable, TAwaiter>) GetAwaiterImplDelegate;
+        return getAwaiter( awaitable, configureAwait );
     }
 
     // GetResult methods
@@ -111,29 +108,33 @@ public class AwaitBinder
     internal static void GetResult( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter awaiter ) => awaiter.GetResult();
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static T GetResult<T>( ConfiguredTaskAwaitable<T>.ConfiguredTaskAwaiter awaiter ) => awaiter.GetResult();
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal static void GetResult( ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter awaiter ) => awaiter.GetResult();
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static T GetResult<T>( ConfiguredValueTaskAwaitable<T>.ConfiguredValueTaskAwaiter awaiter ) => awaiter.GetResult();
+    internal static TResult GetResult<TResult>( ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter awaiter ) => awaiter.GetResult();
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal void GetResult( object awaiter )
-    {
-        if ( GetResultImpl == null )
-            throw new InvalidOperationException( $"The {nameof(GetResultImpl)} is not set for {awaiter.GetType()}." );
+    internal static TResult GetResult<TResult>( ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter awaiter ) => awaiter.GetResult();
 
-        GetResultImpl( awaiter );
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    internal void GetResult<TAwaiter>( TAwaiter awaiter )
+    {
+        if ( GetResultImplDelegate == null )
+            throw new InvalidOperationException( $"The {nameof(GetResultImplDelegate)} is not set for {awaiter.GetType()}." );
+
+        var getResult = (AwaitBinderGetResultDelegate<TAwaiter, IVoidTaskResult>) GetResultImplDelegate;
+        getResult( awaiter );
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal T GetResultValue<T>( object awaiter )
+    internal TResult GetResultValue<TAwaiter, TResult>( TAwaiter awaiter )
     {
-        if ( GetResultImpl == null )
-            throw new InvalidOperationException( $"The {nameof(GetResultImpl)} is not set for {awaiter.GetType()}." );
+        if ( GetResultImplDelegate == null )
+            throw new InvalidOperationException( $"The {nameof(GetResultImplDelegate)} is not set for {awaiter.GetType()}." );
 
-        return (T) GetResultImpl( awaiter );
+        var getResult = (AwaitBinderGetResultDelegate<TAwaiter, TResult>) GetResultImplDelegate;
+        var result = getResult( awaiter );
+
+        return result;
     }
 }

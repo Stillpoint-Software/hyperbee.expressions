@@ -26,40 +26,63 @@ internal static class Reflection
         return false;
     }
 
-    internal static MethodInfo GetGenericMethod( Type target, string name, Type[] types, BindingFlags bindingAttr )
+    internal static MethodInfo GetMethod( Type target, string name, Type[] types, BindingFlags bindingAttr )
     {
-        // Find matching methods
+        return target.GetMethod( name, bindingAttr, types );
+    }
+
+    internal static MethodInfo GetOpenGenericMethod( Type target, string name, int argCount, Type[] parameterTypes, BindingFlags bindingAttr )
+    {
         var methods = target
             .GetMethods( bindingAttr )
             .Where( m => m.Name == name && m.IsGenericMethodDefinition );
 
-        // Find the method that matches the given types
         foreach ( var method in methods )
         {
+            var methodGenericArguments = method.GetGenericArguments();
+
+            if ( methodGenericArguments.Length != argCount )
+                continue;
+
             var parameters = method.GetParameters();
 
-            if ( parameters.Length != types.Length )
+            if ( parameters.Length != parameterTypes.Length )
                 continue;
 
             var match = true;
-
-            // Compare each parameter type with the given types
 
             for ( var i = 0; i < parameters.Length; i++ )
             {
                 var paramType = parameters[i].ParameterType;
 
+                // If the method's parameter is generic and our type is null (open generic match)
+                if ( paramType.IsGenericParameter && parameterTypes[i] == null )
+                    continue;
+
+                // If the parameter is not a generic and our type is null, it does NOT match
+                if ( !paramType.IsGenericParameter && parameterTypes[i] == null )
+                {
+                    match = false;
+                    break;
+                }
+
+                // If the parameter is a generic type, check the generic definition
                 if ( paramType.IsGenericType )
                 {
-                    if ( paramType.GetGenericTypeDefinition() == types[i].GetGenericTypeDefinition() )
+                    if ( paramType.GetGenericTypeDefinition() == parameterTypes[i]?.GetGenericTypeDefinition() )
+                    {
                         continue;
+                    }
 
                     match = false;
                     break;
                 }
 
-                if ( paramType == types[i] )
+                // Compare non-generic types directly
+                if ( paramType == parameterTypes[i] )
+                {
                     continue;
+                }
 
                 match = false;
                 break;
