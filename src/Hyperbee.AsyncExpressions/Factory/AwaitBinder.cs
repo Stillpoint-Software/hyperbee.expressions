@@ -119,7 +119,7 @@ public class AwaitBinder
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal static T GetResult<T>( ConfiguredValueTaskAwaitable<T>.ConfiguredValueTaskAwaiter awaiter ) => awaiter.GetResult();
 
-    //[MethodImpl( MethodImplOptions.AggressiveInlining )]
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal void GetResult( object awaiter )
     {
         if ( GetResultImpl == null )
@@ -128,7 +128,7 @@ public class AwaitBinder
         GetResultImpl( awaiter );
     }
 
-    //[MethodImpl( MethodImplOptions.AggressiveInlining )]
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal T GetResultValue<T>( object awaiter )
     {
         if ( GetResultImpl == null )
