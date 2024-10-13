@@ -34,6 +34,7 @@ internal static class AwaitBinderFactory
 
     static AwaitBinderFactory()
     {
+        // Pre-cache MethodInfo to reduce reflection overhead
         PreCacheMethodInfo();
     }
 
@@ -295,7 +296,7 @@ internal static class AwaitBinderFactory
         return dynamicMethod.CreateDelegate( typeof( AwaitBinderGetResultDelegate<TAwaiter, TResult> ) );
     }
 
-    // Pre-Cache
+    // Pre-Cache factory MethodInfo
 
     private static void PreCacheMethodInfo()
     {
