@@ -7,10 +7,10 @@ public delegate bool MethodMatchDelegate( Type[] parameterTypes, int? argCount =
 
 internal static class Reflection
 {
-    internal static bool IsOrInheritsFromGeneric( Type baseType, Type checkType )
+    internal static bool OpenGenericIsOrInherits( Type baseType, Type checkType )
     {
         if ( !baseType.IsGenericTypeDefinition || !checkType.IsGenericTypeDefinition )
-            throw new ArgumentException( "Both baseType and checkType should be generic type definitions." );
+            throw new ArgumentException( $"Both {nameof(baseType)} and {nameof(checkType)} should be generic type definitions." );
 
         if ( baseType == checkType )
             return true;

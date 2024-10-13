@@ -62,27 +62,19 @@ internal static class AwaitBinderFactory
         {
             var awaitableTypeDefinition = awaitableType.GetGenericTypeDefinition();
 
-            if ( Reflection.IsOrInheritsFromGeneric( typeof( Task<> ), awaitableTypeDefinition ) )
-            {
+            if ( Reflection.OpenGenericIsOrInherits( typeof( Task<> ), awaitableTypeDefinition ) )
                 return CreateGenericTaskAwaitBinder( awaitableType );
-            }
 
-            if ( Reflection.IsOrInheritsFromGeneric( typeof( ValueTask<> ), awaitableTypeDefinition ) )
-            {
+            if ( Reflection.OpenGenericIsOrInherits( typeof( ValueTask<> ), awaitableTypeDefinition ) )
                 return CreateGenericValueTaskAwaitBinder( awaitableType );
-            }
         }
         else
         {
             if ( awaitableType == typeof( Task ) || awaitableType.IsSubclassOf( typeof( Task ) ) )
-            {
                 return CreateTaskAwaitBinder( awaitableType );
-            }
 
             if ( awaitableType == typeof( ValueTask ) )
-            {
                 return CreateValueTaskAwaitBinder( awaitableType );
-            }
         }
 
         return CreateAwaitableTypeAwaitBinder( awaitableType );

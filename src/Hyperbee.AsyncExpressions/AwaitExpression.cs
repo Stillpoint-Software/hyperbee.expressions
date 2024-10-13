@@ -31,12 +31,9 @@ public class AwaitExpression : Expression
     public override Expression Reduce()
     {
         var awaitableType = Target.Type;
-
-        if ( !AwaitBinderFactory.TryGetOrCreate( awaitableType, out var awaitableInfo ) )
-            throw new InvalidOperationException( $"Unable to resolve await method for type {awaitableType}." );
+        var awaitableInfo = AwaitBinderFactory.GetOrCreate( awaitableType );
 
         var reduced = Call( Constant( awaitableInfo ), awaitableInfo.AwaitMethod, Target, Constant( ConfigureAwait ) );
-
         return reduced;
     }
 
@@ -59,10 +56,8 @@ public class AwaitExpression : Expression
         if ( awaitableType == typeof(Task) || awaitableType == typeof(ValueTask) )
             return typeof(void);
 
-        if ( AwaitBinderFactory.TryGetOrCreate( awaitableType, out var awaiterInfo ) )
-            return awaiterInfo.GetResultMethod.ReturnType;
-
-        throw new InvalidOperationException( $"Unsupported type in {nameof(AwaitExpression)}." );
+        var awaiterInfo = AwaitBinderFactory.GetOrCreate( awaitableType );
+        return awaiterInfo.GetResultMethod.ReturnType;
     }
 
     internal static bool IsAwaitable( Type type )
