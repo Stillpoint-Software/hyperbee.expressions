@@ -10,6 +10,7 @@ public class AsyncBlockExpression: Expression
     private readonly Expression[] _expressions;
     private readonly ParameterExpression[] _variables;
     private readonly Type _resultType;
+    private readonly Type _type;
 
     private Expression _stateMachine;
 
@@ -21,22 +22,20 @@ public class AsyncBlockExpression: Expression
     public AsyncBlockExpression( ParameterExpression[] variables, Expression[] expressions )
     {
         if ( expressions == null || expressions.Length == 0 )
-        {
             throw new ArgumentException( $"{nameof(AsyncBlockExpression)} must contain at least one expression.", nameof(expressions) );
-        }
-
+ 
         _variables = variables;
         _expressions = expressions;
         _resultType = _expressions[^1].Type;
+        _type = _resultType == typeof(void) ? typeof(Task) : typeof(Task<>).MakeGenericType( _resultType );
     }
 
     public override bool CanReduce => true;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    public override Type Type => (_resultType == typeof( void )) 
-        ? typeof(Task) 
-        : typeof(Task<>).MakeGenericType( _resultType );
+    // ReSharper disable once ConvertToAutoProperty
+    public override Type Type => _type;
 
     public override Expression Reduce()
     {
