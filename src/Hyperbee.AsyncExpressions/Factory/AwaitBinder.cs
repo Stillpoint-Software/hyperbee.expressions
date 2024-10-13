@@ -104,6 +104,7 @@ public class AwaitBinder
     }
 
     // GetResult methods
+
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal static void GetResult( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter awaiter ) => awaiter.GetResult();
 

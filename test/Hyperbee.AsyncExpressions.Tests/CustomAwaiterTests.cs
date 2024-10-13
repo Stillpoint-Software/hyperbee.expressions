@@ -5,21 +5,12 @@ namespace Hyperbee.AsyncExpressions.Tests;
 
 internal readonly struct LazyAwaiter<T> : INotifyCompletion
 {
-    public static int __count = 0;
-
     private readonly Lazy<T> _lazy;
-    private readonly int _id;
 
-    public LazyAwaiter( Lazy<T> lazy )
-    {
-        _id = ++__count;
-        _lazy = lazy;
-    }
+    public LazyAwaiter( Lazy<T> lazy ) => _lazy = lazy;
 
     public T GetResult() => _lazy.Value;
-
     public bool IsCompleted => true;
-
     public void OnCompleted( Action continuation ) { }
 }
 
@@ -34,11 +25,6 @@ internal static class LazyAwaiterExtensions
 [TestClass]
 public class CustomAwaiterTests
 {
-    internal int GetResult( LazyAwaiter<int> awaiter )
-    {
-        return awaiter.GetResult();
-    }
-
     [TestMethod]
     public void TestCustomAwaiter_Await()
     {
