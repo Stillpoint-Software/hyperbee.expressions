@@ -112,20 +112,20 @@ public class AwaitBinder
     internal static void GetResult( ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter awaiter ) => awaiter.GetResult();
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static TResult GetResult<TResult>( ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter awaiter ) => awaiter.GetResult();
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static TResult GetResult<TResult>( ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter awaiter ) => awaiter.GetResult();
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal void GetResult<TAwaiter>( TAwaiter awaiter )
     {
         if ( GetResultImplDelegate == null )
             throw new InvalidOperationException( $"The {nameof(GetResultImplDelegate)} is not set for {awaiter.GetType()}." );
 
-        var getResult = (AwaitBinderGetResultDelegate<TAwaiter, IVoidTaskResult>) GetResultImplDelegate;
+        var getResult = (AwaitBinderGetResultDelegate<TAwaiter, IVoidResult>) GetResultImplDelegate;
         getResult( awaiter );
     }
+    
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    internal static TResult GetResult<TResult>( ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter awaiter ) => awaiter.GetResult();
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    internal static TResult GetResult<TResult>( ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter awaiter ) => awaiter.GetResult();
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal TResult GetResultValue<TAwaiter, TResult>( TAwaiter awaiter )

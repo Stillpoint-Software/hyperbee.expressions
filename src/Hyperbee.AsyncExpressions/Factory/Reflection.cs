@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions.Factory;
 
+public delegate bool MethodMatchDelegate( Type[] parameterTypes, int? argCount = null );
+
 internal static class Reflection
 {
     internal static bool IsOrInheritsFromGeneric( Type baseType, Type checkType )
@@ -26,73 +28,53 @@ internal static class Reflection
         return false;
     }
 
-    internal static MethodInfo GetMethod( Type target, string name, Type[] types, BindingFlags bindingAttr )
-    {
-        return target.GetMethod( name, bindingAttr, types );
-    }
+    // find open-generic and non-generic methods
 
-    internal static MethodInfo GetOpenGenericMethod( Type target, string name, int argCount, Type[] parameterTypes, BindingFlags bindingAttr )
+    public static void GetMethods( Type target, BindingFlags bindingFlags, Action<string, MethodInfo, MethodMatchDelegate> matchCallback )
     {
-        var methods = target
-            .GetMethods( bindingAttr )
-            .Where( m => m.Name == name && m.IsGenericMethodDefinition );
+        var methods = target.GetMethods( bindingFlags );
 
         foreach ( var method in methods )
         {
-            var methodGenericArguments = method.GetGenericArguments();
+            var methodName = method.Name;
 
-            if ( methodGenericArguments.Length != argCount )
-                continue;
+            matchCallback( methodName, method, Matches );
 
-            var parameters = method.GetParameters();
+            continue;
 
-            if ( parameters.Length != parameterTypes.Length )
-                continue;
-
-            var match = true;
-
-            for ( var i = 0; i < parameters.Length; i++ )
+            bool Matches( Type[] parameterTypes, int? argCount = null )
             {
-                var paramType = parameters[i].ParameterType;
-
-                // If the method's parameter is generic and our type is null (open generic match)
-                if ( paramType.IsGenericParameter && parameterTypes[i] == null )
-                    continue;
-
-                // If the parameter is not a generic and our type is null, it does NOT match
-                if ( !paramType.IsGenericParameter && parameterTypes[i] == null )
+                if ( argCount.HasValue )
                 {
-                    match = false;
-                    break;
+                    if ( !method.IsGenericMethodDefinition || method.GetGenericArguments().Length != argCount.Value )
+                        return false;
                 }
 
-                // If the parameter is a generic type, check the generic definition
-                if ( paramType.IsGenericType )
+                var parameters = method.GetParameters();
+
+                if ( parameters.Length != parameterTypes.Length ) 
+                    return false;
+
+                for ( var i = 0; i < parameters.Length; i++ )
                 {
-                    if ( paramType.GetGenericTypeDefinition() == parameterTypes[i]?.GetGenericTypeDefinition() )
-                    {
+                    var paramType = parameters[i].ParameterType;
+                    var matchType = parameterTypes[i];
+
+                    if ( matchType == null || paramType == matchType )
                         continue;
-                    }
 
-                    match = false;
-                    break;
+                    if ( !paramType.IsGenericType || !matchType.IsGenericType )
+                        return false;
+
+                    if ( paramType.GetGenericTypeDefinition() == matchType.GetGenericTypeDefinition() )
+                        continue;
+
+                    return false;
                 }
 
-                // Compare non-generic types directly
-                if ( paramType == parameterTypes[i] )
-                {
-                    continue;
-                }
-
-                match = false;
-                break;
+                return true;
             }
-
-            if ( match )
-                return method;
         }
-
-        return null;
     }
 
     internal static MethodInfo FindExtensionMethod( Type targetType, string methodName )

@@ -16,128 +16,28 @@ internal static class AwaitBinderFactory
 
     // Pre-cached MethodInfo
 
-    private static readonly MethodInfo AwaitMethod;
-    private static readonly MethodInfo AwaitResultMethod;
+    private static MethodInfo AwaitMethod;
+    private static MethodInfo AwaitResultMethod;
 
-    private static readonly MethodInfo GetAwaiterTaskMethod;
-    private static readonly MethodInfo GetAwaiterTaskResultMethod;
-    private static readonly MethodInfo GetAwaiterValueTaskMethod;
-    private static readonly MethodInfo GetAwaiterValueTaskResultMethod;
+    private static MethodInfo GetAwaiterTaskMethod;
+    private static MethodInfo GetAwaiterTaskResultMethod;
+    private static MethodInfo GetAwaiterValueTaskMethod;
+    private static MethodInfo GetAwaiterValueTaskResultMethod;
 
-    private static readonly MethodInfo GetResultTaskMethod;
-    private static readonly MethodInfo GetResultTaskResultMethod;
-    private static readonly MethodInfo GetResultValueTaskMethod;
-    private static readonly MethodInfo GetResultValueTaskResultMethod;
+    private static MethodInfo GetResultTaskMethod;
+    private static MethodInfo GetResultTaskResultMethod;
+    private static MethodInfo GetResultValueTaskMethod;
+    private static MethodInfo GetResultValueTaskResultMethod;
 
-    private static readonly MethodInfo CreateGetAwaiterImplDelegateMethod;
-    private static readonly MethodInfo CreateGetResultImplDelegateMethod;
+    private static MethodInfo CreateGetAwaiterImplDelegateMethod;
+    private static MethodInfo CreateGetResultImplDelegateMethod;
 
     static AwaitBinderFactory()
     {
-        // Pre-cache binder methods
-
-        // Await methods
-
-        AwaitMethod = Reflection.GetOpenGenericMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.Await),
-            argCount: 2,
-            parameterTypes: [null, typeof(bool)],
-            BindingFlags.Instance | BindingFlags.NonPublic
-        );
-
-        AwaitResultMethod = Reflection.GetOpenGenericMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.AwaitResult),
-            argCount: 3,
-            parameterTypes: [null, typeof(bool)],
-            BindingFlags.Instance | BindingFlags.NonPublic
-        );
-
-        // GetAwaiter methods
-
-        GetAwaiterTaskMethod = Reflection.GetMethod( 
-            typeof( AwaitBinder ),
-            nameof(AwaitBinder.GetAwaiter),
-            [typeof(Task), typeof(bool)],
-            BindingFlags.Static | BindingFlags.NonPublic
-        );
-
-        GetAwaiterValueTaskMethod = Reflection.GetMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.GetAwaiter),
-            [typeof(ValueTask), typeof(bool)],
-            BindingFlags.Static | BindingFlags.NonPublic
-        );
-
-        GetAwaiterTaskResultMethod = Reflection.GetOpenGenericMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.GetAwaiter),
-            argCount: 1,
-            parameterTypes: [typeof(Task<>), typeof(bool)],
-            BindingFlags.Static | BindingFlags.NonPublic
-        );
-
-        GetAwaiterValueTaskResultMethod = Reflection.GetOpenGenericMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.GetAwaiter),
-            argCount: 1,
-            parameterTypes: [typeof(ValueTask<>), typeof(bool)],
-            BindingFlags.Static | BindingFlags.NonPublic
-        );
-
-        // GetResult methods
-
-        GetResultTaskMethod = Reflection.GetMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.GetResult),
-            [typeof(ConfiguredTaskAwaitable.ConfiguredTaskAwaiter)],
-            BindingFlags.Static | BindingFlags.NonPublic
-        );
-
-        GetResultValueTaskMethod = Reflection.GetMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.GetResult),
-            [typeof(ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter)],
-            BindingFlags.Static | BindingFlags.NonPublic
-        );
-
-        GetResultTaskResultMethod = Reflection.GetOpenGenericMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.GetResult),
-            argCount: 1,
-            parameterTypes: [typeof(ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter)],
-            BindingFlags.Static | BindingFlags.NonPublic
-        );
-
-        GetResultValueTaskResultMethod = Reflection.GetOpenGenericMethod(
-            typeof(AwaitBinder),
-            nameof(AwaitBinder.GetResult),
-            argCount: 1,
-            parameterTypes: [typeof(ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter)],
-            BindingFlags.Static | BindingFlags.NonPublic
-        );
-
-        // Delegate creation methods
-
-        CreateGetAwaiterImplDelegateMethod = Reflection.GetOpenGenericMethod(
-            typeof( AwaitBinderFactory ),
-            nameof( CreateGetAwaiterImplDelegate ),
-            argCount: 2,
-            parameterTypes: [typeof( MethodInfo ), typeof( MethodInfo )],
-            BindingFlags.NonPublic | BindingFlags.Static
-        );
-
-        CreateGetResultImplDelegateMethod = Reflection.GetOpenGenericMethod(
-            typeof( AwaitBinderFactory ),
-            nameof( CreateGetResultImplDelegate ),
-            argCount: 2,
-            parameterTypes: [typeof( MethodInfo )],
-            BindingFlags.NonPublic | BindingFlags.Static
-        );
+        PreCacheMethodInfo();
     }
 
-    public static void ClearCache() => Cache.Clear();
+    public static void Clear() => Cache.Clear();
 
     public static AwaitBinder GetOrCreate( Type targetType ) => Cache.GetOrAdd( targetType, Create );
 
@@ -161,24 +61,24 @@ internal static class AwaitBinderFactory
         {
             var awaitableTypeDefinition = awaitableType.GetGenericTypeDefinition();
 
-            if ( Reflection.IsOrInheritsFromGeneric( typeof(Task<>), awaitableTypeDefinition ) )
+            if ( Reflection.IsOrInheritsFromGeneric( typeof( Task<> ), awaitableTypeDefinition ) )
             {
                 return CreateGenericTaskAwaitBinder( awaitableType );
             }
 
-            if ( Reflection.IsOrInheritsFromGeneric( typeof(ValueTask<>), awaitableTypeDefinition ) )
+            if ( Reflection.IsOrInheritsFromGeneric( typeof( ValueTask<> ), awaitableTypeDefinition ) )
             {
                 return CreateGenericValueTaskAwaitBinder( awaitableType );
             }
         }
         else
         {
-            if ( awaitableType == typeof(Task) || awaitableType.IsSubclassOf( typeof(Task) ) )
+            if ( awaitableType == typeof( Task ) || awaitableType.IsSubclassOf( typeof( Task ) ) )
             {
                 return CreateTaskAwaitBinder( awaitableType );
             }
 
-            if ( awaitableType == typeof(ValueTask) )
+            if ( awaitableType == typeof( ValueTask ) )
             {
                 return CreateValueTaskAwaitBinder( awaitableType );
             }
@@ -237,7 +137,7 @@ internal static class AwaitBinderFactory
 
         // Find GetAwaiter method
 
-        var getAwaiterImplMethod = awaitableType.GetMethod( GetAwaiterName, bindingAttr ) 
+        var getAwaiterImplMethod = awaitableType.GetMethod( GetAwaiterName, bindingAttr )
             ?? Reflection.FindExtensionMethod( awaitableType, GetAwaiterName )
             ?? throw new InvalidOperationException( $"The type {awaitableType} is not awaitable." );
 
@@ -249,7 +149,7 @@ internal static class AwaitBinderFactory
         //  IL-generated delegates
 
         var awaiterType = getAwaiterImplMethod.ReturnType;
-        var configureAwaitImplMethod = getAwaiterImplMethod.ReturnType.GetMethod( ConfigureAwaitName, bindingAttr, [typeof(bool)] );
+        var configureAwaitImplMethod = getAwaiterImplMethod.ReturnType.GetMethod( ConfigureAwaitName, bindingAttr, [typeof( bool )] );
 
         var getAwaiterImplDelegate = CreateGetAwaiterImplDelegate( awaitableType, getAwaiterImplMethod, configureAwaitImplMethod );
         var getResultImplDelegate = CreateGetResultImplDelegate( awaiterType, getResultImplMethod );
@@ -279,8 +179,8 @@ internal static class AwaitBinderFactory
 
         return new AwaitBinder(
             awaitMethod,
-            getAwaiterMethod, 
-            getResultMethod, 
+            getAwaiterMethod,
+            getResultMethod,
             getAwaiterImplDelegate,
             getResultImplDelegate );
     }
@@ -294,7 +194,7 @@ internal static class AwaitBinderFactory
         var getAwaiterImplDelegate = CreateGetAwaiterImplDelegateMethod
             .MakeGenericMethod( awaitableType, awaiterType )
             .Invoke( null, [getAwaiterImplMethod, configureAwaitImplMethod] ) as Delegate;
-    
+
         return getAwaiterImplDelegate;
     }
 
@@ -302,9 +202,9 @@ internal static class AwaitBinderFactory
     {
         var dynamicMethod = new DynamicMethod(
             name: getAwaiterImplMethod.Name,
-            returnType: typeof(TAwaiter),
-            parameterTypes: [typeof(TAwaitable), typeof(bool)],
-            typeof(AwaitBinder).Module,
+            returnType: typeof( TAwaiter ),
+            parameterTypes: [typeof( TAwaitable ), typeof( bool )],
+            typeof( AwaitBinder ).Module,
             skipVisibility: true );
 
         var il = dynamicMethod.GetILGenerator();
@@ -316,7 +216,7 @@ internal static class AwaitBinderFactory
             var lblSkipConfigureAwait = il.DefineLabel();
 
             il.Emit( OpCodes.Ldarg_1 );
-            il.Emit( OpCodes.Brtrue_S, lblSkipConfigureAwait ); 
+            il.Emit( OpCodes.Brtrue_S, lblSkipConfigureAwait );
 
             if ( !configureAwaitImplMethod.IsStatic )
             {
@@ -325,7 +225,7 @@ internal static class AwaitBinderFactory
             }
 
             il.Emit( OpCodes.Ldc_I4_0 ); // Load constant false
-            
+
             if ( configureAwaitImplMethod.IsStatic )
                 il.Emit( OpCodes.Call, configureAwaitImplMethod );
             else
@@ -336,7 +236,7 @@ internal static class AwaitBinderFactory
 
         // Call GetAwaiter()
 
-        il.Emit( OpCodes.Ldarg_0 ); 
+        il.Emit( OpCodes.Ldarg_0 );
 
         if ( getAwaiterImplMethod.IsStatic )
         {
@@ -351,13 +251,13 @@ internal static class AwaitBinderFactory
 
         il.Emit( OpCodes.Ret );
 
-        return dynamicMethod.CreateDelegate( typeof(AwaitBinderGetAwaiterDelegate<TAwaitable, TAwaiter>) );
+        return dynamicMethod.CreateDelegate( typeof( AwaitBinderGetAwaiterDelegate<TAwaitable, TAwaiter> ) );
     }
 
     private static Delegate CreateGetResultImplDelegate( Type awaiterType, MethodInfo getResultImplMethod )
     {
-        var resultImplType = getResultImplMethod.ReturnType == typeof(void)
-            ? typeof(IVoidTaskResult)
+        var resultImplType = getResultImplMethod.ReturnType == typeof( void )
+            ? typeof( IVoidResult )
             : getResultImplMethod.ReturnType;
 
         var getResultImplDelegate = CreateGetResultImplDelegateMethod
@@ -371,27 +271,116 @@ internal static class AwaitBinderFactory
     {
         var dynamicMethod = new DynamicMethod(
             name: getResultImplMethod.Name,
-            returnType: typeof(TResult),
-            parameterTypes: [typeof(TAwaiter)],
-            typeof(AwaitBinder).Module,
+            returnType: typeof( TResult ),
+            parameterTypes: [typeof( TAwaiter )],
+            typeof( AwaitBinder ).Module,
             skipVisibility: true
         );
 
         var il = dynamicMethod.GetILGenerator();
 
-        if ( typeof(TAwaiter).IsValueType )
-            il.Emit( OpCodes.Ldarga_S, 0 ); 
+        if ( typeof( TAwaiter ).IsValueType )
+            il.Emit( OpCodes.Ldarga_S, 0 );
         else
-            il.Emit( OpCodes.Ldarg_0 ); 
+            il.Emit( OpCodes.Ldarg_0 );
 
         il.Emit( OpCodes.Call, getResultImplMethod );
 
-        il.DeclareLocal( typeof(TResult) ); 
-        il.Emit( OpCodes.Stloc_0 ); 
+        il.DeclareLocal( typeof( TResult ) );
+        il.Emit( OpCodes.Stloc_0 );
         il.Emit( OpCodes.Ldloc_0 );
 
         il.Emit( OpCodes.Ret );
 
-        return dynamicMethod.CreateDelegate( typeof(AwaitBinderGetResultDelegate<TAwaiter, TResult>) );
+        return dynamicMethod.CreateDelegate( typeof( AwaitBinderGetResultDelegate<TAwaiter, TResult> ) );
+    }
+
+    // Pre-Cache
+
+    private static void PreCacheMethodInfo()
+    {
+        // Await methods
+
+        Reflection.GetMethods(
+            typeof(AwaitBinder),
+            BindingFlags.Instance | BindingFlags.Static| BindingFlags.NonPublic,
+            ( name, method, matches ) =>
+            {
+                switch ( name )
+                {
+                    case nameof(AwaitBinder.Await) 
+                        when matches( [null, typeof(bool)], argCount: 2 ):
+                        AwaitMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.AwaitResult) 
+                        when matches( [null, typeof(bool)], argCount: 3 ):
+                        AwaitResultMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.GetAwaiter) 
+                        when matches( [typeof(Task<>), typeof(bool)], argCount: 1 ):
+                        GetAwaiterTaskResultMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.GetAwaiter)
+                        when matches( [typeof(Task), typeof(bool)] ): 
+                        GetAwaiterTaskMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.GetAwaiter) 
+                        when matches( [typeof(ValueTask<>), typeof(bool)], argCount: 1 ):
+                        GetAwaiterValueTaskResultMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.GetAwaiter)
+                        when matches( [typeof(ValueTask), typeof(bool)] ):
+                        GetAwaiterValueTaskMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.GetResult) 
+                        when matches( [typeof(ConfiguredTaskAwaitable.ConfiguredTaskAwaiter)] ):
+                        GetResultTaskMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.GetResult) 
+                        when matches( [typeof(ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter)] ):
+                        GetResultValueTaskMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.GetResult) 
+                        when matches( [typeof(ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter)], argCount: 1 ):
+                        GetResultTaskResultMethod = method;
+                        break;
+
+                    case nameof(AwaitBinder.GetResult) 
+                        when matches( [typeof(ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter)], argCount: 1 ):
+                        GetResultValueTaskResultMethod = method;
+                        break;
+                }
+            }
+        );
+
+        // Delegate creation methods
+
+        Reflection.GetMethods(
+            typeof(AwaitBinderFactory),
+            BindingFlags.Static | BindingFlags.NonPublic,
+            ( name, method, matches ) =>
+            {
+                switch ( name )
+                {
+                    case nameof(CreateGetAwaiterImplDelegate)
+                        when matches( [typeof(MethodInfo), typeof(MethodInfo)], argCount: 2 ):
+                        CreateGetAwaiterImplDelegateMethod = method;
+                        break;
+
+                    case nameof(CreateGetResultImplDelegate)
+                        when matches( [typeof(MethodInfo)], argCount: 2 ):
+                        CreateGetResultImplDelegateMethod = method;
+                        break;
+                }
+            }
+        );
     }
 }

@@ -44,7 +44,7 @@ public class AwaitExpression : Expression
     {
         if ( awaitableType.IsGenericType )
         {
-            if ( awaitableType == typeof(Task<IVoidTaskResult>) || awaitableType == typeof(ValueTask<IVoidTaskResult>) )
+            if ( awaitableType == typeof(Task<IVoidResult>) || awaitableType == typeof(ValueTask<IVoidResult>) )
                 return typeof(void);
 
             var genericTypeDef = awaitableType.GetGenericTypeDefinition();

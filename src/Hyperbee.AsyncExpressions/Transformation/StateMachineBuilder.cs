@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-public interface IVoidTaskResult; // Marker interface for void Task results
+public interface IVoidResult; // Marker interface for void Task results
 
 public class StateMachineBuilder<TResult>
 {
@@ -531,7 +531,7 @@ public static class StateMachineBuilder
     {
         // If the result type is void, use the internal VoidTaskResult type
         if ( resultType == typeof(void) )
-            resultType = typeof(IVoidTaskResult);
+            resultType = typeof(IVoidResult);
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
         return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
