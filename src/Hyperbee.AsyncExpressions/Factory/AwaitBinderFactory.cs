@@ -137,15 +137,9 @@ internal static class AwaitBinderFactory
         );
     }
 
-    public static void ClearCache()
-    {
-        Cache.Clear();
-    }
+    public static void ClearCache() => Cache.Clear();
 
-    public static AwaitBinder GetOrCreate( Type targetType )
-    {
-        return Cache.GetOrAdd( targetType, Create );
-    }
+    public static AwaitBinder GetOrCreate( Type targetType ) => Cache.GetOrAdd( targetType, Create );
 
     public static bool TryGetOrCreate( Type targetType, out AwaitBinder awaitBinder )
     {
@@ -243,21 +237,16 @@ internal static class AwaitBinderFactory
 
         // Find GetAwaiter method
 
-        var getAwaiterImplMethod = awaitableType
-            .GetMethod( GetAwaiterName, bindingAttr )
-            ?? Reflection.FindExtensionMethod( awaitableType, GetAwaiterName );
-
-        if ( getAwaiterImplMethod == null )
-            throw new InvalidOperationException( $"The type {awaitableType} is not awaitable." );
+        var getAwaiterImplMethod = awaitableType.GetMethod( GetAwaiterName, bindingAttr ) 
+            ?? Reflection.FindExtensionMethod( awaitableType, GetAwaiterName )
+            ?? throw new InvalidOperationException( $"The type {awaitableType} is not awaitable." );
 
         // Find GetResult method
 
-        var getResultImplMethod = getAwaiterImplMethod.ReturnType.GetMethod( GetResultName, bindingAttr );
+        var getResultImplMethod = getAwaiterImplMethod.ReturnType.GetMethod( GetResultName, bindingAttr )
+            ?? throw new InvalidOperationException( $"The awaiter for {awaitableType} does not have a {GetResultName} method." );
 
-        if ( getResultImplMethod == null )
-            throw new InvalidOperationException( $"The awaiter for {awaitableType} does not have a GetResult method." );
-
-        // Create IL-generated delegates
+        //  IL-generated delegates
 
         var awaiterType = getAwaiterImplMethod.ReturnType;
         var configureAwaitImplMethod = getAwaiterImplMethod.ReturnType.GetMethod( ConfigureAwaitName, bindingAttr, [typeof(bool)] );
@@ -336,7 +325,11 @@ internal static class AwaitBinderFactory
             }
 
             il.Emit( OpCodes.Ldc_I4_0 ); // Load constant false
-            il.Emit( configureAwaitImplMethod.IsStatic ? OpCodes.Call : OpCodes.Callvirt, configureAwaitImplMethod );
+            
+            if ( configureAwaitImplMethod.IsStatic )
+                il.Emit( OpCodes.Call, configureAwaitImplMethod );
+            else
+                il.Emit( OpCodes.Callvirt, configureAwaitImplMethod );
 
             il.MarkLabel( lblSkipConfigureAwait );
         }
