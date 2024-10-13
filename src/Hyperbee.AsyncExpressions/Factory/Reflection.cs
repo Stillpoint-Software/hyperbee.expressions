@@ -115,7 +115,7 @@ internal static class Reflection
         var targetAssembly = targetType.Assembly;
 
         // Search the calling assembly (first)
-        var method = FindMethodInAssembly( targetType, methodName, callingAssembly );
+        var method = FindExtensionMethodInAssembly( callingAssembly, targetType, methodName );
 
         if ( method != null )
             return method;
@@ -123,7 +123,7 @@ internal static class Reflection
         // Search the entry assembly (second)
         if ( entryAssembly != null && entryAssembly != callingAssembly )
         {
-            method = FindMethodInAssembly( targetType, methodName, entryAssembly );
+            method = FindExtensionMethodInAssembly( entryAssembly, targetType, methodName );
 
             if ( method != null )
                 return method;
@@ -132,7 +132,7 @@ internal static class Reflection
         // Search the target assembly (third)
         if ( targetAssembly != callingAssembly && targetAssembly != entryAssembly )
         {
-            method = FindMethodInAssembly( targetType, methodName, targetAssembly );
+            method = FindExtensionMethodInAssembly( targetAssembly, targetType, methodName );
 
             if ( method != null )
                 return method;
@@ -144,7 +144,7 @@ internal static class Reflection
             if ( assembly == callingAssembly || assembly == entryAssembly || assembly == targetAssembly )
                 continue;
 
-            method = FindMethodInAssembly( targetType, methodName, assembly );
+            method = FindExtensionMethodInAssembly( assembly, targetType, methodName );
             
             if ( method != null ) 
                 return method;
@@ -153,7 +153,7 @@ internal static class Reflection
         return null;
     }
 
-    internal static MethodInfo FindMethodInAssembly( Type targetType, string methodName, Assembly assembly )
+    internal static MethodInfo FindExtensionMethodInAssembly( Assembly assembly, Type targetType, string methodName )
     {
         // Search for an extension method with the specified name that extends the specified target type.
         // This is a very expensive operation. To minimize the performance impact, we will filter out as
