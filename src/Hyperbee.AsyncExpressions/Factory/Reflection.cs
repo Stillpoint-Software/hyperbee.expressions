@@ -60,14 +60,32 @@ internal static class Reflection
                     var paramType = parameters[i].ParameterType;
                     var matchType = parameterTypes[i];
 
-                    if ( matchType == null || paramType == matchType )
-                        continue;
+                    // If the method's parameter is generic and our type is null (open generic match)
 
-                    if ( !paramType.IsGenericType || !matchType.IsGenericType )
+                    if ( matchType == null )
+                    {
+                        if ( paramType.IsGenericParameter )
+                            continue;
+
                         return false;
+                    }
 
-                    if ( paramType.GetGenericTypeDefinition() == matchType.GetGenericTypeDefinition() )
+                    // If the parameter is a generic type, check the generic definition
+
+                    if ( paramType.IsGenericType )
+                    {
+                        if ( matchType.IsGenericType && paramType.GetGenericTypeDefinition() == matchType.GetGenericTypeDefinition() )
+                            continue;
+
+                        return false;
+                    }
+
+                    // Compare non-generic types directly
+
+                    if ( paramType == parameterTypes[i] )
+                    {
                         continue;
+                    }
 
                     return false;
                 }
