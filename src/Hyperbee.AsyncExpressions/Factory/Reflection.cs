@@ -147,8 +147,7 @@ internal static class Reflection
             .SelectMany( t => t.GetMethods( BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic ) )
             .Where( m => m.Name == methodName && m.IsDefined( typeof(ExtensionAttribute), false ) );
 
-        MethodInfo closedGenericMatch = null;
-        MethodInfo openGenericMatch = null;
+        MethodInfo openMatch = null;
 
         foreach ( var method in extensionMethods )
         {
@@ -160,20 +159,21 @@ internal static class Reflection
             var parameterType = parameters[0].ParameterType;
 
             if ( !parameterType.IsGenericType && parameterType == targetType )
-                return method;
+                return method; 
 
-            if ( method.IsGenericMethodDefinition && parameterType.IsGenericType && targetType.IsGenericType )
+            if ( openMatch == null && method.IsGenericMethodDefinition && parameterType.IsGenericType && targetType.IsGenericType )
             {
-                var parameterGenericTypeDefinition = parameterType.GetGenericTypeDefinition();
-                var targetGenericTypeDefinition = targetType.GetGenericTypeDefinition();
+                var parameterTypeDefinition = parameterType.GetGenericTypeDefinition();
+                var targetTypeDefinition = targetType.GetGenericTypeDefinition();
 
-                if ( parameterGenericTypeDefinition == targetGenericTypeDefinition )
+                if ( parameterTypeDefinition == targetTypeDefinition )
                 {
                     var targetGenericArguments = targetType.GetGenericArguments();
 
                     try
                     {
-                        openGenericMatch = method.MakeGenericMethod( targetGenericArguments );
+                        openMatch = method.MakeGenericMethod( targetGenericArguments );
+                        // keep searching for an exact match
                     }
                     catch
                     {
@@ -185,10 +185,9 @@ internal static class Reflection
             if ( !parameterType.IsGenericType || !targetType.IsGenericType || parameterType != targetType )
                 continue;
 
-            closedGenericMatch = method;
-            break;
+            return method; 
         }
 
-        return closedGenericMatch ?? openGenericMatch;
+        return openMatch;
     }
 }
