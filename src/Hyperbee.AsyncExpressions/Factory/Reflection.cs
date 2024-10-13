@@ -97,17 +97,30 @@ internal static class Reflection
 
     internal static MethodInfo FindExtensionMethod( Type targetType, string methodName )
     {
+        // Search for an extension method with the specified name that extends the specified target type.
+        //
+        // Extension searching is a very expensive operation. To minimize the performance impact, we
+        // will search in a specific order to try and reduce the number of assemblies that need to be
+        // searched.
+        //
+        // The search order is:
+        //
+        // * Calling assembly
+        // * Entry assembly
+        // * Target assembly
+        // * All other assemblies
+        //
         var callingAssembly = Assembly.GetCallingAssembly();
         var entryAssembly = Assembly.GetEntryAssembly();
         var targetAssembly = targetType.Assembly;
 
-        // Search the calling assembly
+        // Search the calling assembly (first)
         var method = FindMethodInAssembly( targetType, methodName, callingAssembly );
 
         if ( method != null )
             return method;
 
-        // Search the entry assembly
+        // Search the entry assembly (second)
         if ( entryAssembly != null && entryAssembly != callingAssembly )
         {
             method = FindMethodInAssembly( targetType, methodName, entryAssembly );
@@ -116,7 +129,7 @@ internal static class Reflection
                 return method;
         }
 
-        // Search the target assembly
+        // Search the target assembly (third)
         if ( targetAssembly != callingAssembly && targetAssembly != entryAssembly )
         {
             method = FindMethodInAssembly( targetType, methodName, targetAssembly );
@@ -142,14 +155,20 @@ internal static class Reflection
 
     internal static MethodInfo FindMethodInAssembly( Type targetType, string methodName, Assembly assembly )
     {
-        var extensionMethods = assembly.GetTypes()
-            .Where( t => t.IsSealed && !t.IsGenericType && !t.IsNested )
-            .SelectMany( t => t.GetMethods( BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic ) )
-            .Where( m => m.Name == methodName && m.IsDefined( typeof(ExtensionAttribute), false ) );
+        // Search for an extension method with the specified name that extends the specified target type.
+        // This is a very expensive operation. To minimize the performance impact, we will filter out as
+        // many types as possible.
+
+        var methods = assembly.GetTypes()
+            .Where( t => t.IsClass && t.IsSealed && t.IsAbstract && !t.IsGenericType && !t.IsNested )
+            .SelectMany( t => 
+                t.GetMethods( BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic )
+                .Where( m => m.Name == methodName && m.IsDefined( typeof(ExtensionAttribute), false ) 
+            ) );
 
         MethodInfo openMatch = null;
 
-        foreach ( var method in extensionMethods )
+        foreach ( var method in methods )
         {
             var parameters = method.GetParameters();
 
