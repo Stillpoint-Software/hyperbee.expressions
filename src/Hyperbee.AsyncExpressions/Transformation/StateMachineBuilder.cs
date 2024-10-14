@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
@@ -397,19 +398,17 @@ public class StateMachineBuilder<TResult>
 
         // Create the jump table
         var jumpTableExpression = Expression.Switch(
-            stateFieldExpression, 
-            Expression.Empty(),  // FastCompile doesn't support null default case
-            source.JumpCases.Select( c =>
+            stateFieldExpression,
+            Expression.Empty(),
+            source.Scopes[0].GetJumpCases().Select( c =>
                 Expression.SwitchCase(
                     Expression.Block(
                         Expression.Assign( stateFieldExpression, Expression.Constant( -1 ) ),
                         Expression.Goto( c.Key )
                     ),
-                    Expression.Constant( c.Value ) 
-                ) 
-            )
-            .ToArray() );
-        
+                    Expression.Constant( c.Value )
+                ) ).ToArray() );
+
         bodyExpressions.Add( jumpTableExpression );
 
         // Create the states
@@ -500,10 +499,11 @@ public class StateMachineBuilder<TResult>
 
         void Visit( NodeExpression node )
         {
-            while ( node != null && visited.Add( node ) )
+            while ( node != null && visited.Add( node )  )
             {
                 ordered.Add( node );
-                node = node.Transition?.FallThroughNode;
+                if(node.Transition is not TryCatchTransition )
+                    node = node.Transition?.FallThroughNode;
             }
         }
     }

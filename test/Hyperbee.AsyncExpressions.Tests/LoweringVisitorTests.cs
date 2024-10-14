@@ -506,7 +506,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( tryCatchExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 1 );
+        AssertTransition.AssertResult( result, nodes: 4, variables: 3 );
 
         AssertTransition.AssertTryCatch( result.Nodes[0].Transition, null,
             typeof(Exception),
@@ -538,7 +538,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( tryCatchExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 1 );
+        AssertTransition.AssertResult( result, nodes: 5, variables: 3 );
 
         AssertTransition.AssertTryCatch( result.Nodes[0].Transition, "ST_0005",
             typeof( Exception ),
@@ -600,7 +600,7 @@ public class LoweringVisitorTests
         {
             Assert.AreEqual( nodes, result.Nodes.Count );
             Assert.AreEqual( variables, result.Variables.Count );
-            Assert.AreEqual( jumps, result.JumpCases.Count );
+            Assert.AreEqual( jumps, result.Scopes[0].GetJumpCases().Count );
         }
 
         public static NodeExpression AssertGoto( Transition transition, string labelName )
@@ -658,7 +658,7 @@ public class LoweringVisitorTests
             Assert.AreEqual( catchTests.Length, tryCatchTransition.CatchBlocks.Count );
             for ( var i = 0; i < tryCatchTransition.CatchBlocks.Count; i++ )
             {
-                Assert.AreEqual( catchTests[i], tryCatchTransition.CatchBlocks[i].Test );
+                Assert.AreEqual( catchTests[i], tryCatchTransition.CatchBlocks[i].Handler.Test );
             }
 
             // if ( finalLabel != null || tryCatchTransition.FinallyNode != null )

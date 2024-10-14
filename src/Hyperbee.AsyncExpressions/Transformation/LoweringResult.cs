@@ -6,7 +6,7 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 public record LoweringResult
 {
     public List<NodeExpression> Nodes { get; init; }
-    public IReadOnlyDictionary<LabelTarget, int> JumpCases { get; init; }
+    public List<NodeScope> Scopes { get; init; }
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
     public HashSet<ParameterExpression> Variables { get; init; }
