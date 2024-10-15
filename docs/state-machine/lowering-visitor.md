@@ -22,6 +22,7 @@ to generate the final state machine.
 The purpose of this visitor is to "lower" high-level constructs, such as `await`, `if/else`, `switch`, and loops, into individual 
 `NodeExpression` objects that the state machine can later process.
 
+
 ## 1. Handling Control Flow Constructs (Branching and Loops)
 
 ### What is being done?
@@ -55,7 +56,24 @@ By creating separate states for each branch and loop, and by using `JoinState` a
 manage control flow across complex branching and looping structures. This ensures that execution can pause and resume from the correct
 points, preserving the integrity of the program's logic.
 
-## 2. Handling Await
+
+## 2. Handlying Try/Catch/Finally Blocks
+
+### What is being done?
+The `LoweringVisitor` flattens (`try/catch/finally`) constructs so they can correctly handle continuations. 
+Each construct is transformed into a mini-state machine within the body of the main state machine, and jump tables are injected to allow
+continuations to resume from within these nested machines.
+
+### Problem
+Try/catch/finally blocks introduce complex control flow that must be managed by the state machine. The `LoweringVisitor` must transform
+these constructs into smaller state machines that can handle exceptions and ensure that execution continues correctly.
+
+### Discussion
+
+### Solution
+
+
+## 3. Handling Await
 
 ### What is being done?
 The `await` expression is used to pause the execution of a method until the awaited task completes. The `LoweringVisitor` splits the 
@@ -74,7 +92,8 @@ pause execution, wait for the task to complete, and then resume execution in the
 By breaking the execution into two states, the state machine can handle the suspension and resumption of execution around `await` 
 expressions. This allows asynchronous operations to be integrated into the state machine seamlessly.
 
-## 3. Variable Hoisting
+
+## 4. Variable Hoisting
 
 ### What is being done?
 In scenarios such as loops or asynchronous operations, variables need to persist across states. To achieve this, the `LoweringVisitor` 
@@ -93,7 +112,8 @@ continue using them after pausing and resuming execution.
 Hoisting variables to a higher scope ensures that they are accessible across multiple states in the state machine. This is critical for 
 maintaining the integrity of the program's execution, especially in the context of loops and asynchronous operations.
 
-## 4. Managing Intermediate Expression Values
+
+## 5. Managing Intermediate Expression Values
 
 ### What is being done?
 The `LoweringVisitor` manages intermediate values produced by expressions and ensures that these values persist across state transitions. 
