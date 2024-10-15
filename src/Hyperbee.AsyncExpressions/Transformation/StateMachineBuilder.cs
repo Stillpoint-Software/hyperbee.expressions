@@ -397,17 +397,8 @@ public class StateMachineBuilder<TResult>
         var fieldMembers = fields.Select( x => Expression.Field( stateMachineInstance, x ) ).ToArray();
 
         // Create the jump table
-        var jumpTableExpression = Expression.Switch(
-            stateFieldExpression,
-            Expression.Empty(),
-            source.Scopes[0].GetJumpCases().Select( c =>
-                Expression.SwitchCase(
-                    Expression.Block(
-                        Expression.Assign( stateFieldExpression, Expression.Constant( -1 ) ),
-                        Expression.Goto( c.Key )
-                    ),
-                    Expression.Constant( c.Value )
-                ) ).ToArray() );
+        var jumpTableExpression = source.Scopes[0]
+            .CreateJumpTable( source.Scopes, stateFieldExpression );
 
         bodyExpressions.Add( jumpTableExpression );
 
