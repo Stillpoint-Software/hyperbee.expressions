@@ -7,9 +7,9 @@ public class NodeScope
 {
     public record struct JumpCase( LabelTarget ResultLabel, LabelTarget ContinueLabel, int StateId, int? ParentId );
 
-    public int StateId { get; init; }
+    public int ScopeId { get; init; }
     public NodeScope Parent { get; init; }
-    public List<NodeExpression> Nodes { get; init; }
+    public List<NodeExpression> Nodes { get; set; }
     public List<JumpCase> JumpCases { get; init; }
     public  Stack<NodeExpression> JoinStates { get; init; }
 
@@ -17,9 +17,9 @@ public class NodeScope
     private int _currentJumpState;
     private readonly int? _parentJumpState;
 
-    public NodeScope( int stateId, NodeExpression tailState, NodeScope parent = null, int initialCapacity = 8 )
+    public NodeScope( int scopeId, NodeExpression tailState, NodeScope parent = null, int initialCapacity = 8 )
     {
-        StateId = stateId;
+        ScopeId = scopeId;
         Parent = parent;
         _parentJumpState = parent?._currentJumpState;
 
@@ -32,7 +32,7 @@ public class NodeScope
 
     public NodeExpression AddState( int id )
     {
-        var stateNode = new NodeExpression( id );
+        var stateNode = new NodeExpression( id, ScopeId );
 
         if(Nodes.Count == 0)
             _tailState = stateNode;  // TODO: This seems wrong

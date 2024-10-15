@@ -150,12 +150,10 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var tryStateVariable = Expression.Variable( typeof( int ), VariableName.Try( sourceState.StateId ) );
-        _variables.Add( tryStateVariable );
+        var tryStateVariable = CreateVariable( typeof(int), VariableName.Try( sourceState.StateId ) );
+        var exceptionVariable = CreateVariable( typeof(object), VariableName.Exception( sourceState.StateId ) );
 
-        var exceptionVariable = Expression.Variable( typeof(object), VariableName.Exception( sourceState.StateId ) );
-        _variables.Add( exceptionVariable );
-
+        // If there is a finally block then that is the join for a try/catch.
         NodeExpression finalExpression = null;
         if ( node.Finally != null )
         {
@@ -169,7 +167,7 @@ internal class LoweringVisitor : ExpressionVisitor
         {
             TryStateVariable = tryStateVariable,
             ExceptionVariable = exceptionVariable,
-            TryNode = VisitBranch( node.Body, joinState, resultVariable),
+            TryNode = VisitBranch( node.Body, joinState, resultVariable ),
             FinallyNode = finalExpression,
             NodeScope = nodeScope,
             Scopes = _states.Scopes
@@ -247,8 +245,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var awaiterType = awaitBinder.GetAwaiterMethod.ReturnType;
 
-        var awaiterVariable = Expression.Variable( awaiterType, VariableName.Awaiter( sourceState.StateId ) ); 
-        _variables.Add( awaiterVariable );
+        var awaiterVariable = CreateVariable( awaiterType, VariableName.Awaiter( sourceState.StateId ) ); 
 
         completionState.Transition = new AwaitResultTransition
         {
@@ -308,7 +305,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
             return updateNode;
 
-        _returnValue ??= Expression.Variable( gotoExpression.Value!.Type, VariableName.Return );
+        _returnValue ??= CreateVariable( gotoExpression.Value!.Type, VariableName.Return );
 
         // update this to assign to a return value versus a goto
         return Expression.Assign( _returnValue, gotoExpression.Value! );
@@ -349,6 +346,13 @@ internal class LoweringVisitor : ExpressionVisitor
         _variables.Add( returnVariable );
 
         return returnVariable;
+    }
+
+    private ParameterExpression CreateVariable( Type type, string name )
+    {
+        var variable = Expression.Variable( type, name );
+        _variables.Add( variable );
+        return variable;
     }
 
     private class StateContext
@@ -393,17 +397,15 @@ internal class LoweringVisitor : ExpressionVisitor
             CurrentScope.ExitBranchState( sourceState, transition );
         }
 
-        public void AddJumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId )
-        {
-            CurrentScope.AddJumpCase( resultLabel, continueLabel, stateId );
-        }
-
         public NodeScope EnterNodeScope()
         {
             var tailState = CurrentScope.GetBranchTailState();
             var scope = new NodeScope( Scopes.Count, tailState, CurrentScope, _initialCapacity );
+
             Scopes.Add( scope );
-            _scopeIndexes.Push( scope.StateId );
+
+            _scopeIndexes.Push( scope.ScopeId );
+
             return scope;
         }
 
@@ -411,5 +413,11 @@ internal class LoweringVisitor : ExpressionVisitor
         {
             _scopeIndexes.Pop();
         }
+
+        public void AddJumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId )
+        {
+            CurrentScope.AddJumpCase( resultLabel, continueLabel, stateId );
+        }
+
     }
 }

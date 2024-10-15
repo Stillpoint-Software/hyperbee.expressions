@@ -2,7 +2,6 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
@@ -397,14 +396,14 @@ public class StateMachineBuilder<TResult>
         var fieldMembers = fields.Select( x => Expression.Field( stateMachineInstance, x ) ).ToArray();
 
         // Create the jump table
+
         var jumpTableExpression = source.Scopes[0]
             .CreateJumpTable( source.Scopes, stateFieldExpression );
 
         bodyExpressions.Add( jumpTableExpression );
 
         // Create the states
-
-        var nodes = OrderNodes( source.Nodes ); // optimize node ordering to reduce goto calls
+        var nodes = OrderNodeScopes( source.Scopes ); // optimize node ordering to reduce goto calls
 
         var fieldResolverVisitor = new FieldResolverVisitor(
             typeof( TResult ),
@@ -447,7 +446,7 @@ public class StateMachineBuilder<TResult>
         return Expression.Lambda( moveNextBody, stateMachineInstance );
     }
 
-    private static List<NodeExpression> OrderNodes( List<NodeExpression> nodes )
+    private static List<NodeExpression> OrderNodes( int currentScopeId, List<NodeExpression> nodes )
     {
         // Optimize node order for better performance by performing a greedy depth-first
         // search to find the best order of execution for each node.
@@ -471,9 +470,9 @@ public class StateMachineBuilder<TResult>
 
         // Make sure the final state is last
 
-        var finalNode = nodes.First( x => x.Transition == null );
+        var finalNode = nodes.FirstOrDefault( x => x.Transition == null );
 
-        if ( ordered.Last() != finalNode )
+        if ( finalNode != null && ordered.Last() != finalNode )
         {
             ordered.Remove( finalNode );
             ordered.Add( finalNode );
@@ -493,10 +492,22 @@ public class StateMachineBuilder<TResult>
             while ( node != null && visited.Add( node )  )
             {
                 ordered.Add( node );
-                if(node.Transition is not TryCatchTransition )
-                    node = node.Transition?.FallThroughNode;
+                node = node.Transition?.FallThroughNode;
+
+                if ( node?.ScopeId != currentScopeId )
+                    return;
             }
         }
+    }
+
+    private static List<NodeExpression> OrderNodeScopes( List<NodeScope> scopes )
+    {
+        for ( int i = 1; i < scopes.Count - 1; i++ )
+        {
+            scopes[i].Nodes = OrderNodes( scopes[i].ScopeId, scopes[i].Nodes );
+        }
+
+        return OrderNodes( scopes[0].ScopeId, scopes[0].Nodes );
     }
 }
 
