@@ -403,7 +403,7 @@ public class StateMachineBuilder<TResult>
         bodyExpressions.Add( jumpTableExpression );
 
         // Create the states
-        var nodes = OrderNodeScopes( source.Scopes ); // optimize node ordering to reduce goto calls
+        var nodes = OptimizeNodeOrder( source.Scopes ); // optimize node ordering to reduce goto calls
 
         var fieldResolverVisitor = new FieldResolverVisitor(
             typeof( TResult ),
@@ -446,61 +446,7 @@ public class StateMachineBuilder<TResult>
         return Expression.Lambda( moveNextBody, stateMachineInstance );
     }
 
-    private static List<NodeExpression> OrderNodes( int currentScopeId, List<NodeExpression> nodes )
-    {
-        // Optimize node order for better performance by performing a greedy depth-first
-        // search to find the best order of execution for each node.
-        //
-        // Doing this will allow us to reduce the number of goto calls in the final machine.
-        //
-        // The first node is always the start node, and the last node is always the final node.
-
-        var ordered = new List<NodeExpression>( nodes.Count );
-        var visited = new HashSet<NodeExpression>( nodes.Count );
-
-        // Perform greedy DFS for every unvisited node
-
-        for ( var index = 0; index < nodes.Count; index++ )
-        {
-            var node = nodes[index];
-
-            if ( !visited.Contains( node ) )
-                Visit( node );
-        }
-
-        // Make sure the final state is last
-
-        var finalNode = nodes.FirstOrDefault( x => x.Transition == null );
-
-        if ( finalNode != null && ordered.Last() != finalNode )
-        {
-            ordered.Remove( finalNode );
-            ordered.Add( finalNode );
-        }
-
-        // Update the order property of each node
-
-        for ( var index = 0; index < ordered.Count; index++ )
-        {
-            ordered[index].MachineOrder = index;
-        }
-
-        return ordered;
-
-        void Visit( NodeExpression node )
-        {
-            while ( node != null && visited.Add( node ) )
-            {
-                ordered.Add( node );
-                node = node.Transition?.FallThroughNode;
-
-                if ( node?.ScopeId != currentScopeId )
-                    return;
-            }
-        }
-    }
-
-    private static List<NodeExpression> OrderNodeScopes( List<StateScope> scopes )
+    private static List<NodeExpression> OptimizeNodeOrder( List<StateScope> scopes )
     {
         for ( int i = 1; i < scopes.Count - 1; i++ )
         {
@@ -508,6 +454,60 @@ public class StateMachineBuilder<TResult>
         }
 
         return OrderNodes( scopes[0].ScopeId, scopes[0].Nodes );
+
+        static List<NodeExpression> OrderNodes( int currentScopeId, List<NodeExpression> nodes )
+        {
+            // Optimize node order for better performance by performing a greedy depth-first
+            // search to find the best order of execution for each node.
+            //
+            // Doing this will allow us to reduce the number of goto calls in the final machine.
+            //
+            // The first node is always the start node, and the last node is always the final node.
+
+            var ordered = new List<NodeExpression>( nodes.Count );
+            var visited = new HashSet<NodeExpression>( nodes.Count );
+
+            // Perform greedy DFS for every unvisited node
+
+            for ( var index = 0; index < nodes.Count; index++ )
+            {
+                var node = nodes[index];
+
+                if ( !visited.Contains( node ) )
+                    Visit( node );
+            }
+
+            // Make sure the final state is last
+
+            var finalNode = nodes.FirstOrDefault( x => x.Transition == null );
+
+            if ( finalNode != null && ordered.Last() != finalNode )
+            {
+                ordered.Remove( finalNode );
+                ordered.Add( finalNode );
+            }
+
+            // Update the order property of each node
+
+            for ( var index = 0; index < ordered.Count; index++ )
+            {
+                ordered[index].MachineOrder = index;
+            }
+
+            return ordered;
+
+            void Visit( NodeExpression node )
+            {
+                while ( node != null && visited.Add( node ) )
+                {
+                    ordered.Add( node );
+                    node = node.Transition?.FallThroughNode;
+
+                    if ( node?.ScopeId != currentScopeId )
+                        return;
+                }
+            }
+        }
     }
 }
 
