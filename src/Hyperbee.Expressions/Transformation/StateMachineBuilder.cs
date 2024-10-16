@@ -450,10 +450,10 @@ public class StateMachineBuilder<TResult>
     {
         for ( var i = 1; i < scopes.Count - 1; i++ )
         {
-            scopes[i].Nodes = OrderNodes( scopes[i].ScopeId, scopes[i].Nodes );
+            scopes[i].Nodes = OrderNodes( scopes[i].Id, scopes[i].Nodes );
         }
 
-        return OrderNodes( scopes[0].ScopeId, scopes[0].Nodes );
+        return OrderNodes( scopes[0].Id, scopes[0].Nodes );
 
         static List<NodeExpression> OrderNodes( int currentScopeId, List<NodeExpression> nodes )
         {

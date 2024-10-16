@@ -398,7 +398,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
             Scopes.Add( scope );
 
-            _scopeIndexes.Push( scope.ScopeId );
+            _scopeIndexes.Push( scope.Id );
 
             return scope;
         }

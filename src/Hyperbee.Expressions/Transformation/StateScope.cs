@@ -7,7 +7,7 @@ public class StateScope
 {
     public record struct JumpCase( LabelTarget ResultLabel, LabelTarget ContinueLabel, int StateId, int? ParentId );
 
-    public int ScopeId { get; init; }
+    public int Id { get; init; }
     public StateScope Parent { get; init; }
     public List<NodeExpression> Nodes { get; set; }
     public List<JumpCase> JumpCases { get; init; }
@@ -16,9 +16,9 @@ public class StateScope
     private int _currentJumpState;
     private readonly int? _parentJumpState;
 
-    public StateScope( int scopeId, StateScope parent = null, int initialCapacity = 8 )
+    public StateScope( int id, StateScope parent = null, int initialCapacity = 8 )
     {
-        ScopeId = scopeId;
+        Id = id;
         Parent = parent;
 
         Nodes = new List<NodeExpression>( initialCapacity );
@@ -29,9 +29,9 @@ public class StateScope
         _parentJumpState = parent?._currentJumpState;
     }
 
-    public NodeExpression AddState( int id )
+    public NodeExpression AddState( int stateId )
     {
-        var stateNode = new NodeExpression( id, ScopeId );
+        var stateNode = new NodeExpression( stateId, Id );
         TailState = stateNode;
 
         Nodes.Add( stateNode );
@@ -41,9 +41,9 @@ public class StateScope
 
     public NodeExpression TailState { get; private set; }
 
-    public NodeExpression EnterGroup( int id, out NodeExpression sourceState )
+    public NodeExpression EnterGroup( int stateId, out NodeExpression sourceState )
     {
-        var joinState = new NodeExpression( id, ScopeId ); // add a state without setting tail
+        var joinState = new NodeExpression( stateId, Id ); // add a state without setting tail
 
         Nodes.Add( joinState );
         JoinStates.Push( joinState );
@@ -121,9 +121,9 @@ public class StateScope
                         yield return Expression.Constant( childJumpCase.StateId );
 
                         // nested jump cases
-                        foreach ( var c in JumpCaseTests( scope, childJumpCase.StateId ) )
+                        foreach ( var stateIdExpr in JumpCaseTests( scope, childJumpCase.StateId ) )
                         {
-                            yield return c;
+                            yield return stateIdExpr;
                         }
                     }
                 }
