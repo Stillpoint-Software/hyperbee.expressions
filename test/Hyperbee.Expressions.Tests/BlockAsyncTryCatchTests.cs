@@ -42,17 +42,17 @@ namespace Hyperbee.Expressions.Tests
                     ),
                     Catch(
                         exceptionParam,
-                        Assign( resultValue, Await( Constant( Task.FromResult( 99 ) ) ))
+                        Assign( resultValue, Await( Constant( Task.FromResult( 99 ) ) ) )
                     )
                 ),
                 resultValue
             );
             var lambda = Lambda<Func<Task<int>>>( block );
             var compiledLambda = lambda.Compile();
-        
+
             // Act
             var result = await compiledLambda();
-            
+
             // Assert
             Assert.AreEqual( 99, result );
 
@@ -82,10 +82,10 @@ namespace Hyperbee.Expressions.Tests
             );
             var lambda = Lambda<Func<Task<int>>>( block );
             var compiledLambda = lambda.Compile();
-        
+
             // Act
             var result = await compiledLambda();
-        
+
             // Assert
             Assert.AreEqual( 50, result ); // Catch block handles the exception and returns 30
         }
@@ -94,7 +94,7 @@ namespace Hyperbee.Expressions.Tests
         public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryAndFinallyBlocks()
         {
             // Arrange: Await in both try and finally blocks
-            var resultValue = Parameter( typeof(int) );
+            var resultValue = Parameter( typeof( int ) );
             var block = BlockAsync(
                 [resultValue],
                 TryFinally(
@@ -154,7 +154,7 @@ namespace Hyperbee.Expressions.Tests
                     Block(
                         Throw( Constant( new Exception( "Outer Exception" ) ) ),
                         TryCatch(
-                            Block( 
+                            Block(
                                 Throw( Constant( new Exception( "Inner Exception" ) ) ),
                                 Constant( 0 )
                             ),
@@ -238,9 +238,9 @@ namespace Hyperbee.Expressions.Tests
                                 Assign( resultValue, Await( Constant( Task.FromResult( 20 ) ) ) ),
                                 TryCatch(
                                     Assign( resultValue, Await( Constant( Task.FromResult( 30 ) ) ) ),
-                                    Catch( typeof(Exception), Assign( resultValue, Constant( 1 ) ) )
+                                    Catch( typeof( Exception ), Assign( resultValue, Constant( 1 ) ) )
                                 ) ),
-                            Catch( typeof(Exception), Assign( resultValue, Constant( 2 ) ) )
+                            Catch( typeof( Exception ), Assign( resultValue, Constant( 2 ) ) )
                         ),
                         Assign( resultValue, Await( Constant( Task.FromResult( 40 ) ) ) ),
                         TryCatch(
@@ -256,9 +256,9 @@ namespace Hyperbee.Expressions.Tests
                         ) ),
                     TryCatch(
                         Assign( resultValue, Await( Constant( Task.FromResult( 40 ) ) ) ),  // Finally block should be result
-                        Catch( typeof(Exception), Assign( resultValue, Constant( 5 ) ) )
+                        Catch( typeof( Exception ), Assign( resultValue, Constant( 5 ) ) )
                     ),
-                    Catch( typeof(Exception), Assign( resultValue, Constant( 6 ) ) )
+                    Catch( typeof( Exception ), Assign( resultValue, Constant( 6 ) ) )
                 ),
                 resultValue
             );
@@ -295,7 +295,7 @@ namespace Hyperbee.Expressions.Tests
                                 TryCatch(
                                     // Await the third delayed task in the innermost try
                                     Assign( resultValue, Await( Constant( delayedTask3 ) ) ),
-                                    Catch( typeof(Exception), Assign( resultValue, Constant( 99 ) ) )
+                                    Catch( typeof( Exception ), Assign( resultValue, Constant( 99 ) ) )
                                 )
                             ),
                             Catch( typeof( Exception ), Assign( resultValue, Constant( 50 ) ) )

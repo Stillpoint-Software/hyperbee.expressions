@@ -10,14 +10,14 @@ internal static class Reflection
     internal static bool OpenGenericIsOrInherits( Type baseType, Type checkType )
     {
         if ( !baseType.IsGenericTypeDefinition || !checkType.IsGenericTypeDefinition )
-            throw new ArgumentException( $"Both {nameof(baseType)} and {nameof(checkType)} should be generic type definitions." );
+            throw new ArgumentException( $"Both {nameof( baseType )} and {nameof( checkType )} should be generic type definitions." );
 
         if ( baseType == checkType )
             return true;
 
         var currentType = checkType;
 
-        while ( currentType != null && currentType != typeof(object) )
+        while ( currentType != null && currentType != typeof( object ) )
         {
             if ( currentType.IsGenericType && currentType.GetGenericTypeDefinition() == baseType )
                 return true;
@@ -52,7 +52,7 @@ internal static class Reflection
 
                 var parameters = method.GetParameters();
 
-                if ( parameters.Length != parameterTypes.Length ) 
+                if ( parameters.Length != parameterTypes.Length )
                     return false;
 
                 for ( var i = 0; i < parameters.Length; i++ )
@@ -145,8 +145,8 @@ internal static class Reflection
                 continue;
 
             method = FindExtensionMethodInAssembly( assembly, targetType, methodName );
-            
-            if ( method != null ) 
+
+            if ( method != null )
                 return method;
         }
 
@@ -161,9 +161,9 @@ internal static class Reflection
 
         var methods = assembly.GetTypes()
             .Where( t => t.IsClass && t.IsSealed && t.IsAbstract && !t.IsGenericType && !t.IsNested )
-            .SelectMany( t => 
+            .SelectMany( t =>
                 t.GetMethods( BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic )
-                .Where( m => m.Name == methodName && m.IsDefined( typeof(ExtensionAttribute), false ) 
+                .Where( m => m.Name == methodName && m.IsDefined( typeof( ExtensionAttribute ), false )
             ) );
 
         MethodInfo openMatch = null;
@@ -178,7 +178,7 @@ internal static class Reflection
             var parameterType = parameters[0].ParameterType;
 
             if ( !parameterType.IsGenericType && parameterType == targetType )
-                return method; 
+                return method;
 
             if ( openMatch == null && method.IsGenericMethodDefinition && parameterType.IsGenericType && targetType.IsGenericType )
             {
@@ -204,7 +204,7 @@ internal static class Reflection
             if ( !parameterType.IsGenericType || !targetType.IsGenericType || parameterType != targetType )
                 continue;
 
-            return method; 
+            return method;
         }
 
         return openMatch;

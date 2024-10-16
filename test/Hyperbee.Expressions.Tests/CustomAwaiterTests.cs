@@ -32,7 +32,7 @@ public class CustomAwaiterTests
         // var result = await lazy;
 
         Expression<Func<int>> valueExpression = () => 42;
-        var lazyConstructor = typeof(Lazy<int>).GetConstructor( [typeof(Func<int>)] );
+        var lazyConstructor = typeof( Lazy<int> ).GetConstructor( [typeof( Func<int> )] );
         var lazyExpression = Expression.New( lazyConstructor!, valueExpression );
 
         var awaitExpression = AsyncExpression.Await( lazyExpression, configureAwait: false );
@@ -40,7 +40,7 @@ public class CustomAwaiterTests
         var lambda = Expression.Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();
 
-        var result = compiledLambda(); 
+        var result = compiledLambda();
 
         Assert.AreEqual( 42, result, "The result should be 42." );
     }

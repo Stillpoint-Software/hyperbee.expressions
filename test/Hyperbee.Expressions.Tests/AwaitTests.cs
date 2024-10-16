@@ -69,7 +69,7 @@ public class AwaitTests
                 return Expression.Call( methodInfo, arguments );
 
             default:
-                throw new ArgumentOutOfRangeException( nameof(kind) );
+                throw new ArgumentOutOfRangeException( nameof( kind ) );
         }
     }
 
@@ -102,7 +102,7 @@ public class AwaitTests
         var lambda = Expression.Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();
 
-        var result = compiledLambda(); 
+        var result = compiledLambda();
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
@@ -119,7 +119,7 @@ public class AwaitTests
         var lambda = Expression.Lambda<Action>( awaitExpression );
         var compiledLambda = lambda.Compile();
 
-        compiledLambda(); 
+        compiledLambda();
     }
 
     [DataTestMethod]
@@ -139,7 +139,7 @@ public class AwaitTests
         var lambda = Expression.Lambda<Func<int, int, int, int>>( awaitExpression, paramExpr1, paramExpr2, paramExpr3 );
         var compiledLambda = lambda.Compile();
 
-        var result = compiledLambda( 10, 20, 12 ); 
+        var result = compiledLambda( 10, 20, 12 );
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
@@ -160,7 +160,7 @@ public class AwaitTests
         var lambda = Expression.Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();
 
-        var result = compiledLambda(); 
+        var result = compiledLambda();
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
@@ -171,11 +171,11 @@ public class AwaitTests
     {
         // var result = await SayHelloAsync( await AddTwoNumbersAsync( 10, 32 ) );
 
-        var addTwoNumbersMethod = GetMethodInfo( nameof(AddTwoNumbersAsync) );
-        var sayHelloMethod = GetMethodInfo( nameof(SayHelloAsync) );
+        var addTwoNumbersMethod = GetMethodInfo( nameof( AddTwoNumbersAsync ) );
+        var sayHelloMethod = GetMethodInfo( nameof( SayHelloAsync ) );
 
-        var paramA = Expression.Parameter( typeof(int), "a" );
-        var paramB = Expression.Parameter( typeof(int), "b" );
+        var paramA = Expression.Parameter( typeof( int ), "a" );
+        var paramB = Expression.Parameter( typeof( int ), "b" );
 
         var asyncExpressionAdd = GetAsyncExpression( kind, addTwoNumbersMethod, paramA, paramB );
         var awaitExpressionAdd = AsyncExpression.Await( asyncExpressionAdd, configureAwait: false );
@@ -242,7 +242,7 @@ public class AwaitTests
         var compiledLambda1 = lambda1.Compile();
         var compiledLambda2 = lambda2.Compile();
 
-        var result1 = compiledLambda1(); 
+        var result1 = compiledLambda1();
         var result2 = compiledLambda2( 10, 20, 12 );
 
         Assert.AreEqual( 42, result1, "The first result should be 42." );
@@ -280,8 +280,8 @@ public class AwaitTests
 
         // Combine the expressions in a block
         var combinedExpression = Expression.Block(
-            [resultFromAdd], 
-            Expression.Assign( resultFromAdd, awaitAddTwoNumbers ), 
+            [resultFromAdd],
+            Expression.Assign( resultFromAdd, awaitAddTwoNumbers ),
             taskWrappedExpression
         );
 
@@ -291,7 +291,7 @@ public class AwaitTests
         var asyncLambda = Expression.Invoke( lambda, paramA, paramB );
         var compiledLambda = Expression.Lambda<Func<int, int, Task<string>>>( asyncLambda, paramA, paramB ).Compile();
 
-        var result = await compiledLambda( 32, 10 ); 
+        var result = await compiledLambda( 32, 10 );
 
         // Assert the result
         Assert.AreEqual( "Hello 42", result, "The result should be 'Hello 42'." );
@@ -378,16 +378,16 @@ public class AwaitTests
 
         // Combine both expressions in a block
         var combinedExpression = Expression.Block(
-            [resultAddTwoNumbers], 
-            Expression.Assign( resultAddTwoNumbers, awaitAddTwoNumbers ), 
-            awaitSayHello 
+            [resultAddTwoNumbers],
+            Expression.Assign( resultAddTwoNumbers, awaitAddTwoNumbers ),
+            awaitSayHello
         );
 
         // Compile and execute
         var lambda = Expression.Lambda<Func<int, int, string>>( combinedExpression, paramA, paramB );
         var compiledLambda = lambda.Compile();
 
-        var result = compiledLambda( 32, 10 ); 
+        var result = compiledLambda( 32, 10 );
 
         Assert.AreEqual( "Hello 42", result, "The result should be 'Hello 42'." );
     }
@@ -407,7 +407,7 @@ public class AwaitTests
 
         try
         {
-            _ = compiledLambda(); 
+            _ = compiledLambda();
             Assert.Fail( "An exception was not thrown." );
         }
         catch ( InvalidOperationException ex )

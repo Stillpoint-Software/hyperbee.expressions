@@ -295,59 +295,59 @@ internal static class AwaitBinderFactory
         // Await methods
 
         Reflection.GetMethods(
-            typeof(AwaitBinder),
-            BindingFlags.Instance | BindingFlags.Static| BindingFlags.NonPublic,
+            typeof( AwaitBinder ),
+            BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic,
             ( name, method, matches ) =>
             {
                 switch ( name )
                 {
-                    case nameof(AwaitBinder.Await) 
-                        when matches( [null, typeof(bool)], argCount: 2 ):
+                    case nameof( AwaitBinder.Await )
+                        when matches( [null, typeof( bool )], argCount: 2 ):
                         AwaitMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.AwaitResult) 
-                        when matches( [null, typeof(bool)], argCount: 3 ):
+                    case nameof( AwaitBinder.AwaitResult )
+                        when matches( [null, typeof( bool )], argCount: 3 ):
                         AwaitResultMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetAwaiter) 
-                        when matches( [typeof(Task<>), typeof(bool)], argCount: 1 ):
+                    case nameof( AwaitBinder.GetAwaiter )
+                        when matches( [typeof( Task<> ), typeof( bool )], argCount: 1 ):
                         GetAwaiterTaskResultMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetAwaiter)
-                        when matches( [typeof(Task), typeof(bool)] ): 
+                    case nameof( AwaitBinder.GetAwaiter )
+                        when matches( [typeof( Task ), typeof( bool )] ):
                         GetAwaiterTaskMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetAwaiter) 
-                        when matches( [typeof(ValueTask<>), typeof(bool)], argCount: 1 ):
+                    case nameof( AwaitBinder.GetAwaiter )
+                        when matches( [typeof( ValueTask<> ), typeof( bool )], argCount: 1 ):
                         GetAwaiterValueTaskResultMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetAwaiter)
-                        when matches( [typeof(ValueTask), typeof(bool)] ):
+                    case nameof( AwaitBinder.GetAwaiter )
+                        when matches( [typeof( ValueTask ), typeof( bool )] ):
                         GetAwaiterValueTaskMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetResult) 
-                        when matches( [typeof(ConfiguredTaskAwaitable.ConfiguredTaskAwaiter)] ):
+                    case nameof( AwaitBinder.GetResult )
+                        when matches( [typeof( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter )] ):
                         GetResultTaskMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetResult) 
-                        when matches( [typeof(ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter)] ):
+                    case nameof( AwaitBinder.GetResult )
+                        when matches( [typeof( ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter )] ):
                         GetResultValueTaskMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetResult) 
-                        when matches( [typeof(ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter)], argCount: 1 ):
+                    case nameof( AwaitBinder.GetResult )
+                        when matches( [typeof( ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter )], argCount: 1 ):
                         GetResultTaskResultMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetResult) 
-                        when matches( [typeof(ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter)], argCount: 1 ):
+                    case nameof( AwaitBinder.GetResult )
+                        when matches( [typeof( ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter )], argCount: 1 ):
                         GetResultValueTaskResultMethod = method;
                         break;
                 }
@@ -357,19 +357,19 @@ internal static class AwaitBinderFactory
         // Delegate creation methods
 
         Reflection.GetMethods(
-            typeof(AwaitBinderFactory),
+            typeof( AwaitBinderFactory ),
             BindingFlags.Static | BindingFlags.NonPublic,
             ( name, method, matches ) =>
             {
                 switch ( name )
                 {
-                    case nameof(CreateGetAwaiterImplDelegate)
-                        when matches( [typeof(MethodInfo), typeof(MethodInfo)], argCount: 2 ):
+                    case nameof( CreateGetAwaiterImplDelegate )
+                        when matches( [typeof( MethodInfo ), typeof( MethodInfo )], argCount: 2 ):
                         CreateGetAwaiterImplDelegateMethod = method;
                         break;
 
-                    case nameof(CreateGetResultImplDelegate)
-                        when matches( [typeof(MethodInfo)], argCount: 2 ):
+                    case nameof( CreateGetResultImplDelegate )
+                        when matches( [typeof( MethodInfo )], argCount: 2 ):
                         CreateGetResultImplDelegateMethod = method;
                         break;
                 }

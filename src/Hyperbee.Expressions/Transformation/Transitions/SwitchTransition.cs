@@ -25,7 +25,7 @@ public class SwitchTransition : Transition
         );
     }
 
-    internal override NodeExpression FallThroughNode => DefaultNode; 
+    internal override NodeExpression FallThroughNode => DefaultNode;
 
     public void AddSwitchCase( List<Expression> testValues, NodeExpression body )
     {

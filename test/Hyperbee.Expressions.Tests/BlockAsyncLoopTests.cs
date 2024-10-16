@@ -10,7 +10,7 @@ public class BlockAsyncLoopTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeBreak()
     {
         // Arrange: Await before break in a loop
-        var loopCount = Variable( typeof(int), "count" );
+        var loopCount = Variable( typeof( int ), "count" );
         var breakLabel = Label( "breakLabel" );
         var block = BlockAsync(
             [loopCount],
@@ -43,7 +43,7 @@ public class BlockAsyncLoopTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterLoop()
     {
         // Arrange: Await after break in a loop
-        var loopCount = Variable( typeof(int), "count" );
+        var loopCount = Variable( typeof( int ), "count" );
         var breakLabel = Label( "breakLabel" );
 
         var block = BlockAsync(
@@ -77,7 +77,7 @@ public class BlockAsyncLoopTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeContinue()
     {
         // Arrange: Await before continue in a loop
-        var loopCount = Variable( typeof(int), "count" );
+        var loopCount = Variable( typeof( int ), "count" );
         var continueLabel = Label( "continueLabel" );
         var breakLabel = Label( "breakLabel" );
         var block = BlockAsync(
@@ -113,7 +113,7 @@ public class BlockAsyncLoopTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterContinue()
     {
         // Arrange: Await after continue in a loop
-        var loopCount = Variable( typeof(int), "count" );
+        var loopCount = Variable( typeof( int ), "count" );
         var continueLabel = Label( "continueLabel" );
         var breakLabel = Label( "breakLabel" );
         var block = BlockAsync(
@@ -148,7 +148,7 @@ public class BlockAsyncLoopTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithMultipleAwaitsInLoop()
     {
         // Arrange: Multiple awaits in a loop
-        var loopCount = Variable( typeof(int), "count" );
+        var loopCount = Variable( typeof( int ), "count" );
         var breakLabel = Label( "breakLabel" );
         var block = BlockAsync(
             [loopCount],
@@ -179,7 +179,7 @@ public class BlockAsyncLoopTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithBreakAndContinueLabels()
     {
         // Arrange: Use both breakLabel and continueLabel in the loop
-        var loopCount = Variable( typeof(int), "count" );
+        var loopCount = Variable( typeof( int ), "count" );
         var breakLabel = Label( "breakLabel" );
         var continueLabel = Label( "continueLabel" );
 

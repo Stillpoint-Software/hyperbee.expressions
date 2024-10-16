@@ -20,7 +20,7 @@ public class StateMachineBuilder<TResult>
         public const string MoveNextLambda = "__moveNextLambda<>";
         public const string State = "__state<>";
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static bool IsSystemField( string name ) => name.EndsWith( "<>" ); // System fields end in <>
     }
 
@@ -43,7 +43,7 @@ public class StateMachineBuilder<TResult>
         // var moveNextLambda = (StateMachineBase stateMachine) => { ... };
         //
         // stateMachine.SetMoveNext( moveNextLambda );
-        
+
         var stateMachineBaseType = CreateStateMachineBaseType( source, out var fields );
         var stateMachineType = CreateStateMachineDerivedType( stateMachineBaseType );
         var moveNextLambda = CreateMoveNextBody( source, stateMachineBaseType, id, fields );
@@ -74,8 +74,8 @@ public class StateMachineBuilder<TResult>
 
         var builderField = Expression.Field( stateMachineVariable, builderFieldInfo );
 
-        var startMethod = typeof(AsyncTaskMethodBuilder<>)
-            .MakeGenericType( typeof(TResult) )
+        var startMethod = typeof( AsyncTaskMethodBuilder<> )
+            .MakeGenericType( typeof( TResult ) )
             .GetMethod( "Start" )!
             .MakeGenericMethod( stateMachineType );
 
@@ -124,19 +124,19 @@ public class StateMachineBuilder<TResult>
         var typeBuilder = _moduleBuilder.DefineType(
             $"{_typeName}Base",
             TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Class,
-            typeof(object),
-            [typeof(IAsyncStateMachine)]
+            typeof( object ),
+            [typeof( IAsyncStateMachine )]
         );
 
         ImplementSystemFields( typeBuilder, out var stateField, out var builderField );
         ImplementVariableFields( typeBuilder, source );
-        ImplementConstructor( typeBuilder, typeof(object), stateField );
+        ImplementConstructor( typeBuilder, typeof( object ), stateField );
         ImplementSetStateMachine( typeBuilder, builderField );
 
         typeBuilder.DefineMethod(
             "MoveNext",
             MethodAttributes.Public | MethodAttributes.Abstract | MethodAttributes.Virtual,
-            typeof(void),
+            typeof( void ),
             Type.EmptyTypes
         );
 
@@ -172,7 +172,7 @@ public class StateMachineBuilder<TResult>
 
         var moveNextExpressionField = typeBuilder.DefineField(
             FieldName.MoveNextLambda,
-            typeof(Action<>).MakeGenericType( stateMachineBaseType ),
+            typeof( Action<> ).MakeGenericType( stateMachineBaseType ),
             FieldAttributes.Private
         );
 
@@ -207,7 +207,7 @@ public class StateMachineBuilder<TResult>
 
         // Call the base constructor 
         ilGenerator.Emit( OpCodes.Ldarg_0 );
-        ilGenerator.Emit( OpCodes.Call, baseType.GetConstructor( Type.EmptyTypes )! ); 
+        ilGenerator.Emit( OpCodes.Call, baseType.GetConstructor( Type.EmptyTypes )! );
         ilGenerator.Emit( OpCodes.Ret );
     }
 
@@ -216,19 +216,19 @@ public class StateMachineBuilder<TResult>
         // Define: system fields
         stateField = typeBuilder.DefineField(
             FieldName.State,
-            typeof(int),
+            typeof( int ),
             FieldAttributes.Public
         );
 
         builderField = typeBuilder.DefineField(
             FieldName.Builder,
-            typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ),
+            typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ),
             FieldAttributes.Public
         );
 
         typeBuilder.DefineField(
             FieldName.FinalResult,
-            typeof(TResult),
+            typeof( TResult ),
             FieldAttributes.Public
         );
     }
@@ -238,10 +238,10 @@ public class StateMachineBuilder<TResult>
         // Define: variable fields
         foreach ( var parameterExpression in result.Variables )
         {
-            typeBuilder.DefineField( 
-                parameterExpression.Name ?? parameterExpression.ToString(), 
-                parameterExpression.Type, 
-                FieldAttributes.Public 
+            typeBuilder.DefineField(
+                parameterExpression.Name ?? parameterExpression.ToString(),
+                parameterExpression.Type,
+                FieldAttributes.Public
             );
         }
     }
@@ -258,8 +258,8 @@ public class StateMachineBuilder<TResult>
         var setMoveNextMethod = typeBuilder.DefineMethod(
             "SetMoveNext",
             MethodAttributes.Public,
-            typeof(void),
-            [typeof(Action<>).MakeGenericType( typeBuilder.BaseType! )] //[typeof(Action<StateMachineBase<TResult>>)]
+            typeof( void ),
+            [typeof( Action<> ).MakeGenericType( typeBuilder.BaseType! )] //[typeof(Action<StateMachineBase<TResult>>)]
         );
 
         var ilGenerator = setMoveNextMethod.GetILGenerator();
@@ -267,7 +267,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // moveNextLambda
         ilGenerator.Emit( OpCodes.Stfld, moveNextExpressionField ); // this._moveNextLambda<> = moveNextLambda
-        ilGenerator.Emit( OpCodes.Ret ); 
+        ilGenerator.Emit( OpCodes.Ret );
     }
 
     private static void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldBuilder builderField )
@@ -282,25 +282,25 @@ public class StateMachineBuilder<TResult>
         var setStateMachineMethod = typeBuilder.DefineMethod(
             "SetStateMachine",
             MethodAttributes.Public | MethodAttributes.Virtual,
-            typeof(void),
-            [typeof(IAsyncStateMachine)]
+            typeof( void ),
+            [typeof( IAsyncStateMachine )]
         );
 
         var ilGenerator = setStateMachineMethod.GetILGenerator();
 
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // this
-        ilGenerator.Emit( OpCodes.Ldfld, builderField ); 
+        ilGenerator.Emit( OpCodes.Ldfld, builderField );
         ilGenerator.Emit( OpCodes.Ldarg_1 ); // argument: stateMachine
 
-        var setStateMachineOnBuilder = typeof(AsyncTaskMethodBuilder<>)
-            .MakeGenericType( typeof(TResult) )
-            .GetMethod( "SetStateMachine", [typeof(IAsyncStateMachine)] );
+        var setStateMachineOnBuilder = typeof( AsyncTaskMethodBuilder<> )
+            .MakeGenericType( typeof( TResult ) )
+            .GetMethod( "SetStateMachine", [typeof( IAsyncStateMachine )] );
 
         ilGenerator.Emit( OpCodes.Callvirt, setStateMachineOnBuilder! );
         ilGenerator.Emit( OpCodes.Ret );
 
-        typeBuilder.DefineMethodOverride( setStateMachineMethod, 
-            typeof(IAsyncStateMachine).GetMethod( "SetStateMachine" )! );
+        typeBuilder.DefineMethodOverride( setStateMachineMethod,
+            typeof( IAsyncStateMachine ).GetMethod( "SetStateMachine" )! );
     }
 
     private static void ImplementMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextExpressionField )
@@ -315,13 +315,13 @@ public class StateMachineBuilder<TResult>
         var moveNextMethod = typeBuilder.DefineMethod(
             "MoveNext",
             MethodAttributes.Public | MethodAttributes.Virtual,
-            typeof(void),
+            typeof( void ),
             Type.EmptyTypes
         );
 
         var ilGenerator = moveNextMethod.GetILGenerator();
 
-        var invokeMethod = typeof(Action<>)
+        var invokeMethod = typeof( Action<> )
             .MakeGenericType( typeBuilder.BaseType! )
             .GetMethod( "Invoke" );
 
@@ -422,17 +422,17 @@ public class StateMachineBuilder<TResult>
             : [];
 
         // Create a try-catch block to handle exceptions
-        
-        var exceptionParameter = Expression.Parameter( typeof(Exception), "ex" );
+
+        var exceptionParameter = Expression.Parameter( typeof( Exception ), "ex" );
         var tryCatchBlock = Expression.TryCatch(
-            Expression.Block( typeof( void ), variables, bodyExpressions ), 
+            Expression.Block( typeof( void ), variables, bodyExpressions ),
             Expression.Catch(
                 exceptionParameter,
                 Expression.Block(
                     Expression.Assign( stateFieldExpression, Expression.Constant( -2 ) ),
                     Expression.Call(
                         builderFieldExpression,
-                        nameof(AsyncTaskMethodBuilder<TResult>.SetException),
+                        nameof( AsyncTaskMethodBuilder<TResult>.SetException ),
                         null,
                         exceptionParameter
                     )
@@ -489,7 +489,7 @@ public class StateMachineBuilder<TResult>
 
         void Visit( NodeExpression node )
         {
-            while ( node != null && visited.Add( node )  )
+            while ( node != null && visited.Add( node ) )
             {
                 ordered.Add( node );
                 node = node.Transition?.FallThroughNode;
@@ -519,9 +519,9 @@ public static class StateMachineBuilder
 
     static StateMachineBuilder()
     {
-        BuildStateMachineMethod = typeof(StateMachineBuilder)
+        BuildStateMachineMethod = typeof( StateMachineBuilder )
             .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
-            .First( x => x.Name == nameof(Create) && x.IsGenericMethod );
+            .First( x => x.Name == nameof( Create ) && x.IsGenericMethod );
 
         // Create the state machine module
         var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
@@ -532,8 +532,8 @@ public static class StateMachineBuilder
     public static Expression Create( Type resultType, LoweringResult source, bool createRunner = true )
     {
         // If the result type is void, use the internal VoidTaskResult type
-        if ( resultType == typeof(void) )
-            resultType = typeof(IVoidResult);
+        if ( resultType == typeof( void ) )
+            resultType = typeof( IVoidResult );
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
         return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );

@@ -15,7 +15,7 @@ public class NodeExpression : Expression
     public Expression ResultValue { get; set; }
 
     public LabelTarget NodeLabel { get; set; }
-    public List<Expression> Expressions { get; set; } = new (8);
+    public List<Expression> Expressions { get; set; } = new( 8 );
     public Transition Transition { get; set; }
 
     private Expression _expression;
@@ -91,8 +91,8 @@ public class NodeExpression : Expression
         // TODO: see if this can be improved earlier in the process
         var finalResult = returnValue != null
             ? Assign( resultField, returnValue )
-            : (blockBody.Type == typeof(void))
-                ? Assign( resultField, Constant( null, typeof(IVoidResult) ) )
+            : (blockBody.Type == typeof( void ))
+                ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
                 : Assign( resultField, blockBody );
 
         return Block(
@@ -103,7 +103,7 @@ public class NodeExpression : Expression
                 builderField,
                 "SetResult",
                 null,
-                stateMachineType != typeof(IVoidResult)
+                stateMachineType != typeof( IVoidResult )
                     ? resultField
                     : Constant( null, stateMachineType ) // No result for IVoidTaskResult
             )

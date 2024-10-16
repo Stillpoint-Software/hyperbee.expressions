@@ -18,13 +18,13 @@ public class TryCatchTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
-        var expressions = new List<Expression>( StateScope.Nodes.Count + 1 ) 
+        var expressions = new List<Expression>( StateScope.Nodes.Count + 1 )
         {
-            StateScope.CreateJumpTable( Scopes, resolverSource.StateIdField ) 
+            StateScope.CreateJumpTable( Scopes, resolverSource.StateIdField )
         };
-        
+
         expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
-        
+
         MapCatchBlock( out var catches, out var switchCases );
 
         return Block(
@@ -35,7 +35,7 @@ public class TryCatchTransition : Transition
             Switch( // Handle error
                 TryStateVariable,
                 Empty(),
-                switchCases ) 
+                switchCases )
             );
     }
 
@@ -43,20 +43,20 @@ public class TryCatchTransition : Transition
     {
         var includeFinal = FinallyNode != null;
         var size = CatchBlocks.Count + (includeFinal ? 1 : 0);
-        
+
         catches = new CatchBlock[size];
         switchCases = new SwitchCase[size];
 
         for ( var index = 0; index < CatchBlocks.Count; index++ )
         {
             var catchBlock = CatchBlocks[index];
-            
+
             catches[index] = catchBlock.Reduce( ExceptionVariable, TryStateVariable );
-            
+
             switchCases[index] = SwitchCase(
                 (catchBlock.UpdateBody is NodeExpression nodeExpression)
                     ? Goto( nodeExpression.NodeLabel )
-                    : Block( typeof(void), catchBlock.UpdateBody ),
+                    : Block( typeof( void ), catchBlock.UpdateBody ),
                 Constant( catchBlock.CatchState ) );
         }
 
@@ -64,16 +64,16 @@ public class TryCatchTransition : Transition
             return;
 
         catches[^1] = Catch(
-            typeof(Exception),
+            typeof( Exception ),
             Block(
-                typeof(void),
+                typeof( void ),
                 Assign( TryStateVariable, Constant( catches.Length ) )
-            ) 
+            )
         );
 
         switchCases[^1] = SwitchCase(
             Goto( FinallyNode.NodeLabel ),
-            Constant( catches.Length ) 
+            Constant( catches.Length )
         );
     }
 
@@ -99,7 +99,7 @@ public class TryCatchTransition : Transition
             return Catch(
                 Handler.Test,
                 Block(
-                    typeof(void),
+                    typeof( void ),
                     Assign( exceptionVariable, Constant( Handler.Variable ) ),
                     Assign( tryStateVariable, Constant( CatchState ) )
                 ) );

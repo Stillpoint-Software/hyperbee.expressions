@@ -50,7 +50,7 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
         // Update each expression in a block to use only state machine fields/variables
         return node.Update(
             node.Variables.Where( x => !_mappingCache.ContainsKey( x.Name ?? x.ToString() ) ),
-            node.Expressions.Select( Visit ) 
+            node.Expressions.Select( Visit )
         );
     }
 

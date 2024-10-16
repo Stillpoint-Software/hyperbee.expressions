@@ -13,7 +13,7 @@ public class LoweringVisitorTests
     static int Test( int a, int b ) => a + b;
     static async Task<int> TestAsync( int a, int b ) => await Task.FromResult( a + b );
 
-    public static MethodInfo GetMethod( string name ) => typeof(LoweringVisitorTests).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic );
+    public static MethodInfo GetMethod( string name ) => typeof( LoweringVisitorTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic );
 
 
     [TestMethod]
@@ -30,7 +30,7 @@ public class LoweringVisitorTests
         // Assert
         AssertTransition.AssertResult( result, nodes: 1, variables: 1 );
 
-        AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof(void) );
+        AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof( void ) );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[0] );
     }
 
@@ -54,7 +54,7 @@ public class LoweringVisitorTests
 
         // Assert
         AssertTransition.AssertResult( result, nodes: 5, variables: 4, jumps: 2 );
-        AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof(void) );
+        AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof( void ) );
 
         var firstBefore = AssertTransition.AssertAwait( result.Scopes[0].Nodes[0].Transition, "ST_0002" );
         var firstAfter = AssertTransition.AssertAwaitResult( firstBefore.Transition, "ST_0001" );
@@ -276,7 +276,7 @@ public class LoweringVisitorTests
         // Assert
         AssertTransition.AssertResult( result, nodes: 5, variables: 0 );
 
-        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[0].Transition, 
+        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[0].Transition,
             defaultLabel: null,
             "ST_0002", "ST_0003", "ST_0004" );
 
@@ -336,7 +336,7 @@ public class LoweringVisitorTests
         // Assert
         AssertTransition.AssertResult( result, nodes: 10, variables: 5, jumps: 2 );
 
-        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[1].Transition, 
+        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[1].Transition,
             defaultLabel: "ST_0004",
             "ST_0005", "ST_0006", "ST_0009" );
 
@@ -494,9 +494,9 @@ public class LoweringVisitorTests
                     Constant( "try body before exception" ),
                     Throw( Constant( new Exception( "Test Exception" ) ) ),
                     Constant( "try body after exception" ) ),
-                Catch( typeof(Exception), Block(
+                Catch( typeof( Exception ), Block(
                     Constant( "Exception catch body" ) ) ),
-                Catch( typeof(ArgumentException), Block(
+                Catch( typeof( ArgumentException ), Block(
                     Constant( "ArgumentException catch body" ) ) ) ),
             Constant( "after try" )
         );
@@ -509,8 +509,8 @@ public class LoweringVisitorTests
         AssertTransition.AssertResult( result, nodes: 4, variables: 3 );
 
         AssertTransition.AssertTryCatch( result.Scopes[0].Nodes[0].Transition, null,
-            typeof(Exception),
-            typeof(ArgumentException) );
+            typeof( Exception ),
+            typeof( ArgumentException ) );
     }
 
     [TestMethod]
@@ -525,7 +525,7 @@ public class LoweringVisitorTests
                     Throw( Constant( new Exception( "Test Exception" ) ) ),
                     Constant( "try body after exception" ) ),
                 Block(
-                    Constant( "finally block" )),
+                    Constant( "finally block" ) ),
                 Catch( typeof( Exception ), Block(
                     Constant( "Exception catch body" ) ) ),
                 Catch( typeof( ArgumentException ), Block(
@@ -547,7 +547,7 @@ public class LoweringVisitorTests
 
     [TestMethod]
     public void Lowering_ShouldBranch_WithComplexConditions()
-    {        
+    {
         // Arrange
         var ifThenElseExpr = Block(
             Constant( 0 ),
@@ -578,7 +578,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( ifThenElseExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 17, variables:7, jumps:3 );
+        AssertTransition.AssertResult( result, nodes: 17, variables: 7, jumps: 3 );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
     }
 
@@ -587,10 +587,10 @@ public class LoweringVisitorTests
 
         public static class TransitionType
         {
-            public static Type Goto => typeof(GotoTransition);
-            public static Type Await => typeof(AwaitTransition);
-            public static Type AwaitResult => typeof(AwaitResultTransition);
-            public static Type Conditional => typeof(ConditionalTransition);
+            public static Type Goto => typeof( GotoTransition );
+            public static Type Await => typeof( AwaitTransition );
+            public static Type AwaitResult => typeof( AwaitResultTransition );
+            public static Type Conditional => typeof( ConditionalTransition );
             public static Type Loop => typeof( LoopTransition );
             public static Type Switch => typeof( SwitchTransition );
             public static Type TryCatch => typeof( TryCatchTransition );

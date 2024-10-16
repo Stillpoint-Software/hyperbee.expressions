@@ -225,7 +225,7 @@ public class BlockAsyncConditionalTests
         var block = BlockAsync(
             Condition(
                 Constant( true ),
-                Await( Constant( null, typeof(Task<string>) ) ),
+                Await( Constant( null, typeof( Task<string> ) ) ),
                 Constant( "false" )
             )
         );

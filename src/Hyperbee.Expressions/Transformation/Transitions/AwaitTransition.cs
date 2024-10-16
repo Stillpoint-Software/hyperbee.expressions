@@ -25,7 +25,7 @@ public class AwaitTransition : Transition
         {
             Assign(
                 AwaiterVariable,
-                getAwaiterCall 
+                getAwaiterCall
             ),
             IfThen(
                 IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
@@ -44,7 +44,7 @@ public class AwaitTransition : Transition
         };
 
         var fallThrough = GotoOrFallThrough( order, CompletionNode, true );
-        
+
         if ( fallThrough != null )
             expressions.Add( fallThrough );
 

@@ -31,7 +31,7 @@ internal static class DebugViewWriter
             writer.WriteLine();
 
         // nodes
-        foreach (var node in scopes.SelectMany(scope => scope.Nodes.Where( node => node != null )))
+        foreach ( var node in scopes.SelectMany( scope => scope.Nodes.Where( node => node != null ) ) )
         {
             // label
             writer.WriteLine( $"{node.NodeLabel.Name}:" );
@@ -193,10 +193,10 @@ internal static class DebugViewWriter
                 return $"Constant String \"{stringValue}\"";
 
             default:
-            {
-                var typeName = constant.Type.Name;
-                return $"Constant {typeName} {constant.Value}";
-            }
+                {
+                    var typeName = constant.Type.Name;
+                    return $"Constant {typeName} {constant.Value}";
+                }
         }
     }
 

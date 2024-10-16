@@ -32,7 +32,7 @@ public class AwaitBinder
 
     // Await methods
 
-    internal void Await<TAwaitable,TAwaiter>( TAwaitable awaitable, bool configureAwait )
+    internal void Await<TAwaitable, TAwaiter>( TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )
         {
@@ -63,7 +63,7 @@ public class AwaitBinder
 
             default:
                 var awaiter = GetAwaiter<TAwaitable, TAwaiter>( awaitable, configureAwait );
-                return GetResultValue<TAwaiter,TResult>( awaiter );
+                return GetResultValue<TAwaiter, TResult>( awaiter );
         }
     }
 
@@ -97,7 +97,7 @@ public class AwaitBinder
     internal TAwaiter GetAwaiter<TAwaitable, TAwaiter>( TAwaitable awaitable, bool configureAwait )
     {
         if ( GetAwaiterImplDelegate == null )
-            throw new InvalidOperationException( $"The {nameof(GetAwaiterImplDelegate)} is not set for {awaitable.GetType()}." );
+            throw new InvalidOperationException( $"The {nameof( GetAwaiterImplDelegate )} is not set for {awaitable.GetType()}." );
 
         var getAwaiter = (AwaitBinderGetAwaiterDelegate<TAwaitable, TAwaiter>) GetAwaiterImplDelegate;
         return getAwaiter( awaitable, configureAwait );
@@ -115,12 +115,12 @@ public class AwaitBinder
     internal void GetResult<TAwaiter>( TAwaiter awaiter )
     {
         if ( GetResultImplDelegate == null )
-            throw new InvalidOperationException( $"The {nameof(GetResultImplDelegate)} is not set for {awaiter.GetType()}." );
+            throw new InvalidOperationException( $"The {nameof( GetResultImplDelegate )} is not set for {awaiter.GetType()}." );
 
         var getResult = (AwaitBinderGetResultDelegate<TAwaiter, IVoidResult>) GetResultImplDelegate;
         getResult( awaiter );
     }
-    
+
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal static TResult GetResult<TResult>( ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter awaiter ) => awaiter.GetResult();
 
@@ -131,7 +131,7 @@ public class AwaitBinder
     internal TResult GetResultValue<TAwaiter, TResult>( TAwaiter awaiter )
     {
         if ( GetResultImplDelegate == null )
-            throw new InvalidOperationException( $"The {nameof(GetResultImplDelegate)} is not set for {awaiter.GetType()}." );
+            throw new InvalidOperationException( $"The {nameof( GetResultImplDelegate )} is not set for {awaiter.GetType()}." );
 
         var getResult = (AwaitBinderGetResultDelegate<TAwaiter, TResult>) GetResultImplDelegate;
         var result = getResult( awaiter );

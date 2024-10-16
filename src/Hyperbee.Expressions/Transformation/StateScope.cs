@@ -3,7 +3,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public class StateScope 
+public class StateScope
 {
     public record struct JumpCase( LabelTarget ResultLabel, LabelTarget ContinueLabel, int StateId, int? ParentId );
 
@@ -114,7 +114,7 @@ public class StateScope
                     {
                         var childJumpCase = scope.JumpCases[jumpIndex];
 
-                        if ( childJumpCase.ParentId != currentStateId ) 
+                        if ( childJumpCase.ParentId != currentStateId )
                             continue;
 
                         // return self
@@ -133,7 +133,7 @@ public class StateScope
         return Expression.Switch(
             stateFieldExpression,
             Expression.Empty(),
-            [..jumpTable]
+            [.. jumpTable]
         );
     }
 

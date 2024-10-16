@@ -16,11 +16,11 @@ public class AsyncBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        var asyncAddMethodInfo = typeof(AsyncBenchmarks).GetMethod( nameof(AddAsync) )!;
-        var asyncIsTrueMethodInfo = typeof(AsyncBenchmarks).GetMethod( nameof(IsTrueAsync) )!;
-        var asyncInitVariableMethodInfo = typeof(AsyncBenchmarks).GetMethod( nameof(InitVariableAsync) )!;
+        var asyncAddMethodInfo = typeof( AsyncBenchmarks ).GetMethod( nameof( AddAsync ) )!;
+        var asyncIsTrueMethodInfo = typeof( AsyncBenchmarks ).GetMethod( nameof( IsTrueAsync ) )!;
+        var asyncInitVariableMethodInfo = typeof( AsyncBenchmarks ).GetMethod( nameof( InitVariableAsync ) )!;
 
-        var variable = Variable( typeof(int), "variable" );
+        var variable = Variable( typeof( int ), "variable" );
 
         var asyncBlock =
             BlockAsync(

@@ -6,14 +6,14 @@ using Hyperbee.Expressions.Transformation;
 namespace Hyperbee.Expressions;
 
 [DebuggerDisplay( "Await {Target?.ToString(),nq}" )]
-[DebuggerTypeProxy( typeof(AwaitExpressionDebuggerProxy) )]
+[DebuggerTypeProxy( typeof( AwaitExpressionDebuggerProxy ) )]
 public class AwaitExpression : Expression
 {
     private Type _resultType;
 
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
-        Target = asyncExpression ?? throw new ArgumentNullException( nameof(asyncExpression) );
+        Target = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
 
         ConfigureAwait = configureAwait;
     }
@@ -41,20 +41,20 @@ public class AwaitExpression : Expression
     {
         if ( awaitableType.IsGenericType )
         {
-            if ( awaitableType == typeof(Task<IVoidResult>) || awaitableType == typeof(ValueTask<IVoidResult>) )
-                return typeof(void);
+            if ( awaitableType == typeof( Task<IVoidResult> ) || awaitableType == typeof( ValueTask<IVoidResult> ) )
+                return typeof( void );
 
             var genericTypeDef = awaitableType.GetGenericTypeDefinition();
 
-            if ( genericTypeDef.IsSubclassOf( typeof(Task) ) ||
-                 genericTypeDef.IsSubclassOf( typeof(ValueTask) ) )
+            if ( genericTypeDef.IsSubclassOf( typeof( Task ) ) ||
+                 genericTypeDef.IsSubclassOf( typeof( ValueTask ) ) )
             {
                 return awaitableType.GetGenericArguments()[0];
             }
         }
 
-        if ( awaitableType == typeof(Task) || awaitableType == typeof(ValueTask) )
-            return typeof(void);
+        if ( awaitableType == typeof( Task ) || awaitableType == typeof( ValueTask ) )
+            return typeof( void );
 
         var awaiterInfo = AwaitBinderFactory.GetOrCreate( awaitableType );
         return awaiterInfo.GetResultMethod.ReturnType;
@@ -62,7 +62,7 @@ public class AwaitExpression : Expression
 
     internal static bool IsAwaitable( Type type )
     {
-        return typeof(Task).IsAssignableFrom( type ) || typeof(ValueTask).IsAssignableFrom( type ) || AwaitBinderFactory.TryGetOrCreate( type, out _ );
+        return typeof( Task ).IsAssignableFrom( type ) || typeof( ValueTask ).IsAssignableFrom( type ) || AwaitBinderFactory.TryGetOrCreate( type, out _ );
     }
 
     private class AwaitExpressionDebuggerProxy( AwaitExpression node )
@@ -80,7 +80,7 @@ public static partial class AsyncExpression
             return new AwaitExpression( expression, configureAwait );
 
         if ( !AwaitExpression.IsAwaitable( expression.Type ) )
-            throw new ArgumentException( "Expression must be awaitable.", nameof(expression) );
+            throw new ArgumentException( "Expression must be awaitable.", nameof( expression ) );
 
         return new AwaitExpression( expression, configureAwait );
     }

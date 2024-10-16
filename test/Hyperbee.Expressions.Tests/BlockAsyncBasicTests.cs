@@ -130,7 +130,7 @@ public class BlockAsyncBasicTests
     public async Task BlockAsync_ShouldAwaitSuccessfully_WithTask()
     {
         // Arrange
-        var block = BlockAsync( Await( Constant( Task.CompletedTask, typeof(Task) ) ) );
+        var block = BlockAsync( Await( Constant( Task.CompletedTask, typeof( Task ) ) ) );
         var lambda = Lambda<Func<Task>>( block );
         var compiledLambda = lambda.Compile();
 

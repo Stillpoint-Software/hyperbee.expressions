@@ -5,7 +5,7 @@ using Hyperbee.Expressions.Transformation;
 namespace Hyperbee.Expressions;
 
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
-public class AsyncBlockExpression: Expression
+public class AsyncBlockExpression : Expression
 {
     private readonly Expression[] _expressions;
     private readonly ParameterExpression[] _variables;
@@ -22,12 +22,12 @@ public class AsyncBlockExpression: Expression
     public AsyncBlockExpression( ParameterExpression[] variables, Expression[] expressions )
     {
         if ( expressions == null || expressions.Length == 0 )
-            throw new ArgumentException( $"{nameof(AsyncBlockExpression)} must contain at least one expression.", nameof(expressions) );
- 
+            throw new ArgumentException( $"{nameof( AsyncBlockExpression )} must contain at least one expression.", nameof( expressions ) );
+
         _variables = variables;
         _expressions = expressions;
         _resultType = _expressions[^1].Type;
-        _type = _resultType == typeof(void) ? typeof(Task) : typeof(Task<>).MakeGenericType( _resultType );
+        _type = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
     }
 
     public override bool CanReduce => true;
@@ -48,7 +48,7 @@ public class AsyncBlockExpression: Expression
         var source = visitor.Transform( variables, expressions );
 
         if ( source.AwaitCount == 0 )
-            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
+            throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
         var stateMachine = StateMachineBuilder.Create( resultType, source );
 
