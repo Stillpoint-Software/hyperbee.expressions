@@ -13,7 +13,6 @@ public class StateScope
     public List<JumpCase> JumpCases { get; init; }
     public Stack<NodeExpression> JoinStates { get; init; }
 
-    private NodeExpression _tailState;
     private int _currentJumpState;
     private readonly int? _parentJumpState;
 
@@ -26,21 +25,21 @@ public class StateScope
         JumpCases = new List<JumpCase>( initialCapacity );
         JoinStates = new Stack<NodeExpression>( initialCapacity );
 
-        _tailState = parent?.GetTailState();
+        TailState = parent?.TailState;
         _parentJumpState = parent?._currentJumpState;
     }
 
     public NodeExpression AddState( int id )
     {
         var stateNode = new NodeExpression( id, ScopeId );
-        _tailState = stateNode;
+        TailState = stateNode;
 
         Nodes.Add( stateNode );
 
         return stateNode;
     }
 
-    public NodeExpression GetTailState() => _tailState; 
+    public NodeExpression TailState { get; private set; }
 
     public NodeExpression EnterGroup( int id, out NodeExpression sourceState )
     {
@@ -49,7 +48,7 @@ public class StateScope
         Nodes.Add( joinState );
         JoinStates.Push( joinState );
 
-        sourceState = _tailState;
+        sourceState = TailState;
 
         return joinState;
     }
@@ -57,7 +56,7 @@ public class StateScope
     public void ExitGroup( NodeExpression sourceState, Transition transition )
     {
         sourceState.Transition = transition;
-        _tailState = JoinStates.Pop();
+        TailState = JoinStates.Pop();
     }
 
     public void AddJumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId )

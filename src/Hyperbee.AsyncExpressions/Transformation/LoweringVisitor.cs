@@ -30,7 +30,6 @@ internal class LoweringVisitor : ExpressionVisitor
     public LoweringResult Transform( ParameterExpression[] variables, params Expression[] expressions )
     {
         _definedVariables = variables;
-        //_states.AddState(); //BF moved this to the StateContext constructor
 
         foreach ( var expr in expressions )
         {
@@ -65,7 +64,7 @@ internal class LoweringVisitor : ExpressionVisitor
         VisitInternal( expression, captureVisit );
 
         // Set a default Transition if the branch tail didn't join
-        var tailState = _states.GetTailState();
+        var tailState = _states.TailState;
         tailState.ResultVariable = resultVariable;
 
         if ( tailState.Transition != null )
@@ -207,7 +206,7 @@ internal class LoweringVisitor : ExpressionVisitor
         joinState.ResultValue = resultVariable;
 
         // TODO: This seems wrong, I shouldn't have to cast to GotoTransition (maybe all types of a TargetNode?)
-        var tailState = _states.GetTailState();
+        var tailState = _states.TailState;
         if ( tailState.Transition is GotoTransition gotoTransition )
             gotoTransition.TargetNode = loopTransition.BodyNode;
 
@@ -329,7 +328,7 @@ internal class LoweringVisitor : ExpressionVisitor
             default:
                 // Warning: visitation mutates the tail state.
                 if ( captureVisit )
-                    _states.GetTailState().Expressions.Add( result );
+                    _states.TailState.Expressions.Add( result );
                 break;
         }
 
@@ -379,7 +378,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         private StateScope CurrentScope => Scopes[_scopeIndexes.Peek()];
 
-        public NodeExpression GetTailState() => CurrentScope.GetTailState();
+        public NodeExpression TailState => CurrentScope.TailState;
 
         public NodeExpression AddState() => CurrentScope.AddState( _stateId++ );
 
