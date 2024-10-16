@@ -402,10 +402,13 @@ public class StateMachineBuilder<TResult>
 
         bodyExpressions.Add( jumpTableExpression );
 
-        // Create the states
-        var nodes = OptimizeNodeOrder( source.Scopes ); // optimize node ordering to reduce goto calls
+        // Optimize node ordering to reduce goto calls
+        
+        var nodes = OptimizeNodeOrder( source.Scopes );
 
-        var fieldResolverVisitor = new FieldResolverVisitor(
+        // Hoist variables and Emit the body of the MoveNext method
+
+        var hoistingVisitor = new HoistingVisitor(
             typeof( TResult ),
             stateMachineInstance,
             returnLabel,
@@ -415,7 +418,7 @@ public class StateMachineBuilder<TResult>
             finalResultFieldExpression,
             source.ReturnValue );
 
-        bodyExpressions.AddRange( nodes.Select( fieldResolverVisitor.Visit ) );
+        bodyExpressions.AddRange( nodes.Select( hoistingVisitor.Visit ) );
 
         ParameterExpression[] variables = (source.ReturnValue != null)
             ? [source.ReturnValue]

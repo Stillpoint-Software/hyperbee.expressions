@@ -8,7 +8,7 @@ public class GotoTransition : Transition
 {
     public NodeExpression TargetNode { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
         return Goto( TargetNode.NodeLabel ); //TODO: causes infinite loop with nested try/catch
                                              //GotoOrFallThrough( order, TargetNode );

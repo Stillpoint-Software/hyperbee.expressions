@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal interface IFieldResolverSource
+internal interface IHoistingSource
 {
     public Type StateMachineType { get; init; }
     Expression StateMachine { get; init; }

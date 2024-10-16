@@ -19,7 +19,7 @@ public class NodeExpression : Expression
     public Transition Transition { get; set; }
 
     private Expression _expression;
-    private IFieldResolverSource _resolverSource;
+    private IHoistingSource _resolverSource;
 
     public NodeExpression( int stateId, int scopeId )
     {
@@ -32,7 +32,7 @@ public class NodeExpression : Expression
     public override Type Type => ResultValue?.Type ?? typeof( void );
     public override bool CanReduce => true;
 
-    internal Expression Reduce( IFieldResolverSource resolverSource )
+    internal Expression Reduce( IHoistingSource resolverSource )
     {
         _resolverSource = resolverSource;
         return Reduce();
@@ -41,7 +41,7 @@ public class NodeExpression : Expression
     public override Expression Reduce()
     {
         if ( _resolverSource == null )
-            throw new InvalidOperationException( $"Reduce requires an {nameof( IFieldResolverSource )} instance." );
+            throw new InvalidOperationException( $"Reduce requires an {nameof( IHoistingSource )} instance." );
 
         return _expression ??= ReduceTransition();
     }

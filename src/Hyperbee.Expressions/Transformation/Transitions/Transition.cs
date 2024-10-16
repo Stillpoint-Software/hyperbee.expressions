@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 [DebuggerDisplay( "Transition = {GetType().Name,nq}" )]
 public abstract class Transition
 {
-    internal abstract Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource );
+    internal abstract Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource );
     internal abstract NodeExpression FallThroughNode { get; } // this node is used to optimize state order
 
     protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )

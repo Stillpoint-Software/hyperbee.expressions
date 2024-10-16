@@ -9,7 +9,7 @@ public class SwitchTransition : Transition
     public NodeExpression DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
         var defaultBody = DefaultNode != null
             ? GotoOrFallThrough( order, DefaultNode, allowNull: true )

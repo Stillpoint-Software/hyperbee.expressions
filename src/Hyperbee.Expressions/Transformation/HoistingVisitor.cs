@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
+internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 {
     private readonly Dictionary<string, MemberExpression> _mappingCache;
 
@@ -14,7 +14,7 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
     public MemberExpression ResultField { get; init; }
     public ParameterExpression ReturnValue { get; init; }
 
-    public FieldResolverVisitor(
+    public HoistingVisitor(
         Type stateMachineType,
         Expression stateMachine,
         LabelTarget returnLabel,

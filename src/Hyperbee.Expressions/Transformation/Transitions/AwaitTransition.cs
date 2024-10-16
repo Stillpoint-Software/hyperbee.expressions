@@ -15,7 +15,7 @@ public class AwaitTransition : Transition
     public MethodInfo GetAwaiterMethod { get; set; }
     public bool ConfigureAwait { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
         var getAwaiterCall = GetAwaiterMethod.IsStatic
             ? Call( GetAwaiterMethod, Target, Constant( ConfigureAwait ) )

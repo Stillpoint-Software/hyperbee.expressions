@@ -16,7 +16,7 @@ public class TryCatchTransition : Transition
     public StateScope StateScope { get; init; }
     public List<StateScope> Scopes { get; init; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
         var expressions = new List<Expression>( StateScope.Nodes.Count + 1 )
         {

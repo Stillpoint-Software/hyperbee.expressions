@@ -11,7 +11,7 @@ public class AwaitResultTransition : Transition
     public NodeExpression TargetNode { get; set; }
     public MethodInfo GetResultMethod { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
         var getResultCall = GetResultMethod.IsStatic
             ? Call( GetResultMethod, AwaiterVariable )
