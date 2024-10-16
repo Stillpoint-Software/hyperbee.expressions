@@ -30,7 +30,7 @@ internal class LoweringVisitor : ExpressionVisitor
     public LoweringResult Transform( ParameterExpression[] variables, params Expression[] expressions )
     {
         _definedVariables = variables;
-        _states.AddState();
+        //_states.AddState(); //BF moved this to the StateContext constructor
 
         foreach ( var expr in expressions )
         {
@@ -57,14 +57,15 @@ internal class LoweringVisitor : ExpressionVisitor
         bool captureVisit = true )
     {
         // Create a new state for the branch
-        var branchState = _states.AddBranchState();
+
+        var branchState = _states.AddState();
 
         init?.Invoke( branchState );
 
         VisitInternal( expression, captureVisit );
 
         // Set a default Transition if the branch tail didn't join
-        var tailState = _states.GetBranchTailState();
+        var tailState = _states.GetTailState();
         tailState.ResultVariable = resultVariable;
 
         if ( tailState.Transition != null )
@@ -91,7 +92,7 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var updatedTest = VisitInternal( node.Test, captureVisit: false );
 
-        var joinState = _states.EnterBranchState( out var sourceState );
+        var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
@@ -107,7 +108,7 @@ internal class LoweringVisitor : ExpressionVisitor
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
 
-        _states.ExitBranchState( sourceState, conditionalTransition );
+        _states.ExitGroup( sourceState, conditionalTransition );
 
         return node;
     }
@@ -116,7 +117,7 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var updatedSwitchValue = VisitInternal( node.SwitchValue, captureVisit: false );
 
-        var joinState = _states.EnterBranchState( out var sourceState );
+        var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
@@ -138,14 +139,14 @@ internal class LoweringVisitor : ExpressionVisitor
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
 
-        _states.ExitBranchState( sourceState, switchTransition );
+        _states.ExitGroup( sourceState, switchTransition );
 
         return node;
     }
 
     protected override Expression VisitTry( TryExpression node )
     {
-        var joinState = _states.EnterBranchState( out var sourceState );
+        var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
@@ -160,7 +161,7 @@ internal class LoweringVisitor : ExpressionVisitor
             joinState = finalExpression;
         }
 
-        var nodeScope = _states.EnterNodeScope();
+        var nodeScope = _states.EnterScope();
 
         var tryCatchTransition = new TryCatchTransition
         {
@@ -168,11 +169,11 @@ internal class LoweringVisitor : ExpressionVisitor
             ExceptionVariable = exceptionVariable,
             TryNode = VisitBranch( node.Body, joinState, resultVariable ),
             FinallyNode = finalExpression,
-            NodeScope = nodeScope,
+            StateScope = nodeScope,
             Scopes = _states.Scopes
         };
 
-        _states.ExitNodeScope();
+        _states.ExitScope();
 
         for ( var index = 0; index < node.Handlers.Count; index++ )
         {
@@ -186,14 +187,14 @@ internal class LoweringVisitor : ExpressionVisitor
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
 
-        _states.ExitBranchState( sourceState, tryCatchTransition );
+        _states.ExitGroup( sourceState, tryCatchTransition );
 
         return node;
     }
 
     protected override Expression VisitLoop( LoopExpression node )
     {
-        var joinState = _states.EnterBranchState( out var sourceState );
+        var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
@@ -206,11 +207,11 @@ internal class LoweringVisitor : ExpressionVisitor
         joinState.ResultValue = resultVariable;
 
         // TODO: This seems wrong, I shouldn't have to cast to GotoTransition (maybe all types of a TargetNode?)
-        var tailState = _states.GetBranchTailState();
+        var tailState = _states.GetTailState();
         if ( tailState.Transition is GotoTransition gotoTransition )
             gotoTransition.TargetNode = loopTransition.BodyNode;
 
-        _states.ExitBranchState( sourceState, loopTransition );
+        _states.ExitGroup( sourceState, loopTransition );
 
         return node;
 
@@ -232,7 +233,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected Expression VisitAwait( AwaitExpression node )
     {
-        var joinState = _states.EnterBranchState( out var sourceState );
+        var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
@@ -269,7 +270,7 @@ internal class LoweringVisitor : ExpressionVisitor
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
 
-        _states.ExitBranchState( sourceState, awaitTransition );
+        _states.ExitGroup( sourceState, awaitTransition );
 
         return (Expression) resultVariable ?? Expression.Empty();
     }
@@ -328,7 +329,7 @@ internal class LoweringVisitor : ExpressionVisitor
             default:
                 // Warning: visitation mutates the tail state.
                 if ( captureVisit )
-                    _states.GetBranchTailState().Expressions.Add( result );
+                    _states.GetTailState().Expressions.Add( result );
                 break;
         }
 
@@ -356,11 +357,11 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private class StateContext
     {
-        private int _nodeCount;
+        private int _stateId;
         private readonly Stack<int> _scopeIndexes;
         private readonly int _initialCapacity;
 
-        public List<NodeScope> Scopes { get; }
+        public List<StateScope> Scopes { get; }
 
         public StateContext( int initialCapacity )
         {
@@ -370,33 +371,31 @@ internal class LoweringVisitor : ExpressionVisitor
 
             Scopes =
             [
-                new NodeScope( 0, tailState: null, parent: null, _initialCapacity )
+                new StateScope( 0, parent: null, _initialCapacity )
             ];
+
+            CurrentScope.AddState( _stateId++ ); 
         }
 
-        private NodeScope CurrentScope => Scopes[_scopeIndexes.Peek()];
+        private StateScope CurrentScope => Scopes[_scopeIndexes.Peek()];
 
-        public NodeExpression GetBranchTailState() =>
-            CurrentScope.GetBranchTailState();
-        
-        public NodeExpression AddState() =>
-            CurrentScope.AddState( _nodeCount++ );
-        
-        public NodeExpression AddBranchState() =>
-            CurrentScope.AddBranchState( _nodeCount++ );
-        
-        public NodeExpression EnterBranchState( out NodeExpression sourceState ) =>
-            CurrentScope.EnterBranchState( AddState(), out sourceState );
-        
-        public void ExitBranchState( NodeExpression sourceState, Transition transition )
+        public NodeExpression GetTailState() => CurrentScope.GetTailState();
+
+        public NodeExpression AddState() => CurrentScope.AddState( _stateId++ );
+
+        public NodeExpression EnterGroup( out NodeExpression sourceState ) 
         {
-            CurrentScope.ExitBranchState( sourceState, transition );
+            return CurrentScope.EnterGroup(  _stateId++, out sourceState );
         }
 
-        public NodeScope EnterNodeScope()
+        public void ExitGroup( NodeExpression sourceState, Transition transition ) 
         {
-            var tailState = CurrentScope.GetBranchTailState();
-            var scope = new NodeScope( Scopes.Count, tailState, CurrentScope, _initialCapacity );
+            CurrentScope.ExitGroup( sourceState, transition );
+        }
+
+        public StateScope EnterScope() 
+        {
+            var scope = new StateScope( Scopes.Count, CurrentScope, _initialCapacity );
 
             Scopes.Add( scope );
 
@@ -405,7 +404,7 @@ internal class LoweringVisitor : ExpressionVisitor
             return scope;
         }
 
-        public void ExitNodeScope()
+        public void ExitScope() 
         {
             _scopeIndexes.Pop();
         }
@@ -414,6 +413,5 @@ internal class LoweringVisitor : ExpressionVisitor
         {
             CurrentScope.AddJumpCase( resultLabel, continueLabel, stateId );
         }
-
     }
 }

@@ -500,7 +500,7 @@ public class StateMachineBuilder<TResult>
         }
     }
 
-    private static List<NodeExpression> OrderNodeScopes( List<NodeScope> scopes )
+    private static List<NodeExpression> OrderNodeScopes( List<StateScope> scopes )
     {
         for ( int i = 1; i < scopes.Count - 1; i++ )
         {

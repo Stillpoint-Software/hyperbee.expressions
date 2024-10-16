@@ -1,60 +1,53 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 using Hyperbee.AsyncExpressions.Transformation.Transitions;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-public class NodeScope
+public class StateScope 
 {
     public record struct JumpCase( LabelTarget ResultLabel, LabelTarget ContinueLabel, int StateId, int? ParentId );
 
     public int ScopeId { get; init; }
-    public NodeScope Parent { get; init; }
+    public StateScope Parent { get; init; }
     public List<NodeExpression> Nodes { get; set; }
     public List<JumpCase> JumpCases { get; init; }
-    public  Stack<NodeExpression> JoinStates { get; init; }
+    public Stack<NodeExpression> JoinStates { get; init; }
 
     private NodeExpression _tailState;
     private int _currentJumpState;
     private readonly int? _parentJumpState;
 
-    public NodeScope( int scopeId, NodeExpression tailState, NodeScope parent = null, int initialCapacity = 8 )
+    public StateScope( int scopeId, StateScope parent = null, int initialCapacity = 8 )
     {
         ScopeId = scopeId;
         Parent = parent;
-        _parentJumpState = parent?._currentJumpState;
 
         Nodes = new List<NodeExpression>( initialCapacity );
-
-        _tailState = tailState;
         JumpCases = new List<JumpCase>( initialCapacity );
         JoinStates = new Stack<NodeExpression>( initialCapacity );
+
+        _tailState = parent?.GetTailState();
+        _parentJumpState = parent?._currentJumpState;
     }
 
     public NodeExpression AddState( int id )
     {
         var stateNode = new NodeExpression( id, ScopeId );
-
-        // On first add set the tail state
-        if ( Nodes.Count == 0)
-            _tailState = stateNode;
+        _tailState = stateNode;
 
         Nodes.Add( stateNode );
 
         return stateNode;
     }
 
-    public NodeExpression AddBranchState( int id )
+    public NodeExpression GetTailState() => _tailState; 
+
+    public NodeExpression EnterGroup( int id, out NodeExpression sourceState )
     {
-        var stateNode = AddState( id );
-        _tailState = stateNode;
+        var joinState = new NodeExpression( id, ScopeId ); // add a state without setting tail
 
-        return stateNode;
-    }
-
-    public NodeExpression GetBranchTailState() => _tailState;
-
-    public NodeExpression EnterBranchState( NodeExpression joinState, out NodeExpression sourceState )
-    {
+        Nodes.Add( joinState );
         JoinStates.Push( joinState );
 
         sourceState = _tailState;
@@ -62,7 +55,7 @@ public class NodeScope
         return joinState;
     }
 
-    public void ExitBranchState( NodeExpression sourceState, Transition transition )
+    public void ExitGroup( NodeExpression sourceState, Transition transition )
     {
         sourceState.Transition = transition;
         _tailState = JoinStates.Pop();
@@ -74,7 +67,7 @@ public class NodeScope
         JumpCases.Add( new JumpCase( resultLabel, continueLabel, stateId, _parentJumpState ) );
     }
 
-    public Expression CreateJumpTable( List<NodeScope> scopes, Expression stateFieldExpression )
+    public Expression CreateJumpTable( List<StateScope> scopes, Expression stateFieldExpression )
     {
         var jumpTable = new List<SwitchCase>( JumpCases.Count );
 
@@ -109,14 +102,21 @@ public class NodeScope
             continue;
 
             // recursive function to build jump table cases
-            IEnumerable<Expression> JumpCaseTests( NodeScope current, int currentStateId )
+            IEnumerable<Expression> JumpCaseTests( StateScope current, int currentStateId )
             {
                 // recursive fallthrough jump tables
-                foreach (var scope in scopes.Where(scope => scope.Parent == current))
+                for ( var scopeIndex = 0; scopeIndex < scopes.Count; scopeIndex++ )
                 {
-                    foreach ( var childJumpCase in scope.JumpCases )
+                    var scope = scopes[scopeIndex];
+
+                    if ( scope.Parent != current )
+                        continue;
+
+                    for ( var jumpIndex = 0; jumpIndex < scope.JumpCases.Count; jumpIndex++ )
                     {
-                        if ( childJumpCase.ParentId != currentStateId )
+                        var childJumpCase = scope.JumpCases[jumpIndex];
+
+                        if ( childJumpCase.ParentId != currentStateId ) 
                             continue;
 
                         // return self

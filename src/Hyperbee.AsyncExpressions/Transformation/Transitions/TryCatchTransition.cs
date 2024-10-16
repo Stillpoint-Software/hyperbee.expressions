@@ -13,59 +13,68 @@ public class TryCatchTransition : Transition
     public ParameterExpression TryStateVariable { get; set; }
     public ParameterExpression ExceptionVariable { get; set; }
 
-    public NodeScope NodeScope { get; init; }
-    public List<NodeScope> Scopes { get; init; }
+    public StateScope StateScope { get; init; }
+    public List<StateScope> Scopes { get; init; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
-        var jumpTableExpression = NodeScope.CreateJumpTable( Scopes, resolverSource.StateIdField );
-        var expressions = new List<Expression>( NodeScope.Nodes.Count + 1 ) { jumpTableExpression };
-        expressions.AddRange( NodeScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
+        var expressions = new List<Expression>( StateScope.Nodes.Count + 1 ) 
+        {
+            StateScope.CreateJumpTable( Scopes, resolverSource.StateIdField ) 
+        };
+        
+        expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
+        
+        MapCatchBlock( out var catches, out var switchCases );
 
-        var tryBody = Block(
-            expressions
-        );
+        return Block(
+            TryCatch(
+                Block( expressions ),
+                catches
+            ),
+            Switch( // Handle error
+                TryStateVariable,
+                Empty(),
+                switchCases ) 
+            );
+    }
 
+    private void MapCatchBlock( out CatchBlock[] catches, out SwitchCase[] switchCases )
+    {
         var includeFinal = FinallyNode != null;
         var size = CatchBlocks.Count + (includeFinal ? 1 : 0);
-        var catches = new CatchBlock[size];
-        var switchCases = new SwitchCase[size];
+        
+        catches = new CatchBlock[size];
+        switchCases = new SwitchCase[size];
 
         for ( var index = 0; index < CatchBlocks.Count; index++ )
         {
             var catchBlock = CatchBlocks[index];
+            
             catches[index] = catchBlock.Reduce( ExceptionVariable, TryStateVariable );
+            
             switchCases[index] = SwitchCase(
-                (catchBlock.UpdateBody is NodeExpression nodeExpression ) 
+                (catchBlock.UpdateBody is NodeExpression nodeExpression)
                     ? Goto( nodeExpression.NodeLabel )
-                    : Block( typeof(void), catchBlock.UpdateBody),
+                    : Block( typeof(void), catchBlock.UpdateBody ),
                 Constant( catchBlock.CatchState ) );
         }
 
-        if ( includeFinal )
-        {
-            catches[^1] = Catch(
-                typeof(Exception),
-                Block(
-                    typeof(void),
-                    Assign( TryStateVariable, Constant( catches.Length ) )
-                ) );
-            switchCases[^1] = SwitchCase(
-                Goto( FinallyNode.NodeLabel ),
-                Constant( catches.Length ) );
-        }
-        
-        var handleError = Switch(
-            TryStateVariable,
-            Empty(),
-            switchCases );
+        if ( !includeFinal )
+            return;
 
-        return Block(
-            TryCatch(
-                tryBody,
-                catches
-            ),
-            handleError );
+        catches[^1] = Catch(
+            typeof(Exception),
+            Block(
+                typeof(void),
+                Assign( TryStateVariable, Constant( catches.Length ) )
+            ) 
+        );
+
+        switchCases[^1] = SwitchCase(
+            Goto( FinallyNode.NodeLabel ),
+            Constant( catches.Length ) 
+        );
     }
 
     public void AddCatchBlock( CatchBlock handler, Expression updateBody, int catchState )
