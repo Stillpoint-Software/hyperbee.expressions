@@ -43,7 +43,7 @@ Every branching construct must eventually rejoin the main flow of execution. The
 branches reunite, ensuring that the state machine continues to execute correctly.
 
 If you think about each unique branch segment (e.g. the 'if' or 'else' path in a conditional expression) as a single linked list of
-states, the `BranchTailState`, is the last node in the conditional or loop path. This tail node must be re-joined to the main 
+states, the `TailState`, is the last node in the conditional or loop path. This tail node must be re-joined to the main 
 execution path; the place where the 'if' and 'else' branches again begin to execute the same code again. This re-convergance is 
 critical, as branching structures are often nested, and all of the potential paths in a nesting structure must be correctly 
 re-joined.
@@ -57,7 +57,7 @@ manage control flow across complex branching and looping structures. This ensure
 points, preserving the integrity of the program's logic.
 
 
-## 2. Handlying Try/Catch/Finally Blocks
+## 2. Handling Try/Catch/Finally Blocks
 
 ### What is being done?
 The `LoweringVisitor` flattens (`try/catch/finally`) constructs so they can correctly handle continuations. 
