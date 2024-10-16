@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.AsyncExpressions.Transformation;
 
-public interface IVoidTaskResult; // Marker interface for void Task results
+public interface IVoidResult; // Marker interface for void Task results
 
 public class StateMachineBuilder<TResult>
 {
@@ -32,7 +32,7 @@ public class StateMachineBuilder<TResult>
 
     public Expression CreateStateMachine( LoweringResult source, int id, bool createRunner = true )
     {
-        if ( source.Nodes == null )
+        if ( source.Scopes[0].Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
 
         // Create the state-machine
@@ -369,16 +369,13 @@ public class StateMachineBuilder<TResult>
         //     stateMachine.<>s__2 = stateMachine.__awaiter<0>.GetResult();
         //     goto ST_0001;
         //
-        //     ST_0003:
-        //     stateMachine.__finalResult<> = returnValue;
-        //     stateMachine.__state<> = -2;
-        //     stateMachine.__builder<>.SetResult( stateMachine.__finalResult<> );
-        //     goto ST_FINAL;
-        //
         //     ST_0004:
         //     return<> = stateMachine.var2 + param1;
-        //     goto ST_0003;
         //
+        //     ST_0003:
+        //     stateMachine.__finalResult<> = return<>;
+        //     stateMachine.__state<> = -2;
+        //     stateMachine.__builder<>.SetResult( stateMachine.__finalResult<> );
         // }
         // catch ( Exception ex )
         // {
@@ -386,13 +383,11 @@ public class StateMachineBuilder<TResult>
         //     stateMachine.__builder<>.SetException( ex );
         //     return;
         // }
-        //
-        // ST_FINAL:
 
-        var returnLabel = Expression.Label( "ST_FINAL" );
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
+        var returnLabel = Expression.Label( "ST_FINAL" );
 
-        var bodyExpressions = new List<Expression>();
+        var bodyExpressions = new List<Expression>( 16 ); // preallocate slots for expressions
 
         var stateFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
         var builderFieldExpression = Expression.Field( stateMachineInstance, FieldName.Builder );
@@ -400,78 +395,27 @@ public class StateMachineBuilder<TResult>
 
         var fieldMembers = fields.Select( x => Expression.Field( stateMachineInstance, x ) ).ToArray();
 
-        var fieldResolverVisitor = new FieldResolverVisitor( 
-            stateMachineInstance,
-            fieldMembers,
-            returnLabel,
-            stateFieldExpression,
-            builderFieldExpression );
-
         // Create the jump table
 
-        var jumpTableExpression = Expression.Switch(
-            stateFieldExpression, 
-            null,
-            source.JumpCases.Select( c =>
-                Expression.SwitchCase(
-                    Expression.Block(
-                        Expression.Assign( stateFieldExpression, Expression.Constant( -1 ) ),
-                        Expression.Goto( c.Key )
-                    ),
-                    Expression.Constant( c.Value ) 
-                ) 
-            )
-            .ToArray() );
+        var jumpTableExpression = source.Scopes[0]
+            .CreateJumpTable( source.Scopes, stateFieldExpression );
 
         bodyExpressions.Add( jumpTableExpression );
 
-        // Iterate through each state block
+        // Create the states
+        var nodes = OrderNodeScopes( source.Scopes ); // optimize node ordering to reduce goto calls
 
-        foreach ( var (blockExpressions, blockTransition) in source.Nodes )
-        {
-            var resolvedExpressions = fieldResolverVisitor.Visit( blockExpressions );
+        var fieldResolverVisitor = new FieldResolverVisitor(
+            typeof( TResult ),
+            stateMachineInstance,
+            returnLabel,
+            fieldMembers,
+            stateFieldExpression,
+            builderFieldExpression,
+            finalResultFieldExpression,
+            source.ReturnValue );
 
-            var finalBlock = blockTransition == null;
-            
-            if ( finalBlock )
-            {
-                // TODO: fix final block
-                bodyExpressions.Add( resolvedExpressions[0] );
-
-                if ( source.ReturnValue != null )
-                {
-                    bodyExpressions.Add( Expression.Assign(
-                        finalResultFieldExpression,
-                        source.ReturnValue
-                    ) );
-                }
-                else
-                {
-                    bodyExpressions.Add( Expression.Assign(
-                        finalResultFieldExpression,
-                        Expression.Block( resolvedExpressions[1..] )
-                    ) );
-                }
-
-                bodyExpressions.Add( Expression.Assign( stateFieldExpression, Expression.Constant( -2 ) ) );
-
-                // Set the final result on the builder
-                bodyExpressions.Add( Expression.Call(
-                    builderFieldExpression,
-                    nameof(AsyncTaskMethodBuilder<TResult>.SetResult),
-                    null,
-                    typeof(TResult) != typeof(IVoidTaskResult)
-                        ? finalResultFieldExpression
-                        : Expression.Constant( null, typeof(TResult) ) // No result for IVoidTaskResult
-                ) );
-
-                bodyExpressions.Add( Expression.Goto( returnLabel ) );
-            }
-            else
-            {
-                bodyExpressions.AddRange( resolvedExpressions );
-            }
-        }
+        bodyExpressions.AddRange( nodes.Select( fieldResolverVisitor.Visit ) );
 
         ParameterExpression[] variables = (source.ReturnValue != null)
             ? [source.ReturnValue]
@@ -491,17 +435,79 @@ public class StateMachineBuilder<TResult>
                         nameof(AsyncTaskMethodBuilder<TResult>.SetException),
                         null,
                         exceptionParameter
-                    ),
-                    Expression.Return( returnLabel ) 
+                    )
                 )
             )
         );
 
-        // Combine the try-catch block with the return label and
         // return the lambda expression for MoveNext
 
         var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
         return Expression.Lambda( moveNextBody, stateMachineInstance );
+    }
+
+    private static List<NodeExpression> OrderNodes( int currentScopeId, List<NodeExpression> nodes )
+    {
+        // Optimize node order for better performance by performing a greedy depth-first
+        // search to find the best order of execution for each node.
+        //
+        // Doing this will allow us to reduce the number of goto calls in the final machine.
+        //
+        // The first node is always the start node, and the last node is always the final node.
+
+        var ordered = new List<NodeExpression>( nodes.Count );
+        var visited = new HashSet<NodeExpression>( nodes.Count );
+
+        // Perform greedy DFS for every unvisited node
+
+        for ( var index = 0; index < nodes.Count; index++ )
+        {
+            var node = nodes[index];
+
+            if ( !visited.Contains( node ) )
+                Visit( node );
+        }
+
+        // Make sure the final state is last
+
+        var finalNode = nodes.FirstOrDefault( x => x.Transition == null );
+
+        if ( finalNode != null && ordered.Last() != finalNode )
+        {
+            ordered.Remove( finalNode );
+            ordered.Add( finalNode );
+        }
+
+        // Update the order property of each node
+
+        for ( var index = 0; index < ordered.Count; index++ )
+        {
+            ordered[index].MachineOrder = index;
+        }
+
+        return ordered;
+
+        void Visit( NodeExpression node )
+        {
+            while ( node != null && visited.Add( node )  )
+            {
+                ordered.Add( node );
+                node = node.Transition?.FallThroughNode;
+
+                if ( node?.ScopeId != currentScopeId )
+                    return;
+            }
+        }
+    }
+
+    private static List<NodeExpression> OrderNodeScopes( List<StateScope> scopes )
+    {
+        for ( int i = 1; i < scopes.Count - 1; i++ )
+        {
+            scopes[i].Nodes = OrderNodes( scopes[i].ScopeId, scopes[i].Nodes );
+        }
+
+        return OrderNodes( scopes[0].ScopeId, scopes[0].Nodes );
     }
 }
 
@@ -514,7 +520,7 @@ public static class StateMachineBuilder
     static StateMachineBuilder()
     {
         BuildStateMachineMethod = typeof(StateMachineBuilder)
-            .GetMethods( BindingFlags.Public | BindingFlags.Static )
+            .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
             .First( x => x.Name == nameof(Create) && x.IsGenericMethod );
 
         // Create the state machine module
@@ -527,19 +533,19 @@ public static class StateMachineBuilder
     {
         // If the result type is void, use the internal VoidTaskResult type
         if ( resultType == typeof(void) )
-            resultType = typeof(IVoidTaskResult);
+            resultType = typeof(IVoidResult);
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
         return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
     }
 
-    public static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
+    internal static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, createRunner );
 
-        return stateMachineExpression;
+        return stateMachineExpression; // the-best expression breakpoint ever
     }
 }

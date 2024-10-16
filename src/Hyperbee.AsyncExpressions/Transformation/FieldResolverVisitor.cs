@@ -6,30 +6,33 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
 {
     private readonly Dictionary<string, MemberExpression> _mappingCache;
 
+    public Type StateMachineType { get; init; }
     public Expression StateMachine { get; init; }
-    public MemberExpression[] Fields { get; init; }
     public LabelTarget ReturnLabel { get; init; }
     public MemberExpression StateIdField { get; init; }
     public MemberExpression BuilderField { get; init; }
+    public MemberExpression ResultField { get; init; }
+    public ParameterExpression ReturnValue { get; init; }
 
-    public FieldResolverVisitor(Expression stateMachine, 
+    public FieldResolverVisitor(
+        Type stateMachineType,
+        Expression stateMachine,
+        LabelTarget returnLabel,
         MemberExpression[] fields,
-        LabelTarget returnLabel, 
         MemberExpression stateIdField,
-        MemberExpression builderField)
+        MemberExpression builderField,
+        MemberExpression resultField,
+        ParameterExpression returnValue )
     {
+        StateMachineType = stateMachineType;
         StateMachine = stateMachine;
         ReturnLabel = returnLabel;
         StateIdField = stateIdField;
         BuilderField = builderField;
+        ResultField = resultField;
+        ReturnValue = returnValue;
 
-        Fields = fields;
         _mappingCache = fields.ToDictionary( x => x.Member.Name );
-    }
-
-    public Expression[] Visit( IEnumerable<Expression> nodes )
-    {
-        return nodes.Select( Visit ).ToArray();
     }
 
     protected override Expression VisitParameter( ParameterExpression node )
@@ -55,9 +58,9 @@ internal class FieldResolverVisitor : ExpressionVisitor, IFieldResolverSource
     {
         return node switch
         {
-            AwaitCompletionExpression awaitCompletionExpression => awaitCompletionExpression.Reduce( this ),
             AwaitExpression awaitExpression => Visit( awaitExpression.Target )!,
+            NodeExpression stateNode => Visit( stateNode.Reduce( this ) ),
             _ => base.VisitExtension( node )
-        };
+        } ?? Expression.Empty();
     }
 }
