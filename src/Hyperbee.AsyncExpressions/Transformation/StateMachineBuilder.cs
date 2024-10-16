@@ -32,7 +32,7 @@ public class StateMachineBuilder<TResult>
 
     public Expression CreateStateMachine( LoweringResult source, int id, bool createRunner = true )
     {
-        if ( source.Nodes == null )
+        if ( source.Scopes[0].Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
 
         // Create the state-machine

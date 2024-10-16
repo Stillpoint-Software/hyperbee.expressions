@@ -11,7 +11,8 @@ internal static class DebugViewWriter
     private const string Indent3 = "\t\t\t";
     private const string Indent4 = "\t\t\t\t";
 
-    public static void WriteTo( StringWriter writer, List<NodeExpression> nodes, IEnumerable<ParameterExpression> variables )
+    public static void WriteTo( StringWriter writer, List<NodeScope> scopes,
+        IEnumerable<ParameterExpression> variables )
     {
         // variables
         var parameterExpressions = variables ?? [];
@@ -30,7 +31,7 @@ internal static class DebugViewWriter
             writer.WriteLine();
 
         // nodes
-        foreach ( var node in nodes.Where( node => node != null ) )
+        foreach (var node in scopes.SelectMany(scope => scope.Nodes.Where( node => node != null )))
         {
             // label
             writer.WriteLine( $"{node.NodeLabel.Name}:" );
@@ -43,24 +44,24 @@ internal static class DebugViewWriter
 
                 foreach ( var expr in node.Expressions )
                 {
-                    writer.WriteLine( $"{Indent2}{ExpressionToString(expr)}" );
+                    writer.WriteLine( $"{Indent2}{ExpressionToString( expr )}" );
                 }
             }
 
             // transitions
 
             writer.WriteLine( $"{Indent1}Transition" );
-            writer.WriteLine( TransitionToString(node.Transition) );
+            writer.WriteLine( TransitionToString( node.Transition ) );
 
             // results
 
             if ( node.ResultValue != null || node.ResultVariable != null )
             {
                 writer.WriteLine( $"{Indent1}Result ({node.Type.Name})" );
-                
-                if ( node.ResultValue != null  )
+
+                if ( node.ResultValue != null )
                     writer.WriteLine( $"{Indent2}Value: {node.ResultValue}" );
-                
+
                 if ( node.ResultVariable != null )
                     writer.WriteLine( $"{Indent2}Variable: {node.ResultVariable}" );
             }

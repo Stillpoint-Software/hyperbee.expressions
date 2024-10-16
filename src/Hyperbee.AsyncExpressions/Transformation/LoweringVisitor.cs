@@ -39,7 +39,6 @@ internal class LoweringVisitor : ExpressionVisitor
 
         return new LoweringResult
         {
-            Nodes = _states.GetNodes(),   // TODO: now wrong
             Scopes = _states.Scopes,
             ReturnValue = _returnValue,
             AwaitCount = _awaitCount,

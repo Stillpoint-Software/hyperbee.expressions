@@ -5,7 +5,6 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 
 public record LoweringResult
 {
-    public List<NodeExpression> Nodes { get; init; }
     public List<NodeScope> Scopes { get; init; }
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
@@ -16,7 +15,7 @@ public record LoweringResult
         get
         {
             using StringWriter writer = new StringWriter( CultureInfo.CurrentCulture );
-            DebugViewWriter.WriteTo( writer, Nodes, Variables );
+            DebugViewWriter.WriteTo( writer, Scopes, Variables );
             return writer.ToString();
         }
     }
