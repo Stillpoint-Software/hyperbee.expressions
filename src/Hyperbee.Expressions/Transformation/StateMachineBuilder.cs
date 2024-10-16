@@ -448,7 +448,7 @@ public class StateMachineBuilder<TResult>
 
     private static List<NodeExpression> OptimizeNodeOrder( List<StateScope> scopes )
     {
-        for ( int i = 1; i < scopes.Count - 1; i++ )
+        for ( var i = 1; i < scopes.Count - 1; i++ )
         {
             scopes[i].Nodes = OrderNodes( scopes[i].ScopeId, scopes[i].Nodes );
         }
