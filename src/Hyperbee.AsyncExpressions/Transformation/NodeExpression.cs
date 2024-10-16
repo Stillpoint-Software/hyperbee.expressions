@@ -8,6 +8,8 @@ namespace Hyperbee.AsyncExpressions.Transformation;
 public class NodeExpression : Expression
 {
     public int StateId { get; }
+    public int ScopeId { get; }
+
     internal int MachineOrder { get; set; }
     public ParameterExpression ResultVariable { get; set; }
     public Expression ResultValue { get; set; }
@@ -19,9 +21,10 @@ public class NodeExpression : Expression
     private Expression _expression;
     private IFieldResolverSource _resolverSource;
 
-    public NodeExpression( int stateId )
+    public NodeExpression( int stateId, int scopeId )
     {
         StateId = stateId;
+        ScopeId = scopeId;
         NodeLabel = Label( $"ST_{StateId:0000}" );
     }
 

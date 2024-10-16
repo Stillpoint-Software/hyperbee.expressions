@@ -7,35 +7,93 @@ public class TryCatchTransition : Transition
 {
     internal readonly List<CatchBlockDefinition> CatchBlocks = [];
     public NodeExpression TryNode { get; set; }
-    public Expression FinallyNode { get; set; }
+    public NodeExpression FinallyNode { get; set; }
+
+    internal override NodeExpression FallThroughNode => TryNode;
+    public ParameterExpression TryStateVariable { get; set; }
+    public ParameterExpression ExceptionVariable { get; set; }
+
+    public NodeScope NodeScope { get; init; }
+    public List<NodeScope> Scopes { get; init; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IFieldResolverSource resolverSource )
     {
-        var catches = CatchBlocks
-            .Select( catchBlock => catchBlock.Reduce() );
+        var jumpTableExpression = NodeScope.CreateJumpTable( Scopes, resolverSource.StateIdField );
+        var expressions = new List<Expression>( NodeScope.Nodes.Count + 1 ) { jumpTableExpression };
+        expressions.AddRange( NodeScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
 
-        // TODO: Finally blocks are not allowed to have Goto's in C#
-        // var finallyBody = FinallyNode != null
-        //     ? Goto( FinallyNode.NodeLabel )
-        //     : null;
-
-        // TODO: FallThrough is removing the rest of the body and replacing with Empty()
-        return TryCatchFinally(
-            TryNode, //GotoOrFallThrough( order, TryNode ),
-            FinallyNode, //finallyBody,
-            [.. catches]
+        var tryBody = Block(
+            expressions
         );
+
+        var includeFinal = FinallyNode != null;
+        var size = CatchBlocks.Count + (includeFinal ? 1 : 0);
+        var catches = new CatchBlock[size];
+        var switchCases = new SwitchCase[size];
+
+        for ( var index = 0; index < CatchBlocks.Count; index++ )
+        {
+            var catchBlock = CatchBlocks[index];
+            catches[index] = catchBlock.Reduce( ExceptionVariable, TryStateVariable );
+            switchCases[index] = SwitchCase(
+                (catchBlock.UpdateBody is NodeExpression nodeExpression ) 
+                    ? Goto( nodeExpression.NodeLabel )
+                    : Block( typeof(void), catchBlock.UpdateBody),
+                Constant( catchBlock.CatchState ) );
+        }
+
+        if ( includeFinal )
+        {
+            catches[^1] = Catch(
+                typeof(Exception),
+                Block(
+                    typeof(void),
+                    Assign( TryStateVariable, Constant( catches.Length ) )
+                ) );
+            switchCases[^1] = SwitchCase(
+                Goto( FinallyNode.NodeLabel ),
+                Constant( catches.Length ) );
+        }
+        
+        var handleError = Switch(
+            TryStateVariable,
+            Empty(),
+            switchCases );
+
+        return Block(
+            TryCatch(
+                tryBody,
+                catches
+            ),
+            handleError );
     }
 
-    internal override NodeExpression FallThroughNode => TryNode;
-
-    public void AddCatchBlock( Type test, NodeExpression body )
+    public void AddCatchBlock( CatchBlock handler, Expression updateBody, int catchState )
     {
-        CatchBlocks.Add( new CatchBlockDefinition( test, body ) );
+        CatchBlocks.Add( new CatchBlockDefinition( handler, updateBody, catchState ) );
     }
 
-    internal record CatchBlockDefinition( Type Test, NodeExpression Body )
+    internal record CatchBlockDefinition( CatchBlock Handler, Expression UpdateBody, int CatchState )
     {
-        public CatchBlock Reduce() => Catch( Test, Goto( Body.NodeLabel ) );
+        public CatchBlock Reduce( ParameterExpression exceptionVariable, ParameterExpression tryStateVariable )
+        {
+            if ( Handler.Variable == null )
+            {
+                return Catch(
+                    Handler.Test,
+                    Block(
+                        typeof( void ),
+                        Assign( tryStateVariable, Constant( CatchState ) )
+                    ) );
+            }
+
+            return Catch(
+                Handler.Test,
+                Block(
+                    typeof(void),
+                    Assign( exceptionVariable, Constant( Handler.Variable ) ),
+                    Assign( tryStateVariable, Constant( CatchState ) )
+                ) );
+        }
     }
 }

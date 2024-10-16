@@ -113,12 +113,12 @@ internal static class DebugViewWriter
 
             case TryCatchTransition tryCatchTransition:
                 builder.AppendLine( $"{Indent3}Try: {ExpressionToString( tryCatchTransition.TryNode )}" );
-                builder.AppendLine( $"{Indent3}Try: {ExpressionToString( tryCatchTransition.FinallyNode )}" );
+                builder.AppendLine( $"{Indent3}Finally: {ExpressionToString( tryCatchTransition.FinallyNode )}" );
 
                 foreach ( var catchBlockDefinition in tryCatchTransition.CatchBlocks )
                 {
-                    builder.AppendLine( $"{Indent4}Catch: {catchBlockDefinition.Test.Name}" );
-                    builder.AppendLine( $"{Indent4}Body: {ExpressionToString( catchBlockDefinition.Body )}" );
+                    builder.AppendLine( $"{Indent4}Catch: {catchBlockDefinition.Handler.Test.Name}" );
+                    builder.AppendLine( $"{Indent4}Body: {ExpressionToString( catchBlockDefinition.Handler.Body )}" );
                 }
 
                 break;
