@@ -4,7 +4,8 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hyperbee.AsyncExpressions\Hyperbee.Expressions.csproj" />
+    <ProjectReference Include="..\..\src\Hyperbee.Expressions\Hyperbee.Expressions.csproj" />
   </ItemGroup>
 
 </Project>

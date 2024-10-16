@@ -9,15 +9,15 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>expressions;async;await</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.asyncexpressions/</PackageProjectUrl>
+    <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Stillpoint Software, Inc.</Copyright>
-    <Title>Hyperbee Async Expressions</Title>
-    <Description>asyncexpressions</Description>
-    <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.AsyncExpressions</RepositoryUrl>
+    <Title>Hyperbee Expressions</Title>
+    <Description>.NET Expressions for Async and Await</Description>
+    <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.AsyncExpressions/releases/latest</PackageReleaseNotes>
+    <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
