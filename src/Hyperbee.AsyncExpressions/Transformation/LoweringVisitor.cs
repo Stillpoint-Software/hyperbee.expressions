@@ -206,8 +206,8 @@ internal class LoweringVisitor : ExpressionVisitor
         joinState.ResultValue = resultVariable;
 
         // TODO: This seems wrong, I shouldn't have to cast to GotoTransition (maybe all types of a TargetNode?)
-        var tailState = _states.TailState;
-        if ( tailState.Transition is GotoTransition gotoTransition )
+
+        if ( _states.TailState.Transition is GotoTransition gotoTransition )
             gotoTransition.TargetNode = loopTransition.BodyNode;
 
         _states.ExitGroup( sourceState, loopTransition );
