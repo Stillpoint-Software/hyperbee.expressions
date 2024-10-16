@@ -403,7 +403,7 @@ public class StateMachineBuilder<TResult>
         bodyExpressions.Add( jumpTableExpression );
 
         // Optimize node ordering to reduce goto calls
-        
+
         var nodes = OptimizeNodeOrder( source.Scopes );
 
         // Hoist variables and Emit the body of the MoveNext method
