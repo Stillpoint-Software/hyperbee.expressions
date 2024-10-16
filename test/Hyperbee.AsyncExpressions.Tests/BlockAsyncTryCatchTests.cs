@@ -94,7 +94,6 @@ namespace Hyperbee.AsyncExpressions.Tests
         public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryAndFinallyBlocks()
         {
             // Arrange: Await in both try and finally blocks
-
             var resultValue = Parameter( typeof(int) );
             var block = BlockAsync(
                 [resultValue],

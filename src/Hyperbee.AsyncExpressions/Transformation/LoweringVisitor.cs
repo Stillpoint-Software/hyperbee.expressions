@@ -375,10 +375,7 @@ internal class LoweringVisitor : ExpressionVisitor
         }
 
         private NodeScope CurrentScope => Scopes[_scopeIndexes.Peek()];
-        
-        public List<NodeExpression> GetNodes() =>
-            CurrentScope.Nodes;
-        
+
         public NodeExpression GetBranchTailState() =>
             CurrentScope.GetBranchTailState();
         

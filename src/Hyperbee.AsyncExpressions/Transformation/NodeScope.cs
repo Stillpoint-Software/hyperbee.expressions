@@ -34,8 +34,9 @@ public class NodeScope
     {
         var stateNode = new NodeExpression( id, ScopeId );
 
-        if(Nodes.Count == 0)
-            _tailState = stateNode;  // TODO: This seems wrong
+        // On first add set the tail state
+        if ( Nodes.Count == 0)
+            _tailState = stateNode;
 
         Nodes.Add( stateNode );
 
