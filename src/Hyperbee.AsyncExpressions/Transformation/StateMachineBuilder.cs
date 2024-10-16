@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
-namespace Hyperbee.AsyncExpressions.Transformation;
+namespace Hyperbee.Expressions.Transformation;
 
 public interface IVoidResult; // Marker interface for void Task results
 

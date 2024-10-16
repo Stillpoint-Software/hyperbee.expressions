@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
-using Hyperbee.AsyncExpressions.Transformation;
+using Hyperbee.Expressions.Transformation;
 
-namespace Hyperbee.AsyncExpressions;
+namespace Hyperbee.Expressions;
 
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression: Expression

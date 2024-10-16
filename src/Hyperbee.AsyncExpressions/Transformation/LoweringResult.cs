@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Linq.Expressions;
 
-namespace Hyperbee.AsyncExpressions.Transformation;
+namespace Hyperbee.Expressions.Transformation;
 
 public record LoweringResult
 {

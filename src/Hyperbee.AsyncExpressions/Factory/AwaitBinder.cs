@@ -1,8 +1,8 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
-using Hyperbee.AsyncExpressions.Transformation;
+using Hyperbee.Expressions.Transformation;
 
-namespace Hyperbee.AsyncExpressions.Factory;
+namespace Hyperbee.Expressions.Factory;
 
 internal delegate TAwaiter AwaitBinderGetAwaiterDelegate<in TAwaitable, out TAwaiter>( TAwaitable awaitable, bool configureAwait );
 internal delegate TResult AwaitBinderGetResultDelegate<in TAwaiter, out TResult>( TAwaiter awaiter );

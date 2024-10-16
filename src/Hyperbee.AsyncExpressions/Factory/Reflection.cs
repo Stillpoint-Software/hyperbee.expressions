@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace Hyperbee.AsyncExpressions.Factory;
+namespace Hyperbee.Expressions.Factory;
 
 public delegate bool MethodMatchDelegate( Type[] parameterTypes, int? argCount = null );
 

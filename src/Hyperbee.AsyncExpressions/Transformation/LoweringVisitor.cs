@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
-using Hyperbee.AsyncExpressions.Transformation.Transitions;
+using Hyperbee.Expressions.Transformation.Transitions;
 
-namespace Hyperbee.AsyncExpressions.Transformation;
+namespace Hyperbee.Expressions.Transformation;
 
 internal class LoweringVisitor : ExpressionVisitor
 {

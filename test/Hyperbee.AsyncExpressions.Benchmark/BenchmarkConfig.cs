@@ -7,7 +7,7 @@ using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Validators;
 
-namespace Hyperbee.AsyncExpressions.Benchmark;
+namespace Hyperbee.Expressions.Benchmark;
 
 public class BenchmarkConfig
 {

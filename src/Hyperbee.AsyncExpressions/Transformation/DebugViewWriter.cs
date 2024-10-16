@@ -1,8 +1,8 @@
 ﻿using System.Linq.Expressions;
 using System.Text;
-using Hyperbee.AsyncExpressions.Transformation.Transitions;
+using Hyperbee.Expressions.Transformation.Transitions;
 
-namespace Hyperbee.AsyncExpressions.Transformation;
+namespace Hyperbee.Expressions.Transformation;
 
 internal static class DebugViewWriter
 {

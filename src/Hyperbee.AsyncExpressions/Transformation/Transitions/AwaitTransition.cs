@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
+namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class AwaitTransition : Transition
 {

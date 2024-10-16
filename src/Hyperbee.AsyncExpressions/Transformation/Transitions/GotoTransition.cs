@@ -2,7 +2,7 @@
 
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
+namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class GotoTransition : Transition
 {

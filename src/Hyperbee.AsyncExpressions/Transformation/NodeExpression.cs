@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
-using Hyperbee.AsyncExpressions.Transformation.Transitions;
+using Hyperbee.Expressions.Transformation.Transitions;
 
-namespace Hyperbee.AsyncExpressions.Transformation;
+namespace Hyperbee.Expressions.Transformation;
 
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, Transition = {Transition?.GetType().Name,nq}" )]
 public class NodeExpression : Expression

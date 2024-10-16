@@ -1,6 +1,6 @@
 ﻿using BenchmarkDotNet.Running;
 
-namespace Hyperbee.AsyncExpressions.Benchmark;
+namespace Hyperbee.Expressions.Benchmark;
 
 internal class Program
 {

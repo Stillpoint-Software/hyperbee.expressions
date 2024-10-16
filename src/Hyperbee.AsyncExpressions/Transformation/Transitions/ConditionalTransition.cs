@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
+namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class ConditionalTransition : Transition
 {

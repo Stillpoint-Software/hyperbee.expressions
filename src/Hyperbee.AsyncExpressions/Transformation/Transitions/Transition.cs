@@ -2,7 +2,7 @@
 using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
+namespace Hyperbee.Expressions.Transformation.Transitions;
 
 [DebuggerDisplay( "Transition = {GetType().Name,nq}" )]
 public abstract class Transition

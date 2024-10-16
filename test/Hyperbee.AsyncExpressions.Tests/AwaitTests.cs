@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Hyperbee.AsyncExpressions.Tests;
+namespace Hyperbee.Expressions.Tests;
 
 public enum ExpressionKind
 {

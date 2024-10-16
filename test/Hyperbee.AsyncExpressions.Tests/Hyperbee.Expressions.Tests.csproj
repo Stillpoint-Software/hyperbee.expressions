@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hyperbee.AsyncExpressions\Hyperbee.AsyncExpressions.csproj" />
+    <ProjectReference Include="..\..\src\Hyperbee.AsyncExpressions\Hyperbee.Expressions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,7 @@
 ﻿using static System.Linq.Expressions.Expression;
-using static Hyperbee.AsyncExpressions.AsyncExpression;
+using static Hyperbee.Expressions.AsyncExpression;
 
-namespace Hyperbee.AsyncExpressions.Tests;
+namespace Hyperbee.Expressions.Tests;
 
 [TestClass]
 public class BlockAsyncLoopTests

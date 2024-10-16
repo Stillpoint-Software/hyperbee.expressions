@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 
-namespace Hyperbee.AsyncExpressions.Tests;
+namespace Hyperbee.Expressions.Tests;
 
 internal readonly struct LazyAwaiter<T> : INotifyCompletion
 {

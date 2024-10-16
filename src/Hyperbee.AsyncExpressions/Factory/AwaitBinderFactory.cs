@@ -2,9 +2,9 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using Hyperbee.AsyncExpressions.Transformation;
+using Hyperbee.Expressions.Transformation;
 
-namespace Hyperbee.AsyncExpressions.Factory;
+namespace Hyperbee.Expressions.Factory;
 
 internal static class AwaitBinderFactory
 {

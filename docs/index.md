@@ -1,11 +1,11 @@
 ---
 layout: default
-title: Hyperbee AsyncExpressions
+title: Hyperbee Expressions
 nav_order: 1
 ---
-# Welcome to Hyperbee AsyncExpressions
+# Welcome to Hyperbee Expressions
 
-`Hyperbee.AsyncExpressions` is a library for creating c# expression trees that support asynchronous operations using `async` and `await`.
+`Hyperbee.Expressions` is a library for creating c# expression trees that support asynchronous operations using `async` and `await`.
 This library extends the capabilities of standard expression trees to handle asynchronous workflows.
 
 ## Features

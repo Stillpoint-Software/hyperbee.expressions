@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace Hyperbee.AsyncExpressions.Transformation.Transitions;
+namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class LoopTransition : Transition
 {

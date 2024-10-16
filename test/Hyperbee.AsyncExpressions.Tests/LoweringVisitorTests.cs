@@ -1,11 +1,11 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
-using Hyperbee.AsyncExpressions.Transformation;
-using Hyperbee.AsyncExpressions.Transformation.Transitions;
+using Hyperbee.Expressions.Transformation;
+using Hyperbee.Expressions.Transformation.Transitions;
 using static System.Linq.Expressions.Expression;
-using static Hyperbee.AsyncExpressions.AsyncExpression;
+using static Hyperbee.Expressions.AsyncExpression;
 
-namespace Hyperbee.AsyncExpressions.Tests;
+namespace Hyperbee.Expressions.Tests;
 
 [TestClass]
 public class LoweringVisitorTests

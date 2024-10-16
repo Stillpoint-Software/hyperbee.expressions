@@ -3,9 +3,9 @@ using BenchmarkDotNet.Attributes;
 using FastExpressionCompiler;
 
 using static System.Linq.Expressions.Expression;
-using static Hyperbee.AsyncExpressions.AsyncExpression;
+using static Hyperbee.Expressions.AsyncExpression;
 
-namespace Hyperbee.AsyncExpressions.Benchmark;
+namespace Hyperbee.Expressions.Benchmark;
 
 public class AsyncBenchmarks
 {

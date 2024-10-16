@@ -1,9 +1,9 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
-using Hyperbee.AsyncExpressions.Factory;
-using Hyperbee.AsyncExpressions.Transformation;
+using Hyperbee.Expressions.Factory;
+using Hyperbee.Expressions.Transformation;
 
-namespace Hyperbee.AsyncExpressions;
+namespace Hyperbee.Expressions;
 
 [DebuggerDisplay( "Await {Target?.ToString(),nq}" )]
 [DebuggerTypeProxy( typeof(AwaitExpressionDebuggerProxy) )]
