@@ -406,7 +406,7 @@ public class StateMachineBuilder<TResult>
 
         var nodes = OptimizeNodeOrder( source.Scopes );
 
-        // Hoist variables and Emit the body of the MoveNext method
+        // Emit the body of the MoveNext method
 
         var hoistingVisitor = new HoistingVisitor(
             typeof( TResult ),
