@@ -67,6 +67,9 @@ internal static class Reflection
                         if ( paramType.IsGenericParameter )
                             continue;
 
+                        if ( paramType.IsByRef && paramType.GetElementType()!.IsGenericParameter )
+                            continue;
+
                         return false;
                     }
 
@@ -80,9 +83,33 @@ internal static class Reflection
                         return false;
                     }
 
+                    // If the parameter is a ref, check element type
+
+                    if ( paramType.IsByRef )
+                    {
+                        if ( !matchType.IsByRef )
+                            return false;
+
+                        var paramElemType = paramType.GetElementType()!;
+                        var matchElemType = matchType.GetElementType()!;
+
+                        if ( paramElemType.IsGenericType )
+                        {
+                            if ( matchElemType.IsGenericType && paramElemType.GetGenericTypeDefinition() == matchElemType.GetGenericTypeDefinition() )
+                                continue;
+
+                            return false;
+                        }
+
+                        if ( paramElemType == matchElemType )
+                            continue;
+
+                        return false;
+                    }
+
                     // Compare non-generic types directly
 
-                    if ( paramType == parameterTypes[i] )
+                    if ( paramType == matchType )
                     {
                         continue;
                     }

@@ -196,7 +196,7 @@ internal static class AwaitBinderFactory
         var dynamicMethod = new DynamicMethod(
             name: getAwaiterImplMethod.Name,
             returnType: typeof( TAwaiter ),
-            parameterTypes: [typeof( TAwaitable ), typeof( bool )],
+            parameterTypes: [typeof( TAwaitable ).MakeByRefType(), typeof( bool )],
             typeof( AwaitBinder ).Module,
             skipVisibility: true );
 
@@ -230,15 +230,15 @@ internal static class AwaitBinderFactory
         // Call GetAwaiter()
 
         il.Emit( OpCodes.Ldarg_0 );
+        il.Emit( OpCodes.Ldind_Ref );
 
         if ( getAwaiterImplMethod.IsStatic )
         {
-            il.Emit( OpCodes.Castclass, getAwaiterImplMethod.GetParameters()[0].ParameterType );
             il.Emit( OpCodes.Call, getAwaiterImplMethod );
         }
         else
         {
-            il.Emit( OpCodes.Castclass, getAwaiterImplMethod.DeclaringType! );
+            il.Emit( OpCodes.Castclass, getAwaiterImplMethod.DeclaringType! ); //BF Test Instance Type.
             il.Emit( OpCodes.Callvirt, getAwaiterImplMethod );
         }
 
@@ -265,17 +265,21 @@ internal static class AwaitBinderFactory
         var dynamicMethod = new DynamicMethod(
             name: getResultImplMethod.Name,
             returnType: typeof( TResult ),
-            parameterTypes: [typeof( TAwaiter )],
+            parameterTypes: [typeof( TAwaiter ).MakeByRefType()],
             typeof( AwaitBinder ).Module,
             skipVisibility: true
         );
 
         var il = dynamicMethod.GetILGenerator();
 
-        if ( typeof( TAwaiter ).IsValueType )
-            il.Emit( OpCodes.Ldarga_S, 0 );
-        else
-            il.Emit( OpCodes.Ldarg_0 );
+        il.Emit( OpCodes.Ldarg_0 );
+
+        // Necessary when param is not byref
+        //
+        //if ( typeof( TAwaiter ).IsValueType ) 
+        //    il.Emit( OpCodes.Ldarga_S, 0 );
+        //else
+        //    il.Emit( OpCodes.Ldarg_0 );
 
         il.Emit( OpCodes.Call, getResultImplMethod );
 
@@ -312,42 +316,42 @@ internal static class AwaitBinderFactory
                         break;
 
                     case nameof( AwaitBinder.GetAwaiter )
-                        when matches( [typeof( Task<> ), typeof( bool )], argCount: 1 ):
+                        when matches( [typeof(Task<>).MakeByRefType(), typeof( bool )], argCount: 1 ):
                         GetAwaiterTaskResultMethod = method;
                         break;
 
                     case nameof( AwaitBinder.GetAwaiter )
-                        when matches( [typeof( Task ), typeof( bool )] ):
+                        when matches( [typeof( Task ).MakeByRefType(), typeof( bool )] ):
                         GetAwaiterTaskMethod = method;
                         break;
 
                     case nameof( AwaitBinder.GetAwaiter )
-                        when matches( [typeof( ValueTask<> ), typeof( bool )], argCount: 1 ):
+                        when matches( [typeof( ValueTask<> ).MakeByRefType(), typeof( bool )], argCount: 1 ):
                         GetAwaiterValueTaskResultMethod = method;
                         break;
 
                     case nameof( AwaitBinder.GetAwaiter )
-                        when matches( [typeof( ValueTask ), typeof( bool )] ):
+                        when matches( [typeof( ValueTask ).MakeByRefType(), typeof( bool )] ):
                         GetAwaiterValueTaskMethod = method;
                         break;
 
                     case nameof( AwaitBinder.GetResult )
-                        when matches( [typeof( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter )] ):
+                        when matches( [typeof( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter ).MakeByRefType()] ):
                         GetResultTaskMethod = method;
                         break;
 
                     case nameof( AwaitBinder.GetResult )
-                        when matches( [typeof( ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter )] ):
+                        when matches( [typeof( ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter ).MakeByRefType()] ):
                         GetResultValueTaskMethod = method;
                         break;
 
                     case nameof( AwaitBinder.GetResult )
-                        when matches( [typeof( ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter )], argCount: 1 ):
+                        when matches( [typeof( ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter ).MakeByRefType()], argCount: 1 ):
                         GetResultTaskResultMethod = method;
                         break;
 
                     case nameof( AwaitBinder.GetResult )
-                        when matches( [typeof( ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter )], argCount: 1 ):
+                        when matches( [typeof( ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter ).MakeByRefType()], argCount: 1 ):
                         GetResultValueTaskResultMethod = method;
                         break;
                 }
