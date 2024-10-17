@@ -7,14 +7,14 @@
 
     <Authors>Stillpoint Software, Inc.</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>expressions;async;await</PackageTags>
+    <PackageTags>expression-tree;expressions;async;await</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Stillpoint Software, Inc.</Copyright>
     <Title>Hyperbee Expressions</Title>
-    <Description>.NET Expressions for Async and Await</Description>
+    <Description>Async and Await for .NET Expression Trees.</Description>
     <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
