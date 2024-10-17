@@ -316,7 +316,7 @@ internal static class AwaitBinderFactory
                         break;
 
                     case nameof( AwaitBinder.GetAwaiter )
-                        when matches( [typeof(Task<>).MakeByRefType(), typeof( bool )], argCount: 1 ):
+                        when matches( [typeof( Task<> ).MakeByRefType(), typeof( bool )], argCount: 1 ):
                         GetAwaiterTaskResultMethod = method;
                         break;
 
