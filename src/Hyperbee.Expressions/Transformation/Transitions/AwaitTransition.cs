@@ -38,7 +38,7 @@ public class AwaitTransition : Transition
                         AwaiterVariable,
                         resolverSource.StateMachine
                     ),
-                    Return( resolverSource.ReturnLabel )
+                    Return( resolverSource.ExitLabel )
                 )
             )
         };

@@ -385,7 +385,7 @@ public class StateMachineBuilder<TResult>
         // }
 
         var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
-        var returnLabel = Expression.Label( "ST_FINAL" );
+        var exitLabel = Expression.Label( "ST_EXIT" );
 
         var bodyExpressions = new List<Expression>( 16 ); // preallocate slots for expressions
 
@@ -411,7 +411,7 @@ public class StateMachineBuilder<TResult>
         var hoistingVisitor = new HoistingVisitor(
             typeof( TResult ),
             stateMachineInstance,
-            returnLabel,
+            exitLabel,
             fieldMembers,
             stateFieldExpression,
             builderFieldExpression,
@@ -445,7 +445,7 @@ public class StateMachineBuilder<TResult>
 
         // return the lambda expression for MoveNext
 
-        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( returnLabel ) );
+        var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( exitLabel ) );
         return Expression.Lambda( moveNextBody, stateMachineInstance );
     }
 

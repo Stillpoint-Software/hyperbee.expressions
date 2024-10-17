@@ -8,7 +8,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 
     public Type StateMachineType { get; init; }
     public Expression StateMachine { get; init; }
-    public LabelTarget ReturnLabel { get; init; }
+    public LabelTarget ExitLabel { get; init; }
     public MemberExpression StateIdField { get; init; }
     public MemberExpression BuilderField { get; init; }
     public MemberExpression ResultField { get; init; }
@@ -17,7 +17,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     public HoistingVisitor(
         Type stateMachineType,
         Expression stateMachine,
-        LabelTarget returnLabel,
+        LabelTarget exitLabel,
         MemberExpression[] fields,
         MemberExpression stateIdField,
         MemberExpression builderField,
@@ -26,7 +26,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     {
         StateMachineType = stateMachineType;
         StateMachine = stateMachine;
-        ReturnLabel = returnLabel;
+        ExitLabel = exitLabel;
         StateIdField = stateIdField;
         BuilderField = builderField;
         ResultField = resultField;
