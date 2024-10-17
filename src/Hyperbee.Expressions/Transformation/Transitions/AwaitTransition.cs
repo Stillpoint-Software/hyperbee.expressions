@@ -25,9 +25,9 @@ public class AwaitTransition : Transition
 
         var expressions = new List<Expression>
         {
-            Assign( 
-                awaitable, 
-                Target 
+            Assign(
+                awaitable,
+                Target
             ),
             Assign(
                 AwaiterVariable,
