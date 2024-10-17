@@ -17,12 +17,18 @@ public class AwaitTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
+        var awaitable = Variable( Target.Type, "awaitable" );
+
         var getAwaiterCall = GetAwaiterMethod.IsStatic
-            ? Call( GetAwaiterMethod, Target, Constant( ConfigureAwait ) )
-            : Call( Target, GetAwaiterMethod, Constant( ConfigureAwait ) );
+            ? Call( GetAwaiterMethod, awaitable, Constant( ConfigureAwait ) )
+            : Call( awaitable, GetAwaiterMethod, Constant( ConfigureAwait ) );
 
         var expressions = new List<Expression>
         {
+            Assign( 
+                awaitable, 
+                Target 
+            ),
             Assign(
                 AwaiterVariable,
                 getAwaiterCall
@@ -48,7 +54,7 @@ public class AwaitTransition : Transition
         if ( fallThrough != null )
             expressions.Add( fallThrough );
 
-        return Block( expressions );
+        return Block( [awaitable], expressions );
     }
 
     internal override NodeExpression FallThroughNode => CompletionNode;
