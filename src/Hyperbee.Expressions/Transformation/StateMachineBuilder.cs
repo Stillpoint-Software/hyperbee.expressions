@@ -415,7 +415,7 @@ public class StateMachineBuilder<TResult>
             stateFieldExpression,
             builderFieldExpression,
             finalResultFieldExpression,
-            exitLabel, 
+            exitLabel,
             source.ReturnValue );
 
         bodyExpressions.AddRange( nodes.Select( hoistingVisitor.Visit ) );
