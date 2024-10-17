@@ -14,14 +14,13 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     public MemberExpression ResultField { get; init; }
     public ParameterExpression ReturnValue { get; init; }
 
-    public HoistingVisitor(
-        Type stateMachineType,
+    public HoistingVisitor( Type stateMachineType,
         Expression stateMachine,
-        LabelTarget exitLabel,
         MemberExpression[] fields,
         MemberExpression stateIdField,
         MemberExpression builderField,
         MemberExpression resultField,
+        LabelTarget exitLabel,
         ParameterExpression returnValue )
     {
         StateMachineType = stateMachineType;

@@ -321,6 +321,7 @@ internal static class DebugViewWriter
             _ => nodeType.ToString()
         };
     }
+
     private static string VariableToString( ParameterExpression expr )
     {
         return $"{TypeToString( expr.Type )} {expr.Name}";
@@ -338,5 +339,4 @@ internal static class DebugViewWriter
             };
         }
     }
-
 }

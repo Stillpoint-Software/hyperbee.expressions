@@ -105,7 +105,7 @@ public class NodeExpression : Expression
                 null,
                 stateMachineType != typeof( IVoidResult )
                     ? resultField
-                    : Constant( null, stateMachineType ) // No result for IVoidTaskResult
+                    : Constant( null, stateMachineType ) // No result for IVoidResult
             )
         );
     }
