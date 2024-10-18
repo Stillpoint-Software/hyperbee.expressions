@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -103,12 +103,12 @@ internal class LoweringVisitor : ExpressionVisitor
         // These expression types are explicitly handled by the visitor.
 
         return expr
-            is BlockExpression 
-            or ConditionalExpression 
-            or SwitchExpression 
-            or TryExpression 
-            or AwaitExpression 
-            or AsyncBlockExpression 
+            is BlockExpression
+            or ConditionalExpression
+            or SwitchExpression
+            or TryExpression
+            or AwaitExpression
+            or AsyncBlockExpression
             or LoopExpression;
     }
 
