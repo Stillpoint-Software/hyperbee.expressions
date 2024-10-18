@@ -60,7 +60,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         init?.Invoke( branchState );
 
-        Visit( expression, captureVisit ); 
+        Visit( expression, captureVisit );
 
         // Set a default Transition if the branch tail didn't join
         var tailState = _states.TailState;
@@ -117,7 +117,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
-        var updatedTest = base.Visit( node.Test ); 
+        var updatedTest = base.Visit( node.Test );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
