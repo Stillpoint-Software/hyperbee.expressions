@@ -52,7 +52,7 @@ internal class LoweringVisitor : ExpressionVisitor
     private NodeExpression VisitBranch( Expression expression, NodeExpression joinState,
         ParameterExpression resultVariable = null,
         Action<NodeExpression> init = null,
-        bool captureVisit = true )
+        bool capture = true )
     {
         // Create a new state for the branch
 
@@ -60,10 +60,20 @@ internal class LoweringVisitor : ExpressionVisitor
 
         init?.Invoke( branchState );
 
-        Visit( expression, captureVisit ); 
+        // Visit the branch expression
+
+        var visited = Visit( expression ); // Warning: visitation mutates the tail state.
+
+        var tailState = _states.TailState;
+
+        // If the expression is not explicitly handled
+        // by the visitor, add it to the tail state.
+
+        if ( capture && !IsHandledExpressionType( expression ) )
+            tailState.Expressions.Add( visited );
 
         // Set a default Transition if the branch tail didn't join
-        var tailState = _states.TailState;
+
         tailState.ResultVariable = resultVariable;
 
         if ( tailState.Transition != null )
@@ -78,33 +88,28 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         foreach ( var expression in expressions )
         {
-            Visit( expression, captureVisit: true );
+            var visited = Visit( expression ); // Warning: visitation mutates the tail state.
+
+            // If the expression is not explicitly handled
+            // by the visitor, add it to the tail state.
+
+            if ( !IsHandledExpressionType( expression ) )
+                _states.TailState.Expressions.Add( visited );
         }
     }
 
-    private Expression Visit( Expression expr, bool captureVisit )
+    private static bool IsHandledExpressionType( Expression expr )
     {
-        var result = base.Visit( expr );
+        // These expression types are explicitly handled by the visitor.
 
-        switch ( expr )
-        {
-            case BlockExpression:
-            case ConditionalExpression:
-            case SwitchExpression:
-            case TryExpression:
-            case AwaitExpression:
-            case AsyncBlockExpression:
-            case LoopExpression:
-                break;
-
-            default:
-                // Warning: visitation mutates the tail state.
-                if ( captureVisit )
-                    _states.TailState.Expressions.Add( result );
-                break;
-        }
-
-        return result;
+        return expr
+            is BlockExpression 
+            or ConditionalExpression 
+            or SwitchExpression 
+            or TryExpression 
+            or AwaitExpression 
+            or AsyncBlockExpression 
+            or LoopExpression;
     }
 
     // Override methods for specific expression types
@@ -299,7 +304,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var completionState = VisitBranch( node.Target, joinState, resultVariable, captureVisit: false );
+        var completionState = VisitBranch( node.Target, joinState, resultVariable, capture: false );
 
         _awaitCount++;
 
