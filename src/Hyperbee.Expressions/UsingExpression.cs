@@ -9,8 +9,8 @@ public class UsingExpression : Expression
 
     internal UsingExpression( Expression disposable, Expression body )
     {
-        if ( !typeof(IDisposable).IsAssignableFrom( disposable.Type ) )
-            throw new ArgumentException( "The disposable expression must return an IDisposable.", nameof(disposable) );
+        if ( !typeof( IDisposable ).IsAssignableFrom( disposable.Type ) )
+            throw new ArgumentException( "The disposable expression must return an IDisposable.", nameof( disposable ) );
 
         Disposable = disposable;
         Body = body;
@@ -28,7 +28,7 @@ public class UsingExpression : Expression
 
         var finallyBlock = IfThen(
             NotEqual( disposableVar, Constant( null ) ),
-            Call( disposableVar, nameof(IDisposable.Dispose), Type.EmptyTypes )
+            Call( disposableVar, nameof( IDisposable.Dispose ), Type.EmptyTypes )
         );
 
         return Block(

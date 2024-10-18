@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class UsingExpressionTests
 {
-    private bool _wasBodyExecuted; 
+    private bool _wasBodyExecuted;
 
     private class TestDisposableResource : IDisposable
     {
@@ -28,7 +28,7 @@ public class UsingExpressionTests
     {
         // Arrange
         var resource = new TestDisposableResource();
-        var disposableExpression = Expression.Constant( resource, typeof(TestDisposableResource) );
+        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
 
         // Create a body expression that just writes to the console or does something simple
         var bodyExpression = Expression.Empty(); // No actual operation, just a placeholder
@@ -50,12 +50,12 @@ public class UsingExpressionTests
     {
         // Arrange
         var resource = new TestDisposableResource();
-        var disposableExpression = Expression.Constant( resource, typeof(TestDisposableResource) );
+        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
 
         // Create a body expression that sets 'wasBodyExecuted' to true
         var bodyExpression = Expression.Call(
             Expression.Constant( this ),
-            typeof(UsingExpressionTests).GetMethod( nameof(SetWasBodyExecuted) )!
+            typeof( UsingExpressionTests ).GetMethod( nameof( SetWasBodyExecuted ) )!
         );
 
         // Act
@@ -76,7 +76,7 @@ public class UsingExpressionTests
     }
 
     [TestMethod]
-    [ExpectedException( typeof(ArgumentException) )]
+    [ExpectedException( typeof( ArgumentException ) )]
     public void UsingExpression_ShouldThrowArgumentException_WhenNonDisposableUsed()
     {
         // Arrange
@@ -94,10 +94,10 @@ public class UsingExpressionTests
     {
         // Arrange
         var resource = new TestDisposableResource();
-        var disposableExpression = Expression.Constant( resource, typeof(TestDisposableResource) );
+        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
 
         // Create a body expression that throws an exception
-        var bodyExpression = Expression.Throw( Expression.New( typeof(Exception) ) );
+        var bodyExpression = Expression.Throw( Expression.New( typeof( Exception ) ) );
 
         // Act
         var usingExpression = new UsingExpression( disposableExpression, bodyExpression );
