@@ -3,7 +3,7 @@ using BenchmarkDotNet.Attributes;
 using FastExpressionCompiler;
 
 using static System.Linq.Expressions.Expression;
-using static Hyperbee.Expressions.AsyncExpression;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Benchmark;
 
