@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -122,7 +122,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
-        var updatedTest = base.Visit( node.Test ); 
+        var updatedTest = base.Visit( node.Test );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
