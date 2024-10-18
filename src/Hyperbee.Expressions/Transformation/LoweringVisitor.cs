@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -31,10 +31,7 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         _definedVariables = variables;
 
-        foreach ( var expr in expressions )
-        {
-            VisitInternal( expr );
-        }
+        VisitExpressions( expressions );
 
         return new LoweringResult
         {
@@ -50,10 +47,12 @@ internal class LoweringVisitor : ExpressionVisitor
         return Transform( [], expressions );
     }
 
+    // Visit methods
+
     private NodeExpression VisitBranch( Expression expression, NodeExpression joinState,
         ParameterExpression resultVariable = null,
         Action<NodeExpression> init = null,
-        bool captureVisit = true )
+        bool capture = true )
     {
         // Create a new state for the branch
 
@@ -61,35 +60,69 @@ internal class LoweringVisitor : ExpressionVisitor
 
         init?.Invoke( branchState );
 
-        VisitInternal( expression, captureVisit );
+        // Visit the branch expression
+
+        var visited = Visit( expression ); // Warning: visitation mutates the tail state.
+
+        var tailState = _states.TailState;
+
+        // If the expression is not explicitly handled
+        // by the visitor, add it to the tail state.
+
+        if ( capture && !IsHandledExpressionType( expression ) )
+            tailState.Expressions.Add( visited );
 
         // Set a default Transition if the branch tail didn't join
-        var tailState = _states.TailState;
+
         tailState.ResultVariable = resultVariable;
 
         if ( tailState.Transition != null )
-        {
             return branchState;
-        }
 
         tailState.Transition = new GotoTransition { TargetNode = joinState };
 
         return branchState;
     }
 
+    private void VisitExpressions( IEnumerable<Expression> expressions )
+    {
+        foreach ( var expression in expressions )
+        {
+            var visited = Visit( expression ); // Warning: visitation mutates the tail state.
+
+            // If the expression is not explicitly handled
+            // by the visitor, add it to the tail state.
+
+            if ( !IsHandledExpressionType( expression ) )
+                _states.TailState.Expressions.Add( visited );
+        }
+    }
+
+    private static bool IsHandledExpressionType( Expression expr )
+    {
+        // These expression types are explicitly handled by the visitor.
+
+        return expr
+            is BlockExpression 
+            or ConditionalExpression 
+            or SwitchExpression 
+            or TryExpression 
+            or AwaitExpression 
+            or AsyncBlockExpression 
+            or LoopExpression;
+    }
+
+    // Override methods for specific expression types
+
     protected override Expression VisitBlock( BlockExpression node )
     {
-        foreach ( var expression in node.Expressions )
-        {
-            VisitInternal( expression );
-        }
-
+        VisitExpressions( node.Expressions );
         return node;
     }
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
-        var updatedTest = VisitInternal( node.Test, captureVisit: false );
+        var updatedTest = base.Visit( node.Test );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
@@ -112,9 +145,66 @@ internal class LoweringVisitor : ExpressionVisitor
         return node;
     }
 
+    protected override Expression VisitGoto( GotoExpression node )
+    {
+        if ( _labels.TryGetValue( node.Target, out var labelExpression ) )
+        {
+            return labelExpression;
+        }
+
+        var updateNode = base.VisitGoto( node );
+
+        if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
+            return updateNode;
+
+        _returnValue ??= CreateVariable( gotoExpression.Value!.Type, VariableName.Return );
+
+        // update this to assign to a return value versus a goto
+        return Expression.Assign( _returnValue, gotoExpression.Value! );
+    }
+
+    protected override Expression VisitLoop( LoopExpression node )
+    {
+        var joinState = _states.EnterGroup( out var sourceState );
+
+        var resultVariable = GetResultVariable( node, sourceState.StateId );
+
+        var loopTransition = new LoopTransition { BodyNode = VisitBranch( node.Body, joinState, resultVariable, InitializeLabels ) };
+
+        sourceState.ResultVariable = resultVariable;
+        joinState.ResultValue = resultVariable;
+
+        // TODO: This seems wrong, I shouldn't have to cast to GotoTransition (maybe all types of a TargetNode?)
+
+        if ( _states.TailState.Transition is GotoTransition gotoTransition )
+            gotoTransition.TargetNode = loopTransition.BodyNode;
+
+        _states.ExitGroup( sourceState, loopTransition );
+
+        return node;
+
+        // Helper function for fixing loop labels
+        void InitializeLabels( NodeExpression branchState )
+        {
+            if ( node.ContinueLabel != null )
+                _labels[node.ContinueLabel] = Expression.Goto( branchState.NodeLabel );
+
+            if ( node.BreakLabel != null )
+                _labels[node.BreakLabel] = Expression.Goto( joinState.NodeLabel );
+        }
+    }
+
+    protected override Expression VisitParameter( ParameterExpression node )
+    {
+        if ( _definedVariables.Contains( node ) )
+            _variables.Add( node );
+
+        return base.VisitParameter( node );
+    }
+
     protected override Expression VisitSwitch( SwitchExpression node )
     {
-        var updatedSwitchValue = VisitInternal( node.SwitchValue, captureVisit: false );
+        var updatedSwitchValue = base.Visit( node.SwitchValue );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
@@ -191,38 +281,16 @@ internal class LoweringVisitor : ExpressionVisitor
         return node;
     }
 
-    protected override Expression VisitLoop( LoopExpression node )
+    // Override method for extension expression types
+
+    protected override Expression VisitExtension( Expression node )
     {
-        var joinState = _states.EnterGroup( out var sourceState );
-
-        var resultVariable = GetResultVariable( node, sourceState.StateId );
-
-        var loopTransition = new LoopTransition
+        return node switch
         {
-            BodyNode = VisitBranch( node.Body, joinState, resultVariable, InitializeLabels )
+            AsyncBlockExpression asyncBlockExpression => VisitAsyncBlock( asyncBlockExpression ),
+            AwaitExpression awaitExpression => VisitAwait( awaitExpression ),
+            _ => base.VisitExtension( node )
         };
-
-        sourceState.ResultVariable = resultVariable;
-        joinState.ResultValue = resultVariable;
-
-        // TODO: This seems wrong, I shouldn't have to cast to GotoTransition (maybe all types of a TargetNode?)
-
-        if ( _states.TailState.Transition is GotoTransition gotoTransition )
-            gotoTransition.TargetNode = loopTransition.BodyNode;
-
-        _states.ExitGroup( sourceState, loopTransition );
-
-        return node;
-
-        // Helper function for fixing loop labels
-        void InitializeLabels( NodeExpression branchState )
-        {
-            if ( node.ContinueLabel != null )
-                _labels[node.ContinueLabel] = Expression.Goto( branchState.NodeLabel );
-
-            if ( node.BreakLabel != null )
-                _labels[node.BreakLabel] = Expression.Goto( joinState.NodeLabel );
-        }
     }
 
     protected static Expression VisitAsyncBlock( AsyncBlockExpression node )
@@ -236,7 +304,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var completionState = VisitBranch( node.Target, joinState, resultVariable, captureVisit: false );
+        var completionState = VisitBranch( node.Target, joinState, resultVariable, capture: false );
 
         _awaitCount++;
 
@@ -246,13 +314,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var awaiterVariable = CreateVariable( awaiterType, VariableName.Awaiter( sourceState.StateId ) );
 
-        completionState.Transition = new AwaitResultTransition
-        {
-            TargetNode = joinState,
-            AwaiterVariable = awaiterVariable,
-            ResultVariable = resultVariable,
-            GetResultMethod = awaitBinder.GetResultMethod
-        };
+        completionState.Transition = new AwaitResultTransition { TargetNode = joinState, AwaiterVariable = awaiterVariable, ResultVariable = resultVariable, GetResultMethod = awaitBinder.GetResultMethod };
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
@@ -274,66 +336,7 @@ internal class LoweringVisitor : ExpressionVisitor
         return (Expression) resultVariable ?? Expression.Empty();
     }
 
-    protected override Expression VisitExtension( Expression node )
-    {
-        return node switch
-        {
-            AsyncBlockExpression asyncBlockExpression => VisitAsyncBlock( asyncBlockExpression ),
-            AwaitExpression awaitExpression => VisitAwait( awaitExpression ),
-            _ => base.VisitExtension( node )
-        };
-    }
-
-    protected override Expression VisitParameter( ParameterExpression node )
-    {
-        if ( _definedVariables.Contains( node ) )
-            _variables.Add( node );
-
-        return base.VisitParameter( node );
-    }
-
-    protected override Expression VisitGoto( GotoExpression node )
-    {
-        if ( _labels.TryGetValue( node.Target, out var labelExpression ) )
-        {
-            return labelExpression;
-        }
-
-        var updateNode = base.VisitGoto( node );
-
-        if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
-            return updateNode;
-
-        _returnValue ??= CreateVariable( gotoExpression.Value!.Type, VariableName.Return );
-
-        // update this to assign to a return value versus a goto
-        return Expression.Assign( _returnValue, gotoExpression.Value! );
-    }
-
-    private Expression VisitInternal( Expression expr, bool captureVisit = true )
-    {
-        var result = Visit( expr );
-
-        switch ( expr )
-        {
-            case BlockExpression:
-            case ConditionalExpression:
-            case SwitchExpression:
-            case TryExpression:
-            case AwaitExpression:
-            case AsyncBlockExpression:
-            case LoopExpression:
-                break;
-
-            default:
-                // Warning: visitation mutates the tail state.
-                if ( captureVisit )
-                    _states.TailState.Expressions.Add( result );
-                break;
-        }
-
-        return result;
-    }
+    // Helpers
 
     private ParameterExpression GetResultVariable( Expression node, int stateId )
     {
@@ -353,6 +356,8 @@ internal class LoweringVisitor : ExpressionVisitor
         _variables.Add( variable );
         return variable;
     }
+
+    // State management
 
     private class StateContext
     {
