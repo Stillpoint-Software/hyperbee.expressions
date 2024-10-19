@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 
 namespace Hyperbee.Expressions.Tests;
 
@@ -9,7 +9,7 @@ public class WhileExpressionTests
     public void WhileExpression_ShouldBreak_WhenConditionMet()
     {
         // Arrange
-        var counter = Expression.Variable( typeof(int), "counter" );
+        var counter = Expression.Variable( typeof( int ), "counter" );
         var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
 
         // Condition: while (counter < 10)
@@ -41,7 +41,7 @@ public class WhileExpressionTests
     public void WhileExpression_ShouldBreak()
     {
         // Arrange
-        var counter = Expression.Variable( typeof(int), "counter" );
+        var counter = Expression.Variable( typeof( int ), "counter" );
         var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
 
         // Condition: while (counter < 10)
@@ -62,7 +62,7 @@ public class WhileExpressionTests
             [counter],
             counterInit,
             whileExpr,
-            counter 
+            counter
         );
 
         // Act
