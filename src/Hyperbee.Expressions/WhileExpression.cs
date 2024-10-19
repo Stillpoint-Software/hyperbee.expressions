@@ -12,24 +12,29 @@ public class WhileExpression : Expression
     public LabelTarget BreakLabel { get; } = Label( "break" );
     public LabelTarget ContinueLabel { get; } = Label( "continue" );
 
-    public WhileExpression( Expression test, LoopBodyFactory body )
+    internal WhileExpression( Expression test, Expression body )
     {
-        ThrowIfInvalidArguments( test, body );
-
-        Test = test;
-        Body = body( BreakLabel, ContinueLabel );
-    }
-
-    public WhileExpression( Expression test, Expression body )
-    {
-        ThrowIfInvalidArguments( test, body );
+        ThrowIfInvalid( test, body );
 
         Test = test;
         Body = body;
     }
 
-    private WhileExpression( Expression test, Expression body, LabelTarget breakLabel, LabelTarget continueLabel )
+    internal WhileExpression( Expression test, LoopBodyFactory body )
     {
+        ThrowIfInvalid( test, body );
+
+        Test = test;
+        Body = body( BreakLabel, ContinueLabel );
+    }
+
+    internal WhileExpression( Expression test, Expression body, LabelTarget breakLabel, LabelTarget continueLabel )
+    {
+        ThrowIfInvalid( test, body );
+        
+        ArgumentNullException.ThrowIfNull( breakLabel, nameof( breakLabel ) );
+        ArgumentNullException.ThrowIfNull( continueLabel, nameof( continueLabel ) );
+
         Test = test;
         Body = body;
 
@@ -37,7 +42,7 @@ public class WhileExpression : Expression
         ContinueLabel = continueLabel;
     }
 
-    private static void ThrowIfInvalidArguments( Expression test, object body )
+    private static void ThrowIfInvalid( Expression test, object body )
     {
         ArgumentNullException.ThrowIfNull( test, nameof(test) );
         ArgumentNullException.ThrowIfNull( body, nameof(body) );
@@ -79,5 +84,23 @@ public class WhileExpression : Expression
         }
 
         return this;
+    }
+}
+
+public static partial class ExpressionExtensions
+{
+    public static WhileExpression While( Expression test, Expression body )
+    {
+        return new WhileExpression( test, body );
+    }
+
+    public static WhileExpression While( Expression test, Expression body, LabelTarget breakLabel, LabelTarget continueLabel )
+    {
+        return new WhileExpression( test, body, breakLabel, continueLabel );
+    }
+
+    public static WhileExpression While( Expression test, LoopBodyFactory body )
+    {
+        return new WhileExpression( test, body );
     }
 }
