@@ -33,7 +33,7 @@ public class ForEachExpressionTests
 
         var writeLineMethod = typeof( Console ).GetMethod( "WriteLine", [typeof( int )] )!;
 
-        var forEachExpr = ExpressionExtensions.ForEach( list, element, ( breakLabel, continueLabel ) => 
+        var forEachExpr = ExpressionExtensions.ForEach( list, element, ( breakLabel, continueLabel ) =>
             Expression.IfThenElse(
                 Expression.Equal( element, Expression.Constant( 3 ) ),
                 Expression.Break( breakLabel ),

@@ -19,9 +19,9 @@ public class ForEachExpression : Expression
 
     static ForEachExpression()
     {
-        GetEnumeratorMethod = typeof(IEnumerable).GetMethod( "GetEnumerator" );
-        MoveNextMethod = typeof(IEnumerator).GetMethod( "MoveNext" );
-        GetCurrentMethod = typeof(IEnumerator).GetProperty( "Current" )!.GetMethod;
+        GetEnumeratorMethod = typeof( IEnumerable ).GetMethod( "GetEnumerator" );
+        MoveNextMethod = typeof( IEnumerator ).GetMethod( "MoveNext" );
+        GetCurrentMethod = typeof( IEnumerator ).GetProperty( "Current" )!.GetMethod;
     }
 
     internal ForEachExpression( Expression collection, ParameterExpression element, Expression body )
@@ -46,8 +46,8 @@ public class ForEachExpression : Expression
     {
         ThrowIfInvalid( collection, element, body );
 
-        ArgumentNullException.ThrowIfNull( breakLabel, nameof(breakLabel) );
-        ArgumentNullException.ThrowIfNull( continueLabel, nameof(continueLabel) );
+        ArgumentNullException.ThrowIfNull( breakLabel, nameof( breakLabel ) );
+        ArgumentNullException.ThrowIfNull( continueLabel, nameof( continueLabel ) );
 
         Collection = collection;
         Element = element;
@@ -58,22 +58,22 @@ public class ForEachExpression : Expression
 
     private static void ThrowIfInvalid( Expression collection, ParameterExpression element, object body )
     {
-        ArgumentNullException.ThrowIfNull( collection, nameof(collection) );
-        ArgumentNullException.ThrowIfNull( element, nameof(element) );
-        ArgumentNullException.ThrowIfNull( body, nameof(body) );
+        ArgumentNullException.ThrowIfNull( collection, nameof( collection ) );
+        ArgumentNullException.ThrowIfNull( element, nameof( element ) );
+        ArgumentNullException.ThrowIfNull( body, nameof( body ) );
 
-        if ( !typeof(IEnumerable).IsAssignableFrom( collection.Type ) )
-            throw new ArgumentException( "Collection must implement IEnumerable.", nameof(collection) );
+        if ( !typeof( IEnumerable ).IsAssignableFrom( collection.Type ) )
+            throw new ArgumentException( "Collection must implement IEnumerable.", nameof( collection ) );
     }
 
-    public override Type Type => typeof(void);
+    public override Type Type => typeof( void );
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     public override bool CanReduce => true;
 
     public override Expression Reduce()
     {
-        var enumerator = Variable( typeof(IEnumerator), "enumerator" );
+        var enumerator = Variable( typeof( IEnumerator ), "enumerator" );
 
         return Block(
             [enumerator, Element],
