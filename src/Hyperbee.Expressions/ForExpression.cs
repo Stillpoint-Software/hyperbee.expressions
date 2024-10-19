@@ -2,40 +2,47 @@
 
 namespace Hyperbee.Expressions;
 
-public class WhileExpression : Expression
+public class ForExpression : Expression
 {
+    public Expression Initialization { get; }
     public Expression Test { get; }
+    public Expression Iteration { get; }
     public Expression Body { get; }
 
     public LabelTarget BreakLabel { get; } = Label( "break" );
     public LabelTarget ContinueLabel { get; } = Label( "continue" );
 
-    internal WhileExpression( Expression test, Expression body )
+    internal ForExpression( Expression initialization, Expression test, Expression iteration, Expression body )
     {
         ThrowIfInvalid( test, body );
 
+        Initialization = initialization;
         Test = test;
+        Iteration = iteration;
         Body = body;
     }
 
-    internal WhileExpression( Expression test, LoopBody body )
+    internal ForExpression( Expression initialization, Expression test, Expression iteration, LoopBody body )
     {
         ThrowIfInvalid( test, body );
 
+        Initialization = initialization;
         Test = test;
+        Iteration = iteration;
         Body = body( BreakLabel, ContinueLabel );
     }
 
-    internal WhileExpression( Expression test, Expression body, LabelTarget breakLabel, LabelTarget continueLabel )
+    internal ForExpression( Expression initialization, Expression test, Expression iteration, Expression body, LabelTarget breakLabel, LabelTarget continueLabel )
     {
         ThrowIfInvalid( test, body );
-        
+
         ArgumentNullException.ThrowIfNull( breakLabel, nameof( breakLabel ) );
         ArgumentNullException.ThrowIfNull( continueLabel, nameof( continueLabel ) );
 
+        Initialization = initialization;
         Test = test;
+        Iteration = iteration;
         Body = body;
-
         BreakLabel = breakLabel;
         ContinueLabel = continueLabel;
     }
@@ -57,12 +64,16 @@ public class WhileExpression : Expression
     public override Expression Reduce()
     {
         return Block(
+            Initialization,
             Loop(
                 Block(
                     Label( ContinueLabel ),
                     IfThenElse(
                         Test,
-                        Body,
+                        Block(
+                            Body,
+                            Iteration
+                        ),
                         Break( BreakLabel )
                     )
                 )
@@ -73,12 +84,14 @@ public class WhileExpression : Expression
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
+        var newInitialization = visitor.Visit( Initialization );
         var newTest = visitor.Visit( Test );
+        var newIteration = visitor.Visit( Iteration );
         var newBody = visitor.Visit( Body );
 
-        if ( newTest != Test || newBody != Body )
+        if ( newInitialization != Initialization || newTest != Test || newIteration != Iteration || newBody != Body )
         {
-            return new WhileExpression( newTest, newBody, BreakLabel, ContinueLabel );
+            return new ForExpression( newInitialization, newTest, newIteration, newBody, BreakLabel, ContinueLabel );
         }
 
         return this;
@@ -87,19 +100,18 @@ public class WhileExpression : Expression
 
 public static partial class ExpressionExtensions
 {
-    public static WhileExpression While( Expression test, Expression body )
+    public static ForExpression For( Expression initialization, Expression test, Expression iteration, Expression body )
     {
-        return new WhileExpression( test, body );
+        return new ForExpression( initialization, test, iteration, body );
     }
 
-    public static WhileExpression While( Expression test, Expression body, LabelTarget breakLabel, LabelTarget continueLabel )
+    public static ForExpression For( Expression initialization, Expression test, Expression iteration, Expression body, LabelTarget breakLabel, LabelTarget continueLabel )
     {
-        return new WhileExpression( test, body, breakLabel, continueLabel );
+        return new ForExpression( initialization, test, iteration, body, breakLabel, continueLabel );
     }
 
-    public static WhileExpression While( Expression test, LoopBody body )
+    public static ForExpression For( Expression initialization, Expression test, Expression iteration, LoopBody body )
     {
-        return new WhileExpression( test, body );
+        return new ForExpression( initialization, test, iteration, body );
     }
 }
-
