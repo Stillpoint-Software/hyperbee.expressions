@@ -15,7 +15,7 @@ public class WhileExpressionTests
         // Condition: while (counter < 10)
         var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
 
-        var whileExpr = ExpressionExtensions.While( condition, 
+        var whileExpr = ExpressionExtensions.While( condition,
 
             // increment counter
             Expression.PostIncrementAssign( counter )
@@ -46,7 +46,7 @@ public class WhileExpressionTests
 
         // Condition: while (counter < 10)
         var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
-        
+
         var whileExpr = ExpressionExtensions.While( condition, ( breakLabel, _ ) =>
 
             // if (counter == 5) break; else counter++

@@ -29,7 +29,7 @@ public class WhileExpression : Expression
     internal WhileExpression( Expression test, Expression body, LabelTarget breakLabel, LabelTarget continueLabel )
     {
         ThrowIfInvalid( test, body );
-        
+
         ArgumentNullException.ThrowIfNull( breakLabel, nameof( breakLabel ) );
         ArgumentNullException.ThrowIfNull( continueLabel, nameof( continueLabel ) );
 
