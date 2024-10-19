@@ -5,8 +5,6 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class UsingExpressionTests
 {
-    private bool _wasBodyExecuted;
-
     private class TestDisposableResource : IDisposable
     {
         public bool IsDisposed { get; private set; }
@@ -15,6 +13,14 @@ public class UsingExpressionTests
         {
             IsDisposed = true;
         }
+    }
+
+    private bool _wasBodyExecuted;
+
+    // Helper method used in the body expression
+    public void SetWasBodyExecuted()
+    {
+        _wasBodyExecuted = true;
     }
 
     [TestInitialize]
@@ -30,11 +36,10 @@ public class UsingExpressionTests
         var resource = new TestDisposableResource();
         var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
 
-        // Create a body expression that just writes to the console or does something simple
-        var bodyExpression = Expression.Empty(); // No actual operation, just a placeholder
+        var bodyExpression = Expression.Empty(); // Actual body is unimportant
 
         // Act
-        var usingExpression = new UsingExpression( disposableExpression, bodyExpression );
+        var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
         var reducedExpression = usingExpression.Reduce();
         var action = Expression.Lambda<Action>( reducedExpression ).Compile();
 
@@ -59,7 +64,7 @@ public class UsingExpressionTests
         );
 
         // Act
-        var usingExpression = new UsingExpression( disposableExpression, bodyExpression );
+        var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
         var reducedExpression = usingExpression.Reduce();
         var action = Expression.Lambda<Action>( reducedExpression ).Compile();
 
@@ -67,12 +72,6 @@ public class UsingExpressionTests
 
         // Assert
         Assert.IsTrue( _wasBodyExecuted, "The body expression should be executed." );
-    }
-
-    // Helper method used in the body expression
-    public void SetWasBodyExecuted()
-    {
-        _wasBodyExecuted = true;
     }
 
     [TestMethod]
@@ -83,7 +82,7 @@ public class UsingExpressionTests
         var nonDisposableExpression = Expression.Constant( "non-disposable string" );
 
         // Act
-        _ = new UsingExpression( nonDisposableExpression, Expression.Empty() );
+        ExpressionExtensions.Using( nonDisposableExpression, Expression.Empty() );
 
         // Assert: Expect an ArgumentException due to non-disposable resource
         // The constructor should throw the exception, no need for further assertions
@@ -100,7 +99,7 @@ public class UsingExpressionTests
         var bodyExpression = Expression.Throw( Expression.New( typeof( Exception ) ) );
 
         // Act
-        var usingExpression = new UsingExpression( disposableExpression, bodyExpression );
+        var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
         var reducedExpression = usingExpression.Reduce();
         var action = Expression.Lambda<Action>( reducedExpression ).Compile();
 
