@@ -57,4 +57,3 @@ public static partial class ExpressionExtensions
         return new UsingExpression( disposable, body );
     }
 }
-

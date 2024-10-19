@@ -5,11 +5,18 @@ trees to handle asynchronous workflows and other constructs.
 
 ## Features
 
-### Asynchronous Expressions
+* **Async Expressions** are supported using two classes:
+    * `AwaitExpression`: An expression that represents an await operation.
+    * `AsyncBlockExpression`: An expression that represents an asynchronous code block.
 
-Async Expressions are supported using two classes:
-* `AwaitExpression`: An expression that represents an await operation.
-* `AsyncBlockExpression`: An expression that represents an asynchronous code block.
+* **Disposable Expressions** are supported using the `UsingExpression` class. This class allows you to create 
+  an expression tree that automatically disposes of resources after the associates expressions are executed.
+
+* Supports Fast Expression Compiler (FEC) for improved performance.
+
+## Examples
+
+### Asynchronous Expressions
 
 The following example demonstrates how to create an asynchronous expression tree.
 
@@ -70,9 +77,41 @@ public class AsyncExample
 
 ### Disposable Expressions
 
-Disposable Expressions are supported using the `UsingExpression` class. This class allows you to create an expression tree that
-automatically disposes of resources after the associates expressions are executed.
+The following example demonstrates how to create a Using expression.
 
+```csharp
+public class UsingExample
+{
+    private class DisposableResource : IDisposable
+    {
+        public bool IsDisposed { get; private set; }
+
+        public void Dispose()
+        {
+            IsDisposed = true;
+        }
+    }
+
+    public void UsingExpression_ShouldDisposeResource_AfterUse()
+    {
+        var resource = new TestDisposableResource();
+
+        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
+        var bodyExpression = Expression.Empty(); // Actual body isn't important
+
+        var usingExpression = ExpressionExtensions.Using( 
+            disposableExpression, 
+            bodyExpression 
+        );
+
+        var compiledLambda = Expression.Lambda<Action>( reducedExpression ).Compile();
+
+        compiledLambda();
+
+        Console.WriteLine( $"Resource was disposed {resource.IsDisposed}." );
+    }
+}
+```
 
 ## Credits
 
