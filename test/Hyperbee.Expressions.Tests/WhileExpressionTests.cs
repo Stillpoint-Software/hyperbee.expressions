@@ -9,13 +9,13 @@ public class WhileExpressionTests
     public void WhileExpression_ShouldBreak_WhenConditionMet()
     {
         // Arrange
-        var counter = Expression.Variable( typeof(int), "counter" );
+        var counter = Expression.Variable( typeof( int ), "counter" );
         var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
 
         // Condition: while (counter < 10)
         var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
 
-        var whileExpr = new WhileExpression( condition, 
+        var whileExpr = new WhileExpression( condition,
 
             // increment counter
             Expression.PostIncrementAssign( counter )
@@ -41,12 +41,12 @@ public class WhileExpressionTests
     public void WhileExpression_ShouldBreak()
     {
         // Arrange
-        var counter = Expression.Variable( typeof(int), "counter" );
+        var counter = Expression.Variable( typeof( int ), "counter" );
         var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
 
         // Condition: while (counter < 10)
         var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
-        
+
         var whileExpr = new WhileExpression( condition, ( breakLabel, _ ) =>
 
             // if (counter == 5) break; else counter++
@@ -62,7 +62,7 @@ public class WhileExpressionTests
             [counter],
             counterInit,
             whileExpr,
-            counter 
+            counter
         );
 
         // Act

@@ -39,14 +39,14 @@ public class WhileExpression : Expression
 
     private static void ThrowIfInvalidArguments( Expression test, object body )
     {
-        ArgumentNullException.ThrowIfNull( test, nameof(test) );
-        ArgumentNullException.ThrowIfNull( body, nameof(body) );
+        ArgumentNullException.ThrowIfNull( test, nameof( test ) );
+        ArgumentNullException.ThrowIfNull( body, nameof( body ) );
 
-        if ( test.Type != typeof(bool) )
-            throw new ArgumentException( "Test expression must return a boolean.", nameof(test) );
+        if ( test.Type != typeof( bool ) )
+            throw new ArgumentException( "Test expression must return a boolean.", nameof( test ) );
     }
 
-    public override Type Type => typeof(void); 
+    public override Type Type => typeof( void );
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     public override bool CanReduce => true;
@@ -59,7 +59,7 @@ public class WhileExpression : Expression
                     Label( ContinueLabel ),
                     IfThenElse(
                         Test,
-                        Body, 
+                        Body,
                         Break( BreakLabel )
                     )
                 )
