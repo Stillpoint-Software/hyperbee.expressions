@@ -1,6 +1,6 @@
 ﻿# Welcome to Hyperbee Expressions
 
-`Hyperbee.Expressions` is a library for creating c# expression trees that extends the capabilities of standard expression 
+`Hyperbee.Expressions` is a library for creating c# expression trees that extend the capabilities of standard expression 
 trees to handle asynchronous workflows and other constructs.
 
 ## Features
@@ -80,7 +80,7 @@ public class AsyncExample
 }
 ```
 
-### Disposable Expressions
+### Using Expression
 
 The following example demonstrates how to create a Using expression.
 
