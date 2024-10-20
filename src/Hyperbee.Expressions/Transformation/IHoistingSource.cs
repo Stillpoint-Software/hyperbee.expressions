@@ -11,7 +11,7 @@ internal interface IHoistingSource
     MemberExpression ResultField { get; init; }
     ParameterExpression ReturnValue { get; init; }
 
-    public void Deconstruct( 
+    public void Deconstruct(
         out Expression stateMachine, out LabelTarget exitLabel,
         out MemberExpression stateIdField, out MemberExpression builderField,
         out MemberExpression resultField, out ParameterExpression returnValue )

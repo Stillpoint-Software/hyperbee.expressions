@@ -13,7 +13,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     public MemberExpression ResultField { get; init; }
     public ParameterExpression ReturnValue { get; init; }
 
-    public HoistingVisitor( 
+    public HoistingVisitor(
         Expression stateMachine,
         MemberExpression[] fields,
         MemberExpression stateIdField,
