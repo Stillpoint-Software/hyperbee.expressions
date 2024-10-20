@@ -10,12 +10,17 @@ trees to handle asynchronous workflows and other constructs.
 
 ## Features
 
-* **Async Expressions** are supported using two classes:
+* **Async Expressions**
     * `AwaitExpression`: An expression that represents an await operation.
     * `AsyncBlockExpression`: An expression that represents an asynchronous code block.
 
-* **Disposable Expressions** are supported using the `UsingExpression` class. This class allows you to create 
-  an expression tree that automatically disposes of resources after the associates expressions are executed.
+* **Using Expression**
+    * `UsingExpression`: An expression that automatically disposes IDisposable resources.
+
+* **Looping Expressions**
+    * `WhileExpression`: An expression that represents a while loop.
+    * `ForExpression`: An expression that represents a for loop.
+    * `ForEachExpression`: An expression that represents a foreach loop.
 
 * Supports Fast Expression Compiler (FEC) for improved performance.
 
