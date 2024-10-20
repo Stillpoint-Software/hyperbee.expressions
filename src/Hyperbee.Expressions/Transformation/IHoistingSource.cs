@@ -4,7 +4,6 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal interface IHoistingSource
 {
-    public Type StateMachineType { get; init; }
     Expression StateMachine { get; init; }
     LabelTarget ExitLabel { get; init; }
     MemberExpression StateIdField { get; init; }
@@ -12,12 +11,11 @@ internal interface IHoistingSource
     MemberExpression ResultField { get; init; }
     ParameterExpression ReturnValue { get; init; }
 
-    public void Deconstruct( out Type stateMachineType,
+    public void Deconstruct( 
         out Expression stateMachine, out LabelTarget exitLabel,
         out MemberExpression stateIdField, out MemberExpression builderField,
         out MemberExpression resultField, out ParameterExpression returnValue )
     {
-        stateMachineType = StateMachineType;
         stateMachine = StateMachine;
         exitLabel = ExitLabel;
         stateIdField = StateIdField;

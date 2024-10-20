@@ -384,16 +384,16 @@ public class StateMachineBuilder<TResult>
         //     return;
         // }
 
-        var stateMachineInstance = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
+        var stateMachine = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
         var exitLabel = Expression.Label( "ST_EXIT" );
 
         var bodyExpressions = new List<Expression>( 16 ); // preallocate slots for expressions
 
-        var stateFieldExpression = Expression.Field( stateMachineInstance, FieldName.State );
-        var builderFieldExpression = Expression.Field( stateMachineInstance, FieldName.Builder );
-        var finalResultFieldExpression = Expression.Field( stateMachineInstance, FieldName.FinalResult );
+        var stateFieldExpression = Expression.Field( stateMachine, FieldName.State );
+        var builderFieldExpression = Expression.Field( stateMachine, FieldName.Builder );
+        var finalResultFieldExpression = Expression.Field( stateMachine, FieldName.FinalResult );
 
-        var fieldMembers = fields.Select( x => Expression.Field( stateMachineInstance, x ) ).ToArray();
+        var fieldMembers = fields.Select( x => Expression.Field( stateMachine, x ) ).ToArray();
 
         // Create the jump table
 
@@ -409,8 +409,7 @@ public class StateMachineBuilder<TResult>
         // Emit the body of the MoveNext method
 
         var hoistingVisitor = new HoistingVisitor(
-            typeof( TResult ),
-            stateMachineInstance,
+            stateMachine,
             fieldMembers,
             stateFieldExpression,
             builderFieldExpression,
@@ -427,6 +426,7 @@ public class StateMachineBuilder<TResult>
         // Create a try-catch block to handle exceptions
 
         var exceptionParameter = Expression.Parameter( typeof( Exception ), "ex" );
+
         var tryCatchBlock = Expression.TryCatch(
             Expression.Block( typeof( void ), variables, bodyExpressions ),
             Expression.Catch(
@@ -446,7 +446,7 @@ public class StateMachineBuilder<TResult>
         // return the lambda expression for MoveNext
 
         var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( exitLabel ) );
-        return Expression.Lambda( moveNextBody, stateMachineInstance );
+        return Expression.Lambda( moveNextBody, stateMachine );
     }
 
     private static List<NodeExpression> OptimizeNodeOrder( List<StateScope> scopes )
