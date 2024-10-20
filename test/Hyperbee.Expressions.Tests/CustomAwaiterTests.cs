@@ -35,7 +35,7 @@ public class CustomAwaiterTests
         var lazyConstructor = typeof( Lazy<int> ).GetConstructor( [typeof( Func<int> )] );
         var lazyExpression = Expression.New( lazyConstructor!, valueExpression );
 
-        var awaitExpression = AsyncExpression.Await( lazyExpression, configureAwait: false );
+        var awaitExpression = ExpressionExtensions.Await( lazyExpression, configureAwait: false );
 
         var lambda = Expression.Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();

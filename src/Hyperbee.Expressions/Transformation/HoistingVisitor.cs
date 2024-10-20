@@ -6,7 +6,6 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 {
     private readonly Dictionary<string, MemberExpression> _mappingCache;
 
-    public Type StateMachineType { get; init; }
     public Expression StateMachine { get; init; }
     public LabelTarget ExitLabel { get; init; }
     public MemberExpression StateIdField { get; init; }
@@ -14,7 +13,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     public MemberExpression ResultField { get; init; }
     public ParameterExpression ReturnValue { get; init; }
 
-    public HoistingVisitor( Type stateMachineType,
+    public HoistingVisitor(
         Expression stateMachine,
         MemberExpression[] fields,
         MemberExpression stateIdField,
@@ -23,7 +22,6 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
         LabelTarget exitLabel,
         ParameterExpression returnValue )
     {
-        StateMachineType = stateMachineType;
         StateMachine = stateMachine;
         ExitLabel = exitLabel;
         StateIdField = stateIdField;

@@ -65,7 +65,7 @@ public class AsyncBlockExpression : Expression
     }
 }
 
-public static partial class AsyncExpression
+public static partial class ExpressionExtensions
 {
     public static AsyncBlockExpression BlockAsync( params Expression[] expressions )
     {

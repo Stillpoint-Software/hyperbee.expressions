@@ -5,26 +5,32 @@ nav_order: 1
 ---
 # Welcome to Hyperbee Expressions
 
-`Hyperbee.Expressions` is a library for creating c# expression trees that support asynchronous operations using `async` and `await`.
-This library extends the capabilities of standard expression trees to handle asynchronous workflows.
+`Hyperbee.Expressions` is a library for creating c# expression trees that extends the capabilities of standard expression 
+trees to handle asynchronous workflows and other constructs.
 
 ## Features
 
-* Asynchronous Expression Trees: Create expression trees that can easily handle complex `async` and `await` operations.
-* State Machine Generation: Automatically transform asynchronous expression blocks into awaitable state machines.
+* **Async Expressions**
+    * `AwaitExpression`: An expression that represents an await operation.
+    * `AsyncBlockExpression`: An expression that represents an asynchronous code block.
 
-Async Expressions are supported using two classes:
-* `AwaitExpression`: An expression that represents an await operation.
-* `AsyncBlockExpression`: An expression that represents an asynchronous code block.
+* **Using Expression**
+    * `UsingExpression`: An expression that automatically disposes IDisposable resources.
 
-## Usage
+* **Looping Expressions**
+    * `WhileExpression`: An expression that represents a while loop.
+    * `ForExpression`: An expression that represents a for loop.
+    * `ForEachExpression`: An expression that represents a foreach loop.
+
+* Supports Fast Expression Compiler (FEC) for improved performance.
+
+## Examples
+
+### Asynchronous Expressions
 
 The following example demonstrates how to create an asynchronous expression tree.
 
 ```csharp
-using System;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
 
 public class AsyncExample
 {
@@ -34,12 +40,17 @@ public class AsyncExample
         var result1 = Expression.Variable( typeof(int), "result1" );
         var result2 = Expression.Variable( typeof(int), "result2" );
 
-        // Define two async methods
+        // Define two async method calls
 
         var instance = Expression.Constant( this );
 
-        var awaitExpr1 = Expression.Call( instance, nameof(FirstAsyncMethod), Type.EmptyTypes );
-        var awaitExpr2 = Expression.Call( instance, nameof(SecondAsyncMethod), Type.EmptyTypes, result1 );
+        var awaitExpr1 = ExpressionExtensions.Await( 
+            Expression.Call( instance, nameof(FirstAsyncMethod), Type.EmptyTypes ) 
+        );
+
+        var awaitExpr2 = ExpressionExtensions.Await( 
+            Expression.Call( instance, nameof(SecondAsyncMethod), Type.EmptyTypes, result1 )
+        );
 
         // Assign the results of the await expressions to the variables
         var assignResult1 = Expression.Assign( result1, awaitExpr1 );
@@ -74,6 +85,44 @@ public class AsyncExample
 }
 ```
 
+### Disposable Expressions
+
+The following example demonstrates how to create a Using expression.
+
+```csharp
+public class UsingExample
+{
+    private class DisposableResource : IDisposable
+    {
+        public bool IsDisposed { get; private set; }
+
+        public void Dispose()
+        {
+            IsDisposed = true;
+        }
+    }
+
+    public void UsingExpression_ShouldDisposeResource_AfterUse()
+    {
+        var resource = new TestDisposableResource();
+
+        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
+        var bodyExpression = Expression.Empty(); // Actual body isn't important
+
+        var usingExpression = ExpressionExtensions.Using( 
+            disposableExpression, 
+            bodyExpression 
+        );
+
+        var compiledLambda = Expression.Lambda<Action>( reducedExpression ).Compile();
+
+        compiledLambda();
+
+        Console.WriteLine( $"Resource was disposed {resource.IsDisposed}." );
+    }
+}
+```
+
 ## Credits
 
 Special thanks to:
@@ -85,4 +134,3 @@ Special thanks to:
 
 We welcome contributions! Please see our [Contributing Guide](https://github.com/Stillpoint-Software/.github/blob/main/.github/CONTRIBUTING.md) 
 for more details.
-

@@ -3,7 +3,7 @@ using System.Reflection;
 using Hyperbee.Expressions.Transformation;
 using Hyperbee.Expressions.Transformation.Transitions;
 using static System.Linq.Expressions.Expression;
-using static Hyperbee.Expressions.AsyncExpression;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 

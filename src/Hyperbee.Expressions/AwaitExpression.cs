@@ -72,7 +72,7 @@ public class AwaitExpression : Expression
     }
 }
 
-public static partial class AsyncExpression
+public static partial class ExpressionExtensions
 {
     public static AwaitExpression Await( Expression expression, bool configureAwait = false )
     {
