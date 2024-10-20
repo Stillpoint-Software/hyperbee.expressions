@@ -177,7 +177,6 @@ public class StateMachineBuilder<TResult>
         );
 
         ImplementConstructor( typeBuilder, stateMachineBaseType );
-
         ImplementSetMoveNext( typeBuilder, moveNextExpressionField );
         ImplementMoveNext( typeBuilder, moveNextExpressionField );
 
@@ -334,56 +333,6 @@ public class StateMachineBuilder<TResult>
 
     private static LambdaExpression CreateMoveNextBody( LoweringResult source, Type stateMachineBaseType, int id, IEnumerable<FieldInfo> fields )
     {
-        // Example of a typical state-machine:
-        //
-        // try
-        // {
-        //     int return<>;
-        //
-        //     switch ( stateMachine.__state<> )
-        //     {
-        //         case 0:
-        //             stateMachine.__state<> = -1;
-        //             goto ST_0002;
-        //             break;
-        //     }
-        //
-        //     ST_0000:
-        //     stateMachine.var1 = 1;
-        //     stateMachine.__awaiter<0> = Task<int>.GetAwaiter();
-        //
-        //     if ( !stateMachine.__awaiter<0>.IsCompleted )
-        //     {
-        //         stateMachine.__state<> = 0;
-        //         stateMachine.__builder<>.AwaitUnsafeOnCompleted( ref stateMachine.awaiter<0>, ref stateMachine );
-        //         return;
-        //     }
-        //
-        //     goto ST_0002;
-        //
-        //     ST_0001:
-        //     stateMachine.var2 = stateMachine.<>s__2;
-        //     goto ST_0004;
-        //
-        //     ST_0002:
-        //     stateMachine.<>s__2 = stateMachine.__awaiter<0>.GetResult();
-        //     goto ST_0001;
-        //
-        //     ST_0004:
-        //     return<> = stateMachine.var2 + param1;
-        //
-        //     ST_0003:
-        //     stateMachine.__finalResult<> = return<>;
-        //     stateMachine.__state<> = -2;
-        //     stateMachine.__builder<>.SetResult( stateMachine.__finalResult<> );
-        // }
-        // catch ( Exception ex )
-        // {
-        //     stateMachine.__state<> = -2;
-        //     stateMachine.__builder<>.SetException( ex );
-        //     return;
-        // }
-
         var stateMachine = Expression.Parameter( stateMachineBaseType, $"sm<{id}>" );
         var exitLabel = Expression.Label( "ST_EXIT" );
 
@@ -442,8 +391,6 @@ public class StateMachineBuilder<TResult>
                 )
             )
         );
-
-        // return the lambda expression for MoveNext
 
         var moveNextBody = Expression.Block( tryCatchBlock, Expression.Label( exitLabel ) );
         return Expression.Lambda( moveNextBody, stateMachine );
