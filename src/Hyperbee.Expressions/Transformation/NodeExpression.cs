@@ -95,6 +95,8 @@ public class NodeExpression : Expression
                 ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
                 : Assign( resultField, blockBody );
 
+        var resultType = ResultValue?.Type ?? typeof(IVoidResult);
+
         return Block(
             Label( NodeLabel ),
             finalResult,
@@ -103,9 +105,9 @@ public class NodeExpression : Expression
                 builderField,
                 "SetResult",
                 null,
-                stateMachine.Type != typeof( IVoidResult )
+                resultType != typeof( IVoidResult )
                     ? resultField
-                    : Constant( null, stateMachine.Type ) // No result for IVoidResult
+                    : Constant( null, resultType ) // No result for IVoidResult
             )
         );
     }

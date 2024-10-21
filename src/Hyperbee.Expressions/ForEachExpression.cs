@@ -86,8 +86,7 @@ public class ForEachExpression : Expression
                         Body
                     ),
                     Break( BreakLabel )
-                )
-                ,
+                ),
                 BreakLabel,
                 ContinueLabel
             )

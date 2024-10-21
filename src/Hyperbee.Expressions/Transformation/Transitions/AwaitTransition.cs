@@ -23,6 +23,12 @@ public class AwaitTransition : Transition
             ? Call( GetAwaiterMethod, awaitable, Constant( ConfigureAwait ) )
             : Call( awaitable, GetAwaiterMethod, Constant( ConfigureAwait ) );
 
+        // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
+        var awaitUnsafeOnCompleted = resolverSource.BuilderField.Type
+            .GetMethods()
+            .Single( m => m.Name == "AwaitUnsafeOnCompleted" && m.IsGenericMethodDefinition )
+            .MakeGenericMethod( AwaiterVariable.Type, resolverSource.StateMachine.Type );
+
         var expressions = new List<Expression>
         {
             Assign(
@@ -39,8 +45,9 @@ public class AwaitTransition : Transition
                     Assign( resolverSource.StateIdField, Constant( StateId ) ),
                     Call(
                         resolverSource.BuilderField,
-                        "AwaitUnsafeOnCompleted",
-                        [AwaiterVariable.Type, typeof( IAsyncStateMachine )],
+                        awaitUnsafeOnCompleted,
+                        //"AwaitUnsafeOnCompleted",
+                        //[AwaiterVariable.Type, typeof( IAsyncStateMachine )],
                         AwaiterVariable,
                         resolverSource.StateMachine
                     ),
