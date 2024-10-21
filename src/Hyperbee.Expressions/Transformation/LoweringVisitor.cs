@@ -311,17 +311,17 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var awaitBinder = node.GetAwaitBinder();
 
-        var awaiterVariable = CreateVariable( 
-            awaitBinder.GetAwaiterMethod.ReturnType, 
-            VariableName.Awaiter( sourceState.StateId ) 
+        var awaiterVariable = CreateVariable(
+            awaitBinder.GetAwaiterMethod.ReturnType,
+            VariableName.Awaiter( sourceState.StateId )
         );
 
-        completionState.Transition = new AwaitResultTransition 
-        { 
-            TargetNode = joinState, 
-            AwaiterVariable = awaiterVariable, 
-            ResultVariable = resultVariable, 
-            GetResultMethod = awaitBinder.GetResultMethod 
+        completionState.Transition = new AwaitResultTransition
+        {
+            TargetNode = joinState,
+            AwaiterVariable = awaiterVariable,
+            ResultVariable = resultVariable,
+            GetResultMethod = awaitBinder.GetResultMethod
         };
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
