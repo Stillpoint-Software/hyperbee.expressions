@@ -95,7 +95,7 @@ public class NodeExpression : Expression
                 ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
                 : Assign( resultField, blockBody );
 
-        var resultType = ResultValue?.Type ?? typeof(IVoidResult);
+        var resultType = ResultValue?.Type ?? typeof( IVoidResult );
 
         return Block(
             Label( NodeLabel ),

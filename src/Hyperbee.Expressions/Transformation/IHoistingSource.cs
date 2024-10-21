@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -15,7 +15,7 @@ internal interface IHoistingSource
     MemberExpression ResultField { get; init; }
     ParameterExpression ReturnValue { get; init; }
 
-    public void Deconstruct( 
+    public void Deconstruct(
         out ParameterExpression stateMachine,
         //out ParameterExpression stateMachineData, 
         out LabelTarget exitLabel,

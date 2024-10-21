@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -6,7 +6,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 {
     private readonly Dictionary<string, MemberExpression> _mappingCache;
 
-//  public Type StateMachineType { get; init; }
+    //  public Type StateMachineType { get; init; }
     public ParameterExpression StateMachine { get; init; }
     //public ParameterExpression StateMachineData { get; init; }
 
@@ -16,7 +16,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     public MemberExpression ResultField { get; init; }
     public ParameterExpression ReturnValue { get; init; }
 
-    public HoistingVisitor( 
+    public HoistingVisitor(
         ParameterExpression stateMachine,
         //ParameterExpression stateMachineData,
         MemberExpression[] fields,
