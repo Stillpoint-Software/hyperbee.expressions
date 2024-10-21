@@ -66,19 +66,17 @@ public class ForExpression : Expression
         return Block(
             Initialization,
             Loop(
-                Block(
-                    Label( ContinueLabel ),
-                    IfThenElse(
-                        Test,
-                        Block(
-                            Body,
-                            Iteration
-                        ),
-                        Break( BreakLabel )
-                    )
-                )
-            ),
-            Label( BreakLabel )
+                IfThenElse(
+                    Test,
+                    Block(
+                        Body,
+                        Iteration
+                    ),
+                    Break( BreakLabel )
+                ),
+                BreakLabel,
+                ContinueLabel
+            )
         );
     }
 
