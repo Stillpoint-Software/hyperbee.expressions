@@ -69,7 +69,7 @@ internal class LoweringVisitor : ExpressionVisitor
         // If the expression is not explicitly handled
         // by the visitor, add it to the tail state.
 
-        if ( capture && !IsHandledExpressionType( expression ) )
+        if ( capture && !IsExplicitlyHandledType( expression ) )
             tailState.Expressions.Add( visited );
 
         // Set a default Transition if the branch tail didn't join
@@ -93,12 +93,12 @@ internal class LoweringVisitor : ExpressionVisitor
             // If the expression is not explicitly handled
             // by the visitor, add it to the tail state.
 
-            if ( !IsHandledExpressionType( expression ) )
+            if ( !IsExplicitlyHandledType( expression ) )
                 _states.TailState.Expressions.Add( visited );
         }
     }
 
-    private static bool IsHandledExpressionType( Expression expr )
+    private static bool IsExplicitlyHandledType( Expression expr )
     {
         // These expression types are explicitly handled by the visitor.
 
@@ -240,10 +240,11 @@ internal class LoweringVisitor : ExpressionVisitor
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
         var tryStateVariable = CreateVariable( typeof( int ), VariableName.Try( sourceState.StateId ) );
-        var exceptionVariable = CreateVariable( typeof( object ), VariableName.Exception( sourceState.StateId ) );
+        var exceptionVariable = CreateVariable( typeof( object ), VariableName.Exception( sourceState.StateId ) ); //BF: Should be typeof(Exception)?
 
         // If there is a finally block then that is the join for a try/catch.
         NodeExpression finalExpression = null;
+
         if ( node.Finally != null )
         {
             finalExpression = VisitBranch( node.Finally, joinState );
@@ -310,11 +311,18 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var awaitBinder = node.GetAwaitBinder();
 
-        var awaiterType = awaitBinder.GetAwaiterMethod.ReturnType;
+        var awaiterVariable = CreateVariable( 
+            awaitBinder.GetAwaiterMethod.ReturnType, 
+            VariableName.Awaiter( sourceState.StateId ) 
+        );
 
-        var awaiterVariable = CreateVariable( awaiterType, VariableName.Awaiter( sourceState.StateId ) );
-
-        completionState.Transition = new AwaitResultTransition { TargetNode = joinState, AwaiterVariable = awaiterVariable, ResultVariable = resultVariable, GetResultMethod = awaitBinder.GetResultMethod };
+        completionState.Transition = new AwaitResultTransition 
+        { 
+            TargetNode = joinState, 
+            AwaiterVariable = awaiterVariable, 
+            ResultVariable = resultVariable, 
+            GetResultMethod = awaitBinder.GetResultMethod 
+        };
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
