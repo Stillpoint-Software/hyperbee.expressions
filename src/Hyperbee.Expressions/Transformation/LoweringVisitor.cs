@@ -20,7 +20,6 @@ internal class LoweringVisitor : ExpressionVisitor
         // use special names to prevent collisions
         public static string Awaiter( int stateId ) => $"__awaiter<{stateId}>";
         public static string Result( int stateId ) => $"__result<{stateId}>";
-
         public static string Try( int stateId ) => $"__try<{stateId}>";
         public static string Exception( int stateId ) => $"__ex<{stateId}>";
 
