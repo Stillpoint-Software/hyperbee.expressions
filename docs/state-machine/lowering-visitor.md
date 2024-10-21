@@ -69,9 +69,16 @@ Try/catch/finally blocks introduce complex control flow that must be managed by 
 these constructs into smaller state machines that can handle exceptions and ensure that execution continues correctly.
 
 ### Discussion
+The VisitTry handles the `try/catch/finally` blocks by capturing all the expression within the body of the try in child scope that
+understands the jump tables and the continuation to the catch block and finally blocks. Additionally because goto statments cannot be 
+used to move into nested scopes it is necessary capture any excpetions and to process the gotos after the scope of the try body.
 
 ### Solution
-
+By capturing the scope of the try body and processing the gotos after the scope of the try, the state machine can correctly handle 
+returning to the previous state machine after any errors.  In the reducing of the Try block, the `TryCatchTransition` has 
+to create jump table that understand how to handle navigate to the suspension of an await and in case of any nest `try/catch/finally` 
+blocks the result of any async code.  This ensures that the state machine can correctly handle exceptions and continue execution even 
+when there are deeply nested try/catch/finally blocks or when outer block handle errors from nested code.
 
 ## 3. Handling Await
 
