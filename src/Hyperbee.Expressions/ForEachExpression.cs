@@ -79,18 +79,17 @@ public class ForEachExpression : Expression
             [enumerator, Element],
             Assign( enumerator, Call( Collection, GetEnumeratorMethod ) ), // Initialize the enumerator
             Loop(
-                Block(
-                    Label( ContinueLabel ),
-                    IfThenElse(
-                        Call( enumerator, MoveNextMethod! ),
-                        Block(
-                            Assign( Element, Convert( Call( enumerator, GetCurrentMethod! ), Element.Type ) ),
-                            Body
-                        ),
-                        Break( BreakLabel )
-                    )
-                ),
-                BreakLabel
+                IfThenElse(
+                    Call( enumerator, MoveNextMethod! ),
+                    Block(
+                        Assign( Element, Convert( Call( enumerator, GetCurrentMethod! ), Element.Type ) ),
+                        Body
+                    ),
+                    Break( BreakLabel )
+                )
+                ,
+                BreakLabel,
+                ContinueLabel
             )
         );
     }
