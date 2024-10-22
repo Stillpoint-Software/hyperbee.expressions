@@ -49,30 +49,30 @@ public class StateMachineBuilder<TResult>
 
         // Initialize the state machine
 
-        var stateMachineVariable = Expression.Variable( 
-            stateMachineType, 
-            $"stateMachine<{id}>" 
+        var stateMachineVariable = Expression.Variable(
+            stateMachineType,
+            $"stateMachine<{id}>"
         );
 
-        var assignNew = Expression.Assign( 
-            stateMachineVariable, 
-            Expression.New( stateMachineType ) 
+        var assignNew = Expression.Assign(
+            stateMachineVariable,
+            Expression.New( stateMachineType )
         );
 
-        var assignStateField = Expression.Assign( 
-            Expression.Field( 
+        var assignStateField = Expression.Assign(
+            Expression.Field(
                 stateMachineVariable,
-                stateMachineType.GetField( FieldName.State )! 
-            ), 
-            Expression.Constant( -1 ) 
+                stateMachineType.GetField( FieldName.State )!
+            ),
+            Expression.Constant( -1 )
         );
 
-        var assignMoveNextDelegate = Expression.Assign( 
-            Expression.Field( 
-                stateMachineVariable, 
-                stateMachineType.GetField( FieldName.MoveNextDelegate )! 
-            ), 
-            moveNextLambda 
+        var assignMoveNextDelegate = Expression.Assign(
+            Expression.Field(
+                stateMachineVariable,
+                stateMachineType.GetField( FieldName.MoveNextDelegate )!
+            ),
+            moveNextLambda
         );
 
         if ( !createRunner )
@@ -141,19 +141,19 @@ public class StateMachineBuilder<TResult>
 
         typeBuilder.DefineField(
             FieldName.State,
-            typeof(int),
+            typeof( int ),
             FieldAttributes.Public
         );
 
         var builderField = typeBuilder.DefineField(
             FieldName.Builder,
-            typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ),
+            typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ),
             FieldAttributes.Public
         );
 
         typeBuilder.DefineField(
             FieldName.FinalResult,
-            typeof(TResult),
+            typeof( TResult ),
             FieldAttributes.Public
         );
 
@@ -243,7 +243,7 @@ public class StateMachineBuilder<TResult>
 
         ilGenerator.Emit( OpCodes.Ldarga_S, 0 ); // Load the address of 'this'
 
-        var openInvokeMethod = typeof(MoveNextDelegate<>).GetMethod( "Invoke" )!;
+        var openInvokeMethod = typeof( MoveNextDelegate<> ).GetMethod( "Invoke" )!;
         var invokeMethod = TypeBuilder.GetMethod( moveNextDelegateType, openInvokeMethod );
 
         ilGenerator.Emit( OpCodes.Callvirt, invokeMethod ); // Call the delegate
@@ -383,7 +383,7 @@ public class StateMachineBuilder<TResult>
             Expression.Label( exitLabel )
         );
 
-        var moveNextDelegateType = typeof(MoveNextDelegate<>).MakeGenericType( stateMachineType );
+        var moveNextDelegateType = typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType );
 
         return Expression.Lambda( moveNextDelegateType, moveNextBody, stateMachine ); // takes a ref to the state machine
     }
