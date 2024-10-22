@@ -63,7 +63,7 @@ public class NodeExpression : Expression
         else if ( ResultVariable != null && Expressions.Count > 0 && ResultVariable.Type == Expressions[^1].Type )
         {
             // TODO: This feels like a hack that should be moved somewhere else
-            // This might be related to go tos and Joins?
+            // This might be related to Gotos and Joins?
             Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
         }
 
@@ -77,7 +77,7 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceFinalBlock()
     {
-        var (stateMachine, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
+        var (_, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
 
         Expression blockBody;
 

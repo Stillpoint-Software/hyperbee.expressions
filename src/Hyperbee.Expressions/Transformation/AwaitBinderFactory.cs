@@ -2,9 +2,8 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using Hyperbee.Expressions.Transformation;
 
-namespace Hyperbee.Expressions.Factory;
+namespace Hyperbee.Expressions.Transformation;
 
 internal static class AwaitBinderFactory
 {
@@ -273,14 +272,6 @@ internal static class AwaitBinderFactory
         var il = dynamicMethod.GetILGenerator();
 
         il.Emit( OpCodes.Ldarg_0 );
-
-        // Necessary when param is not byref
-        //
-        //if ( typeof( TAwaiter ).IsValueType ) 
-        //    il.Emit( OpCodes.Ldarga_S, 0 );
-        //else
-        //    il.Emit( OpCodes.Ldarg_0 );
-
         il.Emit( OpCodes.Call, getResultImplMethod );
 
         il.DeclareLocal( typeof( TResult ) );

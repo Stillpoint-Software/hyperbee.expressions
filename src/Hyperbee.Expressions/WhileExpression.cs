@@ -56,19 +56,16 @@ public class WhileExpression : Expression
 
     public override Expression Reduce()
     {
-        return Block(
+        return
             Loop(
-                Block(
-                    Label( ContinueLabel ),
-                    IfThenElse(
-                        Test,
-                        Body,
-                        Break( BreakLabel )
-                    )
-                )
-            ),
-            Label( BreakLabel )
-        );
+                IfThenElse(
+                    Test,
+                    Body,
+                    Break( BreakLabel )
+                ),
+                BreakLabel,
+                ContinueLabel
+            );
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
