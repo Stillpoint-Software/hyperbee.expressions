@@ -140,4 +140,60 @@ public class BlockAsyncBasicTests
         // Assert
         Assert.IsTrue( true ); // If no exception, the test is successful
     }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait()
+    {
+        // Arrange
+        var resultValue = Parameter( typeof( int ), "result" );
+
+        var block = BlockAsync(
+            [resultValue],
+            Assign( resultValue, Constant( 5 ) ),
+            Await( Constant( Task.Delay( 100 ) ) ),
+            Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
+            resultValue // Return the result
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 15, result ); // Ensure variable value is correctly updated after await
+    }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldPreserveVariablesInNestedBlock_WithAwaits()
+    {
+        // Arrange
+        var outerValue = Parameter( typeof(int), "outerValue" );
+        var innerValue = Parameter( typeof(int), "innerValue" );
+
+        var innerBlock = BlockAsync(
+            [innerValue],
+            Assign( innerValue, Constant( 50 ) ), 
+            Await( Constant( Task.Delay( 100 ) ) ),
+            innerValue
+        );
+
+        var block = Block(
+            [outerValue],
+            Assign( outerValue, Constant( 5 ) ),
+            Assign( outerValue, Add( outerValue, Await( innerBlock ) ) ),
+            outerValue
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 55, result ); // Ensure correct outerValue after innerBlock and await
+    }
+
 }
