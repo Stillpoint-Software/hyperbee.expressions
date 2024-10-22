@@ -41,35 +41,52 @@ public class StateMachineBuilder<TResult>
         //
         // Conceptually:
         //
-        // var stateMachine = new StateMachine();
         // var moveNextLambda = (StateMachine stateMachine) => { ... };
-        //
-        // stateMachine.SetMoveNext( moveNextLambda );
+        // var stateMachine = new StateMachine( moveNextLambda );
 
         var stateMachineType = CreateStateMachineType( source, out var fields );
-        var stateMachineVariable = Expression.Variable( stateMachineType, $"stateMachine<{id}>" );
-
         var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, fields );
-        var moveNextDelegate = moveNextLambda.Compile();
 
-        var setMoveNextMethod = stateMachineType.GetMethod( "SetMoveNext" );
+        // Initialize the state machine
 
-        // Expression to assign the MoveNext lambda to the state machine
-        var setMoveNextExpression = Expression.Call(
-            stateMachineVariable,
-            setMoveNextMethod!,
-            Expression.Constant( moveNextDelegate, typeof( Delegate ) )
+        var stateMachineVariable = Expression.Variable( 
+            stateMachineType, 
+            $"stateMachine<{id}>" 
         );
 
-        // Initialize the state machine (assign the MoveNext delegate)
-        var stateMachineInitialization = Expression.Block(
-            [stateMachineVariable],
-            Expression.Assign( stateMachineVariable, Expression.New( stateMachineType ) ),
-            setMoveNextExpression
+        var assignNew = Expression.Assign( 
+            stateMachineVariable, 
+            Expression.New( stateMachineType ) 
+        );
+
+        var assignStateField = Expression.Assign( 
+            Expression.Field( 
+                stateMachineVariable,
+                stateMachineType.GetField( FieldName.State )! 
+            ), 
+            Expression.Constant( -1 ) 
+        );
+
+        var assignMoveNextDelegate = Expression.Assign( 
+            Expression.Field( 
+                stateMachineVariable, 
+                stateMachineType.GetField( FieldName.MoveNextDelegate )! 
+            ), 
+            moveNextLambda 
         );
 
         if ( !createRunner )
+        {
+            var stateMachineInitialization = Expression.Block(
+                [stateMachineVariable],
+                assignNew,
+                assignStateField,
+                assignMoveNextDelegate,
+                stateMachineVariable
+            );
+
             return stateMachineInitialization;
+        }
 
         // Run the state-machine
         //
@@ -79,24 +96,26 @@ public class StateMachineBuilder<TResult>
         // return stateMachine.__builder<>.Task;
 
         var builderFieldInfo = stateMachineType.GetField( FieldName.Builder )!;
-        var builderFieldExpression = Expression.Field( stateMachineVariable, builderFieldInfo );
+        var builderField = Expression.Field( stateMachineVariable, builderFieldInfo );
 
         var startMethod = builderFieldInfo.FieldType
             .GetMethod( "Start" )!
             .MakeGenericMethod( stateMachineType );
 
         var callBuilderStart = Expression.Call(
-            builderFieldExpression,
+            builderField,
             startMethod,
             stateMachineVariable // ref stateMachine
         );
 
         var taskProperty = builderFieldInfo.FieldType.GetProperty( "Task" );
-        var taskExpression = Expression.Property( builderFieldExpression, taskProperty! );
+        var taskExpression = Expression.Property( builderField, taskProperty! );
 
         return Expression.Block(
             [stateMachineVariable],
-            Expression.Assign( stateMachineVariable, stateMachineInitialization ),
+            assignNew,
+            assignStateField,
+            assignMoveNextDelegate,
             callBuilderStart,
             taskExpression
         );
@@ -106,24 +125,45 @@ public class StateMachineBuilder<TResult>
     {
         var typeBuilder = _moduleBuilder.DefineType(
             _typeName,
-            TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed
+            TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed,
+            typeof( ValueType ) // struct
         );
 
         typeBuilder.AddInterfaceImplementation( typeof( IAsyncStateMachine ) );
 
+        // Define: system fields
         var moveNextDelegateType = typeof( MoveNextDelegate<> ).MakeGenericType( typeBuilder );
 
         var moveNextDelegateField = typeBuilder.DefineField(
             FieldName.MoveNextDelegate,
-            typeof( Delegate ),//moveNextDelegateType,
-            FieldAttributes.Private );
+            moveNextDelegateType,
+            FieldAttributes.Public );
 
-        ImplementSystemFields( typeBuilder, out var builderFieldBuilder );
-        ImplementVariableFields( typeBuilder, source );
+        typeBuilder.DefineField(
+            FieldName.State,
+            typeof(int),
+            FieldAttributes.Public
+        );
 
-        ImplementSetMoveNext( typeBuilder, moveNextDelegateField, moveNextDelegateType );
+        var builderField = typeBuilder.DefineField(
+            FieldName.Builder,
+            typeof(AsyncTaskMethodBuilder<>).MakeGenericType( typeof(TResult) ),
+            FieldAttributes.Public
+        );
+
+        typeBuilder.DefineField(
+            FieldName.FinalResult,
+            typeof(TResult),
+            FieldAttributes.Public
+        );
+
+        // Define: state-machine fields
+        ImplementFields( typeBuilder, source );
+
+        // Define: methods
+
         ImplementMoveNext( typeBuilder, moveNextDelegateField, moveNextDelegateType );
-        ImplementSetStateMachine( typeBuilder, builderFieldBuilder );
+        ImplementSetStateMachine( typeBuilder, builderField );
 
         var stateMachineType = typeBuilder.CreateType();
 
@@ -134,29 +174,7 @@ public class StateMachineBuilder<TResult>
         return stateMachineType;
     }
 
-    private static void ImplementSystemFields( TypeBuilder typeBuilder, out FieldBuilder builderField )
-    {
-        // Define: system fields
-        typeBuilder.DefineField(
-            FieldName.State,
-            typeof( int ),
-            FieldAttributes.Public
-        );
-
-        builderField = typeBuilder.DefineField(
-            FieldName.Builder,
-            typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ),
-            FieldAttributes.Public
-        );
-
-        typeBuilder.DefineField(
-            FieldName.FinalResult,
-            typeof( TResult ),
-            FieldAttributes.Public
-        );
-    }
-
-    private static void ImplementVariableFields( TypeBuilder typeBuilder, LoweringResult result )
+    private static void ImplementFields( TypeBuilder typeBuilder, LoweringResult result )
     {
         // Define: variable fields
         foreach ( var parameterExpression in result.Variables )
@@ -167,23 +185,6 @@ public class StateMachineBuilder<TResult>
                 FieldAttributes.Public
             );
         }
-    }
-
-    private static void ImplementSetMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextDelegateField, Type moveNextDelegateType )
-    {
-        var setMoveNextMethod = typeBuilder.DefineMethod(
-            "SetMoveNext",
-            MethodAttributes.Public,
-            typeof( void ),
-            [typeof( Delegate )]//[moveNextDelegateType]
-        );
-
-        var ilGenerator = setMoveNextMethod.GetILGenerator();
-
-        ilGenerator.Emit( OpCodes.Ldarg_0 );
-        ilGenerator.Emit( OpCodes.Ldarg_1 );
-        ilGenerator.Emit( OpCodes.Stfld, moveNextDelegateField );
-        ilGenerator.Emit( OpCodes.Ret );
     }
 
     private static void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldInfo builderFieldInfo )
@@ -219,31 +220,14 @@ public class StateMachineBuilder<TResult>
             typeof( IAsyncStateMachine ).GetMethod( "SetStateMachine" )! );
     }
 
-    private static void ImplementMoveNext(
-        TypeBuilder typeBuilder,
-        FieldBuilder moveNextDelegateField,
-        Type moveNextDelegateType
-    )
+    private static void ImplementMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextDelegateField, Type moveNextDelegateType )
     {
         // Define the MoveNext method
         //
         // public void MoveNext()
         // {
-        //    //__moveNextDelegate<>( ref (StateMachineBaseType) this);
-        //    Helper.MoveNext( ref this );
+        //    __moveNextDelegate<>( ref this );
         // }
-
-        /*
-         static class Helper
-         {
-            public static void MoveNext<T>( ref T stateMachine ) where T : IAsyncStateMachine
-            {
-                var moveNextMethod = (MoveNextDelegate<T>) stateMachine.MoveNextDelegate
-                MoveNextMethod( ref stateMachine );
-            }
-         }
-        */
-
 
         var moveNextMethod = typeBuilder.DefineMethod(
             "IAsyncStateMachine.MoveNext",
@@ -254,20 +238,18 @@ public class StateMachineBuilder<TResult>
 
         var ilGenerator = moveNextMethod.GetILGenerator();
 
-        var openInvokeMethod = typeof( MoveNextDelegate<> ).GetMethod( "Invoke" );
-        var invokeDelegate = TypeBuilder.GetMethod( moveNextDelegateType, openInvokeMethod! );
-
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // Load "this" (the StateMachine instance)
-        ilGenerator.Emit( OpCodes.Ldfld, moveNextDelegateField );
-
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // Load 'this'
-        ilGenerator.Emit( OpCodes.Ldarga_S, 0 ); // Load address of 'this'
+        ilGenerator.Emit( OpCodes.Ldfld, moveNextDelegateField ); // Load '__moveNextDelegate'
 
-        ilGenerator.Emit( OpCodes.Callvirt, invokeDelegate );
+        ilGenerator.Emit( OpCodes.Ldarga_S, 0 ); // Load the address of 'this'
+
+        var openInvokeMethod = typeof(MoveNextDelegate<>).GetMethod( "Invoke" )!;
+        var invokeMethod = TypeBuilder.GetMethod( moveNextDelegateType, openInvokeMethod );
+
+        ilGenerator.Emit( OpCodes.Callvirt, invokeMethod ); // Call the delegate
         ilGenerator.Emit( OpCodes.Ret );
 
-        typeBuilder.DefineMethodOverride( moveNextMethod,
-            typeof( IAsyncStateMachine ).GetMethod( "MoveNext" )! );
+        typeBuilder.DefineMethodOverride( moveNextMethod, typeof( IAsyncStateMachine ).GetMethod( "MoveNext" )! );
     }
 
     private static LambdaExpression CreateMoveNextBody(
@@ -401,7 +383,9 @@ public class StateMachineBuilder<TResult>
             Expression.Label( exitLabel )
         );
 
-        return Expression.Lambda( moveNextBody, stateMachine );
+        var moveNextDelegateType = typeof(MoveNextDelegate<>).MakeGenericType( stateMachineType );
+
+        return Expression.Lambda( moveNextDelegateType, moveNextBody, stateMachine ); // takes a ref to the state machine
     }
 
     private static List<NodeExpression> OptimizeNodeOrder( List<StateScope> scopes )

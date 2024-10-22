@@ -77,7 +77,7 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceFinalBlock()
     {
-        var (stateMachine, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
+        var (_, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
 
         Expression blockBody;
 
@@ -95,8 +95,6 @@ public class NodeExpression : Expression
                 ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
                 : Assign( resultField, blockBody );
 
-        var resultType = ResultValue?.Type ?? typeof( IVoidResult );
-
         return Block(
             Label( NodeLabel ),
             finalResult,
@@ -105,9 +103,9 @@ public class NodeExpression : Expression
                 builderField,
                 "SetResult",
                 null,
-                resultType != typeof( IVoidResult )
+                resultField.Type != typeof( IVoidResult )
                     ? resultField
-                    : Constant( null, resultType ) // No result for IVoidResult
+                    : Constant( null, resultField.Type ) // No result for IVoidResult
             )
         );
     }
