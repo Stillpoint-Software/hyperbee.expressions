@@ -45,8 +45,6 @@ public class AwaitTransition : Transition
                     Call(
                         resolverSource.BuilderField,
                         awaitUnsafeOnCompleted,
-                        //"AwaitUnsafeOnCompleted",
-                        //[AwaiterVariable.Type, typeof( IAsyncStateMachine )],
                         AwaiterVariable,
                         resolverSource.StateMachine
                     ),

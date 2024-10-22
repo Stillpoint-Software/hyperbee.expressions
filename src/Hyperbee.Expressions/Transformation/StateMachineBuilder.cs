@@ -263,10 +263,8 @@ public class StateMachineBuilder<TResult>
         IEnumerable<FieldInfo> fields
     )
     {
-        // Example state-machine:
-        //
+        /* Example state-machine:
 
-        /*
             (ref StateMachine1 sm<1>) =>
             {
                 var var<1> = sm<1>.__stateMachineData<>;
@@ -328,7 +326,7 @@ public class StateMachineBuilder<TResult>
         var builderFieldExpression = Expression.Field( stateMachine, FieldName.Builder );
         var finalResultFieldExpression = Expression.Field( stateMachine, FieldName.FinalResult );
 
-        var fieldMembers = fields.Select( x => Expression.Field( stateMachine, x ) ).ToArray();
+        var fieldMembers = fields.Select( field => Expression.Field( stateMachine, field ) ).ToArray();
         var exitLabel = Expression.Label( "ST_EXIT" );
 
         // Create the jump table
