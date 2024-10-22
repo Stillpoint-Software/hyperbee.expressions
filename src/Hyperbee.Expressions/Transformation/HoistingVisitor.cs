@@ -6,7 +6,8 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 {
     private readonly Dictionary<string, MemberExpression> _mappingCache;
 
-    public Expression StateMachine { get; init; }
+    public ParameterExpression StateMachine { get; init; }
+
     public LabelTarget ExitLabel { get; init; }
     public MemberExpression StateIdField { get; init; }
     public MemberExpression BuilderField { get; init; }
@@ -14,7 +15,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     public ParameterExpression ReturnValue { get; init; }
 
     public HoistingVisitor(
-        Expression stateMachine,
+        ParameterExpression stateMachine,
         MemberExpression[] fields,
         MemberExpression stateIdField,
         MemberExpression builderField,

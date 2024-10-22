@@ -77,7 +77,7 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceFinalBlock()
     {
-        var (stateMachine, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
+        var (_, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
 
         Expression blockBody;
 
