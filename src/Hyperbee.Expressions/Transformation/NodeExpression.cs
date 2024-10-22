@@ -103,9 +103,9 @@ public class NodeExpression : Expression
                 builderField,
                 "SetResult",
                 null,
-                stateMachine.Type != typeof( IVoidResult )
+                resultField.Type != typeof( IVoidResult )
                     ? resultField
-                    : Constant( null, stateMachine.Type ) // No result for IVoidResult
+                    : Constant( null, resultField.Type ) // No result for IVoidResult
             )
         );
     }
