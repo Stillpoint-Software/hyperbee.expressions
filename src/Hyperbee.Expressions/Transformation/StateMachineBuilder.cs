@@ -241,7 +241,7 @@ public class StateMachineBuilder<TResult>
         ilGenerator.Emit( OpCodes.Ldarg_0 ); // Load 'this'
         ilGenerator.Emit( OpCodes.Ldfld, moveNextDelegateField ); // Load '__moveNextDelegate'
 
-        ilGenerator.Emit( OpCodes.Ldarga_S, 0 ); // Load the address of 'this'
+        ilGenerator.Emit( OpCodes.Ldarg_0 ); // Load 'this'
 
         var openInvokeMethod = typeof( MoveNextDelegate<> ).GetMethod( "Invoke" )!;
         var invokeMethod = TypeBuilder.GetMethod( moveNextDelegateType, openInvokeMethod );
