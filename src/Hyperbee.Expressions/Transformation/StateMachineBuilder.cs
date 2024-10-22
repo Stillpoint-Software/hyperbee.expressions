@@ -41,8 +41,9 @@ public class StateMachineBuilder<TResult>
         //
         // Conceptually:
         //
-        // var moveNextLambda = (StateMachine stateMachine) => { ... };
-        // var stateMachine = new StateMachine( moveNextLambda );
+        // var stateMachine = new StateMachine();
+        // stateMachine.__state<> = -1;
+        // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
 
         var stateMachineType = CreateStateMachineType( source, out var fields );
         var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, fields );
@@ -165,6 +166,7 @@ public class StateMachineBuilder<TResult>
         ImplementMoveNext( typeBuilder, moveNextDelegateField, moveNextDelegateType );
         ImplementSetStateMachine( typeBuilder, builderField );
 
+        // Close the type builder
         var stateMachineType = typeBuilder.CreateType();
 
         fields = stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public )
