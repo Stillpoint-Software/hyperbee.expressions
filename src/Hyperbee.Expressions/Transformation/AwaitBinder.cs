@@ -62,7 +62,7 @@ public class AwaitBinder
 
             default:
                 var awaiter = GetAwaiter<TAwaitable, TAwaiter>( ref awaitable, configureAwait );
-                return GetResultValue<TAwaiter, TResult>( ref awaiter );
+                return GetResult<TAwaiter, TResult>( ref awaiter );
         }
     }
 
@@ -127,7 +127,7 @@ public class AwaitBinder
     internal static TResult GetResult<TResult>( ref ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter awaiter ) => awaiter.GetResult();
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal TResult GetResultValue<TAwaiter, TResult>( ref TAwaiter awaiter )
+    internal TResult GetResult<TAwaiter, TResult>( ref TAwaiter awaiter )
     {
         if ( GetResultImplDelegate == null )
             throw new InvalidOperationException( $"The {nameof( GetResultImplDelegate )} is not set for {awaiter.GetType()}." );

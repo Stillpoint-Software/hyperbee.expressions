@@ -9,13 +9,15 @@ public class AwaitResultTransition : Transition
     public ParameterExpression AwaiterVariable { get; set; }
     public ParameterExpression ResultVariable { get; set; }
     public NodeExpression TargetNode { get; set; }
-    public MethodInfo GetResultMethod { get; set; }
+    public AwaitBinder AwaitBinder { get; set; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
-        var getResultCall = GetResultMethod.IsStatic
-            ? Call( GetResultMethod, AwaiterVariable )
-            : Call( AwaiterVariable, GetResultMethod );
+        var getResultMethod = AwaitBinder.GetResultMethod;
+
+        var getResultCall = getResultMethod.IsStatic 
+            ? Call( getResultMethod, AwaiterVariable ) 
+            : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
 
         if ( ResultVariable == null )
         {
