@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Reflection;
 using static System.Linq.Expressions.Expression;
 
@@ -11,16 +12,18 @@ public class AwaitTransition : Transition
     public Expression Target { get; set; }
     public ParameterExpression AwaiterVariable { get; set; }
     public NodeExpression CompletionNode { get; set; }
-    public MethodInfo GetAwaiterMethod { get; set; }
+    public AwaitBinder AwaitBinder { get; set; }
     public bool ConfigureAwait { get; set; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
         var awaitable = Variable( Target.Type, "awaitable" );
 
-        var getAwaiterCall = GetAwaiterMethod.IsStatic
-            ? Call( GetAwaiterMethod, awaitable, Constant( ConfigureAwait ) )
-            : Call( awaitable, GetAwaiterMethod, Constant( ConfigureAwait ) );
+        var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
+
+        var getAwaiterCall = getAwaiterMethod.IsStatic
+            ? Call( getAwaiterMethod, awaitable, Constant( ConfigureAwait ) )
+            : Call( Constant( AwaitBinder ), getAwaiterMethod, awaitable, Constant( ConfigureAwait ) );
 
         // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
         var awaitUnsafeOnCompleted = resolverSource.BuilderField.Type

@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.Expressions.Tests;
 
-internal readonly struct LazyAwaiter<T> : INotifyCompletion
+public readonly struct LazyAwaiter<T> : ICriticalNotifyCompletion //INotifyCompletion
 {
     private readonly Lazy<T> _lazy;
 
@@ -12,9 +12,10 @@ internal readonly struct LazyAwaiter<T> : INotifyCompletion
     public T GetResult() => _lazy.Value;
     public bool IsCompleted => true;
     public void OnCompleted( Action continuation ) { }
+    public void UnsafeOnCompleted( Action continuation ) { }
 }
 
-internal static class LazyAwaiterExtensions
+public static class LazyAwaiterExtensions
 {
     public static LazyAwaiter<T> GetAwaiter<T>( this Lazy<T> lazy )
     {
@@ -41,6 +42,28 @@ public class CustomAwaiterTests
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda();
+
+        Assert.AreEqual( 42, result, "The result should be 42." );
+    }
+
+    [TestMethod]
+    public async Task TestCustomAwaiter_AsyncBlock()
+    {
+        // var lazy = new Lazy<int>( () => 42 );
+        // var result = await lazy;
+
+        Expression<Func<int>> valueExpression = () => 42;
+        var lazyConstructor = typeof( Lazy<int> ).GetConstructor( [typeof( Func<int> )] );
+        var lazyExpression = Expression.New( lazyConstructor!, valueExpression );
+
+        var block = ExpressionExtensions.BlockAsync(
+            ExpressionExtensions.Await( lazyExpression, configureAwait: false )
+        );
+
+        var lambda = Expression.Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        var result = await compiledLambda();
 
         Assert.AreEqual( 42, result, "The result should be 42." );
     }

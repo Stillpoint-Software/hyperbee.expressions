@@ -40,11 +40,11 @@ public class UsingExpressionTests
 
         // Act
         var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
-        var reducedExpression = usingExpression.Reduce();
-        var action = Expression.Lambda<Action>( reducedExpression ).Compile();
 
-        // Execute the expression (which should dispose the resource)
-        action();
+        var lambda = Expression.Lambda<Action>( usingExpression );
+        var compiledLambda = lambda.Compile();
+
+        compiledLambda();
 
         // Assert
         Assert.IsTrue( resource.IsDisposed, "Resource should be disposed after using the expression." );
@@ -65,10 +65,11 @@ public class UsingExpressionTests
 
         // Act
         var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
-        var reducedExpression = usingExpression.Reduce();
-        var action = Expression.Lambda<Action>( reducedExpression ).Compile();
 
-        action();
+        var lambda = Expression.Lambda<Action>( usingExpression );
+        var compiledLambda = lambda.Compile();
+
+        compiledLambda();
 
         // Assert
         Assert.IsTrue( _wasBodyExecuted, "The body expression should be executed." );
@@ -100,20 +101,20 @@ public class UsingExpressionTests
 
         // Act
         var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
-        var reducedExpression = usingExpression.Reduce();
-        var action = Expression.Lambda<Action>( reducedExpression ).Compile();
+
+        var lambda = Expression.Lambda<Action>( usingExpression );
+        var compiledLambda = lambda.Compile();
 
         // Assert: Execute the expression and catch the exception, check if the resource was disposed
         try
         {
-            action();
+            compiledLambda();
         }
         catch ( Exception )
         {
             // Expected exception
         }
 
-        // Assert that the resource was still disposed even though an exception was thrown
         Assert.IsTrue( resource.IsDisposed, "Resource should be disposed even if an exception is thrown." );
     }
 }

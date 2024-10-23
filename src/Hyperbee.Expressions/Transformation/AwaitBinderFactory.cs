@@ -22,11 +22,14 @@ internal static class AwaitBinderFactory
     private static MethodInfo GetAwaiterTaskResultMethod;
     private static MethodInfo GetAwaiterValueTaskMethod;
     private static MethodInfo GetAwaiterValueTaskResultMethod;
+    private static MethodInfo GetAwaiterCustomMethod;
 
     private static MethodInfo GetResultTaskMethod;
     private static MethodInfo GetResultTaskResultMethod;
     private static MethodInfo GetResultValueTaskMethod;
     private static MethodInfo GetResultValueTaskResultMethod;
+    private static MethodInfo GetResultCustomMethod;
+    private static MethodInfo GetResultCustomResultMethod;
 
     private static MethodInfo CreateGetAwaiterImplDelegateMethod;
     private static MethodInfo CreateGetResultImplDelegateMethod;
@@ -157,14 +160,14 @@ internal static class AwaitBinderFactory
             var awaiterResultType = awaiterType.GetGenericArguments()[0];
 
             awaitMethod = AwaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType );
-            getAwaiterMethod = GetAwaiterTaskResultMethod.MakeGenericMethod( awaiterResultType );
-            getResultMethod = GetResultTaskResultMethod.MakeGenericMethod( awaiterResultType );
+            getAwaiterMethod = GetAwaiterCustomMethod.MakeGenericMethod( awaitableType, awaiterType );
+            getResultMethod = GetResultCustomResultMethod.MakeGenericMethod( awaiterType, awaiterResultType );
         }
         else
         {
             awaitMethod = AwaitMethod.MakeGenericMethod( awaitableType, awaiterType );
-            getAwaiterMethod = GetAwaiterTaskMethod.MakeGenericMethod();
-            getResultMethod = GetResultTaskMethod.MakeGenericMethod();
+            getAwaiterMethod = GetAwaiterCustomMethod.MakeGenericMethod( awaitableType, awaiterType );
+            getResultMethod = GetResultCustomMethod.MakeGenericMethod( awaiterType );
         }
 
         // Return the AwaitBinder
@@ -326,6 +329,11 @@ internal static class AwaitBinderFactory
                         GetAwaiterValueTaskMethod = method;
                         break;
 
+                    case nameof( AwaitBinder.GetAwaiter ) // custom awaitable
+                        when matches( [null, typeof( bool )], argCount: 2 ):
+                        GetAwaiterCustomMethod = method;
+                        break;
+
                     case nameof( AwaitBinder.GetResult )
                         when matches( [typeof( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter ).MakeByRefType()] ):
                         GetResultTaskMethod = method;
@@ -344,6 +352,16 @@ internal static class AwaitBinderFactory
                     case nameof( AwaitBinder.GetResult )
                         when matches( [typeof( ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter ).MakeByRefType()], argCount: 1 ):
                         GetResultValueTaskResultMethod = method;
+                        break;
+
+                    case nameof( AwaitBinder.GetResult ) // custom awaitable
+                        when matches( [null], argCount: 1 ):
+                        GetResultCustomMethod = method;
+                        break;
+
+                    case nameof( AwaitBinder.GetResult ) // custom awaitable
+                        when matches( [null], argCount: 2 ):
+                        GetResultCustomResultMethod = method;
                         break;
                 }
             }
