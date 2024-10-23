@@ -15,8 +15,8 @@ public class AwaitResultTransition : Transition
     {
         var getResultMethod = AwaitBinder.GetResultMethod;
 
-        var getResultCall = getResultMethod.IsStatic 
-            ? Call( getResultMethod, AwaiterVariable ) 
+        var getResultCall = getResultMethod.IsStatic
+            ? Call( getResultMethod, AwaiterVariable )
             : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
 
         if ( ResultVariable == null )
