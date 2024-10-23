@@ -1,9 +1,4 @@
----
-layout: default
-title: Hyperbee Expressions
-nav_order: 1
----
-# Welcome to Hyperbee Expressions
+﻿# Welcome to Hyperbee Expressions
 
 `Hyperbee.Expressions` is a library for creating c# expression trees that extend the capabilities of standard expression 
 trees to handle asynchronous workflows and other constructs.
@@ -134,3 +129,4 @@ Special thanks to:
 
 We welcome contributions! Please see our [Contributing Guide](https://github.com/Stillpoint-Software/.github/blob/main/.github/CONTRIBUTING.md) 
 for more details.
+
