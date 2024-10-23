@@ -173,7 +173,7 @@ internal class LoweringVisitor : ExpressionVisitor
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
 
-        // TODO: This seems wrong, I shouldn't have to cast to GotoTransition (maybe all types of a TargetNode?)
+        // TODO: This seems wrong, I shouldn't have to cast to GotoTransition (maybe all types have a TargetNode?)
 
         if ( _states.TailState.Transition is GotoTransition gotoTransition )
             gotoTransition.TargetNode = loopTransition.BodyNode;
@@ -239,7 +239,7 @@ internal class LoweringVisitor : ExpressionVisitor
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
         var tryStateVariable = CreateVariable( typeof( int ), VariableName.Try( sourceState.StateId ) );
-        var exceptionVariable = CreateVariable( typeof( object ), VariableName.Exception( sourceState.StateId ) ); //BF: Should be typeof(Exception)?
+        var exceptionVariable = CreateVariable( typeof( object ), VariableName.Exception( sourceState.StateId ) ); 
 
         // If there is a finally block then that is the join for a try/catch.
         NodeExpression finalExpression = null;

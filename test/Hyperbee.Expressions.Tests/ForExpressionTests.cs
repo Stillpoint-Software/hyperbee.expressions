@@ -28,8 +28,10 @@ public class ForExpressionTests
         );
 
         // Act
-        var lambda = Expression.Lambda<Func<int>>( block ).Compile();
-        var result = lambda();
+        var lambda = Expression.Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile();
+
+        var result = compiledLambda();
 
         // Assert
         Assert.AreEqual( 5, result, "Counter should be 5 after the loop finishes." );
@@ -62,8 +64,10 @@ public class ForExpressionTests
         );
 
         // Act
-        var lambda = Expression.Lambda<Func<int>>( block ).Compile();
-        var result = lambda();
+        var lambda = Expression.Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile();
+
+        var result = compiledLambda();
 
         // Assert
         Assert.AreEqual( 5, result, "Loop should break when counter reaches 5." );

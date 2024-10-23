@@ -1,9 +1,7 @@
-﻿using System.Diagnostics;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -195,10 +193,11 @@ public class StateMachineBuilder<TResult>
     {
         // Define the IAsyncStateMachine.SetStateMachine method
         //
-        // public void SetStateMachine( IAsyncStateMachine stateMachine )
+        // private void IAsyncStateMachine.SetStateMachine( IAsyncStateMachine stateMachine )
         // {
         //    __builder<>.SetStateMachine( stateMachine );
         // }
+
         var setStateMachineMethod = typeBuilder.DefineMethod(
             "IAsyncStateMachine.SetStateMachine",
             MethodAttributes.Private | MethodAttributes.Final | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.HideBySig,
@@ -226,9 +225,9 @@ public class StateMachineBuilder<TResult>
 
     private static void ImplementMoveNext( TypeBuilder typeBuilder, FieldBuilder moveNextDelegateField, Type moveNextDelegateType )
     {
-        // Define the MoveNext method
+        // Define the IAsyncStateMachine.MoveNext method
         //
-        // public void MoveNext()
+        // private void IAsyncStateMachine.MoveNext()
         // {
         //    __moveNextDelegate<>( ref this );
         // }
@@ -356,7 +355,7 @@ public class StateMachineBuilder<TResult>
 
         bodyExpressions.AddRange( nodes.Select( hoistingVisitor.Visit ) );
 
-        ParameterExpression[] variables = (source.ReturnValue != null)
+        ParameterExpression[] variables = source.ReturnValue != null
             ? [source.ReturnValue]
             : [];
 

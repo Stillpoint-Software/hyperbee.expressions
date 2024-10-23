@@ -18,8 +18,10 @@ public class ForEachExpressionTests
         var forEachExpr = ExpressionExtensions.ForEach( list, element, body );
 
         // Act
-        var lambda = Expression.Lambda<Action>( forEachExpr ).Compile();
-        lambda();
+        var lambda = Expression.Lambda<Action>( forEachExpr );
+        var compiledLambda = lambda.Compile();
+
+        compiledLambda();
 
         // Assert: No assertion needed
     }
@@ -41,8 +43,10 @@ public class ForEachExpressionTests
         ) );
 
         // Act
-        var lambda = Expression.Lambda<Action>( forEachExpr ).Compile();
-        lambda();
+        var lambda = Expression.Lambda<Action>( forEachExpr );
+        var compiledLambda = lambda.Compile();
+
+        compiledLambda();
 
         // Assert: No assertion needed
     }
@@ -75,8 +79,10 @@ public class ForEachExpressionTests
         var forEachExpr = ExpressionExtensions.ForEach( list, element, body, customBreakLabel, customContinueLabel );
 
         // Act
-        var lambda = Expression.Lambda<Action>( forEachExpr ).Compile();
-        lambda();
+        var lambda = Expression.Lambda<Action>( forEachExpr );
+        var compiledLambda = lambda.Compile();
+
+        compiledLambda();
 
         // Assert: No assertion needed
     }

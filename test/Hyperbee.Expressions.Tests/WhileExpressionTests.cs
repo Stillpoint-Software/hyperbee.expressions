@@ -30,8 +30,10 @@ public class WhileExpressionTests
         );
 
         // Act
-        var lambda = Expression.Lambda<Func<int>>( block ).Compile();
-        var result = lambda();
+        var lambda = Expression.Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile();
+
+        var result = compiledLambda();
 
         // Assert
         Assert.AreEqual( 10, result, "Loop should break when counter == 10." );
@@ -66,8 +68,10 @@ public class WhileExpressionTests
         );
 
         // Act
-        var lambda = Expression.Lambda<Func<int>>( block ).Compile();
-        var result = lambda();
+        var lambda = Expression.Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile();
+
+        var result = compiledLambda();
 
         // Assert
         Assert.AreEqual( 5, result, "Loop should break when counter == 5." );

@@ -10,8 +10,10 @@ public class GotoTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
-        return Goto( TargetNode.NodeLabel ); //TODO: causes infinite loop with nested try/catch
-                                             //GotoOrFallThrough( order, TargetNode );
+        return Goto( TargetNode.NodeLabel ); 
+        
+        // TODO: causes infinite loop with nested try/catch
+        // return GotoOrFallThrough( order, TargetNode );
     }
 
     internal override NodeExpression FallThroughNode => TargetNode;
