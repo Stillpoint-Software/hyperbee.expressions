@@ -455,7 +455,7 @@ public static class StateMachineBuilder
     {
         BuildStateMachineMethod = typeof( StateMachineBuilder )
             .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
-            .First( x => x.Name == nameof( Create ) && x.IsGenericMethod );
+            .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
 
         // Create the state machine module
         var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
@@ -465,7 +465,7 @@ public static class StateMachineBuilder
 
     public static Expression Create( Type resultType, LoweringResult source, bool createRunner = true )
     {
-        // If the result type is void, use the internal VoidTaskResult type
+        // If the result type is void, use the internal IVoidResult type
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
 
