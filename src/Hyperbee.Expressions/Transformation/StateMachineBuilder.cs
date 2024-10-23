@@ -240,7 +240,7 @@ public class StateMachineBuilder<TResult>
         var openInvokeMethod = typeof( MoveNextDelegate<> ).GetMethod( "Invoke" )!;
         var invokeMethod = TypeBuilder.GetMethod( moveNextDelegateType, openInvokeMethod );
 
-        ilGenerator.Emit( OpCodes.Callvirt, invokeMethod ); 
+        ilGenerator.Emit( OpCodes.Callvirt, invokeMethod );
         ilGenerator.Emit( OpCodes.Ret );
 
         typeBuilder.DefineMethodOverride( moveNextMethod, typeof( IAsyncStateMachine ).GetMethod( "MoveNext" )! );
@@ -377,7 +377,7 @@ public class StateMachineBuilder<TResult>
 
         var moveNextDelegateType = typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType );
 
-        return Expression.Lambda( moveNextDelegateType, moveNextBody, stateMachine ); 
+        return Expression.Lambda( moveNextDelegateType, moveNextBody, stateMachine );
     }
 
     private static List<NodeExpression> OptimizeNodeOrder( List<StateScope> scopes )
