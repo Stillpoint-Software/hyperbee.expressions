@@ -53,7 +53,7 @@ public class CustomAwaiterTests
         // var result = await lazy;
 
         Expression<Func<int>> valueExpression = () => 42;
-        var lazyConstructor = typeof(Lazy<int>).GetConstructor( [typeof(Func<int>)] );
+        var lazyConstructor = typeof( Lazy<int> ).GetConstructor( [typeof( Func<int> )] );
         var lazyExpression = Expression.New( lazyConstructor!, valueExpression );
 
         var block = ExpressionExtensions.BlockAsync(

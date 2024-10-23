@@ -21,8 +21,8 @@ public class AwaitTransition : Transition
 
         var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
 
-        var getAwaiterCall = getAwaiterMethod.IsStatic 
-            ? Call( getAwaiterMethod, awaitable, Constant( ConfigureAwait ) ) 
+        var getAwaiterCall = getAwaiterMethod.IsStatic
+            ? Call( getAwaiterMethod, awaitable, Constant( ConfigureAwait ) )
             : Call( Constant( AwaitBinder ), getAwaiterMethod, awaitable, Constant( ConfigureAwait ) );
 
         // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )

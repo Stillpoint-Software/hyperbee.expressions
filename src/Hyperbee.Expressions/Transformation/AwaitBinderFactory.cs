@@ -329,8 +329,8 @@ internal static class AwaitBinderFactory
                         GetAwaiterValueTaskMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetAwaiter) // custom awaitable
-                        when matches( [null, typeof(bool)], argCount: 2 ):
+                    case nameof( AwaitBinder.GetAwaiter ) // custom awaitable
+                        when matches( [null, typeof( bool )], argCount: 2 ):
                         GetAwaiterCustomMethod = method;
                         break;
 
@@ -354,12 +354,12 @@ internal static class AwaitBinderFactory
                         GetResultValueTaskResultMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetResult) // custom awaitable
+                    case nameof( AwaitBinder.GetResult ) // custom awaitable
                         when matches( [null], argCount: 1 ):
                         GetResultCustomMethod = method;
                         break;
 
-                    case nameof(AwaitBinder.GetResult) // custom awaitable
+                    case nameof( AwaitBinder.GetResult ) // custom awaitable
                         when matches( [null], argCount: 2 ):
                         GetResultCustomResultMethod = method;
                         break;
