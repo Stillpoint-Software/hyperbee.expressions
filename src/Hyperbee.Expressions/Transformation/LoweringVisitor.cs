@@ -239,7 +239,7 @@ internal class LoweringVisitor : ExpressionVisitor
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
         var tryStateVariable = CreateVariable( typeof( int ), VariableName.Try( sourceState.StateId ) );
-        var exceptionVariable = CreateVariable( typeof( object ), VariableName.Exception( sourceState.StateId ) ); 
+        var exceptionVariable = CreateVariable( typeof( object ), VariableName.Exception( sourceState.StateId ) );
 
         // If there is a finally block then that is the join for a try/catch.
         NodeExpression finalExpression = null;

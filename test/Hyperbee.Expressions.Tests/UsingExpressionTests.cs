@@ -40,11 +40,11 @@ public class UsingExpressionTests
 
         // Act
         var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
-        
+
         var lambda = Expression.Lambda<Action>( usingExpression );
         var compiledLambda = lambda.Compile();
 
-        compiledLambda(); 
+        compiledLambda();
 
         // Assert
         Assert.IsTrue( resource.IsDisposed, "Resource should be disposed after using the expression." );
@@ -65,11 +65,11 @@ public class UsingExpressionTests
 
         // Act
         var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
-        
+
         var lambda = Expression.Lambda<Action>( usingExpression );
         var compiledLambda = lambda.Compile();
 
-        compiledLambda(); 
+        compiledLambda();
 
         // Assert
         Assert.IsTrue( _wasBodyExecuted, "The body expression should be executed." );
@@ -101,14 +101,14 @@ public class UsingExpressionTests
 
         // Act
         var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
- 
+
         var lambda = Expression.Lambda<Action>( usingExpression );
         var compiledLambda = lambda.Compile();
 
         // Assert: Execute the expression and catch the exception, check if the resource was disposed
         try
         {
-            compiledLambda(); 
+            compiledLambda();
         }
         catch ( Exception )
         {
