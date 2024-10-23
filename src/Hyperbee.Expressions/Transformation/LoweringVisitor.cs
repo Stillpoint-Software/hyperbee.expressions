@@ -173,10 +173,10 @@ internal class LoweringVisitor : ExpressionVisitor
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
 
-        // TODO: This seems wrong, I shouldn't have to cast to GotoTransition (maybe all types have a TargetNode?)
+        if ( _states.TailState.Transition is not GotoTransition gotoTransition )
+            throw new InvalidOperationException( "Loop must have a goto transition." );
 
-        if ( _states.TailState.Transition is GotoTransition gotoTransition )
-            gotoTransition.TargetNode = loopTransition.BodyNode;
+        gotoTransition.TargetNode = loopTransition.BodyNode;
 
         _states.ExitGroup( sourceState, loopTransition );
 
@@ -320,7 +320,7 @@ internal class LoweringVisitor : ExpressionVisitor
             TargetNode = joinState,
             AwaiterVariable = awaiterVariable,
             ResultVariable = resultVariable,
-            GetResultMethod = awaitBinder.GetResultMethod
+            AwaitBinder = awaitBinder
         };
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
@@ -331,7 +331,7 @@ internal class LoweringVisitor : ExpressionVisitor
             StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
             CompletionNode = completionState,
-            GetAwaiterMethod = awaitBinder.GetAwaiterMethod,
+            AwaitBinder = awaitBinder,
             ConfigureAwait = node.ConfigureAwait
         };
 
