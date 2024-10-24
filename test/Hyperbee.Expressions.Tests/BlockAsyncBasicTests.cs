@@ -171,11 +171,11 @@ public class BlockAsyncBasicTests
     {
         // Arrange
         // NOTE: this test is also verifying the hoisting visitor and reuse of names
-        var outerValue = Parameter( typeof(int), "value" );
-        var innerValue = Parameter( typeof(string), "value" );
-        var otherValue1 = Variable( typeof(int), "value" );
-        var otherValue2 = Variable( typeof(string), "value" );
-        var otherValue3 = Variable( typeof(string), "value" );
+        var outerValue = Parameter( typeof( int ), "value" );
+        var innerValue = Parameter( typeof( string ), "value" );
+        var otherValue1 = Variable( typeof( int ), "value" );
+        var otherValue2 = Variable( typeof( string ), "value" );
+        var otherValue3 = Variable( typeof( string ), "value" );
 
         Expression<Func<string, int>> test = s => int.Parse( s );
 
@@ -228,7 +228,7 @@ public class BlockAsyncBasicTests
                         Await( Invoke( addAsync, variable, variable ) ) ) ),
                 variable );
 
-        var lambda = (Lambda<Func<Task<int>>>(asyncBlock ).Reduce() as Expression<Func<Task<int>>>)!;
+        var lambda = (Lambda<Func<Task<int>>>( asyncBlock ).Reduce() as Expression<Func<Task<int>>>)!;
         var compiledLambda = lambda.Compile();
 
         // Act
