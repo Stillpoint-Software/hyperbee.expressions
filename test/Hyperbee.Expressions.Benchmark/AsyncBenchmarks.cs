@@ -31,7 +31,7 @@ public class AsyncBenchmarks
                         Await( Call( asyncAddMethodInfo, variable, variable ) ) ) ),
                 variable );
 
-        _lambda = Lambda<Func<Task<int>>>( asyncBlock );
+        _lambda = (Lambda<Func<Task<int>>>( asyncBlock ).Reduce() as Expression<Func<Task<int>>>)!;
 
         _compileLambda = _lambda.Compile();
 
@@ -50,6 +50,18 @@ public class AsyncBenchmarks
     {
         var compiled = _lambda.CompileFast();
         await compiled();
+    }
+
+    [Benchmark]
+    public void Hyperbee_AsyncBlock_Compile()
+    {
+        _lambda.Compile();
+    }
+
+    [Benchmark]
+    public void Hyperbee_AsyncBlock_FastCompile()
+    {
+        _lambda.CompileFast();
     }
 
     [Benchmark]

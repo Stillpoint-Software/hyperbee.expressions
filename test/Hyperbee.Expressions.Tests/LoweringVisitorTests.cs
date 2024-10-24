@@ -599,7 +599,7 @@ public class LoweringVisitorTests
         public static void AssertResult( LoweringResult result, int nodes = 0, int variables = 0, int jumps = 0 )
         {
             Assert.AreEqual( nodes, result.Scopes[0].Nodes.Count );
-            Assert.AreEqual( variables, result.Variables.Count );
+            Assert.AreEqual( variables, result.Variables.Length );
             Assert.AreEqual( jumps, result.Scopes[0].JumpCases.Count );
         }
 

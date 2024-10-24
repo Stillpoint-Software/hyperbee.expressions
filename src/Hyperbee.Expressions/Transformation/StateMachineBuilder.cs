@@ -316,7 +316,8 @@ public class StateMachineBuilder<TResult>
         var builderFieldExpression = Expression.Field( stateMachine, FieldName.Builder );
         var finalResultFieldExpression = Expression.Field( stateMachine, FieldName.FinalResult );
 
-        var fieldMembers = fields.Select( field => Expression.Field( stateMachine, field ) ).ToArray();
+        var fieldMembers = fields.Select( field => Expression.Field( stateMachine, field ) )
+            .ToDictionary( x => x.Member.Name );
         var exitLabel = Expression.Label( "ST_EXIT" );
 
         // Create the jump table

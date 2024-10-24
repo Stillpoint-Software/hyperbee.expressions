@@ -8,7 +8,7 @@ public record LoweringResult
     public List<StateScope> Scopes { get; init; }
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
-    public HashSet<ParameterExpression> Variables { get; init; }
+    public ParameterExpression[] Variables { get; init; }
 
     internal string DebugView
     {

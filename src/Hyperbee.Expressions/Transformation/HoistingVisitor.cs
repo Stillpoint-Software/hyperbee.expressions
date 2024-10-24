@@ -16,7 +16,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 
     public HoistingVisitor(
         ParameterExpression stateMachine,
-        MemberExpression[] fields,
+        Dictionary<string, MemberExpression> fields,
         MemberExpression stateIdField,
         MemberExpression builderField,
         MemberExpression resultField,
@@ -30,7 +30,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
         ResultField = resultField;
         ReturnValue = returnValue;
 
-        _mappingCache = fields.ToDictionary( x => x.Member.Name );
+        _mappingCache = fields;
     }
 
     protected override Expression VisitParameter( ParameterExpression node )

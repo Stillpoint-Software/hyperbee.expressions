@@ -9,7 +9,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private ParameterExpression _returnValue;
     private ParameterExpression[] _definedVariables;
-    private readonly HashSet<ParameterExpression> _variables = new( InitialCapacity );
+    private readonly Dictionary<int, ParameterExpression> _variables = new( InitialCapacity );
     private int _awaitCount;
 
     private readonly StateContext _states = new( InitialCapacity );
@@ -37,7 +37,7 @@ internal class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes,
             ReturnValue = _returnValue,
             AwaitCount = _awaitCount,
-            Variables = _variables
+            Variables = _variables.Select( x => x.Value ).ToArray()
         };
     }
 
@@ -48,7 +48,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     // Visit methods
 
-    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState,
+    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState, out Expression updateNode,
         ParameterExpression resultVariable = null,
         Action<NodeExpression> init = null,
         bool capture = true )
@@ -61,7 +61,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         // Visit the branch expression
 
-        var visited = Visit( expression ); // Warning: visitation mutates the tail state.
+        updateNode = Visit( expression ); // Warning: visitation mutates the tail state.
 
         var tailState = _states.TailState;
 
@@ -69,7 +69,7 @@ internal class LoweringVisitor : ExpressionVisitor
         // by the visitor, add it to the tail state.
 
         if ( capture && !IsExplicitlyHandledType( expression ) )
-            tailState.Expressions.Add( visited );
+            tailState.Expressions.Add( updateNode );
 
         // Set a default Transition if the branch tail didn't join
 
@@ -130,9 +130,9 @@ internal class LoweringVisitor : ExpressionVisitor
         var conditionalTransition = new ConditionalTransition
         {
             Test = updatedTest,
-            IfTrue = VisitBranch( node.IfTrue, joinState, resultVariable ),
+            IfTrue = VisitBranch( node.IfTrue, joinState, out _, resultVariable ),
             IfFalse = node.IfFalse is not DefaultExpression
-                ? VisitBranch( node.IfFalse, joinState, resultVariable )
+                ? VisitBranch( node.IfFalse, joinState, out _, resultVariable )
                 : joinState,
         };
 
@@ -168,7 +168,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var loopTransition = new LoopTransition { BodyNode = VisitBranch( node.Body, joinState, resultVariable, InitializeLabels ) };
+        var loopTransition = new LoopTransition { BodyNode = VisitBranch( node.Body, joinState, out _, resultVariable, InitializeLabels ) };
 
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
@@ -195,10 +195,19 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( _definedVariables.Contains( node ) )
-            _variables.Add( node );
+        if ( !_definedVariables.Contains( node ) )
+            return base.VisitParameter( node );
 
-        return base.VisitParameter( node );
+        var hash = node.GetHashCode();
+
+        if ( _variables.TryGetValue( hash, out var existingNode ) )
+            return existingNode;
+
+        var updateNode = Expression.Parameter( node.Type, $"__{node.Name}<{hash}>" );
+        _variables[hash] = updateNode;
+
+        return updateNode;
+
     }
 
     protected override Expression VisitSwitch( SwitchExpression node )
@@ -213,14 +222,14 @@ internal class LoweringVisitor : ExpressionVisitor
 
         if ( node.DefaultBody != null )
         {
-            switchTransition.DefaultNode = VisitBranch( node.DefaultBody, joinState, resultVariable );
+            switchTransition.DefaultNode = VisitBranch( node.DefaultBody, joinState, out _, resultVariable );
         }
 
         foreach ( var switchCase in node.Cases )
         {
             switchTransition.AddSwitchCase(
                 [.. switchCase.TestValues], // TODO: Visit these because they could be async
-                VisitBranch( switchCase.Body, joinState, resultVariable )
+                VisitBranch( switchCase.Body, joinState, out _, resultVariable )
             );
         }
 
@@ -246,7 +255,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         if ( node.Finally != null )
         {
-            finalExpression = VisitBranch( node.Finally, joinState );
+            finalExpression = VisitBranch( node.Finally, joinState, out _ );
             joinState = finalExpression;
         }
 
@@ -256,7 +265,7 @@ internal class LoweringVisitor : ExpressionVisitor
         {
             TryStateVariable = tryStateVariable,
             ExceptionVariable = exceptionVariable,
-            TryNode = VisitBranch( node.Body, joinState, resultVariable ),
+            TryNode = VisitBranch( node.Body, joinState, out _, resultVariable ),
             FinallyNode = finalExpression,
             StateScope = nodeScope,
             Scopes = _states.Scopes
@@ -269,7 +278,7 @@ internal class LoweringVisitor : ExpressionVisitor
             var catchBlock = node.Handlers[index];
             tryCatchTransition.AddCatchBlock(
                 catchBlock,
-                VisitBranch( catchBlock.Body, joinState ),
+                VisitBranch( catchBlock.Body, joinState, out _ ),
                 index );
         }
 
@@ -304,7 +313,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var completionState = VisitBranch( node.Target, joinState, resultVariable, capture: false );
+        var completionState = VisitBranch( node.Target, joinState, out var updatedNode, resultVariable, capture: false );
 
         _awaitCount++;
 
@@ -327,7 +336,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var awaitTransition = new AwaitTransition
         {
-            Target = node.Target,
+            Target = updatedNode,
             StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
             CompletionNode = completionState,
@@ -352,7 +361,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         ParameterExpression returnVariable =
             Expression.Parameter( node.Type, VariableName.Result( stateId ) );
-        _variables.Add( returnVariable );
+        _variables[returnVariable.GetHashCode()] = returnVariable;
 
         return returnVariable;
     }
@@ -360,7 +369,7 @@ internal class LoweringVisitor : ExpressionVisitor
     private ParameterExpression CreateVariable( Type type, string name )
     {
         var variable = Expression.Variable( type, name );
-        _variables.Add( variable );
+        _variables[variable.GetHashCode()] = variable;
         return variable;
     }
 
