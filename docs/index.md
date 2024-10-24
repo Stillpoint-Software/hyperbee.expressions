@@ -95,11 +95,7 @@ public class UsingExample
     private class DisposableResource : IDisposable
     {
         public bool IsDisposed { get; private set; }
-
-        public void Dispose()
-        {
-            IsDisposed = true;
-        }
+        public void Dispose() => IsDisposed = true;
     }
 
     public void UsingExpression_ShouldDisposeResource_AfterUse()
