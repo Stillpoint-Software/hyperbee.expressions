@@ -31,6 +31,7 @@ public class AwaitBinder
 
     // Await methods
 
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal void Await<TAwaitable, TAwaiter>( ref TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )
@@ -50,6 +51,7 @@ public class AwaitBinder
         }
     }
 
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal TResult AwaitResult<TAwaitable, TAwaiter, TResult>( ref TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )

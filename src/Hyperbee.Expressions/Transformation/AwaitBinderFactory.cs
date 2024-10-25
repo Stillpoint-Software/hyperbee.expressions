@@ -240,7 +240,7 @@ internal static class AwaitBinderFactory
         }
         else
         {
-            il.Emit( OpCodes.Castclass, getAwaiterImplMethod.DeclaringType! ); //BF Test Instance Type.
+            il.Emit( OpCodes.Castclass, getAwaiterImplMethod.DeclaringType! ); 
             il.Emit( OpCodes.Callvirt, getAwaiterImplMethod );
         }
 
@@ -286,7 +286,7 @@ internal static class AwaitBinderFactory
         return dynamicMethod.CreateDelegate( typeof( AwaitBinderGetResultDelegate<TAwaiter, TResult> ) );
     }
 
-    // Pre-Cache factory MethodInfo
+    // Pre-Cache factory MethodInfos
 
     private static void PreCacheMethodInfo()
     {
