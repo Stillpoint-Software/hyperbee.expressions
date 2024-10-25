@@ -207,8 +207,8 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( _variables.TryGetValue( hash, out var existingNode ) )
             return existingNode;
 
-        var updateNode = Expression.Parameter( 
-            node.Type, 
+        var updateNode = Expression.Parameter(
+            node.Type,
             VariableName.Variable( node.Name, _states.TailState.StateId ) );
 
         _variables[hash] = updateNode;
@@ -358,8 +358,8 @@ internal class LoweringVisitor : ExpressionVisitor
 
         // If we already visited a branching node we only want to use the result variable
         // else it is most likely direct awaitable (e.g. Task)
-        var targetNode = updatedNode is NodeExpression nodeExpression 
-            ? nodeExpression.ResultVariable 
+        var targetNode = updatedNode is NodeExpression nodeExpression
+            ? nodeExpression.ResultVariable
             : updatedNode;
 
         var awaitTransition = new AwaitTransition

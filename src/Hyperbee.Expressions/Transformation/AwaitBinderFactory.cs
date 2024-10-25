@@ -240,7 +240,7 @@ internal static class AwaitBinderFactory
         }
         else
         {
-            il.Emit( OpCodes.Castclass, getAwaiterImplMethod.DeclaringType! ); 
+            il.Emit( OpCodes.Castclass, getAwaiterImplMethod.DeclaringType! );
             il.Emit( OpCodes.Callvirt, getAwaiterImplMethod );
         }
 
