@@ -1,5 +1,5 @@
 ﻿using System.Linq.Expressions;
-using System.Xml.Linq;
+using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -16,16 +16,25 @@ internal class LoweringVisitor : ExpressionVisitor
     private readonly StateContext _states = new( InitialCapacity );
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
+    private int _variableId;
+
     private static class VariableName
     {
-        private static int __count;
-
         // use special names to prevent collisions
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Awaiter( int stateId ) => $"__awaiter<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Result( int stateId ) => $"__result<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Try( int stateId ) => $"__try<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Exception( int stateId ) => $"__ex<{stateId}>";
-        public static string Variable( string name, int stateId ) => $"__{name}<{stateId}_{Interlocked.Increment( ref __count )}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
 
         public const string Return = "return<>";
     }
@@ -209,7 +218,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var updateNode = Expression.Parameter(
             node.Type,
-            VariableName.Variable( node.Name, _states.TailState.StateId ) );
+            VariableName.Variable( node.Name, _states.TailState.StateId, ref _variableId ) );
 
         _variables[hash] = updateNode;
 
@@ -403,7 +412,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     // State management
 
-    private class StateContext
+    private sealed class StateContext
     {
         private int _stateId;
         private readonly Stack<int> _scopeIndexes;
