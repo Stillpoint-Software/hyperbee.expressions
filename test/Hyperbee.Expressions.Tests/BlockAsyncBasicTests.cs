@@ -1,4 +1,5 @@
-﻿using static System.Linq.Expressions.Expression;
+﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -139,5 +140,102 @@ public class BlockAsyncBasicTests
 
         // Assert
         Assert.IsTrue( true ); // If no exception, the test is successful
+    }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait()
+    {
+        // Arrange
+        var resultValue = Parameter( typeof( int ), "result" );
+
+        var block = BlockAsync(
+            [resultValue],
+            Assign( resultValue, Constant( 5 ) ),
+            Await( Constant( Task.Delay( 100 ) ) ),
+            Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
+            resultValue // Return the result
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 15, result );
+    }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldPreserveVariablesInNestedBlock_WithAwaits()
+    {
+        // Arrange
+        // NOTE: this test is also verifying the hoisting visitor and reuse of names
+        var outerValue = Parameter( typeof( int ), "value" );
+        var innerValue = Parameter( typeof( string ), "value" );
+        var otherValue1 = Variable( typeof( int ), "value" );
+        var otherValue2 = Variable( typeof( string ), "value" );
+        var otherValue3 = Variable( typeof( string ), "value" );
+
+        Expression<Func<string, int>> test = s => int.Parse( s );
+
+        var innerBlock = Lambda<Func<string, Task<string>>>(
+            BlockAsync(
+                [otherValue1, otherValue2],
+                Block(
+                    Assign( otherValue1, Condition( Constant( false ), Constant( 100 ), Block( Constant( 150 ) ) ) ),
+                    Assign( otherValue2, Constant( "200" ) ),
+                    Await( Constant( Task.Delay( 100 ) ) ),
+                    innerValue ),
+                Condition( Constant( false ), Assign( innerValue, Constant( "200" ) ), Assign( otherValue2, Constant( "250" ) ) )
+            ),
+            parameters: [innerValue]
+        );
+
+        var block = BlockAsync(
+            [otherValue3],
+            Assign( otherValue3, Constant( "300" ) ),
+            Assign( outerValue,
+                Add( outerValue,
+                    Invoke( test, Await( Invoke( innerBlock, otherValue3 ) ) ) ) ),
+            outerValue
+        );
+
+        var lambda = Lambda<Func<int, Task<int>>>( block, [outerValue] );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda( 5 );
+
+        // Assert
+        Assert.AreEqual( 255, result );
+    }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldPreserveVariables_WithNestedAwaits()
+    {
+        Expression<Func<Task<int>>> initVariableAsync = () => Task.FromResult( 5 );
+        Expression<Func<Task<bool>>> isTrueAsync = () => Task.FromResult( true );
+        Expression<Func<int, int, Task<int>>> addAsync = ( a, b ) => Task.FromResult( a + b );
+
+        var variable = Variable( typeof( int ), "variable" );
+
+        var asyncBlock =
+            BlockAsync(
+                [variable],
+                Assign( variable, Await( Invoke( initVariableAsync ) ) ),
+                IfThen( Await( Invoke( isTrueAsync ) ),
+                    Assign( variable,
+                        Await( Invoke( addAsync, variable, variable ) ) ) ),
+                variable );
+
+        var lambda = (Lambda<Func<Task<int>>>( asyncBlock ).Reduce() as Expression<Func<Task<int>>>)!;
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 10, result );
     }
 }

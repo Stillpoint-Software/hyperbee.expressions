@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -50,26 +51,26 @@ public class StateMachineBuilder<TResult>
 
         // Initialize the state machine
 
-        var stateMachineVariable = Expression.Variable(
+        var stateMachineVariable = Variable(
             stateMachineType,
             $"stateMachine<{id}>"
         );
 
-        var assignNew = Expression.Assign(
+        var assignNew = Assign(
             stateMachineVariable,
-            Expression.New( stateMachineType )
+            New( stateMachineType )
         );
 
-        var assignStateField = Expression.Assign(
-            Expression.Field(
+        var assignStateField = Assign(
+            Field(
                 stateMachineVariable,
                 stateMachineType.GetField( FieldName.State )!
             ),
-            Expression.Constant( -1 )
+            Constant( -1 )
         );
 
-        var assignMoveNextDelegate = Expression.Assign(
-            Expression.Field(
+        var assignMoveNextDelegate = Assign(
+            Field(
                 stateMachineVariable,
                 stateMachineType.GetField( FieldName.MoveNextDelegate )!
             ),
@@ -78,7 +79,7 @@ public class StateMachineBuilder<TResult>
 
         if ( !createRunner )
         {
-            return Expression.Block(
+            return Block(
                 [stateMachineVariable],
                 assignNew,
                 assignStateField,
@@ -95,22 +96,22 @@ public class StateMachineBuilder<TResult>
         // return stateMachine.__builder<>.Task;
 
         var builderFieldInfo = stateMachineType.GetField( FieldName.Builder )!;
-        var builderField = Expression.Field( stateMachineVariable, builderFieldInfo );
+        var builderField = Field( stateMachineVariable, builderFieldInfo );
 
         var startMethod = builderFieldInfo.FieldType
             .GetMethod( "Start" )!
             .MakeGenericMethod( stateMachineType );
 
-        var callBuilderStart = Expression.Call(
+        var callBuilderStart = Call(
             builderField,
             startMethod,
             stateMachineVariable // ref stateMachine
         );
 
         var taskProperty = builderFieldInfo.FieldType.GetProperty( "Task" );
-        var taskExpression = Expression.Property( builderField, taskProperty! );
+        var taskExpression = Property( builderField, taskProperty! );
 
-        return Expression.Block(
+        return Block(
             [stateMachineVariable],
             assignNew,
             assignStateField,
@@ -310,74 +311,84 @@ public class StateMachineBuilder<TResult>
            
         */
 
-        var stateMachine = Expression.Parameter( stateMachineType.MakeByRefType(), $"sm<{id}>" );
+        var stateMachine = Parameter( stateMachineType.MakeByRefType(), $"sm<{id}>" );
 
-        var stateFieldExpression = Expression.Field( stateMachine, FieldName.State );
-        var builderFieldExpression = Expression.Field( stateMachine, FieldName.Builder );
-        var finalResultFieldExpression = Expression.Field( stateMachine, FieldName.FinalResult );
+        var stateField = Field( stateMachine, FieldName.State );
+        var builderField = Field( stateMachine, FieldName.Builder );
+        var finalResultField = Field( stateMachine, FieldName.FinalResult );
 
-        var fieldMembers = fields.Select( field => Expression.Field( stateMachine, field ) ).ToArray();
-        var exitLabel = Expression.Label( "ST_EXIT" );
+        var fieldMembers = fields
+            .Select( field => Field( stateMachine, field ) )
+            .ToDictionary( x => x.Member.Name );
 
-        // Create the jump table
-
-        var jumpTableExpression = source.Scopes[0]
-            .CreateJumpTable( source.Scopes, stateFieldExpression );
+        var exitLabel = Label( "ST_EXIT" );
 
         // Optimize node ordering to reduce goto calls
 
         var nodes = OptimizeNodeOrder( source.Scopes );
 
-        // Emit the body of the MoveNext method
+        // Create the jump table
+
+        var jumpTable = JumpTableBuilder.Build(
+            source.Scopes[0],
+            source.Scopes,
+            stateField
+        );
+
+        // Create the body 
 
         var hoistingVisitor = new HoistingVisitor(
             stateMachine,
             fieldMembers,
-            stateFieldExpression,
-            builderFieldExpression,
-            finalResultFieldExpression,
+            stateField,
+            builderField,
+            finalResultField,
             exitLabel,
             source.ReturnValue );
 
-        var bodyExpressions = new List<Expression>( 16 ) // preallocate slots for expressions
+        var bodyExpressions = new List<Expression>( 8 ) // preallocate slots for expressions
         {
-            jumpTableExpression
+            jumpTable
         };
 
         bodyExpressions.AddRange( nodes.Select( hoistingVisitor.Visit ) );
 
-        ParameterExpression[] variables = source.ReturnValue != null
-            ? [source.ReturnValue]
-            : [];
-
         // Create a try-catch block to handle exceptions
 
-        var exceptionParameter = Expression.Parameter( typeof( Exception ), "ex" );
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
-        var tryCatchBlock = Expression.TryCatch(
-            Expression.Block( typeof( void ), variables, bodyExpressions ),
-            Expression.Catch(
-                exceptionParameter,
-                Expression.Block(
-                    Expression.Assign( stateFieldExpression, Expression.Constant( -2 ) ),
-                    Expression.Call(
-                        builderFieldExpression,
+        var tryCatchBlock = TryCatch(
+            Block(
+                typeof( void ),
+                source.ReturnValue != null
+                    ? [source.ReturnValue]
+                    : [],
+                bodyExpressions
+            ),
+            Catch(
+                exceptionParam,
+                Block(
+                    Assign( stateField, Constant( -2 ) ),
+                    Call(
+                        builderField,
                         nameof( AsyncTaskMethodBuilder<TResult>.SetException ),
                         null,
-                        exceptionParameter
+                        exceptionParam
                     )
                 )
             )
         );
 
-        var moveNextBody = Expression.Block(
-            tryCatchBlock,
-            Expression.Label( exitLabel )
+        // Create the final lambda expression
+
+        return Lambda(
+            typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType ),
+            Block(
+                tryCatchBlock,
+                Label( exitLabel )
+            ),
+            stateMachine
         );
-
-        var moveNextDelegateType = typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType );
-
-        return Expression.Lambda( moveNextDelegateType, moveNextBody, stateMachine );
     }
 
     private static List<NodeExpression> OptimizeNodeOrder( List<StateScope> scopes )

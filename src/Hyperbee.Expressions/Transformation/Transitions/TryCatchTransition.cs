@@ -20,7 +20,11 @@ public class TryCatchTransition : Transition
     {
         var expressions = new List<Expression>( StateScope.Nodes.Count + 1 )
         {
-            StateScope.CreateJumpTable( Scopes, resolverSource.StateIdField )
+            JumpTableBuilder.Build(
+                StateScope,
+                Scopes,
+                resolverSource.StateIdField
+            )
         };
 
         expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );

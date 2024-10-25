@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -9,19 +10,31 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private ParameterExpression _returnValue;
     private ParameterExpression[] _definedVariables;
-    private readonly HashSet<ParameterExpression> _variables = new( InitialCapacity );
+    private readonly Dictionary<int, ParameterExpression> _variables = new( InitialCapacity );
     private int _awaitCount;
 
     private readonly StateContext _states = new( InitialCapacity );
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
+    private int _variableId;
+
     private static class VariableName
     {
         // use special names to prevent collisions
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Awaiter( int stateId ) => $"__awaiter<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Result( int stateId ) => $"__result<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Try( int stateId ) => $"__try<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Exception( int stateId ) => $"__ex<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
 
         public const string Return = "return<>";
     }
@@ -37,7 +50,7 @@ internal class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes,
             ReturnValue = _returnValue,
             AwaitCount = _awaitCount,
-            Variables = _variables
+            Variables = _variables.Select( x => x.Value ).ToArray()
         };
     }
 
@@ -61,7 +74,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         // Visit the branch expression
 
-        var visited = Visit( expression ); // Warning: visitation mutates the tail state.
+        var updateNode = Visit( expression ); // Warning: visitation mutates the tail state.
 
         var tailState = _states.TailState;
 
@@ -69,7 +82,7 @@ internal class LoweringVisitor : ExpressionVisitor
         // by the visitor, add it to the tail state.
 
         if ( capture && !IsExplicitlyHandledType( expression ) )
-            tailState.Expressions.Add( visited );
+            tailState.Expressions.Add( updateNode );
 
         // Set a default Transition if the branch tail didn't join
 
@@ -141,7 +154,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, conditionalTransition );
 
-        return node;
+        return sourceState;
     }
 
     protected override Expression VisitGoto( GotoExpression node )
@@ -180,7 +193,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, loopTransition );
 
-        return node;
+        return sourceState;
 
         // Helper function for fixing loop labels
         void InitializeLabels( NodeExpression branchState )
@@ -195,10 +208,21 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( _definedVariables.Contains( node ) )
-            _variables.Add( node );
+        if ( !_definedVariables.Contains( node ) )
+            return base.VisitParameter( node );
 
-        return base.VisitParameter( node );
+        var hash = node.GetHashCode();
+
+        if ( _variables.TryGetValue( hash, out var existingNode ) )
+            return existingNode;
+
+        var updateNode = Expression.Parameter(
+            node.Type,
+            VariableName.Variable( node.Name, _states.TailState.StateId, ref _variableId ) );
+
+        _variables[hash] = updateNode;
+
+        return updateNode;
     }
 
     protected override Expression VisitSwitch( SwitchExpression node )
@@ -229,7 +253,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, switchTransition );
 
-        return node;
+        return sourceState;
     }
 
     protected override Expression VisitTry( TryExpression node )
@@ -278,10 +302,23 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, tryCatchTransition );
 
-        return node;
+        return sourceState;
     }
 
     // Override method for extension expression types
+
+    protected override Expression VisitBinary( BinaryExpression node )
+    {
+        var updatedLeft = Visit( node.Left );
+        var updatedRight = Visit( node.Right );
+
+        if ( updatedRight is NodeExpression nodeExpression )
+        {
+            return node.Update( updatedLeft, node.Conversion, nodeExpression.ResultVariable );
+        }
+
+        return base.VisitBinary( node );
+    }
 
     protected override Expression VisitExtension( Expression node )
     {
@@ -300,11 +337,14 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected Expression VisitAwait( AwaitExpression node )
     {
+        var updatedNode = Visit( node.Target );
+
         var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var completionState = VisitBranch( node.Target, joinState, resultVariable, capture: false );
+        var completionState = _states.AddState();
+        _states.TailState.ResultVariable = resultVariable;
 
         _awaitCount++;
 
@@ -325,9 +365,15 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
+        // If we already visited a branching node we only want to use the result variable
+        // else it is most likely direct awaitable (e.g. Task)
+        var targetNode = updatedNode is NodeExpression nodeExpression
+            ? nodeExpression.ResultVariable
+            : updatedNode;
+
         var awaitTransition = new AwaitTransition
         {
-            Target = node.Target,
+            Target = targetNode,
             StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
             CompletionNode = completionState,
@@ -352,7 +398,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         ParameterExpression returnVariable =
             Expression.Parameter( node.Type, VariableName.Result( stateId ) );
-        _variables.Add( returnVariable );
+        _variables[returnVariable.GetHashCode()] = returnVariable;
 
         return returnVariable;
     }
@@ -360,13 +406,13 @@ internal class LoweringVisitor : ExpressionVisitor
     private ParameterExpression CreateVariable( Type type, string name )
     {
         var variable = Expression.Variable( type, name );
-        _variables.Add( variable );
+        _variables[variable.GetHashCode()] = variable;
         return variable;
     }
 
     // State management
 
-    private class StateContext
+    private sealed class StateContext
     {
         private int _stateId;
         private readonly Stack<int> _scopeIndexes;

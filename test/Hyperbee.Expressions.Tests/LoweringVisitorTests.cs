@@ -365,8 +365,8 @@ public class LoweringVisitorTests
         var result = visitor.Transform( methodWithParameter );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 4, jumps: 2 );
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
+        AssertTransition.AssertResult( result, nodes: 9, variables: 8, jumps: 4 );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[7] );
 
     }
 
@@ -599,7 +599,7 @@ public class LoweringVisitorTests
         public static void AssertResult( LoweringResult result, int nodes = 0, int variables = 0, int jumps = 0 )
         {
             Assert.AreEqual( nodes, result.Scopes[0].Nodes.Count );
-            Assert.AreEqual( variables, result.Variables.Count );
+            Assert.AreEqual( variables, result.Variables.Length );
             Assert.AreEqual( jumps, result.Scopes[0].JumpCases.Count );
         }
 
