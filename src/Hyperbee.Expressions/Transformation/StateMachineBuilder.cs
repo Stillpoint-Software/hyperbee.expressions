@@ -322,10 +322,10 @@ public class StateMachineBuilder<TResult>
 
         // Create the jump table
 
-        var jumpTableExpression = JumpTableBuilder.Build( 
+        var jumpTableExpression = JumpTableBuilder.Build(
             source.Scopes[0],
-            source.Scopes, 
-            stateFieldExpression 
+            source.Scopes,
+            stateFieldExpression
         );
 
         // Optimize node ordering to reduce goto calls
