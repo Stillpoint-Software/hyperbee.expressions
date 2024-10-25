@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Xml.Linq;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -17,11 +18,14 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private static class VariableName
     {
+        private static int __count;
+
         // use special names to prevent collisions
         public static string Awaiter( int stateId ) => $"__awaiter<{stateId}>";
         public static string Result( int stateId ) => $"__result<{stateId}>";
         public static string Try( int stateId ) => $"__try<{stateId}>";
         public static string Exception( int stateId ) => $"__ex<{stateId}>";
+        public static string Variable( string name, int stateId ) => $"__{name}<{stateId}_{Interlocked.Increment( ref __count )}>";
 
         public const string Return = "return<>";
     }
@@ -203,7 +207,10 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( _variables.TryGetValue( hash, out var existingNode ) )
             return existingNode;
 
-        var updateNode = Expression.Parameter( node.Type, $"__{node.Name}<{hash}>" );
+        var updateNode = Expression.Parameter( 
+            node.Type, 
+            VariableName.Variable( node.Name, _states.TailState.StateId ) );
+
         _variables[hash] = updateNode;
 
         return updateNode;
@@ -293,7 +300,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitBinary( BinaryExpression node )
     {
-        var updatedLeft = Visit( node.Left ); // TODO: could left side have any issues?
+        var updatedLeft = Visit( node.Left );
         var updatedRight = Visit( node.Right );
 
         if ( updatedRight is NodeExpression nodeExpression )
@@ -349,9 +356,15 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
+        // If we already visited a branching node we only want to use the result variable
+        // else it is most likely direct awaitable (e.g. Task)
+        var targetNode = updatedNode is NodeExpression nodeExpression 
+            ? nodeExpression.ResultVariable 
+            : updatedNode;
+
         var awaitTransition = new AwaitTransition
         {
-            Target = updatedNode is NodeExpression nodeExpression ? nodeExpression.ResultVariable : updatedNode,
+            Target = targetNode,
             StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
             CompletionNode = completionState,
