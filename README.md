@@ -25,6 +25,12 @@ trees to handle asynchronous workflows and other constructs.
 
 The following example demonstrates how to create an asynchronous expression tree.
 
+When the expression tree is compiled, the `BlockAsyncExpression` will auto-generate a state machine that executes 
+`AwaitExpressions` in the block asynchronously.
+
+```csharp
+the `BlockAsync` expression will generate a state machine that executes the expressions in the block asynchronously.
+
 ```csharp
 
 public class AsyncExample
@@ -47,7 +53,7 @@ public class AsyncExample
             Expression.Call( instance, nameof(SecondAsyncMethod), Type.EmptyTypes, result1 )
         );
 
-        // Assign the results of the await expressions to the variables
+        // Assign the results of the await
         var assignResult1 = Expression.Assign( result1, awaitExpr1 );
         var assignResult2 = Expression.Assign( result2, awaitExpr2 );
 
