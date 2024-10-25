@@ -183,7 +183,7 @@ public class BlockAsyncBasicTests
             BlockAsync(
                 [otherValue1, otherValue2],
                 Block(
-                    Assign( otherValue1, Condition( Constant( false ), Constant( 100 ), Block( Constant( 150 )  ) ) ),
+                    Assign( otherValue1, Condition( Constant( false ), Constant( 100 ), Block( Constant( 150 ) ) ) ),
                     Assign( otherValue2, Constant( "200" ) ),
                     Await( Constant( Task.Delay( 100 ) ) ),
                     innerValue ),
