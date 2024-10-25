@@ -183,10 +183,11 @@ public class BlockAsyncBasicTests
             BlockAsync(
                 [otherValue1, otherValue2],
                 Block(
-                    Assign( otherValue1, Constant( 100 ) ),
+                    Assign( otherValue1, Condition( Constant( false ), Constant( 100 ), Block( Constant( 150 )  ) ) ),
                     Assign( otherValue2, Constant( "200" ) ),
                     Await( Constant( Task.Delay( 100 ) ) ),
-                    innerValue )
+                    innerValue ),
+                Condition( Constant( false ), Assign( innerValue, Constant( "200" ) ), Assign( otherValue2, Constant( "250" ) ) )
             ),
             parameters: [innerValue]
         );
@@ -196,7 +197,7 @@ public class BlockAsyncBasicTests
             Assign( otherValue3, Constant( "300" ) ),
             Assign( outerValue,
                 Add( outerValue,
-                    Invoke( test, Await( Invoke( innerBlock, Constant( "50" ) ) ) ) ) ),
+                    Invoke( test, Await( Invoke( innerBlock, otherValue3 ) ) ) ) ),
             outerValue
         );
 
@@ -207,7 +208,7 @@ public class BlockAsyncBasicTests
         var result = await compiledLambda( 5 );
 
         // Assert
-        Assert.AreEqual( 55, result );
+        Assert.AreEqual( 255, result );
     }
 
     [TestMethod]

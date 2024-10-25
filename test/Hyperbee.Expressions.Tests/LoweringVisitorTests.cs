@@ -365,8 +365,8 @@ public class LoweringVisitorTests
         var result = visitor.Transform( methodWithParameter );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 4, jumps: 2 );
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
+        AssertTransition.AssertResult( result, nodes: 9, variables: 8, jumps: 4 );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[7] );
 
     }
 
