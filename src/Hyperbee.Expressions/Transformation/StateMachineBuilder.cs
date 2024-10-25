@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -355,15 +355,15 @@ public class StateMachineBuilder<TResult>
 
         // Create a try-catch block to handle exceptions
 
-        var exceptionParam = Parameter( typeof(Exception), "ex" );
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
         var tryCatchBlock = TryCatch(
-            Block( 
+            Block(
                 typeof( void ),
-                source.ReturnValue != null 
-                    ? [source.ReturnValue] 
-                    : [], 
-                bodyExpressions 
+                source.ReturnValue != null
+                    ? [source.ReturnValue]
+                    : [],
+                bodyExpressions
             ),
             Catch(
                 exceptionParam,
@@ -382,12 +382,12 @@ public class StateMachineBuilder<TResult>
         // Create the final lambda expression
 
         return Lambda(
-            typeof(MoveNextDelegate<>).MakeGenericType( stateMachineType ),
-            Block( 
-                tryCatchBlock, 
-                Label( exitLabel ) 
-            ), 
-            stateMachine 
+            typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType ),
+            Block(
+                tryCatchBlock,
+                Label( exitLabel )
+            ),
+            stateMachine
         );
     }
 
