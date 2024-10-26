@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 
@@ -61,7 +61,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     // Visit methods
 
-    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState, 
+    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState,
         ParameterExpression resultVariable = null,
         Action<NodeExpression> init = null )
     {
@@ -105,7 +105,7 @@ internal class LoweringVisitor : ExpressionVisitor
             if ( tailState.Transition == null && visited is GotoExpression gotoExpression )
             {
                 var targetNode = _states.Nodes.FirstOrDefault( x => x.NodeLabel == gotoExpression.Target );
-                
+
                 if ( targetNode != null )
                 {
                     tailState.Transition = new GotoTransition { TargetNode = targetNode };
@@ -196,8 +196,8 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var loopTransition = new LoopTransition 
-        { 
+        var loopTransition = new LoopTransition
+        {
             BodyNode = VisitBranch( node.Body, default, resultVariable, InitializeLabels ) // pass default to join back to the branch-state 
         };
 
