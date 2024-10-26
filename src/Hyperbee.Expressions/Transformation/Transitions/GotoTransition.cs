@@ -8,7 +8,10 @@ public class GotoTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
-        return GotoOrFallThrough( order, TargetNode );
+        return GotoOrFallThrough( 
+            order,
+            OptimizeTransition( TargetNode )
+        );
     }
 
     internal override NodeExpression FallThroughNode => TargetNode;

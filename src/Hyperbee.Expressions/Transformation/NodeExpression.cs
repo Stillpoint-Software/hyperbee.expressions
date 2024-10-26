@@ -32,6 +32,8 @@ public class NodeExpression : Expression
     public override Type Type => ResultValue?.Type ?? typeof( void );
     public override bool CanReduce => true;
 
+    public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
+
     internal Expression Reduce( IHoistingSource resolverSource )
     {
         _resolverSource = resolverSource;

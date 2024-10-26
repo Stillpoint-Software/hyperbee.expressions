@@ -11,9 +11,20 @@ public class SwitchTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
-        var defaultBody = DefaultNode != null
-            ? GotoOrFallThrough( order, DefaultNode, allowNull: true )
-            : null;
+        Expression defaultBody;
+        
+        if ( DefaultNode != null )
+        {
+            defaultBody = GotoOrFallThrough( 
+                order,
+                OptimizeTransition( DefaultNode ), 
+                allowNull: true 
+            );
+        }
+        else
+        {
+            defaultBody = null;
+        }
 
         var cases = CaseNodes
             .Select( switchCase => switchCase.Reduce() );
