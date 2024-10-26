@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿#define _EXPERIMENTAL
+
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 
@@ -63,8 +65,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private NodeExpression VisitBranch( Expression expression, NodeExpression joinState,
         ParameterExpression resultVariable = null,
-        Action<NodeExpression> init = null,
-        bool capture = true )
+        Action<NodeExpression> init = null )
     {
         // Create a new state for the branch
 
@@ -76,22 +77,9 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var updateNode = Visit( expression ); // Warning: visitation mutates the tail state.
 
-        var tailState = _states.TailState;
+        UpdateTailState( expression, updateNode, joinState ?? branchState ); // if no join state, join to the branch state (e.g. loops)
 
-        // If the expression is not explicitly handled
-        // by the visitor, add it to the tail state.
-
-        if ( capture && !IsExplicitlyHandledType( expression ) )
-            tailState.Expressions.Add( updateNode );
-
-        // Set a default Transition if the branch tail didn't join
-
-        tailState.ResultVariable = resultVariable;
-
-        if ( tailState.Transition != null )
-            return branchState;
-
-        tailState.Transition = new GotoTransition { TargetNode = joinState };
+        _states.TailState.ResultVariable = resultVariable;
 
         return branchState;
     }
@@ -100,13 +88,41 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         foreach ( var expression in expressions )
         {
-            var visited = Visit( expression ); // Warning: visitation mutates the tail state.
+            var updateNode = Visit( expression ); // Warning: visitation mutates the tail state.
+            UpdateTailState( expression, updateNode );
+        }
+    }
 
-            // If the expression is not explicitly handled
-            // by the visitor, add it to the tail state.
+    private void UpdateTailState( Expression expression, Expression visited, NodeExpression defaultTransitionTarget = null )
+    {
+        var tailState = _states.TailState;
 
-            if ( !IsExplicitlyHandledType( expression ) )
-                _states.TailState.Expressions.Add( visited );
+#if _EXPERIMENTAL
+        if ( !IsExplicitlyHandledType( expression ) )
+        {
+            // goto expressions should _never_ be added to the expressions list.
+            // instead, they should always be represented as a transition.
+            //
+            // goto expressions should set the transition - first goto should win
+
+            if ( visited is GotoExpression gotoExpression && tailState.Transition == null )
+            {
+                var targetNode = _states.Nodes.Single( x => x.NodeLabel == gotoExpression.Target );
+                tailState.Transition = new GotoTransition { TargetNode = targetNode };
+            }
+            else
+            {
+                tailState.Expressions.Add( visited );
+            }
+        }
+#else
+        if ( !IsExplicitlyHandledType( expression ) )
+            tailState.Expressions.Add( visited );
+#endif
+        // if no transition is set, then set the default transition if it was provided.
+        if ( tailState.Transition == null && defaultTransitionTarget != null )
+        {
+            tailState.Transition = new GotoTransition { TargetNode = defaultTransitionTarget };
         }
     }
 
@@ -181,16 +197,26 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var loopTransition = new LoopTransition { BodyNode = VisitBranch( node.Body, joinState, resultVariable, InitializeLabels ) };
+#if !_EXPERIMENTAL
+        var bodyNode = VisitBranch( node.Body, joinState, resultVariable, InitializeLabels );
+#else
+        var bodyNode = VisitBranch( node.Body, default, resultVariable, InitializeLabels ); // pass default to join back to the branch
+#endif
+
+        var loopTransition = new LoopTransition 
+        { 
+            BodyNode = bodyNode 
+        };
 
         sourceState.ResultVariable = resultVariable;
         joinState.ResultValue = resultVariable;
 
+#if !_EXPERIMENTAL
         if ( _states.TailState.Transition is not GotoTransition gotoTransition )
             throw new InvalidOperationException( "Loop must have a goto transition." );
 
         gotoTransition.TargetNode = loopTransition.BodyNode;
-
+#endif
         _states.ExitGroup( sourceState, loopTransition );
 
         return sourceState;
@@ -435,6 +461,8 @@ internal class LoweringVisitor : ExpressionVisitor
         }
 
         private StateScope CurrentScope => Scopes[_scopeIndexes.Peek()];
+
+        public IReadOnlyList<NodeExpression> Nodes => CurrentScope.Nodes;
 
         public NodeExpression TailState => CurrentScope.TailState;
 
