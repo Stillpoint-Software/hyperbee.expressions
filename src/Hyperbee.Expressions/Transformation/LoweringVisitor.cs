@@ -203,9 +203,9 @@ internal class LoweringVisitor : ExpressionVisitor
         var bodyNode = VisitBranch( node.Body, default, resultVariable, InitializeLabels ); // pass default to join back to the branch
 #endif
 
-        var loopTransition = new LoopTransition 
-        { 
-            BodyNode = bodyNode 
+        var loopTransition = new LoopTransition
+        {
+            BodyNode = bodyNode
         };
 
         sourceState.ResultVariable = resultVariable;
