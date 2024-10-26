@@ -67,7 +67,8 @@ public class NodeExpression : Expression
             Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
         }
 
-        Expressions.Add( Transition.Reduce( MachineOrder, this, _resolverSource ) );
+        var transitionExpression = Transition.Reduce( MachineOrder, this, _resolverSource );
+        Expressions.Add( transitionExpression );
 
         // Add the label to the beginning of the block
         Expressions.Insert( 0, Label( NodeLabel ) );
