@@ -480,7 +480,6 @@ public class LoweringVisitorTests
         AssertTransition.AssertGoto( result.Scopes[0].Nodes[5].Transition, "ST_0003" );
 
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
-
     }
 
     [TestMethod]
