@@ -356,7 +356,8 @@ public class StateMachineBuilder<TResult>: StateMachineBuilderBase
             jumpTable
         };
 
-        bodyExpressions.AddRange( source.Scopes[0].Nodes.Select( hoistingVisitor.Visit ) );
+        var nodes = source.Scopes[0].Nodes;
+        bodyExpressions.AddRange( nodes.Select( hoistingVisitor.Visit ) );
 
         // Create a try-catch block to handle exceptions
 
