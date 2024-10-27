@@ -27,7 +27,7 @@ public abstract class StateMachineBuilderBase
     }
 }
 
-public class StateMachineBuilder<TResult>: StateMachineBuilderBase
+public class StateMachineBuilder<TResult> : StateMachineBuilderBase
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;

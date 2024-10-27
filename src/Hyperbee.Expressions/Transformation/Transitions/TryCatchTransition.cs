@@ -10,11 +10,11 @@ public class TryCatchTransition : Transition
     public NodeExpression FinallyNode { get; set; }
 
     internal override NodeExpression FallThroughNode => TryNode;
-    
+
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {
         references.Add( TryNode.NodeLabel );
-        
+
         if ( FinallyNode != null )
             references.Add( FinallyNode.NodeLabel );
 
@@ -131,7 +131,7 @@ public class TryCatchTransition : Transition
         public Expression UpdateBody { get; internal set; } = updateBody;
         public int CatchState { get; init; } = catchState;
 
-        public void Deconstruct( out CatchBlock handler, out Expression updateBody, out int catchState)
+        public void Deconstruct( out CatchBlock handler, out Expression updateBody, out int catchState )
         {
             handler = Handler;
             updateBody = UpdateBody;
