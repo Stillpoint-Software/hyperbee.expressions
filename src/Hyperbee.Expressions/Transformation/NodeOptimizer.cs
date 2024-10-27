@@ -44,15 +44,21 @@ internal sealed class NodeOptimizer : INodeOptimizer
         {
             var scope = scopes[i];
 
-            references.Add( scope.Nodes[0].NodeLabel );
+            RegisterStartAndJumpCases( scope, references );
+            scope.Nodes = OptimizeOrder( scope.ScopeId, scope.Nodes, references );
+        }
+
+        return;
+
+        static void RegisterStartAndJumpCases( StateScope scope, HashSet<LabelTarget> references )
+        {
+            references.Add( scope.Nodes[0].NodeLabel ); // start node
 
             foreach ( var jumpCase in scope.JumpCases )
             {
                 references.Add( jumpCase.ContinueLabel );
                 references.Add( jumpCase.ResultLabel );
             }
-
-            scope.Nodes = OptimizeOrder( scope.ScopeId, scope.Nodes, references );
         }
     }
 
