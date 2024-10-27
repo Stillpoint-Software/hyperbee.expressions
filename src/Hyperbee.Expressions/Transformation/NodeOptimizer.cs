@@ -44,17 +44,17 @@ internal sealed class NodeOptimizer : INodeOptimizer
         {
             var scope = scopes[i];
 
-            RegisterStartAndJumpCases( scope, references );
+            SetScopeReferences( scope, references );
             scope.Nodes = OptimizeOrder( scope.ScopeId, scope.Nodes, references );
         }
 
         return;
 
-        static void RegisterStartAndJumpCases( StateScope scope, HashSet<LabelTarget> references )
+        static void SetScopeReferences( StateScope scope, HashSet<LabelTarget> references )
         {
             references.Add( scope.Nodes[0].NodeLabel ); // start node
 
-            foreach ( var jumpCase in scope.JumpCases )
+            foreach ( var jumpCase in scope.JumpCases ) // jump cases
             {
                 references.Add( jumpCase.ContinueLabel );
                 references.Add( jumpCase.ResultLabel );
@@ -88,18 +88,11 @@ internal sealed class NodeOptimizer : INodeOptimizer
 
         var finalNode = nodes.FirstOrDefault( x => x.Transition == null );
 
-        if ( finalNode != null && ordered.Last() != finalNode )
-        {
-            ordered.Remove( finalNode );
-            ordered.Add( finalNode );
-        }
+        if ( finalNode == null || ordered.Last() == finalNode )
+            return ordered;
 
-        // Update the order property of each node
-
-        //for ( var index = 0; index < ordered.Count; index++ )
-        //{
-        //    ordered[index].MachineOrder = index;
-        //}
+        ordered.Remove( finalNode );
+        ordered.Add( finalNode );
 
         return ordered;
 
