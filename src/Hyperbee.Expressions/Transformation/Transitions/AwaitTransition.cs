@@ -63,4 +63,10 @@ public class AwaitTransition : Transition
     }
 
     internal override NodeExpression FallThroughNode => CompletionNode;
+    
+    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    {
+        CompletionNode = OptimizeTransition( CompletionNode );
+        references.Add( CompletionNode.NodeLabel );
+    }
 }

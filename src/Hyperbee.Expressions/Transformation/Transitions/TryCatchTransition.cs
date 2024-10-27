@@ -10,6 +10,24 @@ public class TryCatchTransition : Transition
     public NodeExpression FinallyNode { get; set; }
 
     internal override NodeExpression FallThroughNode => TryNode;
+    
+    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    {
+        references.Add( TryNode.NodeLabel );
+        
+        if ( FinallyNode != null )
+            references.Add( FinallyNode.NodeLabel );
+
+        for ( var index = 0; index < CatchBlocks.Count; index++ )
+        {
+            if ( CatchBlocks[index].UpdateBody is not NodeExpression nodeExpression )
+                continue;
+
+            CatchBlocks[index].UpdateBody = OptimizeTransition( nodeExpression );
+            references.Add( nodeExpression.NodeLabel );
+        }
+    }
+
     public ParameterExpression TryStateVariable { get; set; }
     public ParameterExpression ExceptionVariable { get; set; }
 
@@ -29,7 +47,7 @@ public class TryCatchTransition : Transition
 
         expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
 
-        MapCatchBlock( out var catches, out var switchCases );
+        MapCatchBlock( order, out var catches, out var switchCases );
 
         return Block(
             TryCatch(
@@ -43,7 +61,7 @@ public class TryCatchTransition : Transition
             );
     }
 
-    private void MapCatchBlock( out CatchBlock[] catches, out SwitchCase[] switchCases )
+    private void MapCatchBlock( int order, out CatchBlock[] catches, out SwitchCase[] switchCases )
     {
         var includeFinal = FinallyNode != null;
         var size = CatchBlocks.Count + (includeFinal ? 1 : 0);
@@ -59,7 +77,7 @@ public class TryCatchTransition : Transition
 
             switchCases[index] = SwitchCase(
                 (catchBlock.UpdateBody is NodeExpression nodeExpression)
-                    ? Goto( nodeExpression.NodeLabel )
+                    ? GotoOrFallThrough( order, nodeExpression )
                     : Block( typeof( void ), catchBlock.UpdateBody ),
                 Constant( catchBlock.CatchState ) );
         }
@@ -86,7 +104,7 @@ public class TryCatchTransition : Transition
         CatchBlocks.Add( new CatchBlockDefinition( handler, updateBody, catchState ) );
     }
 
-    internal record CatchBlockDefinition( CatchBlock Handler, Expression UpdateBody, int CatchState )
+    internal class CatchBlockDefinition( CatchBlock handler, Expression updateBody, int catchState )
     {
         public CatchBlock Reduce( ParameterExpression exceptionVariable, ParameterExpression tryStateVariable )
         {
@@ -107,6 +125,17 @@ public class TryCatchTransition : Transition
                     Assign( exceptionVariable, Constant( Handler.Variable ) ),
                     Assign( tryStateVariable, Constant( CatchState ) )
                 ) );
+        }
+
+        public CatchBlock Handler { get; init; } = handler;
+        public Expression UpdateBody { get; internal set; } = updateBody;
+        public int CatchState { get; init; } = catchState;
+
+        public void Deconstruct( out CatchBlock handler, out Expression updateBody, out int catchState)
+        {
+            handler = Handler;
+            updateBody = UpdateBody;
+            catchState = CatchState;
         }
     }
 }
