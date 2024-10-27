@@ -22,14 +22,14 @@ internal sealed class NodeOptimizer : INodeOptimizer
         for ( var i = 0; i < scopes.Count; i++ )
         {
             var scope = scopes[i];
-                
+
             scope.Nodes = scope.Nodes
                 .Where( node =>
                 {
                     var contains = references.Contains( node.NodeLabel );
                     return contains;
                 } )
-                .Select( (node,index) =>
+                .Select( ( node, index ) =>
                 {
                     node.MachineOrder = index;
                     return node;
@@ -51,7 +51,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
                 references.Add( jumpCase.ContinueLabel );
                 references.Add( jumpCase.ResultLabel );
             }
-            
+
             scope.Nodes = OptimizeOrder( scope.ScopeId, scope.Nodes, references );
         }
     }

@@ -24,7 +24,7 @@ public class ConditionalTransition : Transition
     }
 
     internal override NodeExpression FallThroughNode => IfFalse;
-    
+
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {
         IfTrue = OptimizeTransition( IfTrue );
