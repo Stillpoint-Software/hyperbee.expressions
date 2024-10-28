@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation;
 
@@ -42,15 +43,23 @@ public class AsyncBlockExpression : Expression
         return _stateMachine ??= GenerateStateMachine( _resultType, _variables, _expressions );
     }
 
+    private static readonly ConcurrentDictionary<int, Expression> StateMachines = new();
+
     private static Expression GenerateStateMachine( Type resultType, ParameterExpression[] variables, Expression[] expressions )
     {
-        var visitor = new LoweringVisitor();
-        var source = visitor.Transform( variables, expressions );
+        var hasher = new ExpressionTreeHasher();
+        var hash = hasher.ComputeHash( Block( expressions ) );
 
-        if ( source.AwaitCount == 0 )
-            throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
+        var stateMachine = StateMachines.GetOrAdd( hash, _ =>
+        {
+            var visitor = new LoweringVisitor();
+            var source = visitor.Transform( variables, expressions );
 
-        var stateMachine = StateMachineBuilder.Create( resultType, source );
+            if ( source.AwaitCount == 0 )
+                throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
+
+            return StateMachineBuilder.Create( resultType, source );
+        } );
 
         return stateMachine;
     }
