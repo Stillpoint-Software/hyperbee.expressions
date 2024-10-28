@@ -335,7 +335,7 @@ internal class LoweringVisitor : ExpressionVisitor
             return node.Update( updatedLeft, node.Conversion, nodeExpression.ResultVariable );
         }
 
-        return base.VisitBinary( node );
+        return node.Update( updatedLeft, node.Conversion, updatedRight );
     }
 
     protected override Expression VisitExtension( Expression node )
