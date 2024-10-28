@@ -9,8 +9,7 @@ public abstract class Transition
 {
     internal abstract Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource );
     internal abstract NodeExpression FallThroughNode { get; } // this node is used to optimize state order
-
-    internal abstract void OptimizeTransition( HashSet<LabelTarget> references );
+    internal abstract void OptimizeTransition( HashSet<LabelTarget> references ); // this method is used to optimize state transitions
 
     protected static NodeExpression OptimizeTransition( NodeExpression node )
     {
