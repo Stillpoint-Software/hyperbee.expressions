@@ -306,7 +306,7 @@ internal class LoweringVisitor : ExpressionVisitor
             // non-zero index for catch states to avoid conflicts
             // with default catch state value (zero).
 
-            var catchState = index + 1; 
+            var catchState = index + 1;
 
             var catchBlock = node.Handlers[index];
             tryCatchTransition.AddCatchBlock(
