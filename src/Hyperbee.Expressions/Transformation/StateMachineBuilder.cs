@@ -10,7 +10,7 @@ public interface IVoidResult; // Marker interface for void Task results
 
 public delegate void MoveNextDelegate<T>( ref T stateMachine ) where T : IAsyncStateMachine;
 
-public class StateMachineBuilder<TResult> 
+public class StateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly INodeOptimizer _optimizer;
