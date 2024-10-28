@@ -106,7 +106,32 @@ public class BlockAsyncBasicTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 2, result ); // Result from the nested block
+        Assert.AreEqual( 2, result );
+    }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedLambdas()
+    {
+        // Arrange
+        var innerBlock = Lambda<Func<Task<int>>>(
+            BlockAsync(
+                Await( Constant( Task.FromResult( 2 ) ) )
+            )
+        );
+
+        var block = BlockAsync(
+            Await( Constant( Task.FromResult( 1 ) ) ),
+            Await( Invoke( innerBlock ) )
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 2, result );
     }
 
     [TestMethod]
