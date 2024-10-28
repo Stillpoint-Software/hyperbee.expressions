@@ -35,4 +35,9 @@ public class AwaitResultTransition : Transition
     }
 
     internal override NodeExpression FallThroughNode => TargetNode;
+    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    {
+        TargetNode = OptimizeTransition( TargetNode );
+        references.Add( TargetNode.NodeLabel );
+    }
 }

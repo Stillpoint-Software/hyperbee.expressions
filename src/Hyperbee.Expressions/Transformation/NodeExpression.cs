@@ -57,8 +57,7 @@ public class NodeExpression : Expression
 
     private BlockExpression ReduceBlock()
     {
-        if ( ResultValue != null && ResultVariable != null &&
-             ResultValue.Type == ResultVariable.Type )
+        if ( ResultValue != null && ResultVariable != null && ResultValue.Type == ResultVariable.Type )
         {
             Expressions.Add( Assign( ResultVariable, ResultValue ) );
         }

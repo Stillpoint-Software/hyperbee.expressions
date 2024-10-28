@@ -303,13 +303,10 @@ internal class LoweringVisitor : ExpressionVisitor
 
         for ( var index = 0; index < node.Handlers.Count; index++ )
         {
-            //BF we were using index which was problematic because of 0.
-            //   optimizations were finding the problem because of the way they fall through to the next case.
-            //   we are not explicitly initializing the _ex<> member field, so it is 0 by default.
-            //   anything that falls through to the trailing jump table would match case(0) and take the error path.
-            //   we can avoid this by using negative values.
+            // non-zero index for catch states to avoid conflicts
+            // with default catch state value (zero).
 
-            var catchState = -(index + 1); // use negative index for catch states
+            var catchState = index + 1; 
 
             var catchBlock = node.Handlers[index];
             tryCatchTransition.AddCatchBlock(

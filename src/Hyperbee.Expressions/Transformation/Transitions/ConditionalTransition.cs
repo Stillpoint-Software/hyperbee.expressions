@@ -11,20 +11,26 @@ public class ConditionalTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
-        var ifTrueTarget = OptimizeTransition( IfTrue );
-        var ifFalseTarget = OptimizeTransition( IfFalse );
-
-        var fallThrough = GotoOrFallThrough( order, ifFalseTarget, true );
+        var fallThrough = GotoOrFallThrough( order, IfFalse, true );
 
         if ( fallThrough == null )
-            return IfThen( Test, Goto( ifTrueTarget.NodeLabel ) );
+            return IfThen( Test, Goto( IfTrue.NodeLabel ) );
 
         return IfThenElse(
             Test,
-            Goto( ifTrueTarget.NodeLabel ),
+            Goto( IfTrue.NodeLabel ),
             fallThrough
         );
     }
 
     internal override NodeExpression FallThroughNode => IfFalse;
+
+    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    {
+        IfTrue = OptimizeTransition( IfTrue );
+        IfFalse = OptimizeTransition( IfFalse );
+
+        references.Add( IfTrue.NodeLabel );
+        references.Add( IfFalse.NodeLabel );
+    }
 }

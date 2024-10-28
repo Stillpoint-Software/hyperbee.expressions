@@ -17,7 +17,7 @@ public class SwitchTransition : Transition
         {
             defaultBody = GotoOrFallThrough(
                 order,
-                OptimizeTransition( DefaultNode ),
+                DefaultNode,
                 allowNull: true
             );
         }
@@ -27,7 +27,7 @@ public class SwitchTransition : Transition
         }
 
         var cases = CaseNodes
-            .Select( switchCase => switchCase.Reduce() );
+            .Select( switchCase => switchCase.Reduce( order ) );
 
         return Switch(
             SwitchValue,
@@ -38,13 +38,29 @@ public class SwitchTransition : Transition
 
     internal override NodeExpression FallThroughNode => DefaultNode;
 
+    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    {
+        DefaultNode = OptimizeTransition( DefaultNode );
+        references.Add( DefaultNode.NodeLabel );
+
+        for ( var index = 0; index < CaseNodes.Count; index++ )
+        {
+            var caseNode = CaseNodes[index];
+            caseNode.Body = OptimizeTransition( caseNode.Body );
+
+            references.Add( caseNode.Body.NodeLabel );
+        }
+    }
+
     public void AddSwitchCase( List<Expression> testValues, NodeExpression body )
     {
         CaseNodes.Add( new SwitchCaseDefinition( testValues, body ) );
     }
 
-    internal record SwitchCaseDefinition( List<Expression> TestValues, NodeExpression Body )
+    internal sealed class SwitchCaseDefinition( List<Expression> testValues, NodeExpression body )
     {
-        public SwitchCase Reduce() => SwitchCase( Goto( Body.NodeLabel ), TestValues );
+        public List<Expression> TestValues = testValues;
+        public NodeExpression Body { get; set; } = body;
+        public SwitchCase Reduce( int order ) => SwitchCase( GotoOrFallThrough( order, Body ), TestValues );
     }
 }

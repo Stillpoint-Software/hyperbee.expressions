@@ -13,9 +13,10 @@ public delegate void MoveNextDelegate<T>( ref T stateMachine ) where T : IAsyncS
 public class StateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
+    private readonly INodeOptimizer _optimizer;
     private readonly string _typeName;
 
-    private static class FieldName
+    protected static class FieldName
     {
         // use special names to prevent collisions with user fields
         public const string Builder = "__builder<>";
@@ -28,8 +29,14 @@ public class StateMachineBuilder<TResult>
     }
 
     public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
+        : this( moduleBuilder, null, typeName )
+    {
+    }
+
+    public StateMachineBuilder( ModuleBuilder moduleBuilder, INodeOptimizer optimizer, string typeName )
     {
         _moduleBuilder = moduleBuilder;
+        _optimizer = optimizer ?? new NodeOptimizer();
         _typeName = typeName;
     }
 
@@ -247,7 +254,7 @@ public class StateMachineBuilder<TResult>
         typeBuilder.DefineMethodOverride( moveNextMethod, typeof( IAsyncStateMachine ).GetMethod( "MoveNext" )! );
     }
 
-    private static LambdaExpression CreateMoveNextBody(
+    private LambdaExpression CreateMoveNextBody(
         int id,
         LoweringResult source,
         Type stateMachineType,
@@ -325,7 +332,7 @@ public class StateMachineBuilder<TResult>
 
         // Optimize node ordering to reduce goto calls
 
-        var nodes = OptimizeNodeOrder( source.Scopes );
+        _optimizer.Optimize( source.Scopes );
 
         // Create the jump table
 
@@ -351,6 +358,7 @@ public class StateMachineBuilder<TResult>
             jumpTable
         };
 
+        var nodes = source.Scopes[0].Nodes;
         bodyExpressions.AddRange( nodes.Select( hoistingVisitor.Visit ) );
 
         // Create a try-catch block to handle exceptions
@@ -390,76 +398,13 @@ public class StateMachineBuilder<TResult>
             stateMachine
         );
     }
-
-    private static List<NodeExpression> OptimizeNodeOrder( List<StateScope> scopes )
-    {
-        for ( var i = 1; i < scopes.Count; i++ )
-        {
-            scopes[i].Nodes = OrderNodes( scopes[i].ScopeId, scopes[i].Nodes );
-        }
-
-        return OrderNodes( scopes[0].ScopeId, scopes[0].Nodes );
-
-        static List<NodeExpression> OrderNodes( int currentScopeId, List<NodeExpression> nodes )
-        {
-            // Optimize node order for better performance by performing a greedy depth-first
-            // search to find the best order of execution for each node.
-            //
-            // Doing this will allow us to reduce the number of goto calls in the final machine.
-            //
-            // The first node is always the start node, and the last node is always the final node.
-
-            var ordered = new List<NodeExpression>( nodes.Count );
-            var visited = new HashSet<NodeExpression>( nodes.Count );
-
-            // Perform greedy DFS for every unvisited node
-
-            for ( var index = 0; index < nodes.Count; index++ )
-            {
-                var node = nodes[index];
-
-                if ( !visited.Contains( node ) )
-                    Visit( node );
-            }
-
-            // Make sure the final state is last
-
-            var finalNode = nodes.FirstOrDefault( x => x.Transition == null );
-
-            if ( finalNode != null && ordered.Last() != finalNode )
-            {
-                ordered.Remove( finalNode );
-                ordered.Add( finalNode );
-            }
-
-            // Update the order property of each node
-
-            for ( var index = 0; index < ordered.Count; index++ )
-            {
-                ordered[index].MachineOrder = index;
-            }
-
-            return ordered;
-
-            void Visit( NodeExpression node )
-            {
-                while ( node != null && visited.Add( node ) )
-                {
-                    ordered.Add( node );
-                    node = node.Transition?.FallThroughNode;
-
-                    if ( node?.ScopeId != currentScopeId )
-                        return;
-                }
-            }
-        }
-    }
 }
 
 public static class StateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
     private static readonly ModuleBuilder ModuleBuilder;
+    private static readonly INodeOptimizer NodeOptimizer;
     private static int __id;
 
     static StateMachineBuilder()
@@ -472,6 +417,8 @@ public static class StateMachineBuilder
         var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
         ModuleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
+
+        NodeOptimizer = new NodeOptimizer();
     }
 
     public static Expression Create( Type resultType, LoweringResult source, bool createRunner = true )
@@ -488,7 +435,7 @@ public static class StateMachineBuilder
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
-        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
+        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, NodeOptimizer, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, createRunner );
 
         return stateMachineExpression; // the-best expression breakpoint ever

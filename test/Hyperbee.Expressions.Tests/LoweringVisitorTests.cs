@@ -476,8 +476,8 @@ public class LoweringVisitorTests
         AssertTransition.AssertLoop( result.Scopes[0].Nodes[0].Transition, "ST_0002" );
 
         AssertTransition.AssertGoto( result.Scopes[0].Nodes[3].Transition, "ST_0002" );
-        AssertTransition.AssertGoto( result.Scopes[0].Nodes[4].Transition, "ST_0003" );
-        AssertTransition.AssertGoto( result.Scopes[0].Nodes[5].Transition, "ST_0003" );
+        AssertTransition.AssertGoto( result.Scopes[0].Nodes[4].Transition, "ST_0001" ); 
+        AssertTransition.AssertGoto( result.Scopes[0].Nodes[5].Transition, "ST_0002" ); 
 
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }

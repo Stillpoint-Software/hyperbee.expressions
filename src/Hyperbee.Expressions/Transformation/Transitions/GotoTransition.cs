@@ -10,9 +10,15 @@ public class GotoTransition : Transition
     {
         return GotoOrFallThrough(
             order,
-            OptimizeTransition( TargetNode )
+            TargetNode
         );
     }
 
     internal override NodeExpression FallThroughNode => TargetNode;
+
+    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    {
+        TargetNode = OptimizeTransition( TargetNode );
+        references.Add( TargetNode.NodeLabel );
+    }
 }
