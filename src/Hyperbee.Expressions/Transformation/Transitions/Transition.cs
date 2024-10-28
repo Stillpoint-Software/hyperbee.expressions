@@ -13,7 +13,7 @@ public abstract class Transition
 
     protected static NodeExpression OptimizeTransition( NodeExpression node )
     {
-        while ( node.Transition is GotoTransition gotoTransition && node.IsNoOp )
+        while ( node.IsNoOp && node.Transition is GotoTransition gotoTransition )
         {
             node = gotoTransition.TargetNode;
         }

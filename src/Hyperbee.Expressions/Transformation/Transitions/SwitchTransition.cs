@@ -47,6 +47,7 @@ public class SwitchTransition : Transition
         {
             var caseNode = CaseNodes[index];
             caseNode.Body = OptimizeTransition( caseNode.Body );
+
             references.Add( caseNode.Body.NodeLabel );
         }
     }
