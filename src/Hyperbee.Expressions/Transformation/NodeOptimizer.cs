@@ -14,28 +14,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
         var references = new HashSet<LabelTarget>();
 
         OptimizeOrder( scopes, references );
-        OptimizeNodes( scopes, references );
-    }
-
-    private static void OptimizeNodes( IReadOnlyList<StateScope> scopes, HashSet<LabelTarget> references )
-    {
-        for ( var i = 0; i < scopes.Count; i++ )
-        {
-            var scope = scopes[i];
-
-            scope.Nodes = scope.Nodes
-                .Where( node =>
-                {
-                    var contains = references.Contains( node.NodeLabel );
-                    return contains;
-                } )
-                .Select( ( node, index ) =>
-                {
-                    node.MachineOrder = index;
-                    return node;
-                } )
-                .ToList();
-        }
+        RemoveUnreferenced( scopes, references );
     }
 
     private static void OptimizeOrder( IReadOnlyList<StateScope> scopes, HashSet<LabelTarget> references )
@@ -100,7 +79,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
         {
             while ( node != null && visited.Add( node ) )
             {
-                node.Transition?.OptimizeTransition( references );
+                node.Transition?.OptimizeTransition( references ); // optimize transition and track target references
 
                 ordered.Add( node );
                 node = node.Transition?.FallThroughNode;
@@ -108,6 +87,31 @@ internal sealed class NodeOptimizer : INodeOptimizer
                 if ( node?.ScopeId != currentScopeId )
                     return;
             }
+        }
+    }
+
+    private static void RemoveUnreferenced( IReadOnlyList<StateScope> scopes, HashSet<LabelTarget> references )
+    {
+        // Remove any nodes that are not referenced
+
+        for ( var i = 0; i < scopes.Count; i++ )
+        {
+            var scope = scopes[i];
+
+            scope.Nodes = scope.Nodes
+                .Where( node =>
+                {
+                    // Filter out nodes that are not referenced
+                    var contains = references.Contains( node.NodeLabel );
+                    return contains;
+                } )
+                .Select( ( node, index ) =>
+                {
+                    // Set machine order
+                    node.MachineOrder = index;
+                    return node;
+                } )
+                .ToList();
         }
     }
 }

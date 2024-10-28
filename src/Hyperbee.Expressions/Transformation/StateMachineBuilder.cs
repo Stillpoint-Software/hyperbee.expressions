@@ -10,9 +10,11 @@ public interface IVoidResult; // Marker interface for void Task results
 
 public delegate void MoveNextDelegate<T>( ref T stateMachine ) where T : IAsyncStateMachine;
 
-public abstract class StateMachineBuilderBase
+public class StateMachineBuilder<TResult> 
 {
-    protected static readonly INodeOptimizer NodeOptimizer = new NodeOptimizer();
+    private readonly ModuleBuilder _moduleBuilder;
+    private readonly INodeOptimizer _optimizer;
+    private readonly string _typeName;
 
     protected static class FieldName
     {
@@ -25,16 +27,16 @@ public abstract class StateMachineBuilderBase
         [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static bool IsSystemField( string name ) => name.EndsWith( "<>" );
     }
-}
-
-public class StateMachineBuilder<TResult> : StateMachineBuilderBase
-{
-    private readonly ModuleBuilder _moduleBuilder;
-    private readonly string _typeName;
 
     public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
+        : this( moduleBuilder, null, typeName )
+    {
+    }
+
+    public StateMachineBuilder( ModuleBuilder moduleBuilder, INodeOptimizer optimizer, string typeName )
     {
         _moduleBuilder = moduleBuilder;
+        _optimizer = optimizer ?? new NodeOptimizer();
         _typeName = typeName;
     }
 
@@ -252,7 +254,7 @@ public class StateMachineBuilder<TResult> : StateMachineBuilderBase
         typeBuilder.DefineMethodOverride( moveNextMethod, typeof( IAsyncStateMachine ).GetMethod( "MoveNext" )! );
     }
 
-    private static LambdaExpression CreateMoveNextBody(
+    private LambdaExpression CreateMoveNextBody(
         int id,
         LoweringResult source,
         Type stateMachineType,
@@ -330,7 +332,7 @@ public class StateMachineBuilder<TResult> : StateMachineBuilderBase
 
         // Optimize node ordering to reduce goto calls
 
-        NodeOptimizer.Optimize( source.Scopes );
+        _optimizer.Optimize( source.Scopes );
 
         // Create the jump table
 
@@ -402,6 +404,7 @@ public static class StateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
     private static readonly ModuleBuilder ModuleBuilder;
+    private static readonly INodeOptimizer NodeOptimizer;
     private static int __id;
 
     static StateMachineBuilder()
@@ -414,6 +417,8 @@ public static class StateMachineBuilder
         var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
         ModuleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
+
+        NodeOptimizer = new NodeOptimizer();
     }
 
     public static Expression Create( Type resultType, LoweringResult source, bool createRunner = true )
@@ -430,7 +435,7 @@ public static class StateMachineBuilder
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
-        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
+        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, NodeOptimizer, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, createRunner );
 
         return stateMachineExpression; // the-best expression breakpoint ever
