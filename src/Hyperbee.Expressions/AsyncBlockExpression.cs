@@ -43,25 +43,15 @@ public class AsyncBlockExpression : Expression
         return _stateMachine ??= GenerateStateMachine( _resultType, _variables, _expressions );
     }
 
-    private static readonly ConcurrentDictionary<int, Expression> StateMachines = new();
-
     private static Expression GenerateStateMachine( Type resultType, ParameterExpression[] variables, Expression[] expressions )
     {
-        var hasher = new ExpressionTreeHasher();
-        var hash = hasher.ComputeHash( Block( expressions ) );
+        var visitor = new LoweringVisitor();
+        var source = visitor.Transform( variables, expressions );
 
-        var stateMachine = StateMachines.GetOrAdd( hash, _ =>
-        {
-            var visitor = new LoweringVisitor();
-            var source = visitor.Transform( variables, expressions );
+        if ( source.AwaitCount == 0 )
+            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
 
-            if ( source.AwaitCount == 0 )
-                throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
-
-            return StateMachineBuilder.Create( resultType, source );
-        } );
-
-        return stateMachine;
+        return StateMachineBuilder.Create( resultType, source );
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
