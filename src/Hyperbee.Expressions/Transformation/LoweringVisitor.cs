@@ -45,7 +45,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     internal LoweringVisitor( Dictionary<int, ParameterExpression> shareVariables = null )
     {
-        _shareVariables = shareVariables ?? new Dictionary<int, ParameterExpression>(InitialCapacity);
+        _shareVariables = shareVariables ?? new Dictionary<int, ParameterExpression>( InitialCapacity );
     }
 
     public LoweringResult Transform( ParameterExpression[] variables, params Expression[] expressions )
