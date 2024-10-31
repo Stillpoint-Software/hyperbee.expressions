@@ -147,7 +147,7 @@ public class StateMachineBuilder<TResult>
             _typeName,
             TypeAttributes.Public | TypeAttributes.Class,
             typeof( object ),
-            [typeof( IAsyncStateMachine )]        );
+            [typeof( IAsyncStateMachine )] );
 #endif
         typeBuilder.AddInterfaceImplementation( typeof( IAsyncStateMachine ) );
 
