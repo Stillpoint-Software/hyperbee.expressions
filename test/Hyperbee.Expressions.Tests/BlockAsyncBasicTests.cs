@@ -149,10 +149,10 @@ public class BlockAsyncBasicTests
                 Await( Constant( Task.Delay( 20 ) ) )
             ) );
 
-        var innerBlock = Lambda<Func<Task<int>>>( 
+        var innerBlock = Lambda<Func<Task<int>>>(
             BlockAsync(
                 [var2], // in scoped here and most inner block
-                Assign( var2, Add( var1, Constant( 1 )  ) ),
+                Assign( var2, Add( var1, Constant( 1 ) ) ),
                 Await( Invoke( mostInnerBlock ) ),
                 var1
             ) );
