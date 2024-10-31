@@ -6,7 +6,6 @@ internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<Key
 {
     private readonly Dictionary<TKey,TValue> _dictionary = new();
     private int _referenceCount;
-    private bool _disposed;
 
     private static readonly AsyncLocal<AsyncLocalDictionary<TKey, TValue>> AsyncLocal = new();
 
@@ -24,26 +23,14 @@ internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<Key
         return instance;
     }
 
-    private void Release()
+    void IDisposable.Dispose()
     {
         if ( Interlocked.Decrement( ref _referenceCount ) != 0 )
             return;
 
-        Dispose();
-    }
-
-    private void Dispose()
-    {
-        if ( _disposed )
-            return;
-
-        _disposed = true;
         _dictionary.Clear();
-
-        AsyncLocal.Value = null; 
+        AsyncLocal.Value = null;
     }
-
-    void IDisposable.Dispose() => Release();
 
     public TValue this[ TKey key ]
     {
@@ -63,7 +50,6 @@ internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<Key
 
     public bool TryGetItem( TKey key, out TValue value ) => _dictionary.TryGetValue( key, out value );
     
-
     public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => _dictionary.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
