@@ -64,13 +64,13 @@ public class ExpressionTreeHasher : ExpressionVisitor
         {
             Type valueType = node.Value.GetType();
 
-            if ( valueType.IsPrimitive || valueType == typeof(string) || valueType.IsEnum )
+            if ( valueType.IsPrimitive || valueType == typeof( string ) || valueType.IsEnum )
             {
                 // Handle primitive types, strings, and enums
                 _hashCode = _hashCode * 23 + GetTypeHashCode( valueType );
                 _hashCode = _hashCode * 23 + node.Value.GetHashCode();
             }
-            else if ( typeof(IEnumerable<Expression>).IsAssignableFrom( valueType ) )
+            else if ( typeof( IEnumerable<Expression> ).IsAssignableFrom( valueType ) )
             {
                 // Handle collections of expressions, if any
                 foreach ( var expr in (IEnumerable<Expression>) node.Value )
@@ -431,44 +431,44 @@ public static class HashCodeGenerator
 {
     private static readonly ConcurrentDictionary<Type, Func<object, int>> CachedHashGenerators = new();
 
-    public static int GenerateHashCode(object obj)
+    public static int GenerateHashCode( object obj )
     {
-        if (obj == null)
+        if ( obj == null )
             return 0;
 
         var type = obj.GetType();
 
         // Retrieve or create a hash generator for the type.
-        var hashGenerator = CachedHashGenerators.GetOrAdd(type, CreateHashGenerator);
-        return hashGenerator(obj);
+        var hashGenerator = CachedHashGenerators.GetOrAdd( type, CreateHashGenerator );
+        return hashGenerator( obj );
     }
 
-    private static Func<object, int> CreateHashGenerator(Type type)
+    private static Func<object, int> CreateHashGenerator( Type type )
     {
-        var getHashCodeMethod = GetGetHashCodeMethod(type);
+        var getHashCodeMethod = GetGetHashCodeMethod( type );
 
-        if (getHashCodeMethod != null && getHashCodeMethod.DeclaringType != typeof(object))
+        if ( getHashCodeMethod != null && getHashCodeMethod.DeclaringType != typeof( object ) )
         {
             // If GetHashCode is implemented, use it directly.
             return obj => obj.GetHashCode();
         }
 
-        return obj => GenerateReflectionBasedHashCode(obj, type, [] );
+        return obj => GenerateReflectionBasedHashCode( obj, type, [] );
     }
 
-    private static MethodInfo GetGetHashCodeMethod(Type type)
+    private static MethodInfo GetGetHashCodeMethod( Type type )
     {
-        return type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                   .FirstOrDefault(m => m.Name == "GetHashCode" && m.GetParameters().Length == 0 && m.DeclaringType == type);
+        return type.GetMethods( BindingFlags.Instance | BindingFlags.Public )
+                   .FirstOrDefault( m => m.Name == "GetHashCode" && m.GetParameters().Length == 0 && m.DeclaringType == type );
     }
 
-    private static int GenerateReflectionBasedHashCode(object obj, Type type, HashSet<object> visitedObjects)
+    private static int GenerateReflectionBasedHashCode( object obj, Type type, HashSet<object> visitedObjects )
     {
-        if (obj == null)
+        if ( obj == null )
             return 0;
 
         // Detect cycles by checking if we've already visited this object.
-        if (!visitedObjects.Add(obj))
+        if ( !visitedObjects.Add( obj ) )
             return 0; // Return 0 for already-visited objects to avoid cycles.
 
         int hash = 17;
@@ -476,49 +476,49 @@ public static class HashCodeGenerator
         try
         {
             // Iterate over fields
-            foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            foreach ( var field in type.GetFields( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic ) )
             {
-                var fieldValue = field.GetValue(obj);
-                int fieldHash = GenerateFieldHashCode(fieldValue, visitedObjects);
-                hash = CombineHashCodes(hash, fieldHash);
+                var fieldValue = field.GetValue( obj );
+                int fieldHash = GenerateFieldHashCode( fieldValue, visitedObjects );
+                hash = CombineHashCodes( hash, fieldHash );
             }
         }
         finally
         {
             // Remove the object from the visited set to allow other paths to process it.
-            visitedObjects.Remove(obj);
+            visitedObjects.Remove( obj );
         }
 
         return hash;
     }
 
-    private static int GenerateFieldHashCode(object value, HashSet<object> visitedObjects)
+    private static int GenerateFieldHashCode( object value, HashSet<object> visitedObjects )
     {
-        if (value == null)
+        if ( value == null )
             return 0;
 
         var valueType = value.GetType();
 
         // Check if the type of the value has an overridden GetHashCode method.
-        var getHashCodeMethod = GetGetHashCodeMethod(valueType);
+        var getHashCodeMethod = GetGetHashCodeMethod( valueType );
 
-        if (getHashCodeMethod != null && getHashCodeMethod.DeclaringType != typeof(object))
+        if ( getHashCodeMethod != null && getHashCodeMethod.DeclaringType != typeof( object ) )
         {
             // If GetHashCode is implemented, use it directly.
             return value.GetHashCode();
         }
 
         // If the value is a struct or complex type, calculate its hash recursively.
-        if (!valueType.IsPrimitive && !valueType.IsEnum && valueType != typeof(string))
+        if ( !valueType.IsPrimitive && !valueType.IsEnum && valueType != typeof( string ) )
         {
-            return GenerateReflectionBasedHashCode(value, valueType, visitedObjects);
+            return GenerateReflectionBasedHashCode( value, valueType, visitedObjects );
         }
 
         // For primitive types, use the default hash code.
         return value.GetHashCode();
     }
 
-    private static int CombineHashCodes(int hash, int fieldHash)
+    private static int CombineHashCodes( int hash, int fieldHash )
     {
         unchecked
         {

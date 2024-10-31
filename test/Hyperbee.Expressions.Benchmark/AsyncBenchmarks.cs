@@ -40,12 +40,12 @@ public class AsyncBenchmarks
         _fastCompiledLambda = _lambda.CompileFast();
     }
 
-     [Benchmark]
-     public void Hyperbee_ComputeHash()
-     {
-         var hasher = new ExpressionTreeHasher();
-         var hash = hasher.ComputeHash( Block( _expression ) );
-     }
+    [Benchmark]
+    public void Hyperbee_ComputeHash()
+    {
+        var hasher = new ExpressionTreeHasher();
+        var hash = hasher.ComputeHash( Block( _expression ) );
+    }
 
     [Benchmark]
     public async Task Hyperbee_AsyncBlock_CompileAndExecute()

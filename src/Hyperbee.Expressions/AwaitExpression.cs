@@ -63,8 +63,8 @@ public class AwaitExpression : Expression
     {
         var newTarget = visitor.Visit( Target );
 
-        return newTarget == Target 
-            ? this 
+        return newTarget == Target
+            ? this
             : new AwaitExpression( newTarget, ConfigureAwait );
     }
 
