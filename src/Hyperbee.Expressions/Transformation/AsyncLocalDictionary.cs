@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -32,7 +32,7 @@ internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<Key
         AsyncLocal.Value = null;
     }
 
-    public TValue this[ TKey key ]
+    public TValue this[TKey key]
     {
         get => _dictionary[key];
         set => _dictionary[key] = value;
@@ -49,7 +49,7 @@ internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<Key
     public bool TryAdd( TKey key, TValue value ) => _dictionary.TryAdd( key, value );
 
     public bool TryGetItem( TKey key, out TValue value ) => _dictionary.TryGetValue( key, out value );
-    
+
     public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => _dictionary.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
