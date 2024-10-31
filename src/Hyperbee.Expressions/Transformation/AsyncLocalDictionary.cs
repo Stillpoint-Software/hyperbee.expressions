@@ -4,7 +4,7 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<KeyValuePair<TKey, TValue>>
 {
-    private readonly Dictionary<TKey,TValue> _dictionary = new();
+    private readonly Dictionary<TKey, TValue> _dictionary = new();
     private int _referenceCount;
     private bool _disposed;
 
@@ -40,12 +40,12 @@ internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<Key
         _disposed = true;
         _dictionary.Clear();
 
-        AsyncLocal.Value = null; 
+        AsyncLocal.Value = null;
     }
 
     void IDisposable.Dispose() => Release();
 
-    public TValue this[ TKey key ]
+    public TValue this[TKey key]
     {
         get => _dictionary[key];
         set => _dictionary[key] = value;
@@ -62,7 +62,7 @@ internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<Key
     public bool TryAdd( TKey key, TValue value ) => _dictionary.TryAdd( key, value );
 
     public bool TryGetItem( TKey key, out TValue value ) => _dictionary.TryGetValue( key, out value );
-    
+
 
     public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => _dictionary.GetEnumerator();
 
