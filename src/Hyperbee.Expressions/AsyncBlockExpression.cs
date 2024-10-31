@@ -64,6 +64,20 @@ public class AsyncBlockExpression : Expression
         return stateMachine;
     }
 
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        var variables = Array.AsReadOnly( _variables );
+        var expressions = Array.AsReadOnly( _expressions );
+
+        var newVariables = visitor.VisitAndConvert( variables, nameof( VisitChildren ) );
+        var newExpressions = visitor.Visit( expressions );
+
+        if ( newVariables == variables && newExpressions == expressions )
+            return this;
+
+        return new AsyncBlockExpression( newVariables.ToArray(), newExpressions.ToArray() );
+    }
+
     private class AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node )
     {
         public Expression StateMachine => node._stateMachine;

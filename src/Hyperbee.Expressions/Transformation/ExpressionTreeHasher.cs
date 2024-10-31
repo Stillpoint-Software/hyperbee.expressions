@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.Concurrent;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -18,6 +19,8 @@ public class ExpressionTreeHasher : ExpressionVisitor
     public int ComputeHash( Expression expression )
     {
         _hashCode = 17; // Start with a prime number
+        _parameterMap.Clear();
+
         Visit( expression );
         return _hashCode;
     }
@@ -37,6 +40,14 @@ public class ExpressionTreeHasher : ExpressionVisitor
         return base.Visit( node );
     }
 
+    protected override Expression VisitExtension( Expression node )
+    {
+        _hashCode = _hashCode * 23 + GetTypeHashCode( node.GetType() );
+
+        // Use VisitChildren, which is overridden in custom expressions
+        return base.VisitExtension( node );
+    }
+
     protected override Expression VisitBinary( BinaryExpression node )
     {
         // Combine properties specific to BinaryExpression
@@ -49,18 +60,38 @@ public class ExpressionTreeHasher : ExpressionVisitor
 
     protected override Expression VisitConstant( ConstantExpression node )
     {
-        // Combine the value of the constant, handling special cases
         if ( node.Value != null )
         {
-            var type = node.Value.GetType();
-            _hashCode = _hashCode * 23 + GetTypeHashCode( type );
-            //          _hashCode = _hashCode * 23 + node.Value.GetHashCode();
+            Type valueType = node.Value.GetType();
+
+            if ( valueType.IsPrimitive || valueType == typeof(string) || valueType.IsEnum )
+            {
+                // Handle primitive types, strings, and enums
+                _hashCode = _hashCode * 23 + GetTypeHashCode( valueType );
+                _hashCode = _hashCode * 23 + node.Value.GetHashCode();
+            }
+            else if ( typeof(IEnumerable<Expression>).IsAssignableFrom( valueType ) )
+            {
+                // Handle collections of expressions, if any
+                foreach ( var expr in (IEnumerable<Expression>) node.Value )
+                {
+                    Visit( expr );
+                }
+            }
+            else
+            {
+                // Handle reference types
+                _hashCode = _hashCode * 23 + GetTypeHashCode( valueType );
+                _hashCode = _hashCode * 23 + HashCodeGenerator.GenerateHashCode( node.Value );
+            }
         }
         else
         {
-            _hashCode = _hashCode * 23;
+            // Handle null constants
+            _hashCode = _hashCode * 23 + 0;
         }
-        return node; // No need to call base.VisitConstant as there are no child nodes
+
+        return node;
     }
 
     protected override Expression VisitParameter( ParameterExpression node )
@@ -150,21 +181,6 @@ public class ExpressionTreeHasher : ExpressionVisitor
 
         return base.VisitIndex( node );
     }
-
-    //protected override Expression VisitExtension(Expression node)
-    //{
-    //    if (node.CanReduce)
-    //    {
-    //        Visit(node.Reduce());
-    //    }
-    //    else
-    //    {
-    //        // Handle custom expressions
-    //        _hashCode = _hashCode * 23 + node.NodeType.GetHashCode();
-    //        _hashCode = _hashCode * 23 + GetTypeHashCode(node.Type);
-    //    }
-    //    return node;
-    //}
 
     // The following overrides are necessary because the base ExpressionVisitor does not traverse
     // the child nodes of MemberBinding and ElementInit expressions by default.
@@ -304,7 +320,6 @@ public class ExpressionTreeHasher : ExpressionVisitor
     protected override Expression VisitDynamic( DynamicExpression node )
     {
         _hashCode = _hashCode * 23 + GetTypeHashCode( node.DelegateType );
-        //_hashCode = _hashCode * 23 + node.Binder.GetHashCode();
         _hashCode = _hashCode * 23 + GetTypeHashCode( node.Binder.GetType() );
 
         foreach ( var argument in node.Arguments )
@@ -408,6 +423,106 @@ public class ExpressionTreeHasher : ExpressionVisitor
             hash = hash * 23 + GetTypeHashCode( member.DeclaringType );
 
             return hash;
+        }
+    }
+}
+
+public static class HashCodeGenerator
+{
+    private static readonly ConcurrentDictionary<Type, Func<object, int>> CachedHashGenerators = new();
+
+    public static int GenerateHashCode(object obj)
+    {
+        if (obj == null)
+            return 0;
+
+        var type = obj.GetType();
+
+        // Retrieve or create a hash generator for the type.
+        var hashGenerator = CachedHashGenerators.GetOrAdd(type, CreateHashGenerator);
+        return hashGenerator(obj);
+    }
+
+    private static Func<object, int> CreateHashGenerator(Type type)
+    {
+        var getHashCodeMethod = GetGetHashCodeMethod(type);
+
+        if (getHashCodeMethod != null && getHashCodeMethod.DeclaringType != typeof(object))
+        {
+            // If GetHashCode is implemented, use it directly.
+            return obj => obj.GetHashCode();
+        }
+
+        return obj => GenerateReflectionBasedHashCode(obj, type, [] );
+    }
+
+    private static MethodInfo GetGetHashCodeMethod(Type type)
+    {
+        return type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                   .FirstOrDefault(m => m.Name == "GetHashCode" && m.GetParameters().Length == 0 && m.DeclaringType == type);
+    }
+
+    private static int GenerateReflectionBasedHashCode(object obj, Type type, HashSet<object> visitedObjects)
+    {
+        if (obj == null)
+            return 0;
+
+        // Detect cycles by checking if we've already visited this object.
+        if (!visitedObjects.Add(obj))
+            return 0; // Return 0 for already-visited objects to avoid cycles.
+
+        int hash = 17;
+
+        try
+        {
+            // Iterate over fields
+            foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                var fieldValue = field.GetValue(obj);
+                int fieldHash = GenerateFieldHashCode(fieldValue, visitedObjects);
+                hash = CombineHashCodes(hash, fieldHash);
+            }
+        }
+        finally
+        {
+            // Remove the object from the visited set to allow other paths to process it.
+            visitedObjects.Remove(obj);
+        }
+
+        return hash;
+    }
+
+    private static int GenerateFieldHashCode(object value, HashSet<object> visitedObjects)
+    {
+        if (value == null)
+            return 0;
+
+        var valueType = value.GetType();
+
+        // Check if the type of the value has an overridden GetHashCode method.
+        var getHashCodeMethod = GetGetHashCodeMethod(valueType);
+
+        if (getHashCodeMethod != null && getHashCodeMethod.DeclaringType != typeof(object))
+        {
+            // If GetHashCode is implemented, use it directly.
+            return value.GetHashCode();
+        }
+
+        // If the value is a struct or complex type, calculate its hash recursively.
+        if (!valueType.IsPrimitive && !valueType.IsEnum && valueType != typeof(string))
+        {
+            return GenerateReflectionBasedHashCode(value, valueType, visitedObjects);
+        }
+
+        // For primitive types, use the default hash code.
+        return value.GetHashCode();
+    }
+
+    private static int CombineHashCodes(int hash, int fieldHash)
+    {
+        unchecked
+        {
+            return hash * 31 + fieldHash;
         }
     }
 }
