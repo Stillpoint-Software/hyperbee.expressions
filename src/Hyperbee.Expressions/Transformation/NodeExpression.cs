@@ -111,9 +111,9 @@ public class NodeExpression : Expression
 
             if ( returnValue != null )
                 return Assign( resultField, returnValue );
- 
-            return blockBody.Type == typeof(void)
-                ? Assign( resultField, Constant( null, typeof(IVoidResult) ) )
+
+            return blockBody.Type == typeof( void )
+                ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
                 : Assign( resultField, blockBody );
         }
     }
