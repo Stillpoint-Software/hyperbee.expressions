@@ -106,8 +106,8 @@ public class NodeExpression : Expression
 
             return returnValue != null
                 ? Assign( resultField, returnValue )
-                : blockBody.Type == typeof(void)
-                    ? Assign( resultField, Constant( null, typeof(IVoidResult) ) )
+                : blockBody.Type == typeof( void )
+                    ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
                     : Assign( resultField, blockBody );
         }
     }
