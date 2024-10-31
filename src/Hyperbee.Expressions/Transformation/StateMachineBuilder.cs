@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿//#define BUILD_STRUCT
+
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -8,7 +10,11 @@ namespace Hyperbee.Expressions.Transformation;
 
 public interface IVoidResult; // Marker interface for void Task results
 
+#if BUILD_STRUCT
 public delegate void MoveNextDelegate<T>( ref T stateMachine ) where T : IAsyncStateMachine;
+#else
+public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
+#endif
 
 public class StateMachineBuilder<TResult>
 {
@@ -130,12 +136,19 @@ public class StateMachineBuilder<TResult>
 
     private Type CreateStateMachineType( LoweringResult source, out IEnumerable<FieldInfo> fields )
     {
+#if BUILD_STRUCT
         var typeBuilder = _moduleBuilder.DefineType(
             _typeName,
             TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed,
             typeof( ValueType ) // struct
         );
-
+#else
+        var typeBuilder = _moduleBuilder.DefineType(
+            _typeName,
+            TypeAttributes.Public | TypeAttributes.Class,
+            typeof( object ),
+            [typeof( IAsyncStateMachine )] );
+#endif
         typeBuilder.AddInterfaceImplementation( typeof( IAsyncStateMachine ) );
 
         // Define: fields
@@ -216,7 +229,12 @@ public class StateMachineBuilder<TResult>
             .GetMethod( "SetStateMachine", [typeof( IAsyncStateMachine )]
         );
 
+#if BUILD_STRUCT
         ilGenerator.Emit( OpCodes.Call, setStateMachineOnBuilder! );
+#else
+        ilGenerator.Emit( OpCodes.Callvirt, setStateMachineOnBuilder! );
+#endif
+
         ilGenerator.Emit( OpCodes.Ret );
 
         typeBuilder.DefineMethodOverride( setStateMachineMethod,
@@ -318,7 +336,11 @@ public class StateMachineBuilder<TResult>
            
         */
 
+#if BUILD_STRUCT
         var stateMachine = Parameter( stateMachineType.MakeByRefType(), $"sm<{id}>" );
+#else
+        var stateMachine = Parameter( stateMachineType, $"sm<{id}>" );
+#endif
 
         var stateField = Field( stateMachine, FieldName.State );
         var builderField = Field( stateMachine, FieldName.Builder );

@@ -59,6 +59,15 @@ public class AwaitExpression : Expression
         return awaiterInfo.GetResultMethod.ReturnType;
     }
 
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        var newTarget = visitor.Visit( Target );
+
+        return newTarget == Target
+            ? this
+            : new AwaitExpression( newTarget, ConfigureAwait );
+    }
+
     internal static bool IsAwaitable( Type type )
     {
         return typeof( Task ).IsAssignableFrom( type ) || typeof( ValueTask ).IsAssignableFrom( type ) || AwaitBinderFactory.TryGetOrCreate( type, out _ );
