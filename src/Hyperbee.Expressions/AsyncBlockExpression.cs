@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation;
 
@@ -14,6 +13,7 @@ public class AsyncBlockExpression : Expression
     private readonly Type _type;
 
     private Expression _stateMachine;
+    private Dictionary<int, ParameterExpression> _shareVariables;
 
     public AsyncBlockExpression( Expression[] expressions )
         : this( [], expressions )
@@ -40,20 +40,33 @@ public class AsyncBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        return _stateMachine ??= GenerateStateMachine( _resultType, _variables, _expressions );
+        if ( _stateMachine != null )
+            return _stateMachine;
+
+        var visitor = new LoweringVisitor( _shareVariables );
+        var source = visitor.Transform( _variables, _expressions );
+
+        _stateMachine = GenerateStateMachine( _resultType, source );
+        return _stateMachine;
     }
 
-    private static Expression GenerateStateMachine( Type resultType, ParameterExpression[] variables, Expression[] expressions )
+    internal void SetShareVariables( Dictionary<int, ParameterExpression> variables, Dictionary<int, ParameterExpression> shareVariables )
     {
-        var visitor = new LoweringVisitor();
-        var source = visitor.Transform( variables, expressions );
+        _shareVariables = variables
+            .Concat( shareVariables )
+            .ToDictionary( pair => pair.Key, pair => pair.Value );
+    }
 
+    private static Expression GenerateStateMachine( Type resultType, LoweringResult source, bool createRunner = true )
+    {
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        return StateMachineBuilder.Create( resultType, source );
-    }
+        var stateMachine = StateMachineBuilder.Create( resultType, source, createRunner );
 
+        return stateMachine;
+    }
+    
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
         var variables = Array.AsReadOnly( _variables );

@@ -11,6 +11,8 @@ internal class LoweringVisitor : ExpressionVisitor
     private ParameterExpression _returnValue;
     private ParameterExpression[] _definedVariables;
     private readonly Dictionary<int, ParameterExpression> _variables = new( InitialCapacity );
+    private readonly Dictionary<int, ParameterExpression> _shareVariables;
+
     private int _awaitCount;
 
     private readonly StateContext _states = new( InitialCapacity );
@@ -37,6 +39,13 @@ internal class LoweringVisitor : ExpressionVisitor
         public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
 
         public const string Return = "return<>";
+    }
+
+    public LoweringVisitor() : this( null ) { }
+
+    internal LoweringVisitor( Dictionary<int, ParameterExpression> shareVariables = null )
+    {
+        _shareVariables = shareVariables ?? new Dictionary<int, ParameterExpression>(InitialCapacity);
     }
 
     public LoweringResult Transform( ParameterExpression[] variables, params Expression[] expressions )
@@ -221,10 +230,13 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
+        var hash = node.GetHashCode();
+
+        if ( _shareVariables.TryGetValue( hash, out var inheritedNode ) )
+            return inheritedNode;
+
         if ( !_definedVariables.Contains( node ) )
             return base.VisitParameter( node );
-
-        var hash = node.GetHashCode();
 
         if ( _variables.TryGetValue( hash, out var existingNode ) )
             return existingNode;
@@ -348,8 +360,9 @@ internal class LoweringVisitor : ExpressionVisitor
         };
     }
 
-    protected static Expression VisitAsyncBlock( AsyncBlockExpression node )
+    protected Expression VisitAsyncBlock( AsyncBlockExpression node )
     {
+        node.SetShareVariables( _variables, _shareVariables );
         return node.Reduce();
     }
 
