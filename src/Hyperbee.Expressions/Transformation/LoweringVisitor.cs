@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 
@@ -351,18 +351,18 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitExtension( Expression node )
     {
-        return node switch
+        switch ( node )
         {
-            AwaitExpression awaitExpression => VisitAwait( awaitExpression ),
-            AsyncBlockExpression => node,
-            _ => base.VisitExtension( node )
-        };
-    }
+            case AwaitExpression awaitExpression:
+                return VisitAwait( awaitExpression );
 
-    protected Expression VisitAsyncBlock( AsyncBlockExpression node )
-    {
-        node.SetShareVariables( _variables, _shareVariables );
-        return node.Reduce();
+            case AsyncBlockExpression asyncBlockExpression:
+                asyncBlockExpression.SetShareVariables( _variables, _shareVariables );
+                return asyncBlockExpression;
+
+            default:
+                return base.VisitExtension( node );
+        }
     }
 
     protected Expression VisitAwait( AwaitExpression node )
