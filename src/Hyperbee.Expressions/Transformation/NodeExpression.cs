@@ -34,6 +34,11 @@ public class NodeExpression : Expression
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
 
+    internal void SetResolverSource( IHoistingSource resolverSource )
+    {
+        _resolverSource = resolverSource;
+    }
+
     internal Expression Reduce( IHoistingSource resolverSource )
     {
         _resolverSource = resolverSource;
@@ -63,8 +68,6 @@ public class NodeExpression : Expression
         }
         else if ( ResultVariable != null && Expressions.Count > 0 && ResultVariable.Type == Expressions[^1].Type )
         {
-            // TODO: This feels like a hack that should be moved somewhere else
-            // This might be related to Gotos and Joins?
             Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
         }
 
@@ -81,25 +84,9 @@ public class NodeExpression : Expression
     {
         var (_, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
 
-        Expression blockBody;
-
-        if ( Expressions.Count > 0 )
-            blockBody = Block( Expressions );
-        else if ( ResultValue != null )
-            blockBody = Block( ResultValue );
-        else
-            blockBody = Empty();
-
-        // TODO: see if this can be improved earlier in the process
-        var finalResult = returnValue != null
-            ? Assign( resultField, returnValue )
-            : (blockBody.Type == typeof( void ))
-                ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
-                : Assign( resultField, blockBody );
-
         return Block(
             Label( NodeLabel ),
-            finalResult,
+            GetFinalResultExpression( returnValue, resultField, ResultValue, Expressions ),
             Assign( stateIdField, Constant( -2 ) ),
             Call(
                 builderField,
@@ -110,5 +97,24 @@ public class NodeExpression : Expression
                     : Constant( null, resultField.Type ) // No result for IVoidResult
             )
         );
+
+        static BinaryExpression GetFinalResultExpression( ParameterExpression returnValue, MemberExpression resultField, Expression resultValue, List<Expression> expressions )
+        {
+            Expression blockBody;
+
+            if ( expressions.Count > 0 )
+                blockBody = Block( expressions );
+            else if ( resultValue != null )
+                blockBody = Block( resultValue );
+            else
+                blockBody = Empty();
+
+            if ( returnValue != null )
+                return Assign( resultField, returnValue );
+ 
+            return blockBody.Type == typeof(void)
+                ? Assign( resultField, Constant( null, typeof(IVoidResult) ) )
+                : Assign( resultField, blockBody );
+        }
     }
 }

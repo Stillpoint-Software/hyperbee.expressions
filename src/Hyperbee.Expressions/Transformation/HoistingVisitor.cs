@@ -54,11 +54,12 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 
     protected override Expression VisitExtension( Expression node )
     {
-        return node switch
+        if ( node is NodeExpression nodeExpression )
         {
-            AwaitExpression awaitExpression => Visit( awaitExpression.Target )!,
-            NodeExpression stateNode => Visit( stateNode.Reduce( this ) ),
-            _ => base.VisitExtension( node )
-        } ?? Expression.Empty();
+            nodeExpression.SetResolverSource( this );
+            return Visit( nodeExpression.Reduce() );
+        }
+
+        return base.VisitExtension( node );
     }
 }

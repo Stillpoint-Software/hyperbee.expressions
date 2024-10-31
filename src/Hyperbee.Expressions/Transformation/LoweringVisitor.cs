@@ -135,7 +135,6 @@ internal class LoweringVisitor : ExpressionVisitor
             or SwitchExpression
             or TryExpression
             or AwaitExpression
-            or AsyncBlockExpression
             or LoopExpression;
     }
 
@@ -342,15 +341,10 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         return node switch
         {
-            AsyncBlockExpression asyncBlockExpression => VisitAsyncBlock( asyncBlockExpression ),
             AwaitExpression awaitExpression => VisitAwait( awaitExpression ),
+            AsyncBlockExpression => node,
             _ => base.VisitExtension( node )
         };
-    }
-
-    protected static Expression VisitAsyncBlock( AsyncBlockExpression node )
-    {
-        return node.Reduce();
     }
 
     protected Expression VisitAwait( AwaitExpression node )

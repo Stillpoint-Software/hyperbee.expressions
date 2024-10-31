@@ -127,23 +127,8 @@ public class BlockAsyncBasicTests
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
 
-        // Arrange
-        var innerBlock1 = Lambda<Func<Task<int>>>(
-            BlockAsync(
-                Await( Constant( Task.FromResult( 2 ) ) )
-            )
-        );
-
-        var block1 = BlockAsync(
-            Await( Constant( Task.FromResult( 1 ) ) ),
-            Await( Invoke( innerBlock1 ) )
-        );
-
-        var lambda1 = Lambda<Func<Task<int>>>( block1 );
-        var compiledLambda1 = lambda1.Compile();
-
         // Act
-        var result = await compiledLambda1();
+        var result = await compiledLambda();
 
         // Assert
         Assert.AreEqual( 2, result );

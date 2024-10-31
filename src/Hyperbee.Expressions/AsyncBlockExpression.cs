@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation;
 
@@ -49,7 +48,7 @@ public class AsyncBlockExpression : Expression
         var source = visitor.Transform( variables, expressions );
 
         if ( source.AwaitCount == 0 )
-            throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
+           throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
         return StateMachineBuilder.Create( resultType, source );
     }
