@@ -1,10 +1,10 @@
-﻿using System.Collections;
+using System.Collections;
 
 namespace Hyperbee.Expressions.Transformation;
 
 internal class AsyncLocalDictionary<TKey, TValue> : IDisposable, IEnumerable<KeyValuePair<TKey, TValue>>
 {
-    private readonly Dictionary<TKey,TValue> _dictionary = new();
+    private readonly Dictionary<TKey, TValue> _dictionary = new();
     private int _referenceCount;
 
     private static readonly AsyncLocal<AsyncLocalDictionary<TKey, TValue>> AsyncLocal = new();
