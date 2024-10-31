@@ -52,9 +52,17 @@ public class AsyncBlockExpression : Expression
 
     internal void SetShareVariables( Dictionary<int, ParameterExpression> variables, Dictionary<int, ParameterExpression> shareVariables )
     {
-        _shareVariables = variables
-            .Concat( shareVariables )
-            .ToDictionary( pair => pair.Key, pair => pair.Value );
+        _shareVariables = new Dictionary<int, ParameterExpression>( variables.Count + shareVariables.Count );
+
+        foreach ( var kvp in variables )
+        {
+            _shareVariables[kvp.Key] = kvp.Value;
+        }
+
+        foreach ( var kvp in shareVariables )
+        {
+            _shareVariables[kvp.Key] = kvp.Value;
+        }
     }
 
     private static Expression GenerateStateMachine( Type resultType, LoweringResult source, bool createRunner = true )
