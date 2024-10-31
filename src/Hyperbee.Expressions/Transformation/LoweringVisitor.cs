@@ -315,12 +315,12 @@ internal class LoweringVisitor : ExpressionVisitor
 
         for ( var index = 0; index < node.Handlers.Count; index++ )
         {
-            // non-zero index for catch states to avoid conflicts
+            // use non-zero index for catch states to avoid conflicts
             // with default catch state value (zero).
 
             var catchState = index + 1;
-
             var catchBlock = node.Handlers[index];
+
             tryCatchTransition.AddCatchBlock(
                 catchBlock,
                 VisitBranch( catchBlock.Body, joinState ),
@@ -427,8 +427,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( node.Type == typeof( void ) )
             return null;
 
-        ParameterExpression returnVariable =
-            Expression.Parameter( node.Type, VariableName.Result( stateId ) );
+        var returnVariable = Expression.Parameter( node.Type, VariableName.Result( stateId ) );
         _variables[returnVariable.GetHashCode()] = returnVariable;
 
         return returnVariable;
