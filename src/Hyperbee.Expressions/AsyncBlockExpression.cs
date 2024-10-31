@@ -13,6 +13,7 @@ public class AsyncBlockExpression : Expression
     private readonly Type _type;
 
     private Expression _stateMachine;
+    private Dictionary<int, ParameterExpression> _shareVariables;
 
     public AsyncBlockExpression( Expression[] expressions )
         : this( [], expressions )
@@ -39,18 +40,39 @@ public class AsyncBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        return _stateMachine ??= GenerateStateMachine( _resultType, _variables, _expressions );
+        if ( _stateMachine != null )
+            return _stateMachine;
+
+        var visitor = new LoweringVisitor( _shareVariables );
+        var source = visitor.Transform( _variables, _expressions );
+
+        _stateMachine = GenerateStateMachine( _resultType, source );
+        return _stateMachine;
     }
 
-    private static Expression GenerateStateMachine( Type resultType, ParameterExpression[] variables, Expression[] expressions )
+    internal void SetShareVariables( Dictionary<int, ParameterExpression> variables, Dictionary<int, ParameterExpression> shareVariables )
     {
-        var visitor = new LoweringVisitor();
-        var source = visitor.Transform( variables, expressions );
+        _shareVariables = new Dictionary<int, ParameterExpression>( variables.Count + shareVariables.Count );
 
+        foreach ( var kvp in variables )
+        {
+            _shareVariables[kvp.Key] = kvp.Value;
+        }
+
+        foreach ( var kvp in shareVariables )
+        {
+            _shareVariables[kvp.Key] = kvp.Value;
+        }
+    }
+
+    private static Expression GenerateStateMachine( Type resultType, LoweringResult source, bool createRunner = true )
+    {
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        return StateMachineBuilder.Create( resultType, source );
+        var stateMachine = StateMachineBuilder.Create( resultType, source, createRunner );
+
+        return stateMachine;
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )

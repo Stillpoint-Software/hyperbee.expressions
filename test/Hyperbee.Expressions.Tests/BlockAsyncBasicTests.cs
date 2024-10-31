@@ -134,6 +134,46 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
     }
 
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldShareVariablesBetweenBlocks_WithNestedAwaits()
+    {
+        // Arrange
+        var var1 = Variable( typeof( int ), "var1" );
+        var var2 = Variable( typeof( int ), "var2" );
+
+        // uses variables from both outer blocks
+        var mostInnerBlock = Lambda<Func<Task>>(
+            BlockAsync(
+                Assign( var1, Add( var1, var2 ) ),
+                Await( Constant( Task.Delay( 20 ) ) )
+            ) );
+
+        var innerBlock = Lambda<Func<Task<int>>>(
+            BlockAsync(
+                [var2], // in scoped here and most inner block
+                Assign( var2, Add( var1, Constant( 1 ) ) ),
+                Await( Invoke( mostInnerBlock ) ),
+                var1
+            ) );
+
+        var block = BlockAsync(
+            [var1], // in scope for all blocks
+            Assign( var1, Constant( 3 ) ),
+            Await( Invoke( innerBlock ) )
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 7, result );
+    }
+
+
     [TestMethod]
     public async Task BlockAsync_ShouldHandleSyncAndAsync_WithMixedOperations()
     {

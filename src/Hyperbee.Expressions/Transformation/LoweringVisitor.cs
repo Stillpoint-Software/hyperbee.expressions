@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 
@@ -11,6 +11,8 @@ internal class LoweringVisitor : ExpressionVisitor
     private ParameterExpression _returnValue;
     private ParameterExpression[] _definedVariables;
     private readonly Dictionary<int, ParameterExpression> _variables = new( InitialCapacity );
+    private readonly Dictionary<int, ParameterExpression> _shareVariables;
+
     private int _awaitCount;
 
     private readonly StateContext _states = new( InitialCapacity );
@@ -37,6 +39,13 @@ internal class LoweringVisitor : ExpressionVisitor
         public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
 
         public const string Return = "return<>";
+    }
+
+    public LoweringVisitor() : this( null ) { }
+
+    internal LoweringVisitor( Dictionary<int, ParameterExpression> shareVariables = null )
+    {
+        _shareVariables = shareVariables ?? new Dictionary<int, ParameterExpression>( InitialCapacity );
     }
 
     public LoweringResult Transform( ParameterExpression[] variables, params Expression[] expressions )
@@ -220,10 +229,13 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
+        var hash = node.GetHashCode();
+
+        if ( _shareVariables.TryGetValue( hash, out var inheritedNode ) )
+            return inheritedNode;
+
         if ( !_definedVariables.Contains( node ) )
             return base.VisitParameter( node );
-
-        var hash = node.GetHashCode();
 
         if ( _variables.TryGetValue( hash, out var existingNode ) )
             return existingNode;
@@ -302,12 +314,12 @@ internal class LoweringVisitor : ExpressionVisitor
 
         for ( var index = 0; index < node.Handlers.Count; index++ )
         {
-            // non-zero index for catch states to avoid conflicts
+            // use non-zero index for catch states to avoid conflicts
             // with default catch state value (zero).
 
             var catchState = index + 1;
-
             var catchBlock = node.Handlers[index];
+
             tryCatchTransition.AddCatchBlock(
                 catchBlock,
                 VisitBranch( catchBlock.Body, joinState ),
@@ -345,6 +357,12 @@ internal class LoweringVisitor : ExpressionVisitor
             AsyncBlockExpression => node,
             _ => base.VisitExtension( node )
         };
+    }
+
+    protected Expression VisitAsyncBlock( AsyncBlockExpression node )
+    {
+        node.SetShareVariables( _variables, _shareVariables );
+        return node.Reduce();
     }
 
     protected Expression VisitAwait( AwaitExpression node )
@@ -408,8 +426,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( node.Type == typeof( void ) )
             return null;
 
-        ParameterExpression returnVariable =
-            Expression.Parameter( node.Type, VariableName.Result( stateId ) );
+        var returnVariable = Expression.Parameter( node.Type, VariableName.Result( stateId ) );
         _variables[returnVariable.GetHashCode()] = returnVariable;
 
         return returnVariable;

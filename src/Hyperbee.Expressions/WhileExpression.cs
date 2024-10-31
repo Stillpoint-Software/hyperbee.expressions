@@ -73,12 +73,10 @@ public class WhileExpression : Expression
         var newTest = visitor.Visit( Test );
         var newBody = visitor.Visit( Body );
 
-        if ( newTest != Test || newBody != Body )
-        {
-            return new WhileExpression( newTest, newBody, BreakLabel, ContinueLabel );
-        }
+        if ( newTest == Test && newBody == Body )
+            return this;
 
-        return this;
+        return new WhileExpression( newTest, newBody, BreakLabel, ContinueLabel );
     }
 }
 

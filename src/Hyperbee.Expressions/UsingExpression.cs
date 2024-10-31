@@ -43,10 +43,11 @@ public class UsingExpression : Expression
         var newDisposable = visitor.Visit( Disposable );
         var newBody = visitor.Visit( Body );
 
-        if ( newDisposable != Disposable || newBody != Body )
-            return new UsingExpression( newDisposable, newBody );
+        if ( newDisposable == Disposable && newBody == Body )
+            return this;
 
-        return this;
+        return new UsingExpression( newDisposable, newBody );
+
     }
 }
 
