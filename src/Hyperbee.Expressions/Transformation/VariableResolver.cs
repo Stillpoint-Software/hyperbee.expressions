@@ -29,7 +29,7 @@ internal sealed class VariableResolver : IVariableResolver
 
     public VariableResolver( ParameterExpression[] variables )
     {
-        _variables = [..variables];
+        _variables = [.. variables];
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
