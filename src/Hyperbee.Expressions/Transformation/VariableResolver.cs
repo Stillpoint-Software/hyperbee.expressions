@@ -2,11 +2,14 @@
 
 namespace Hyperbee.Expressions.Transformation;
 
-public interface IVariableResolver
+public interface IFieldResolver
+{
+    void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions );
+}
+
+public interface IVariableResolver : IFieldResolver
 {
     IVariableResolver Parent { get; set; }
-
-    void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions );
 
     ParameterExpression[] GetLocalVariables();
 

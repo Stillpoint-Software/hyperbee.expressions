@@ -59,13 +59,13 @@ public class AsyncBlockExpression : Expression
     private static Expression GenerateStateMachine(
         Type resultType,
         LoweringResult source,
-        IVariableResolver variableResolver,
+        IFieldResolver fieldResolver,
         bool createRunner = true )
     {
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver, createRunner );
+        var stateMachine = StateMachineBuilder.Create( resultType, source, fieldResolver, createRunner );
 
         return stateMachine;
     }
