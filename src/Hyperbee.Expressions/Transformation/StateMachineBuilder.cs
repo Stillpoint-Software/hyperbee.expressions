@@ -420,15 +420,19 @@ public class StateMachineBuilder<TResult>
             ),
             stateMachine
         );
+
+        // Helper to create the body expressions with hoisted variables
     }
 
-    private static List<Expression> BodyExpressions( Expression jumpTable, IList<NodeExpression> nodes, HoistingVisitor hoistingVisitor )
+    private static Expression[] BodyExpressions( Expression jumpTable, IList<NodeExpression> nodes, HoistingVisitor hoistingVisitor )
     {
-        var bodyExpressions = new List<Expression>( 1 + nodes.Count ) { jumpTable };
+        var bodyExpressions = new Expression[1 + nodes.Count];
+
+        bodyExpressions[0] = jumpTable;
 
         for ( var index = 0; index < nodes.Count; index++ )
         {
-            bodyExpressions.Add( hoistingVisitor.Visit( nodes[index] ) );
+            bodyExpressions[index + 1] = hoistingVisitor.Visit( nodes[index] );
         }
 
         return bodyExpressions;

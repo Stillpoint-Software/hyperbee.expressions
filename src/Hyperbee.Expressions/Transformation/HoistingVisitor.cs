@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
+internal sealed class HoistingVisitor : ExpressionVisitor, IHoistingSource
 {
     private readonly IVariableResolver _variableResolver;
 
