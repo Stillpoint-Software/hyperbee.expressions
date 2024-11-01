@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace Hyperbee.Expressions;
+namespace Hyperbee.Expressions.Transformation;
 
 public interface IVariableResolver
 {
