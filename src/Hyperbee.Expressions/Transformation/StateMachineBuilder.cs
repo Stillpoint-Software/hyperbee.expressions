@@ -382,13 +382,7 @@ public class StateMachineBuilder<TResult>
             exitLabel,
             source.ReturnValue );
 
-        var bodyExpressions = new List<Expression>( 8 ) // preallocate slots for expressions
-        {
-            jumpTable
-        };
-
-        var nodes = source.Scopes[0].Nodes;
-        bodyExpressions.AddRange( nodes.Select( hoistingVisitor.Visit ) );
+        var bodyExpressions = BodyExpressions( jumpTable, source.Scopes[0].Nodes, hoistingVisitor );
 
         // Create a try-catch block to handle exceptions
 
@@ -426,6 +420,18 @@ public class StateMachineBuilder<TResult>
             ),
             stateMachine
         );
+    }
+
+    private static List<Expression> BodyExpressions( Expression jumpTable, IList<NodeExpression> nodes, HoistingVisitor hoistingVisitor )
+    {
+        var bodyExpressions = new List<Expression>( 1 + nodes.Count ) { jumpTable };
+
+        for ( var index = 0; index < nodes.Count; index++ )
+        {
+            bodyExpressions.Add( hoistingVisitor.Visit( nodes[index] ) );
+        }
+
+        return bodyExpressions;
     }
 }
 

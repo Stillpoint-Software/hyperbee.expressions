@@ -57,6 +57,5 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 
         nodeExpression.SetResolverSource( this );
         return Visit( nodeExpression.Reduce() );
-
     }
 }

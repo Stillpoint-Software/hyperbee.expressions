@@ -12,7 +12,7 @@ public interface IVariableResolver
     bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess );
     bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression );
     ParameterExpression AddVariable( ParameterExpression variable );
-    IEnumerable<ParameterExpression> ExcludeMemberVariables( IEnumerable<ParameterExpression> variables );`
+    IEnumerable<ParameterExpression> ExcludeMemberVariables( IEnumerable<ParameterExpression> variables );
 
     bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable );
 }
@@ -22,14 +22,14 @@ internal sealed class VariableResolver : IVariableResolver
     private const int InitialCapacity = 8;
 
     private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new( InitialCapacity );
-    private readonly ParameterExpression[] _variables;
+    private readonly HashSet<ParameterExpression> _variables;
     private IDictionary<string, MemberExpression> _memberExpressions;
 
     public IVariableResolver Parent { get; set; }
 
     public VariableResolver( ParameterExpression[] variables )
     {
-        _variables = variables;
+        _variables = [..variables];
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -59,7 +59,7 @@ internal sealed class VariableResolver : IVariableResolver
         if ( TryFindVariableInHierarchy( parameter, out updatedParameterExpression ) )
             return true;
 
-        if ( Array.IndexOf( _variables, parameter ) == -1 )
+        if ( !_variables.Contains( parameter ) )
             return false;
 
         if ( _mappedVariables.TryGetValue( parameter, out var mappedVariable ) )
