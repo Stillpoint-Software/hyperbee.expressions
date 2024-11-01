@@ -36,10 +36,7 @@ internal static class Reflection
 
         foreach ( var method in methods )
         {
-            var methodName = method.Name;
-
-            matchCallback( methodName, method, Matches );
-
+            matchCallback( method.Name, method, Matches );
             continue;
 
             bool Matches( Type[] parameterTypes, int? argCount = null )

@@ -7,13 +7,15 @@ namespace Hyperbee.Expressions;
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression : Expression
 {
+    internal IVariableResolver VariableResolver { get; }
+
     private readonly Expression[] _expressions;
     private readonly ParameterExpression[] _variables;
+
     private readonly Type _resultType;
-    private readonly Type _type;
+    private readonly Type _taskType;
 
     private Expression _stateMachine;
-    private Dictionary<int, ParameterExpression> _shareVariables;
 
     public AsyncBlockExpression( Expression[] expressions )
         : this( [], expressions )
@@ -25,10 +27,12 @@ public class AsyncBlockExpression : Expression
         if ( expressions == null || expressions.Length == 0 )
             throw new ArgumentException( $"{nameof( AsyncBlockExpression )} must contain at least one expression.", nameof( expressions ) );
 
+        VariableResolver = new VariableResolver( variables );
+
         _variables = variables;
         _expressions = expressions;
         _resultType = _expressions[^1].Type;
-        _type = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
+        _taskType = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
     }
 
     public override bool CanReduce => true;
@@ -36,41 +40,31 @@ public class AsyncBlockExpression : Expression
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     // ReSharper disable once ConvertToAutoProperty
-    public override Type Type => _type;
+    public override Type Type => _taskType;
 
     public override Expression Reduce()
     {
         if ( _stateMachine != null )
             return _stateMachine;
 
-        var visitor = new LoweringVisitor( _shareVariables );
-        var source = visitor.Transform( _variables, _expressions );
+        var visitor = new LoweringVisitor();
+        var source = visitor.Transform( VariableResolver, _expressions );
 
-        _stateMachine = GenerateStateMachine( _resultType, source );
+        _stateMachine = GenerateStateMachine( _resultType, source, VariableResolver );
+
         return _stateMachine;
     }
 
-    internal void SetShareVariables( Dictionary<int, ParameterExpression> variables, Dictionary<int, ParameterExpression> shareVariables )
-    {
-        _shareVariables = new Dictionary<int, ParameterExpression>( variables.Count + shareVariables.Count );
-
-        foreach ( var kvp in variables )
-        {
-            _shareVariables[kvp.Key] = kvp.Value;
-        }
-
-        foreach ( var kvp in shareVariables )
-        {
-            _shareVariables[kvp.Key] = kvp.Value;
-        }
-    }
-
-    private static Expression GenerateStateMachine( Type resultType, LoweringResult source, bool createRunner = true )
+    private static Expression GenerateStateMachine(
+        Type resultType,
+        LoweringResult source,
+        IVariableResolver variableResolver,
+        bool createRunner = true )
     {
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        var stateMachine = StateMachineBuilder.Create( resultType, source, createRunner );
+        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver, createRunner );
 
         return stateMachine;
     }
@@ -111,4 +105,3 @@ public static partial class ExpressionExtensions
         return new AsyncBlockExpression( variables, expressions );
     }
 }
-

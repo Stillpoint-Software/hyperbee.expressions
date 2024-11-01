@@ -2,9 +2,9 @@
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
+internal sealed class HoistingVisitor : ExpressionVisitor, IHoistingSource
 {
-    private readonly IReadOnlyDictionary<string, MemberExpression> _mappingCache;
+    private readonly IVariableResolver _variableResolver;
 
     public ParameterExpression StateMachine { get; init; }
 
@@ -16,7 +16,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
 
     public HoistingVisitor(
         ParameterExpression stateMachine,
-        IReadOnlyDictionary<string, MemberExpression> fields,
+        IVariableResolver variableResolver,
         MemberExpression stateIdField,
         MemberExpression builderField,
         MemberExpression resultField,
@@ -30,14 +30,12 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
         ResultField = resultField;
         ReturnValue = returnValue;
 
-        _mappingCache = fields;
+        _variableResolver = variableResolver;
     }
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        var name = node.Name ?? node.ToString();
-
-        if ( !_mappingCache.TryGetValue( name, out var fieldAccess ) )
+        if ( !_variableResolver.TryGetValue( node, out var fieldAccess ) )
             return node;
 
         return fieldAccess;
@@ -47,18 +45,17 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     {
         // Update each expression in a block to use only state machine fields/variables
         return node.Update(
-            node.Variables.Where( x => !_mappingCache.ContainsKey( x.Name ?? x.ToString() ) ),
+            _variableResolver.ExcludeMemberVariables( node.Variables ),
             node.Expressions.Select( Visit )
         );
     }
 
     protected override Expression VisitExtension( Expression node )
     {
-        return node switch
-        {
-            AwaitExpression awaitExpression => Visit( awaitExpression.Target )!,
-            NodeExpression stateNode => Visit( stateNode.Reduce( this ) ),
-            _ => base.VisitExtension( node )
-        } ?? Expression.Empty();
+        if ( node is not NodeExpression nodeExpression )
+            return base.VisitExtension( node );
+
+        nodeExpression.SetResolverSource( this );
+        return Visit( nodeExpression.Reduce() );
     }
 }

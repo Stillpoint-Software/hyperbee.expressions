@@ -10,9 +10,9 @@ public class NodeExpression : Expression
     public int StateId { get; }
     public int ScopeId { get; }
 
-    internal int MachineOrder { get; set; }
-    public ParameterExpression ResultVariable { get; set; }
-    public Expression ResultValue { get; set; }
+    internal int StateOrder { get; set; }
+    public ParameterExpression ResultVariable { get; set; } // Left-hand side of the result assignment
+    public Expression ResultValue { get; set; } // Right-hand side of the result assignment
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
@@ -33,6 +33,11 @@ public class NodeExpression : Expression
     public override bool CanReduce => true;
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
+
+    internal void SetResolverSource( IHoistingSource resolverSource )
+    {
+        _resolverSource = resolverSource;
+    }
 
     internal Expression Reduce( IHoistingSource resolverSource )
     {
@@ -66,7 +71,7 @@ public class NodeExpression : Expression
             Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
         }
 
-        var transitionExpression = Transition.Reduce( MachineOrder, this, _resolverSource );
+        var transitionExpression = Transition.Reduce( StateOrder, this, _resolverSource );
         Expressions.Add( transitionExpression );
 
         // Add the label to the beginning of the block
@@ -81,7 +86,7 @@ public class NodeExpression : Expression
 
         return Block(
             Label( NodeLabel ),
-            GetFinalResultExpression( ResultValue, resultField, returnValue, Expressions ),
+            GetFinalResultExpression( returnValue, resultField, ResultValue, Expressions ),
             Assign( stateIdField, Constant( -2 ) ),
             Call(
                 builderField,
@@ -93,7 +98,7 @@ public class NodeExpression : Expression
             )
         );
 
-        static BinaryExpression GetFinalResultExpression( Expression resultValue, MemberExpression resultField, Expression returnValue, List<Expression> expressions )
+        static BinaryExpression GetFinalResultExpression( ParameterExpression returnValue, MemberExpression resultField, Expression resultValue, List<Expression> expressions )
         {
             Expression blockBody;
 
@@ -104,11 +109,12 @@ public class NodeExpression : Expression
             else
                 blockBody = Empty();
 
-            return returnValue != null
-                ? Assign( resultField, returnValue )
-                : blockBody.Type == typeof( void )
-                    ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
-                    : Assign( resultField, blockBody );
+            if ( returnValue != null )
+                return Assign( resultField, returnValue );
+
+            return blockBody.Type == typeof( void )
+                ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
+                : Assign( resultField, blockBody );
         }
     }
 }
