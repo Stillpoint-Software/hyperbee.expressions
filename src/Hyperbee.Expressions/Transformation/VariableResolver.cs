@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -6,59 +7,42 @@ public interface IVariableResolver
 {
     IVariableResolver Parent { get; set; }
 
-    ParameterExpression[] GetLocalVariables();
+    IReadOnlyCollection<ParameterExpression> GetLocalVariables();
     void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions );
     bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess );
-    public bool Contains( ParameterExpression variable );
+    bool Contains( ParameterExpression variable );
     bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression );
     ParameterExpression AddVariable( ParameterExpression variable );
+
+    bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable );
 }
 
-internal class VariableResolver( ParameterExpression[] variables ) : IVariableResolver
+internal sealed class VariableResolver : IVariableResolver
 {
     private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new();
+    private readonly ParameterExpression[] _variables;
     private IDictionary<string, MemberExpression> _memberExpressions;
 
     public IVariableResolver Parent { get; set; }
 
+    public VariableResolver( ParameterExpression[] variables )
+    {
+        _variables = variables;
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions )
     {
         _memberExpressions = memberExpressions;
     }
 
-    public bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess )
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public IReadOnlyCollection<ParameterExpression> GetLocalVariables()
     {
-        fieldAccess = null;
-        if ( _memberExpressions == null )
-            return false;
-
-        var name = variable.Name ?? variable.ToString();
-        return _memberExpressions.TryGetValue( name, out fieldAccess );
+        return _mappedVariables.Values; 
     }
 
-    public bool Contains( ParameterExpression variable )
-    {
-        var name = variable.Name ?? variable.ToString();
-        return _memberExpressions.ContainsKey( name );
-    }
-
-    private bool TryGetUpdateVariable( ParameterExpression variable, out Expression updatedVariable )
-    {
-        if ( FindMemberExpression( variable, out updatedVariable ) )
-            return true;
-
-        if ( WalkParentVariables( variable, out updatedVariable ) )
-            return true;
-
-        updatedVariable = null;
-        return false;
-    }
-
-    public ParameterExpression[] GetLocalVariables()
-    {
-        return _mappedVariables.Select( x => x.Value ).ToArray();
-    }
-
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public ParameterExpression AddVariable( ParameterExpression variable )
     {
         if ( _mappedVariables.TryGetValue( variable, out var existingVariable ) )
@@ -68,64 +52,63 @@ internal class VariableResolver( ParameterExpression[] variables ) : IVariableRe
         return variable;
     }
 
-    public bool TryAddVariable(
-        ParameterExpression parameter,
-        Func<ParameterExpression, ParameterExpression> createParameter,
-        out Expression updatedParameterExpression )
+    public bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression )
     {
-        updatedParameterExpression = null;
-
-        if ( TryGetUpdateVariable( parameter, out updatedParameterExpression ) )
+        if ( TryFindVariableInHierarchy( parameter, out updatedParameterExpression ) )
             return true;
 
-        if ( !variables.Contains( parameter ) )
+        if ( Array.IndexOf( _variables, parameter ) == -1 )
             return false;
 
-        if ( _mappedVariables.TryGetValue( parameter, out var variable ) )
+        if ( _mappedVariables.TryGetValue( parameter, out var mappedVariable ) )
         {
-            updatedParameterExpression = variable;
+            updatedParameterExpression = mappedVariable;
             return true;
         }
 
         var updated = createParameter( parameter );
-
         _mappedVariables[parameter] = updated;
-
         updatedParameterExpression = updated;
 
         return true;
     }
 
-    private bool FindMemberExpression( ParameterExpression variable, out Expression updatedVariable )
+    public bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess )
     {
-        // map original variable to updated/renamed version
+        fieldAccess = null;
+
+        if ( _memberExpressions == null )
+            return false;
+
+        var name = variable.Name ?? variable.ToString();
+        return _memberExpressions.TryGetValue( name, out fieldAccess );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public bool Contains( ParameterExpression variable )
+    {
+        var name = variable.Name ?? variable.ToString();
+        return _memberExpressions?.ContainsKey( name ) == true;
+    }
+
+    public bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable )
+    {
+        // Check current resolver for mapped variable
         if ( _mappedVariables.TryGetValue( variable, out var updated ) )
             variable = updated;
 
+        // Check current resolver for member expression
         if ( TryGetValue( variable, out var expression ) )
         {
             updatedVariable = expression;
             return true;
         }
 
-        updatedVariable = null;
-        return false;
-    }
-
-    private bool WalkParentVariables( ParameterExpression variable, out Expression updatedVariable )
-    {
-        var current = Parent as VariableResolver;
-
-        while ( current != null )
-        {
-            if ( current.TryGetUpdateVariable( variable, out updatedVariable ) )
-                return true;
-
-            current = current.Parent as VariableResolver;
-        }
+        // Check parent resolver for variable
+        if ( Parent != null )
+            return Parent.TryFindVariableInHierarchy( variable, out updatedVariable );
 
         updatedVariable = null;
         return false;
     }
-
 }

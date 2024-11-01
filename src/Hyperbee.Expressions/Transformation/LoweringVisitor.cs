@@ -16,7 +16,7 @@ internal class LoweringVisitor : ExpressionVisitor
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private int _variableId;
-    private IVariableResolver _currentVariableResolver;
+    private IVariableResolver _variableResolver;
 
     private static class VariableName
     {
@@ -41,7 +41,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     internal LoweringResult Transform( IVariableResolver variableResolver, params Expression[] expressions )
     {
-        _currentVariableResolver = variableResolver;
+        _variableResolver = variableResolver;
 
         VisitExpressions( expressions );
 
@@ -50,7 +50,7 @@ internal class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes,
             ReturnValue = _returnValue,
             AwaitCount = _awaitCount,
-            Variables = _currentVariableResolver.GetLocalVariables()
+            Variables = _variableResolver.GetLocalVariables()
         };
     }
 
@@ -225,7 +225,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        return _currentVariableResolver.TryAddVariable( node, CreateParameter, out var updatedVariable )
+        return _variableResolver.TryAddVariable( node, CreateParameter, out var updatedVariable )
             ? updatedVariable
             : base.VisitParameter( node );
 
@@ -343,7 +343,7 @@ internal class LoweringVisitor : ExpressionVisitor
                 return VisitAwait( awaitExpression );
 
             case AsyncBlockExpression asyncBlockExpression:
-                asyncBlockExpression.VariableResolver.Parent = _currentVariableResolver;
+                asyncBlockExpression.VariableResolver.Parent = _variableResolver;
                 return asyncBlockExpression;
 
             default:
@@ -407,19 +407,21 @@ internal class LoweringVisitor : ExpressionVisitor
 
     // Helpers
 
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private ParameterExpression GetResultVariable( Expression node, int stateId )
     {
         if ( node.Type == typeof( void ) )
             return null;
 
-        return _currentVariableResolver.AddVariable(
+        return _variableResolver.AddVariable(
             Expression.Parameter( node.Type, VariableName.Result( stateId ) )
         );
     }
 
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private ParameterExpression CreateVariable( Type type, string name )
     {
-        return _currentVariableResolver.AddVariable( Expression.Variable( type, name ) );
+        return _variableResolver.AddVariable( Expression.Variable( type, name ) );
     }
 
     // State management
