@@ -355,7 +355,7 @@ public class StateMachineBuilder<TResult>
             .Select( field => Field( stateMachine, field ) )
             .ToDictionary( x => x.Member.Name );
 
-       fieldResolver.SetFieldMembers( fieldMembers );
+        fieldResolver.SetFieldMembers( fieldMembers );
 
         var exitLabel = Label( "ST_EXIT" );
 
