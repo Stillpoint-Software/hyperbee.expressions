@@ -5,7 +5,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 namespace Hyperbee.Expressions.Transformation;
 
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, Transition = {Transition?.GetType().Name,nq}" )]
-public class NodeExpression : Expression
+public sealed class NodeExpression : Expression
 {
     public int StateId { get; }
     public int ScopeId { get; }
