@@ -46,7 +46,11 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( LoweringResult source, int id, bool createRunner = true )
+    public Expression CreateStateMachine( 
+        LoweringResult source, 
+        int id, 
+        IVariableResolver variableResolver, 
+        bool createRunner = true )
     {
         if ( source.Scopes[0].Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
@@ -60,7 +64,7 @@ public class StateMachineBuilder<TResult>
         // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
 
         var stateMachineType = CreateStateMachineType( source, out var fields );
-        var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, fields );
+        var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, variableResolver, fields );
 
         // Initialize the state machine
 
@@ -134,7 +138,7 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    private Type CreateStateMachineType( LoweringResult source, out IEnumerable<FieldInfo> fields )
+    private Type CreateStateMachineType( LoweringResult source, out FieldInfo[] fields )
     {
 #if BUILD_STRUCT
         var typeBuilder = _moduleBuilder.DefineType(
@@ -276,6 +280,7 @@ public class StateMachineBuilder<TResult>
         int id,
         LoweringResult source,
         Type stateMachineType,
+        IVariableResolver variableResolver,
         IEnumerable<FieldInfo> fields
     )
     {
@@ -349,6 +354,8 @@ public class StateMachineBuilder<TResult>
         var fieldMembers = fields
             .Select( field => Field( stateMachine, field ) )
             .ToDictionary( x => x.Member.Name );
+
+        variableResolver.SetFieldMembers( fieldMembers );
 
         var exitLabel = Label( "ST_EXIT" );
 
@@ -443,22 +450,30 @@ public static class StateMachineBuilder
         NodeOptimizer = new NodeOptimizer();
     }
 
-    public static Expression Create( Type resultType, LoweringResult source, bool createRunner = true )
+    public static Expression Create( 
+        Type resultType, 
+        LoweringResult source,
+        IVariableResolver variableResolver,
+        bool createRunner = true )
     {
         // If the result type is void, use the internal IVoidResult type
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
-        return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
+
+        return (Expression) buildStateMachine.Invoke( null, [source, variableResolver, createRunner] );
     }
 
-    internal static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
+    internal static Expression Create<TResult>( 
+        LoweringResult source,
+        IVariableResolver variableResolver, 
+        bool createRunner = true )
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, NodeOptimizer, typeName );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, createRunner );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, variableResolver, createRunner );
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }

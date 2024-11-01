@@ -9,9 +9,6 @@ internal class LoweringVisitor : ExpressionVisitor
     private const int InitialCapacity = 8;
 
     private ParameterExpression _returnValue;
-    private ParameterExpression[] _definedVariables;
-    private readonly Dictionary<int, ParameterExpression> _variables = new( InitialCapacity );
-    private readonly Dictionary<int, ParameterExpression> _shareVariables;
 
     private int _awaitCount;
 
@@ -19,6 +16,7 @@ internal class LoweringVisitor : ExpressionVisitor
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private int _variableId;
+    private IVariableResolver _currentVariableResolver;
 
     private static class VariableName
     {
@@ -41,16 +39,9 @@ internal class LoweringVisitor : ExpressionVisitor
         public const string Return = "return<>";
     }
 
-    public LoweringVisitor() : this( null ) { }
-
-    internal LoweringVisitor( Dictionary<int, ParameterExpression> shareVariables = null )
+    internal LoweringResult Transform( IVariableResolver variableResolver, params Expression[] expressions )
     {
-        _shareVariables = shareVariables ?? new Dictionary<int, ParameterExpression>( InitialCapacity );
-    }
-
-    public LoweringResult Transform( ParameterExpression[] variables, params Expression[] expressions )
-    {
-        _definedVariables = variables;
+        _currentVariableResolver = variableResolver;
 
         VisitExpressions( expressions );
 
@@ -59,13 +50,18 @@ internal class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes,
             ReturnValue = _returnValue,
             AwaitCount = _awaitCount,
-            Variables = _variables.Select( x => x.Value ).ToArray()
+            Variables = _currentVariableResolver.GetLocalVariables()
         };
+    }
+
+    public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
+    {
+        return Transform( new VariableResolver( variables ), expressions );
     }
 
     public LoweringResult Transform( params Expression[] expressions )
     {
-        return Transform( [], expressions );
+        return Transform( new VariableResolver( [] ), expressions );
     }
 
     // Visit methods
@@ -229,24 +225,14 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        var hash = node.GetHashCode();
+        return _currentVariableResolver.TryAddVariable( node, CreateParameter, out var updatedVariable )
+            ? updatedVariable
+            : base.VisitParameter( node );
 
-        if ( _shareVariables.TryGetValue( hash, out var inheritedNode ) )
-            return inheritedNode;
-
-        if ( !_definedVariables.Contains( node ) )
-            return base.VisitParameter( node );
-
-        if ( _variables.TryGetValue( hash, out var existingNode ) )
-            return existingNode;
-
-        var updateNode = Expression.Parameter(
-            node.Type,
-            VariableName.Variable( node.Name, _states.TailState.StateId, ref _variableId ) );
-
-        _variables[hash] = updateNode;
-
-        return updateNode;
+        ParameterExpression CreateParameter( ParameterExpression n )
+        {
+            return Expression.Parameter( n.Type, VariableName.Variable( n.Name, _states.TailState.StateId, ref _variableId ) );
+        }
     }
 
     protected override Expression VisitSwitch( SwitchExpression node )
@@ -357,7 +343,7 @@ internal class LoweringVisitor : ExpressionVisitor
                 return VisitAwait( awaitExpression );
 
             case AsyncBlockExpression asyncBlockExpression:
-                asyncBlockExpression.SetShareVariables( _variables, _shareVariables );
+                asyncBlockExpression.VariableResolver.Parent = _currentVariableResolver;
                 return asyncBlockExpression;
 
             default:
@@ -426,17 +412,14 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( node.Type == typeof( void ) )
             return null;
 
-        var returnVariable = Expression.Parameter( node.Type, VariableName.Result( stateId ) );
-        _variables[returnVariable.GetHashCode()] = returnVariable;
-
-        return returnVariable;
+        return _currentVariableResolver.AddVariable(
+            Expression.Parameter( node.Type, VariableName.Result( stateId ) )
+        );
     }
 
     private ParameterExpression CreateVariable( Type type, string name )
     {
-        var variable = Expression.Variable( type, name );
-        _variables[variable.GetHashCode()] = variable;
-        return variable;
+        return _currentVariableResolver.AddVariable( Expression.Variable( type, name ) );
     }
 
     // State management

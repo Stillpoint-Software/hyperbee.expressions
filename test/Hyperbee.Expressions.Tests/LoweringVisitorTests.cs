@@ -25,12 +25,14 @@ public class LoweringVisitorTests
 
         // Act
         var visitor = new LoweringVisitor();
-        var result = visitor.Transform( [varExpr], assignExpr );
+        var result = visitor.Transform(
+            variables: [varExpr],
+            expressions: [assignExpr] );
 
         // Assert
         AssertTransition.AssertResult( result, nodes: 1, variables: 1 );
 
-        AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof( void ) );
+        AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof(void) );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[0] );
     }
 

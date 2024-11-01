@@ -4,20 +4,23 @@ using Hyperbee.Expressions.Transformation;
 
 namespace Hyperbee.Expressions;
 
+
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression : Expression
 {
-    private readonly Expression[] _expressions;
-    private readonly ParameterExpression[] _variables;
+    public IVariableResolver VariableResolver { get; set; }
+    public Expression[] Expressions { get; set; }
+    public ParameterExpression[] Variables { get; set; }
+
     private readonly Type _resultType;
     private readonly Type _type;
 
     private Expression _stateMachine;
-    private Dictionary<int, ParameterExpression> _shareVariables;
 
     public AsyncBlockExpression( Expression[] expressions )
         : this( [], expressions )
     {
+
     }
 
     public AsyncBlockExpression( ParameterExpression[] variables, Expression[] expressions )
@@ -25,9 +28,11 @@ public class AsyncBlockExpression : Expression
         if ( expressions == null || expressions.Length == 0 )
             throw new ArgumentException( $"{nameof( AsyncBlockExpression )} must contain at least one expression.", nameof( expressions ) );
 
-        _variables = variables;
-        _expressions = expressions;
-        _resultType = _expressions[^1].Type;
+        VariableResolver = new VariableResolver( variables );
+
+        Variables = variables;
+        Expressions = expressions;
+        _resultType = Expressions[^1].Type;
         _type = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
     }
 
@@ -43,42 +48,32 @@ public class AsyncBlockExpression : Expression
         if ( _stateMachine != null )
             return _stateMachine;
 
-        var visitor = new LoweringVisitor( _shareVariables );
-        var source = visitor.Transform( _variables, _expressions );
+        var visitor = new LoweringVisitor();
+        var source = visitor.Transform( VariableResolver, Expressions );
 
-        _stateMachine = GenerateStateMachine( _resultType, source );
+        _stateMachine = GenerateStateMachine( _resultType, source, VariableResolver );
+
         return _stateMachine;
     }
 
-    internal void SetShareVariables( Dictionary<int, ParameterExpression> variables, Dictionary<int, ParameterExpression> shareVariables )
-    {
-        _shareVariables = new Dictionary<int, ParameterExpression>( variables.Count + shareVariables.Count );
-
-        foreach ( var kvp in variables )
-        {
-            _shareVariables[kvp.Key] = kvp.Value;
-        }
-
-        foreach ( var kvp in shareVariables )
-        {
-            _shareVariables[kvp.Key] = kvp.Value;
-        }
-    }
-
-    private static Expression GenerateStateMachine( Type resultType, LoweringResult source, bool createRunner = true )
+    private static Expression GenerateStateMachine( 
+        Type resultType, 
+        LoweringResult source,
+        IVariableResolver variableResolver,
+        bool createRunner = true )
     {
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        var stateMachine = StateMachineBuilder.Create( resultType, source, createRunner );
+        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver, createRunner);
 
         return stateMachine;
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        var variables = Array.AsReadOnly( _variables );
-        var expressions = Array.AsReadOnly( _expressions );
+        var variables = Array.AsReadOnly( Variables );
+        var expressions = Array.AsReadOnly( Expressions );
 
         var newVariables = visitor.VisitAndConvert( variables, nameof( VisitChildren ) );
         var newExpressions = visitor.Visit( expressions );
@@ -94,9 +89,10 @@ public class AsyncBlockExpression : Expression
         public Expression StateMachine => node._stateMachine;
         public Type ReturnType => node._resultType;
 
-        public Expression[] Expressions => node._expressions;
-        public ParameterExpression[] Variables => node._variables;
+        public Expression[] Expressions => node.Expressions;
+        public ParameterExpression[] Variables => node.Variables;
     }
+
 }
 
 public static partial class ExpressionExtensions
