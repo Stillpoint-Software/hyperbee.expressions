@@ -10,7 +10,7 @@ public class AsyncBlockExpression : Expression
     private readonly Expression[] _expressions;
     private readonly ParameterExpression[] _variables;
     private readonly Type _resultType;
-    private readonly Type _type;
+    private readonly Type _taskType;
 
     private Expression _stateMachine;
     private Dictionary<int, ParameterExpression> _shareVariables;
@@ -28,7 +28,7 @@ public class AsyncBlockExpression : Expression
         _variables = variables;
         _expressions = expressions;
         _resultType = _expressions[^1].Type;
-        _type = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
+        _taskType = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
     }
 
     public override bool CanReduce => true;
@@ -36,7 +36,7 @@ public class AsyncBlockExpression : Expression
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     // ReSharper disable once ConvertToAutoProperty
-    public override Type Type => _type;
+    public override Type Type => _taskType;
 
     public override Expression Reduce()
     {
