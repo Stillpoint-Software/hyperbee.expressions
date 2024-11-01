@@ -39,7 +39,7 @@ internal sealed class VariableResolver : IVariableResolver
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public IReadOnlyCollection<ParameterExpression> GetLocalVariables()
     {
-        return _mappedVariables.Values; 
+        return _mappedVariables.Values;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
