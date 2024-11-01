@@ -10,9 +10,9 @@ public interface IVariableResolver
     IReadOnlyCollection<ParameterExpression> GetLocalVariables();
     void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions );
     bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess );
-    bool Contains( ParameterExpression variable );
     bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression );
     ParameterExpression AddVariable( ParameterExpression variable );
+    IEnumerable<ParameterExpression> ExcludeMemberVariables( IEnumerable<ParameterExpression> variables );`
 
     bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable );
 }
@@ -87,10 +87,9 @@ internal sealed class VariableResolver : IVariableResolver
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public bool Contains( ParameterExpression variable )
+    public IEnumerable<ParameterExpression> ExcludeMemberVariables( IEnumerable<ParameterExpression> variables )
     {
-        var name = variable.Name ?? variable.ToString();
-        return _memberExpressions?.ContainsKey( name ) == true;
+        return variables.Where( variable => _memberExpressions == null || !_memberExpressions.ContainsKey( variable.Name ?? variable.ToString() ) );
     }
 
     public bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable )

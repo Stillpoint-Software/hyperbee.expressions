@@ -45,7 +45,7 @@ internal class HoistingVisitor : ExpressionVisitor, IHoistingSource
     {
         // Update each expression in a block to use only state machine fields/variables
         return node.Update(
-            node.Variables.Where( x => !_variableResolver.Contains( x ) ),
+            _variableResolver.ExcludeMemberVariables( node.Variables ),
             node.Expressions.Select( Visit )
         );
     }
