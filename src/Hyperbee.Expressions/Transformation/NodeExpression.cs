@@ -10,9 +10,9 @@ public class NodeExpression : Expression
     public int StateId { get; }
     public int ScopeId { get; }
 
-    internal int MachineOrder { get; set; }
-    public ParameterExpression ResultVariable { get; set; }
-    public Expression ResultValue { get; set; }
+    internal int StateOrder { get; set; }
+    public ParameterExpression ResultVariable { get; set; } // Left-hand side of the result assignment
+    public Expression ResultValue { get; set; } // Right-hand side of the result assignment
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
@@ -71,7 +71,7 @@ public class NodeExpression : Expression
             Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
         }
 
-        var transitionExpression = Transition.Reduce( MachineOrder, this, _resolverSource );
+        var transitionExpression = Transition.Reduce( StateOrder, this, _resolverSource );
         Expressions.Add( transitionExpression );
 
         // Add the label to the beginning of the block

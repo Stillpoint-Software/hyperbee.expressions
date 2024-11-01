@@ -108,7 +108,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
                 .Select( ( node, index ) =>
                 {
                     // Set machine order
-                    node.MachineOrder = index;
+                    node.StateOrder = index;
                     return node;
                 } )
                 .ToList();
