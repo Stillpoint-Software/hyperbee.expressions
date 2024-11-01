@@ -32,7 +32,7 @@ public class LoweringVisitorTests
         // Assert
         AssertTransition.AssertResult( result, nodes: 1, variables: 1 );
 
-        AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof(void) );
+        AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof( void ) );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[0] );
     }
 

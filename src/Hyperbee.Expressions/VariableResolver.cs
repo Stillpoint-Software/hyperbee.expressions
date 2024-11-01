@@ -52,9 +52,9 @@ internal class VariableResolver( ParameterExpression[] variables ) : IVariableRe
         return variable;
     }
 
-    public bool TryAddVariable( 
-        ParameterExpression parameter, 
-        Func<ParameterExpression, ParameterExpression> createParameter, 
+    public bool TryAddVariable(
+        ParameterExpression parameter,
+        Func<ParameterExpression, ParameterExpression> createParameter,
         out Expression updatedParameterExpression )
     {
         updatedParameterExpression = null;

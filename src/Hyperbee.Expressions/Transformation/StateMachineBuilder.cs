@@ -46,10 +46,10 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( 
-        LoweringResult source, 
-        int id, 
-        IVariableResolver variableResolver, 
+    public Expression CreateStateMachine(
+        LoweringResult source,
+        int id,
+        IVariableResolver variableResolver,
         bool createRunner = true )
     {
         if ( source.Scopes[0].Nodes == null )
@@ -450,8 +450,8 @@ public static class StateMachineBuilder
         NodeOptimizer = new NodeOptimizer();
     }
 
-    public static Expression Create( 
-        Type resultType, 
+    public static Expression Create(
+        Type resultType,
         LoweringResult source,
         IVariableResolver variableResolver,
         bool createRunner = true )
@@ -465,9 +465,9 @@ public static class StateMachineBuilder
         return (Expression) buildStateMachine.Invoke( null, [source, variableResolver, createRunner] );
     }
 
-    internal static Expression Create<TResult>( 
+    internal static Expression Create<TResult>(
         LoweringResult source,
-        IVariableResolver variableResolver, 
+        IVariableResolver variableResolver,
         bool createRunner = true )
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";

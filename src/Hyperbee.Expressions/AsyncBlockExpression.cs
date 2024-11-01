@@ -56,8 +56,8 @@ public class AsyncBlockExpression : Expression
         return _stateMachine;
     }
 
-    private static Expression GenerateStateMachine( 
-        Type resultType, 
+    private static Expression GenerateStateMachine(
+        Type resultType,
         LoweringResult source,
         IVariableResolver variableResolver,
         bool createRunner = true )
@@ -65,7 +65,7 @@ public class AsyncBlockExpression : Expression
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver, createRunner);
+        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver, createRunner );
 
         return stateMachine;
     }
