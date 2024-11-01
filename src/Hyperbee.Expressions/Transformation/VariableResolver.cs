@@ -19,7 +19,9 @@ public interface IVariableResolver
 
 internal sealed class VariableResolver : IVariableResolver
 {
-    private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new();
+    private const int InitialCapacity = 8;
+
+    private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new( InitialCapacity );
     private readonly ParameterExpression[] _variables;
     private IDictionary<string, MemberExpression> _memberExpressions;
 
