@@ -4,16 +4,16 @@ using Hyperbee.Expressions.Transformation;
 
 namespace Hyperbee.Expressions;
 
-
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression : Expression
 {
     public IVariableResolver VariableResolver { get; set; }
-    public Expression[] Expressions { get; set; }
-    public ParameterExpression[] Variables { get; set; }
+
+    private readonly Expression[] _expressions;
+    private readonly ParameterExpression[] _variables;
 
     private readonly Type _resultType;
-    private readonly Type _type;
+    private readonly Type _taskType;
 
     private Expression _stateMachine;
 
@@ -30,10 +30,10 @@ public class AsyncBlockExpression : Expression
 
         VariableResolver = new VariableResolver( variables );
 
-        Variables = variables;
-        Expressions = expressions;
-        _resultType = Expressions[^1].Type;
-        _type = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
+        _variables = variables;
+        _expressions = expressions;
+        _resultType = _expressions[^1].Type;
+        _taskType = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
     }
 
     public override bool CanReduce => true;
@@ -41,7 +41,7 @@ public class AsyncBlockExpression : Expression
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     // ReSharper disable once ConvertToAutoProperty
-    public override Type Type => _type;
+    public override Type Type => _taskType;
 
     public override Expression Reduce()
     {
@@ -49,7 +49,7 @@ public class AsyncBlockExpression : Expression
             return _stateMachine;
 
         var visitor = new LoweringVisitor();
-        var source = visitor.Transform( VariableResolver, Expressions );
+        var source = visitor.Transform( VariableResolver, _expressions );
 
         _stateMachine = GenerateStateMachine( _resultType, source, VariableResolver );
 
@@ -72,8 +72,8 @@ public class AsyncBlockExpression : Expression
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        var variables = Array.AsReadOnly( Variables );
-        var expressions = Array.AsReadOnly( Expressions );
+        var variables = Array.AsReadOnly( _variables );
+        var expressions = Array.AsReadOnly( _expressions );
 
         var newVariables = visitor.VisitAndConvert( variables, nameof( VisitChildren ) );
         var newExpressions = visitor.Visit( expressions );
@@ -89,8 +89,8 @@ public class AsyncBlockExpression : Expression
         public Expression StateMachine => node._stateMachine;
         public Type ReturnType => node._resultType;
 
-        public Expression[] Expressions => node.Expressions;
-        public ParameterExpression[] Variables => node.Variables;
+        public Expression[] Expressions => node._expressions;
+        public ParameterExpression[] Variables => node._variables;
     }
 
 }
