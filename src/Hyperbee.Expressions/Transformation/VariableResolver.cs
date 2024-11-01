@@ -2,17 +2,14 @@
 
 namespace Hyperbee.Expressions.Transformation;
 
-public interface IFieldResolver
-{
-    void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions );
-}
-
-public interface IVariableResolver : IFieldResolver
+public interface IVariableResolver
 {
     IVariableResolver Parent { get; set; }
 
     ParameterExpression[] GetLocalVariables();
-
+    void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions );
+    bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess );
+    public bool Contains( ParameterExpression variable );
     bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression );
     ParameterExpression AddVariable( ParameterExpression variable );
 }
@@ -29,7 +26,23 @@ internal class VariableResolver( ParameterExpression[] variables ) : IVariableRe
         _memberExpressions = memberExpressions;
     }
 
-    public bool TryGetUpdateVariable( ParameterExpression variable, out Expression updatedVariable )
+    public bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess )
+    {
+        fieldAccess = null;
+        if ( _memberExpressions == null )
+            return false;
+
+        var name = variable.Name ?? variable.ToString();
+        return _memberExpressions.TryGetValue( name, out fieldAccess );
+    }
+
+    public bool Contains( ParameterExpression variable )
+    {
+        var name = variable.Name ?? variable.ToString();
+        return _memberExpressions.ContainsKey( name );
+    }
+
+    private bool TryGetUpdateVariable( ParameterExpression variable, out Expression updatedVariable )
     {
         if ( FindMemberExpression( variable, out updatedVariable ) )
             return true;
@@ -89,7 +102,7 @@ internal class VariableResolver( ParameterExpression[] variables ) : IVariableRe
         if ( _mappedVariables.TryGetValue( variable, out var updated ) )
             variable = updated;
 
-        if ( _memberExpressions?.TryGetValue( variable.Name ?? variable.ToString(), out var expression ) == true )
+        if ( TryGetValue( variable, out var expression ) )
         {
             updatedVariable = expression;
             return true;
@@ -105,7 +118,7 @@ internal class VariableResolver( ParameterExpression[] variables ) : IVariableRe
 
         while ( current != null )
         {
-            if ( current.TryGetUpdateVariable( variable, out updatedVariable ) == true )
+            if ( current.TryGetUpdateVariable( variable, out updatedVariable ) )
                 return true;
 
             current = current.Parent as VariableResolver;

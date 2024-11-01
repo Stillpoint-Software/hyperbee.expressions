@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions;
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression : Expression
 {
-    public IVariableResolver VariableResolver { get; set; }
+    internal IVariableResolver VariableResolver { get; }
 
     private readonly Expression[] _expressions;
     private readonly ParameterExpression[] _variables;
@@ -20,7 +20,6 @@ public class AsyncBlockExpression : Expression
     public AsyncBlockExpression( Expression[] expressions )
         : this( [], expressions )
     {
-
     }
 
     public AsyncBlockExpression( ParameterExpression[] variables, Expression[] expressions )
@@ -59,13 +58,13 @@ public class AsyncBlockExpression : Expression
     private static Expression GenerateStateMachine(
         Type resultType,
         LoweringResult source,
-        IFieldResolver fieldResolver,
+        IVariableResolver variableResolver,
         bool createRunner = true )
     {
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        var stateMachine = StateMachineBuilder.Create( resultType, source, fieldResolver, createRunner );
+        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver, createRunner );
 
         return stateMachine;
     }
