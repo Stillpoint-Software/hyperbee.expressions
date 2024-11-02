@@ -1,7 +1,6 @@
 ﻿using System.Linq.Expressions;
 using BenchmarkDotNet.Attributes;
 using FastExpressionCompiler;
-using Hyperbee.Expressions.Transformation;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -38,13 +37,6 @@ public class AsyncBenchmarks
         _compiledLambda = _lambda.Compile();
 
         _fastCompiledLambda = _lambda.CompileFast();
-    }
-
-    [Benchmark]
-    public void Hyperbee_ComputeHash()
-    {
-        var hasher = new ExpressionTreeHasher();
-        var hash = hasher.ComputeHash( Block( _expression ) );
     }
 
     [Benchmark]
