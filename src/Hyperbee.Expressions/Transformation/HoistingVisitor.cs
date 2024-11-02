@@ -35,7 +35,7 @@ internal sealed class HoistingVisitor : ExpressionVisitor, IHoistingSource
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( !_variableResolver.TryGetValue( node, out var fieldAccess ) )
+        if ( !_variableResolver.TryGetFieldMember( node, out var fieldAccess ) )
             return node;
 
         return fieldAccess;
@@ -45,7 +45,7 @@ internal sealed class HoistingVisitor : ExpressionVisitor, IHoistingSource
     {
         // Update each expression in a block to use only state machine fields/variables
         return node.Update(
-            _variableResolver.ExcludeMemberVariables( node.Variables ),
+            _variableResolver.ExcludeFieldMembers( node.Variables ),
             node.Expressions.Select( Visit )
         );
     }

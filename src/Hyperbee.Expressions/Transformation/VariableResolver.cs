@@ -9,10 +9,10 @@ public interface IVariableResolver
 
     IReadOnlyCollection<ParameterExpression> GetLocalVariables();
     void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions );
-    bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess );
+    bool TryGetFieldMember( ParameterExpression variable, out MemberExpression fieldAccess );
     bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression );
     ParameterExpression AddVariable( ParameterExpression variable );
-    IEnumerable<ParameterExpression> ExcludeMemberVariables( IEnumerable<ParameterExpression> variables );
+    IEnumerable<ParameterExpression> ExcludeFieldMembers( IEnumerable<ParameterExpression> variables );
 
     bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable );
 }
@@ -75,7 +75,7 @@ internal sealed class VariableResolver : IVariableResolver
         return true;
     }
 
-    public bool TryGetValue( ParameterExpression variable, out MemberExpression fieldAccess )
+    public bool TryGetFieldMember( ParameterExpression variable, out MemberExpression fieldAccess )
     {
         fieldAccess = null;
 
@@ -87,7 +87,7 @@ internal sealed class VariableResolver : IVariableResolver
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public IEnumerable<ParameterExpression> ExcludeMemberVariables( IEnumerable<ParameterExpression> variables )
+    public IEnumerable<ParameterExpression> ExcludeFieldMembers( IEnumerable<ParameterExpression> variables )
     {
         return variables.Where( variable => _memberExpressions == null || !_memberExpressions.ContainsKey( variable.Name ?? variable.ToString() ) );
     }
@@ -99,7 +99,7 @@ internal sealed class VariableResolver : IVariableResolver
             variable = updated;
 
         // Check current resolver for member expression
-        if ( TryGetValue( variable, out var expression ) )
+        if ( TryGetFieldMember( variable, out var expression ) )
         {
             updatedVariable = expression;
             return true;
