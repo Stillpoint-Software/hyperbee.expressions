@@ -6,7 +6,7 @@ namespace Hyperbee.Expressions.Transformation;
 
 public class LoweringVisitor : ExpressionVisitor
 {
-    private const int InitialCapacity = 8;
+    private const int InitialCapacity = 4;
 
     private ParameterExpression _returnValue;
 

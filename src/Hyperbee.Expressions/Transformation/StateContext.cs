@@ -120,7 +120,7 @@ public sealed class StateContext
         public List<NodeExpression> Nodes { get; set; }
         public List<JumpCase> JumpCases { get; }
 
-        public Scope( int scopeId, Scope parent, int initialCapacity = 8 )
+        public Scope( int scopeId, Scope parent, int initialCapacity )
         {
             Parent = parent;
             ScopeId = scopeId;
