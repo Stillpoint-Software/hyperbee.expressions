@@ -33,35 +33,23 @@ public sealed class StateContext
         AddState();
     }
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public bool TryGetLabelTarget( LabelTarget target, out NodeExpression node )
+    public Scope EnterScope()
     {
-        var nodes = CurrentScope.Nodes;
-        node = null;
+        var parentScope = CurrentScope;
 
-        for ( var index = 0; index < nodes.Count; index++ )
-        {
-            var check = nodes[index];
+        var newScopeId = Scopes.Count;
+        var newScope = new Scope( newScopeId, parentScope, _initialCapacity );
 
-            if ( check.NodeLabel != target )
-                continue;
+        Scopes.Add( newScope );
+        _scopeIndexes.Push( newScopeId );
 
-            node = check;
-            break;
-        }
-
-        return node != null;
+        return newScope;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public NodeExpression AddState()
+    public void ExitScope()
     {
-        var scope = CurrentScope;
-        var node = new NodeExpression( _stateId++, scope.ScopeId );
-        scope.Nodes.Add( node );
-        TailState = node;
-
-        return node;
+        _scopeIndexes.Pop();
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -86,23 +74,15 @@ public sealed class StateContext
         TailState = _joinStates.Pop();
     }
 
-    public Scope EnterScope()
-    {
-        var parentScope = CurrentScope;
-
-        var newScopeId = Scopes.Count;
-        var newScope = new Scope( newScopeId, parentScope, _initialCapacity );
-
-        Scopes.Add( newScope );
-        _scopeIndexes.Push( newScopeId );
-
-        return newScope;
-    }
-
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void ExitScope()
+    public NodeExpression AddState()
     {
-        _scopeIndexes.Pop();
+        var scope = CurrentScope;
+        var node = new NodeExpression( _stateId++, scope.ScopeId );
+        scope.Nodes.Add( node );
+        TailState = node;
+
+        return node;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -113,20 +93,24 @@ public sealed class StateContext
         scope.JumpCases.Add( jumpCase );
     }
 
-    public readonly struct JumpCase
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public bool TryGetLabelTarget( LabelTarget target, out NodeExpression node )
     {
-        public LabelTarget ResultLabel { get; }
-        public LabelTarget ContinueLabel { get; }
-        public int StateId { get; }
-        public int? ParentId { get; }
+        var nodes = CurrentScope.Nodes;
+        node = null;
 
-        public JumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId, int? parentId )
+        for ( var index = 0; index < nodes.Count; index++ )
         {
-            ResultLabel = resultLabel;
-            ContinueLabel = continueLabel;
-            StateId = stateId;
-            ParentId = parentId;
+            var check = nodes[index];
+
+            if ( check.NodeLabel != target )
+                continue;
+
+            node = check;
+            break;
         }
+
+        return node != null;
     }
 
     public sealed class Scope
@@ -142,6 +126,22 @@ public sealed class StateContext
             ScopeId = scopeId;
             Nodes = new List<NodeExpression>( initialCapacity );
             JumpCases = [];
+        }
+    }
+
+    public readonly struct JumpCase
+    {
+        public LabelTarget ResultLabel { get; }
+        public LabelTarget ContinueLabel { get; }
+        public int StateId { get; }
+        public int? ParentId { get; }
+
+        public JumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId, int? parentId )
+        {
+            ResultLabel = resultLabel;
+            ContinueLabel = continueLabel;
+            StateId = stateId;
+            ParentId = parentId;
         }
     }
 }
