@@ -35,10 +35,10 @@ internal sealed class HoistingVisitor : ExpressionVisitor, IHoistingSource
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( !_variableResolver.TryGetFieldMember( node, out var fieldAccess ) )
-            return node;
+        if ( _variableResolver.TryGetFieldMember( node, out var fieldAccess ) )
+            return fieldAccess;
 
-        return fieldAccess;
+        return node;
     }
 
     protected override Expression VisitBlock( BlockExpression node )

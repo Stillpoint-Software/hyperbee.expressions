@@ -14,6 +14,7 @@ internal static class JumpTableBuilder
             var jumpCase = jumpCases[index];
 
             // Go to the result of awaiter
+
             var resultJumpExpression = Expression.SwitchCase(
                 Expression.Block(
                     Expression.Assign( stateField, Expression.Constant( -1 ) ),
