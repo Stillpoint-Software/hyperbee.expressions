@@ -31,42 +31,52 @@ internal static class DebugViewWriter
             writer.WriteLine();
 
         // nodes
-        foreach ( var node in scopes.SelectMany( scope => scope.Nodes.Where( node => node != null ) ) )
+        for ( var idx0 = 0; idx0 < scopes.Count; idx0++ )
         {
-            // label
-            writer.WriteLine( $"{node.NodeLabel.Name}:" );
+            var scope = scopes[idx0];
 
-            // expressions
-
-            if ( node.Expressions.Count > 0 )
+            for ( var idx1 = 0; idx1 < scope.Nodes.Count; idx1++ )
             {
-                writer.WriteLine( $"{Indent1}Expressions" );
+                var node = scope.Nodes[idx1];
 
-                foreach ( var expr in node.Expressions )
+                if ( node == null )
+                    continue;
+
+                // label
+                writer.WriteLine( $"{node.NodeLabel.Name}:" );
+
+                // expressions
+
+                if ( node.Expressions.Count > 0 )
                 {
-                    writer.WriteLine( $"{Indent2}{ExpressionToString( expr )}" );
+                    writer.WriteLine( $"{Indent1}Expressions" );
+
+                    foreach ( var expr in node.Expressions )
+                    {
+                        writer.WriteLine( $"{Indent2}{ExpressionToString( expr )}" );
+                    }
                 }
+
+                // transitions
+
+                writer.WriteLine( $"{Indent1}Transition" );
+                writer.WriteLine( TransitionToString( node.Transition ) );
+
+                // results
+
+                if ( node.ResultValue != null || node.ResultVariable != null )
+                {
+                    writer.WriteLine( $"{Indent1}Result ({node.Type.Name})" );
+
+                    if ( node.ResultValue != null ) 
+                        writer.WriteLine( $"{Indent2}Value: {node.ResultValue}" );
+
+                    if ( node.ResultVariable != null ) 
+                        writer.WriteLine( $"{Indent2}Variable: {node.ResultVariable}" );
+                }
+
+                writer.WriteLine();
             }
-
-            // transitions
-
-            writer.WriteLine( $"{Indent1}Transition" );
-            writer.WriteLine( TransitionToString( node.Transition ) );
-
-            // results
-
-            if ( node.ResultValue != null || node.ResultVariable != null )
-            {
-                writer.WriteLine( $"{Indent1}Result ({node.Type.Name})" );
-
-                if ( node.ResultValue != null )
-                    writer.WriteLine( $"{Indent2}Value: {node.ResultValue}" );
-
-                if ( node.ResultVariable != null )
-                    writer.WriteLine( $"{Indent2}Variable: {node.ResultVariable}" );
-            }
-
-            writer.WriteLine();
         }
     }
 
