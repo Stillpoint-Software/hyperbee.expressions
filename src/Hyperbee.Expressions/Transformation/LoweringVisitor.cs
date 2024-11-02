@@ -183,7 +183,6 @@ public class LoweringVisitor : ExpressionVisitor
 
         _returnValue ??= CreateVariable( gotoExpression.Value!.Type, VariableName.Return );
 
-        // update this to assign to a return value versus a goto
         return Expression.Assign( _returnValue, gotoExpression.Value! );
     }
 
@@ -205,7 +204,7 @@ public class LoweringVisitor : ExpressionVisitor
 
         return sourceState;
 
-        // Helper function for fixing loop labels
+        // Helper function for assigning loop labels
         void InitializeLabels( NodeExpression branchState )
         {
             if ( node.ContinueLabel != null )
@@ -293,8 +292,8 @@ public class LoweringVisitor : ExpressionVisitor
 
         for ( var index = 0; index < node.Handlers.Count; index++ )
         {
-            // use non-zero index for catch states to avoid conflicts
-            // with default catch state value (zero).
+            // use a non-zero based index for catch states to avoid
+            // conflicts with default catch state value (zero).
 
             var catchState = index + 1;
             var catchBlock = node.Handlers[index];
@@ -313,8 +312,6 @@ public class LoweringVisitor : ExpressionVisitor
         return sourceState;
     }
 
-    // Override method for extension expression types
-
     protected override Expression VisitBinary( BinaryExpression node )
     {
         var updatedLeft = Visit( node.Left );
@@ -327,6 +324,8 @@ public class LoweringVisitor : ExpressionVisitor
 
         return node.Update( updatedLeft, node.Conversion, updatedRight );
     }
+
+    // Override method for extension expression types
 
     protected override Expression VisitExtension( Expression node )
     {
