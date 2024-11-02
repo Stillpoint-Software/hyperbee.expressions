@@ -1,7 +1,7 @@
 ﻿# Welcome to Hyperbee Expressions
 
 `Hyperbee.Expressions` is a library for creating c# expression trees that extend the capabilities of standard expression 
-trees to handle asynchronous workflows and other constructs.
+trees to handle asynchronous workflows and other language constructs.
 
 ## Features
 
@@ -125,6 +125,7 @@ public class UsingExample
 Special thanks to:
 
 - Sergey Tepliakov - [Dissecting the async methods in C#](https://devblogs.microsoft.com/premier-developer/dissecting-the-async-methods-in-c/).
+- [Fast Expression Compiler](https://github.com/dadhi/FastExpressionCompiler) for improved performance.
 - [Just The Docs](https://github.com/just-the-docs/just-the-docs) for the documentation theme.
 
 ## Contributing
