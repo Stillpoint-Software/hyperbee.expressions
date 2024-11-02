@@ -4,7 +4,7 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal static class JumpTableBuilder
 {
-    public static Expression Build( StateScope current, List<StateScope> scopes, Expression stateField )
+    public static Expression Build( StateContext.Scope current, List<StateContext.Scope> scopes, Expression stateField )
     {
         var jumpCases = current.JumpCases;
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
@@ -51,10 +51,10 @@ internal static class JumpTableBuilder
     }
 
     // Iterative function to build jump table cases
-    private static List<Expression> JumpCaseTests( StateScope scope, int stateId, List<StateScope> scopes )
+    private static List<Expression> JumpCaseTests( StateContext.Scope scope, int stateId, List<StateContext.Scope> scopes )
     {
         var testValues = new List<Expression>();
-        var stack = new Stack<(StateScope, int)>();
+        var stack = new Stack<(StateContext.Scope, int)>();
 
         while ( true )
         {

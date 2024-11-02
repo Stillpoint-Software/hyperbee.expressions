@@ -31,8 +31,8 @@ public class TryCatchTransition : Transition
     public ParameterExpression TryStateVariable { get; set; }
     public ParameterExpression ExceptionVariable { get; set; }
 
-    public StateScope StateScope { get; init; }
-    public List<StateScope> Scopes { get; init; }
+    public StateContext.Scope StateScope { get; init; }
+    public List<StateContext.Scope> Scopes { get; init; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {

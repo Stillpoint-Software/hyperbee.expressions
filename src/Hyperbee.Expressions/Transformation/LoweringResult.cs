@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Transformation;
 
 public record LoweringResult
 {
-    public List<StateScope> Scopes { get; init; }
+    public List<StateContext.Scope> Scopes { get; init; }
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
     public IReadOnlyCollection<ParameterExpression> Variables { get; init; }

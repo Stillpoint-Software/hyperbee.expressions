@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.ObjectModel;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -27,7 +28,16 @@ internal sealed class VariableResolver : IVariableResolver
 
     public IVariableResolver Parent { get; set; }
 
+    public VariableResolver()
+    {
+    }
+
     public VariableResolver( ParameterExpression[] variables )
+    {
+        _variables = [.. variables];
+    }
+
+    public VariableResolver( ReadOnlyCollection<ParameterExpression> variables )
     {
         _variables = [.. variables];
     }
@@ -59,7 +69,7 @@ internal sealed class VariableResolver : IVariableResolver
         if ( TryFindVariableInHierarchy( parameter, out updatedParameterExpression ) )
             return true;
 
-        if ( !_variables.Contains( parameter ) )
+        if ( _variables == null || !_variables.Contains( parameter ) )
             return false;
 
         if ( _mappedVariables.TryGetValue( parameter, out var mappedVariable ) )

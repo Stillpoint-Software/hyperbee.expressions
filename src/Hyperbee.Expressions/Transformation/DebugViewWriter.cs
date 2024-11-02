@@ -11,7 +11,7 @@ internal static class DebugViewWriter
     private const string Indent3 = "\t\t\t";
     private const string Indent4 = "\t\t\t\t";
 
-    public static void WriteTo( StringWriter writer, List<StateScope> scopes,
+    public static void WriteTo( StringWriter writer, List<StateContext.Scope> scopes,
         IEnumerable<ParameterExpression> variables )
     {
         // variables

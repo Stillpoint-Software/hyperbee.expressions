@@ -4,7 +4,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal class LoweringVisitor : ExpressionVisitor
+public class LoweringVisitor : ExpressionVisitor
 {
     private const int InitialCapacity = 8;
 
@@ -12,7 +12,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private int _awaitCount;
 
-    private readonly StateContext _states = new( InitialCapacity );
+    private readonly StateContext _states = new(InitialCapacity);
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private int _variableId;
@@ -39,19 +39,13 @@ internal class LoweringVisitor : ExpressionVisitor
         public const string Return = "return<>";
     }
 
-    internal LoweringResult Transform( IVariableResolver variableResolver, params Expression[] expressions )
+    internal LoweringResult Transform( IVariableResolver variableResolver, IReadOnlyCollection<Expression> expressions )
     {
         _variableResolver = variableResolver;
 
         VisitExpressions( expressions );
 
-        return new LoweringResult
-        {
-            Scopes = _states.Scopes,
-            ReturnValue = _returnValue,
-            AwaitCount = _awaitCount,
-            Variables = _variableResolver.GetLocalVariables()
-        };
+        return new LoweringResult { Scopes = _states.Scopes, ReturnValue = _returnValue, AwaitCount = _awaitCount, Variables = _variableResolver.GetLocalVariables() };
     }
 
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
@@ -61,7 +55,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     public LoweringResult Transform( params Expression[] expressions )
     {
-        return Transform( new VariableResolver( [] ), expressions );
+        return Transform( new VariableResolver(), expressions );
     }
 
     // Visit methods
@@ -109,9 +103,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
             if ( tailState.Transition == null && visited is GotoExpression gotoExpression )
             {
-                var targetNode = _states.Nodes.FirstOrDefault( x => x.NodeLabel == gotoExpression.Target );
-
-                if ( targetNode != null )
+                if ( _states.TryGetLabelTarget( gotoExpression.Target, out var targetNode ) )
                 {
                     tailState.Transition = new GotoTransition { TargetNode = targetNode };
                 }
@@ -130,6 +122,7 @@ internal class LoweringVisitor : ExpressionVisitor
         }
     }
 
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private static bool IsExplicitlyHandledType( Expression expr )
     {
         // These expression types are explicitly handled by the visitor.
@@ -272,8 +265,8 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = GetResultVariable( node, sourceState.StateId );
 
-        var tryStateVariable = CreateVariable( typeof( int ), VariableName.Try( sourceState.StateId ) );
-        var exceptionVariable = CreateVariable( typeof( object ), VariableName.Exception( sourceState.StateId ) );
+        var tryStateVariable = CreateVariable( typeof(int), VariableName.Try( sourceState.StateId ) );
+        var exceptionVariable = CreateVariable( typeof(object), VariableName.Exception( sourceState.StateId ) );
 
         // If there is a finally block then that is the join for a try/catch.
         NodeExpression finalExpression = null;
@@ -371,13 +364,7 @@ internal class LoweringVisitor : ExpressionVisitor
             VariableName.Awaiter( sourceState.StateId )
         );
 
-        completionState.Transition = new AwaitResultTransition
-        {
-            TargetNode = joinState,
-            AwaiterVariable = awaiterVariable,
-            ResultVariable = resultVariable,
-            AwaitBinder = awaitBinder
-        };
+        completionState.Transition = new AwaitResultTransition { TargetNode = joinState, AwaiterVariable = awaiterVariable, ResultVariable = resultVariable, AwaitBinder = awaitBinder };
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
@@ -410,7 +397,7 @@ internal class LoweringVisitor : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private ParameterExpression GetResultVariable( Expression node, int stateId )
     {
-        if ( node.Type == typeof( void ) )
+        if ( node.Type == typeof(void) )
             return null;
 
         return _variableResolver.AddVariable(
@@ -422,69 +409,5 @@ internal class LoweringVisitor : ExpressionVisitor
     private ParameterExpression CreateVariable( Type type, string name )
     {
         return _variableResolver.AddVariable( Expression.Variable( type, name ) );
-    }
-
-    // State management
-
-    private sealed class StateContext
-    {
-        private int _stateId;
-        private readonly Stack<int> _scopeIndexes;
-        private readonly int _initialCapacity;
-
-        public List<StateScope> Scopes { get; }
-
-        public StateContext( int initialCapacity )
-        {
-            _initialCapacity = initialCapacity;
-            _scopeIndexes = new Stack<int>( _initialCapacity );
-            _scopeIndexes.Push( 0 );
-
-            Scopes =
-            [
-                new StateScope( 0, parent: null, _initialCapacity )
-            ];
-
-            CurrentScope.AddState( _stateId++ );
-        }
-
-        private StateScope CurrentScope => Scopes[_scopeIndexes.Peek()];
-
-        public IReadOnlyList<NodeExpression> Nodes => CurrentScope.Nodes;
-
-        public NodeExpression TailState => CurrentScope.TailState;
-
-        public NodeExpression AddState() => CurrentScope.AddState( _stateId++ );
-
-        public NodeExpression EnterGroup( out NodeExpression sourceState )
-        {
-            return CurrentScope.EnterGroup( _stateId++, out sourceState );
-        }
-
-        public void ExitGroup( NodeExpression sourceState, Transition transition )
-        {
-            CurrentScope.ExitGroup( sourceState, transition );
-        }
-
-        public StateScope EnterScope()
-        {
-            var scope = new StateScope( Scopes.Count, CurrentScope, _initialCapacity );
-
-            Scopes.Add( scope );
-
-            _scopeIndexes.Push( scope.ScopeId );
-
-            return scope;
-        }
-
-        public void ExitScope()
-        {
-            _scopeIndexes.Pop();
-        }
-
-        public void AddJumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId )
-        {
-            CurrentScope.AddJumpCase( resultLabel, continueLabel, stateId );
-        }
     }
 }

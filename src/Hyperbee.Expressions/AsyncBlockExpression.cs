@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation;
 
@@ -9,37 +10,33 @@ public class AsyncBlockExpression : Expression
 {
     internal IVariableResolver VariableResolver { get; }
 
-    private readonly Expression[] _expressions;
-    private readonly ParameterExpression[] _variables;
-
     private readonly Type _resultType;
     private readonly Type _taskType;
 
     private Expression _stateMachine;
 
-    public AsyncBlockExpression( Expression[] expressions )
-        : this( [], expressions )
-    {
-    }
+    public ReadOnlyCollection<Expression> Expressions { get; } 
+    public ReadOnlyCollection<ParameterExpression> Variables { get; } 
+    public Expression Result => Expressions[^1]; 
 
-    public AsyncBlockExpression( ParameterExpression[] variables, Expression[] expressions )
+    internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
     {
-        if ( expressions == null || expressions.Length == 0 )
-            throw new ArgumentException( $"{nameof( AsyncBlockExpression )} must contain at least one expression.", nameof( expressions ) );
+        if ( expressions == null || expressions.Count == 0 )
+            throw new ArgumentException( $"{nameof(AsyncBlockExpression)} must contain at least one expression.", nameof(expressions) );
 
         VariableResolver = new VariableResolver( variables );
 
-        _variables = variables;
-        _expressions = expressions;
-        _resultType = _expressions[^1].Type;
-        _taskType = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
+        Variables = variables;
+        Expressions = expressions;
+
+        _resultType = Result.Type;
+        _taskType = _resultType == typeof(void) ? typeof(Task) : typeof(Task<>).MakeGenericType( _resultType );
     }
 
     public override bool CanReduce => true;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    // ReSharper disable once ConvertToAutoProperty
     public override Type Type => _taskType;
 
     public override Expression Reduce()
@@ -48,7 +45,7 @@ public class AsyncBlockExpression : Expression
             return _stateMachine;
 
         var visitor = new LoweringVisitor();
-        var source = visitor.Transform( VariableResolver, _expressions );
+        var source = visitor.Transform( VariableResolver, Expressions );
 
         _stateMachine = GenerateStateMachine( _resultType, source, VariableResolver );
 
@@ -58,38 +55,59 @@ public class AsyncBlockExpression : Expression
     private static Expression GenerateStateMachine(
         Type resultType,
         LoweringResult source,
-        IVariableResolver variableResolver,
-        bool createRunner = true )
+        IVariableResolver variableResolver )
     {
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver, createRunner );
+        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver );
 
         return stateMachine;
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        var variables = Array.AsReadOnly( _variables );
-        var expressions = Array.AsReadOnly( _expressions );
+        var newVariables = visitor.VisitAndConvert( Variables, nameof( VisitChildren ) );
+        var newExpressions = visitor.Visit( Expressions );
 
-        var newVariables = visitor.VisitAndConvert( variables, nameof( VisitChildren ) );
-        var newExpressions = visitor.Visit( expressions );
-
-        if ( newVariables == variables && newExpressions == expressions )
+        if ( Compare( newVariables, Variables ) && Compare( newExpressions, Expressions) )
             return this;
 
-        return new AsyncBlockExpression( newVariables.ToArray(), newExpressions.ToArray() );
+        return new AsyncBlockExpression( newVariables, newExpressions );
+    }
+
+    internal static bool Compare<T>( ICollection<T> compare, IReadOnlyList<T> current )
+        where T : class
+    {
+        if ( ReferenceEquals( compare, current ) )
+            return true;
+
+        if ( compare == null )
+            return current.Count == 0;
+
+        if ( compare.Count != current.Count )
+            return false;
+
+        using var comparand = compare.GetEnumerator();
+
+        for ( var i = 0; i < current.Count; i++ )
+        {
+            comparand.MoveNext();
+
+            if ( !ReferenceEquals( comparand.Current, current[i] ) )
+                return false;
+        }
+
+        return true;
     }
 
     private class AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node )
     {
         public Expression StateMachine => node._stateMachine;
-        public Type ReturnType => node._resultType;
 
-        public Expression[] Expressions => node._expressions;
-        public ParameterExpression[] Variables => node._variables;
+        public ReadOnlyCollection<Expression> Expressions => node.Expressions;
+        public ReadOnlyCollection<ParameterExpression> Variables => node.Variables;
+        public Expression Result => node.Result;
     }
 }
 
@@ -97,10 +115,20 @@ public static partial class ExpressionExtensions
 {
     public static AsyncBlockExpression BlockAsync( params Expression[] expressions )
     {
-        return new AsyncBlockExpression( expressions );
+        return new AsyncBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ) );
     }
 
     public static AsyncBlockExpression BlockAsync( ParameterExpression[] variables, params Expression[] expressions )
+    {
+        return new AsyncBlockExpression( new ReadOnlyCollection<ParameterExpression>( variables ), new ReadOnlyCollection<Expression>( expressions ) );
+    }
+
+    public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<Expression> expressions )
+    {
+        return new AsyncBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions );
+    }
+
+    public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
     {
         return new AsyncBlockExpression( variables, expressions );
     }

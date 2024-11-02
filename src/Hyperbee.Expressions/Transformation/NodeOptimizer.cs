@@ -4,12 +4,12 @@ namespace Hyperbee.Expressions.Transformation;
 
 public interface INodeOptimizer
 {
-    public void Optimize( IReadOnlyList<StateScope> scopes );
+    public void Optimize( IReadOnlyList<StateContext.Scope> scopes );
 }
 
 internal sealed class NodeOptimizer : INodeOptimizer
 {
-    public void Optimize( IReadOnlyList<StateScope> scopes )
+    public void Optimize( IReadOnlyList<StateContext.Scope> scopes )
     {
         var references = new HashSet<LabelTarget>();
 
@@ -17,7 +17,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
         RemoveUnreferenced( scopes, references );
     }
 
-    private static void OptimizeOrder( IReadOnlyList<StateScope> scopes, HashSet<LabelTarget> references )
+    private static void OptimizeOrder( IReadOnlyList<StateContext.Scope> scopes, HashSet<LabelTarget> references )
     {
         for ( var i = 0; i < scopes.Count; i++ )
         {
@@ -29,7 +29,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
 
         return;
 
-        static void SetScopeReferences( StateScope scope, HashSet<LabelTarget> references )
+        static void SetScopeReferences( StateContext.Scope scope, HashSet<LabelTarget> references )
         {
             references.Add( scope.Nodes[0].NodeLabel ); // start node
 
@@ -90,7 +90,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
         }
     }
 
-    private static void RemoveUnreferenced( IReadOnlyList<StateScope> scopes, HashSet<LabelTarget> references )
+    private static void RemoveUnreferenced( IReadOnlyList<StateContext.Scope> scopes, HashSet<LabelTarget> references )
     {
         // Remove any nodes that are not referenced
 
