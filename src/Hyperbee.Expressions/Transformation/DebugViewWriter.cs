@@ -68,10 +68,10 @@ internal static class DebugViewWriter
                 {
                     writer.WriteLine( $"{Indent1}Result ({node.Type.Name})" );
 
-                    if ( node.ResultValue != null ) 
+                    if ( node.ResultValue != null )
                         writer.WriteLine( $"{Indent2}Value: {node.ResultValue}" );
 
-                    if ( node.ResultVariable != null ) 
+                    if ( node.ResultVariable != null )
                         writer.WriteLine( $"{Indent2}Variable: {node.ResultVariable}" );
                 }
 
