@@ -15,14 +15,14 @@ public class AsyncBlockExpression : Expression
 
     private Expression _stateMachine;
 
-    public ReadOnlyCollection<Expression> Expressions { get; } 
-    public ReadOnlyCollection<ParameterExpression> Variables { get; } 
-    public Expression Result => Expressions[^1]; 
+    public ReadOnlyCollection<Expression> Expressions { get; }
+    public ReadOnlyCollection<ParameterExpression> Variables { get; }
+    public Expression Result => Expressions[^1];
 
     internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
     {
         if ( expressions == null || expressions.Count == 0 )
-            throw new ArgumentException( $"{nameof(AsyncBlockExpression)} must contain at least one expression.", nameof(expressions) );
+            throw new ArgumentException( $"{nameof( AsyncBlockExpression )} must contain at least one expression.", nameof( expressions ) );
 
         VariableResolver = new VariableResolver( variables );
 
@@ -30,7 +30,7 @@ public class AsyncBlockExpression : Expression
         Expressions = expressions;
 
         _resultType = Result.Type;
-        _taskType = _resultType == typeof(void) ? typeof(Task) : typeof(Task<>).MakeGenericType( _resultType );
+        _taskType = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
     }
 
     public override bool CanReduce => true;
@@ -70,7 +70,7 @@ public class AsyncBlockExpression : Expression
         var newVariables = visitor.VisitAndConvert( Variables, nameof( VisitChildren ) );
         var newExpressions = visitor.Visit( Expressions );
 
-        if ( Compare( newVariables, Variables ) && Compare( newExpressions, Expressions) )
+        if ( Compare( newVariables, Variables ) && Compare( newExpressions, Expressions ) )
             return this;
 
         return new AsyncBlockExpression( newVariables, newExpressions );

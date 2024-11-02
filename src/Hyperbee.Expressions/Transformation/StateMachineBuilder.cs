@@ -107,7 +107,7 @@ public class StateMachineBuilder<TResult>
         var callBuilderStart = Call(
             builderField,
             startMethod,
-            stateMachineVariable 
+            stateMachineVariable
         );
 
         var taskProperty = builderFieldInfo.FieldType.GetProperty( "Task" );

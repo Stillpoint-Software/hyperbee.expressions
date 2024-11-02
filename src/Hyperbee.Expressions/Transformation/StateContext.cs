@@ -21,8 +21,8 @@ public sealed class StateContext
     {
         _initialCapacity = initialCapacity;
 
-        Scopes = new List<Scope>( _initialCapacity ) 
-        { 
+        Scopes = new List<Scope>( _initialCapacity )
+        {
             new ( 0, null, _initialCapacity ) // root scope
         };
 
@@ -58,8 +58,8 @@ public sealed class StateContext
     {
         var scope = CurrentScope;
         var node = new NodeExpression( _stateId++, scope.ScopeId );
-        scope.Nodes.Add( node ); 
-        TailState = node; 
+        scope.Nodes.Add( node );
+        TailState = node;
 
         return node;
     }
@@ -70,11 +70,11 @@ public sealed class StateContext
         var scope = CurrentScope;
         var joinState = new NodeExpression( _stateId++, scope.ScopeId );
 
-        scope.Nodes.Add( joinState ); 
-        _joinStates.Push( joinState ); 
+        scope.Nodes.Add( joinState );
+        _joinStates.Push( joinState );
 
-        sourceState = TailState; 
-        TailState = joinState; 
+        sourceState = TailState;
+        TailState = joinState;
 
         return joinState;
     }
@@ -83,7 +83,7 @@ public sealed class StateContext
     public void ExitGroup( NodeExpression sourceState, Transition transition )
     {
         sourceState.Transition = transition;
-        TailState = _joinStates.Pop(); 
+        TailState = _joinStates.Pop();
     }
 
     public Scope EnterScope()
