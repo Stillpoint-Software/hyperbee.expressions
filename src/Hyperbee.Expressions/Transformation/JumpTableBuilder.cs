@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using Hyperbee.Expressions.Collections;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -10,18 +11,20 @@ internal static class JumpTableBuilder
         var jumpCases = current.JumpCases;
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
 
-        for ( var index = 0; index < jumpCases.Count; index++ )
+        var span = jumpCases.AsReadOnlySpan();
+
+        for ( var index = 0; index < span.Length; index++ )
         {
-            var jumpCase = jumpCases[index];
+            var jumpCase = span[index];
 
             // Go to the result of awaiter
 
-            var resultJumpExpression = Expression.SwitchCase(
-                Expression.Block(
-                    Expression.Assign( stateField, Expression.Constant( -1 ) ),
-                    Expression.Goto( jumpCase.ResultLabel )
+            var resultJumpExpression = SwitchCase(
+                Block(
+                    Assign( stateField, Constant( -1 ) ),
+                    Goto( jumpCase.ResultLabel )
                 ),
-                Expression.Constant( jumpCase.StateId )
+                Constant( jumpCase.StateId )
             );
 
             jumpTable.Add( resultJumpExpression );
@@ -33,10 +36,10 @@ internal static class JumpTableBuilder
             if ( testValues.Count <= 0 )
                 continue;
 
-            var nestedJumpExpression = Expression.SwitchCase(
-                Expression.Block(
-                    Expression.Assign( stateField, Expression.Constant( -1 ) ),
-                    Expression.Goto( jumpCase.ContinueLabel )
+            var nestedJumpExpression = SwitchCase(
+                Block(
+                    Assign( stateField, Constant( -1 ) ),
+                    Goto( jumpCase.ContinueLabel )
                 ),
                 testValues
             );
@@ -44,9 +47,9 @@ internal static class JumpTableBuilder
             jumpTable.Add( nestedJumpExpression );
         }
 
-        return Expression.Switch(
+        return Switch(
             stateField,
-            Expression.Empty(),
+            Empty(),
             [.. jumpTable]
         );
     }
@@ -59,22 +62,26 @@ internal static class JumpTableBuilder
 
         while ( true )
         {
-            for ( var scopeIndex = 0; scopeIndex < scopes.Count; scopeIndex++ )
+            var scopeSpan = scopes.AsReadOnlySpan();
+
+            for ( var scopeIndex = 0; scopeIndex < scopeSpan.Length; scopeIndex++ )
             {
-                var nestedScope = scopes[scopeIndex];
+                var nestedScope = scopeSpan[scopeIndex];
 
                 if ( nestedScope.Parent != scope )
                     continue;
 
-                for ( var jumpIndex = 0; jumpIndex < nestedScope.JumpCases.Count; jumpIndex++ )
+                var jumpCasesSpan = nestedScope.JumpCases.AsReadOnlySpan();
+
+                for ( var jumpIndex = 0; jumpIndex < jumpCasesSpan.Length; jumpIndex++ )
                 {
-                    var childJumpCase = nestedScope.JumpCases[jumpIndex];
+                    var childJumpCase = jumpCasesSpan[jumpIndex];
 
                     if ( childJumpCase.ParentId != stateId )
                         continue;
 
                     // Return self
-                    testValues.Add( Expression.Constant( childJumpCase.StateId ) );
+                    testValues.Add( Constant( childJumpCase.StateId ) );
 
                     // Push nested jump cases onto the stack
                     stack.Push( (nestedScope, childJumpCase.StateId) );

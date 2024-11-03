@@ -94,15 +94,15 @@ public sealed class StateContext : IDisposable
         scope.JumpCases.Add( jumpCase );
     }
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public bool TryGetLabelTarget( LabelTarget target, out NodeExpression node )
     {
-        var nodes = CurrentScope.Nodes;
         node = null;
 
-        for ( var index = 0; index < nodes.Count; index++ )
+        var span = CurrentScope.Nodes.AsReadOnlySpan();
+
+        for ( var index = 0; index < span.Length; index++ )
         {
-            var check = nodes[index];
+            var check = span[index];
 
             if ( check.NodeLabel != target )
                 continue;
