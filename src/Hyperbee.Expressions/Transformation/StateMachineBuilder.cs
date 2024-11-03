@@ -409,7 +409,7 @@ public class StateMachineBuilder<TResult>
         // Helper to create the body expressions with hoisted variables
     }
 
-    private static Expression[] BodyExpressions( Expression jumpTable, IList<NodeExpression> nodes, HoistingVisitor hoistingVisitor )
+    private static Expression[] BodyExpressions( Expression jumpTable, IReadOnlyList<NodeExpression> nodes, HoistingVisitor hoistingVisitor )
     {
         var bodyExpressions = new Expression[1 + nodes.Count];
 

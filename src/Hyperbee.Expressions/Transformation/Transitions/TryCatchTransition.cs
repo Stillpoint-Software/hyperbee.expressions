@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using Hyperbee.Expressions.Collections;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
@@ -32,33 +33,36 @@ public class TryCatchTransition : Transition
     public ParameterExpression ExceptionVariable { get; set; }
 
     public StateContext.Scope StateScope { get; init; }
-    public List<StateContext.Scope> Scopes { get; init; }
+    public PooledArray<StateContext.Scope> Scopes { get; init; }
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
-        var expressions = new List<Expression>( StateScope.Nodes.Count + 1 )
-        {
-            JumpTableBuilder.Build(
-                StateScope,
-                Scopes,
-                resolverSource.StateIdField
-            )
+        var expressions = new List<Expression> 
+        { 
+            JumpTableBuilder.Build( 
+                StateScope, 
+                Scopes, 
+                resolverSource.StateIdField 
+            ) 
         };
 
         expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
-
+        
         MapCatchBlock( order, out var catches, out var switchCases );
 
         return Block(
-            TryCatch(
-                Block( expressions ),
-                catches
+            TryCatch( 
+                expressions.Count == 1 
+                    ? expressions[0] 
+                    : Block( expressions ), 
+                catches 
             ),
             Switch( // Handle error
-                TryStateVariable,
-                Empty(),
-                switchCases )
-            );
+                TryStateVariable, 
+                Empty(), 
+                switchCases 
+            )
+        );
     }
 
     private void MapCatchBlock( int order, out CatchBlock[] catches, out SwitchCase[] switchCases )

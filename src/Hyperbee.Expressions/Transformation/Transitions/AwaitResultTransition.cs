@@ -20,17 +20,18 @@ public class AwaitResultTransition : Transition
 
         if ( ResultVariable == null )
         {
-            return Block(
-                getResultCall, // Use the pre-determined call expression
-                GotoOrFallThrough( order, TargetNode )
-            );
+            var transition = GotoOrFallThrough( order, TargetNode );
+            
+            return transition == Empty() 
+                ? getResultCall 
+                : Block( getResultCall, transition );
         }
 
         var getResult = Assign( ResultVariable, getResultCall );
 
-        return Block(
-            getResult,
-            GotoOrFallThrough( order, TargetNode )
+        return Block( 
+            getResult, 
+            GotoOrFallThrough( order, TargetNode ) 
         );
     }
 

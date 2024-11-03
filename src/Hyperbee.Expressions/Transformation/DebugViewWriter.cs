@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Text;
+using Hyperbee.Expressions.Collections;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
@@ -11,7 +12,7 @@ internal static class DebugViewWriter
     private const string Indent3 = "\t\t\t";
     private const string Indent4 = "\t\t\t\t";
 
-    public static void WriteTo( StringWriter writer, List<StateContext.Scope> scopes,
+    public static void WriteTo( StringWriter writer, PooledArray<StateContext.Scope> scopes,
         IEnumerable<ParameterExpression> variables )
     {
         // variables

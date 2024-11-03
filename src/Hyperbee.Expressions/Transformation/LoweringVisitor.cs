@@ -4,7 +4,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public class LoweringVisitor : ExpressionVisitor
+public class LoweringVisitor : ExpressionVisitor, IDisposable
 {
     private const int InitialCapacity = 4;
 
@@ -45,7 +45,13 @@ public class LoweringVisitor : ExpressionVisitor
 
         VisitExpressions( expressions );
 
-        return new LoweringResult { Scopes = _states.Scopes, ReturnValue = _returnValue, AwaitCount = _awaitCount, Variables = _variableResolver.GetLocalVariables() };
+        return new LoweringResult 
+        { 
+            Scopes = _states.Scopes, 
+            ReturnValue = _returnValue, 
+            AwaitCount = _awaitCount, 
+            Variables = _variableResolver.GetLocalVariables() 
+        };
     }
 
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
@@ -56,6 +62,10 @@ public class LoweringVisitor : ExpressionVisitor
     public LoweringResult Transform( params Expression[] expressions )
     {
         return Transform( new VariableResolver(), expressions );
+    }
+    public void Dispose()
+    {
+        _states?.Dispose();
     }
 
     // Visit methods

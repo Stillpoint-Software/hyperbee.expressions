@@ -4,7 +4,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-[DebuggerDisplay( "State = {NodeLabel?.Name,nq}, Transition = {Transition?.GetType().Name,nq}" )]
+[DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
 public sealed class NodeExpression : Expression
 {
     public int StateId { get; }
@@ -50,12 +50,7 @@ public sealed class NodeExpression : Expression
         if ( _resolverSource == null )
             throw new InvalidOperationException( $"Reduce requires an {nameof( IHoistingSource )} instance." );
 
-        return _expression ??= ReduceTransition();
-    }
-
-    private BlockExpression ReduceTransition()
-    {
-        return Transition != null
+        return _expression ??= Transition != null
             ? ReduceBlock()
             : ReduceFinalBlock();
     }
@@ -98,23 +93,26 @@ public sealed class NodeExpression : Expression
             )
         );
 
-        static BinaryExpression GetFinalResultExpression( ParameterExpression returnValue, MemberExpression resultField, Expression resultValue, List<Expression> expressions )
+        static Expression GetFinalResultExpression( ParameterExpression returnValue, MemberExpression resultField, Expression resultValue, List<Expression> expressions )
         {
-            Expression blockBody;
-
-            if ( expressions.Count > 0 )
-                blockBody = Block( expressions );
-            else if ( resultValue != null )
-                blockBody = Block( resultValue );
-            else
-                blockBody = Empty();
+            var blockBody = expressions.Count > 0
+                ? Block( expressions )
+                : resultValue ?? Empty();
 
             if ( returnValue != null )
+            {
                 return Assign( resultField, returnValue );
+            }
 
-            return blockBody.Type == typeof( void )
-                ? Assign( resultField, Constant( null, typeof( IVoidResult ) ) )
-                : Assign( resultField, blockBody );
+            if ( blockBody.Type == typeof(void) )
+            {
+                return Block(
+                    Assign( resultField, Constant( null, typeof(IVoidResult) ) ),
+                    blockBody 
+                );
+            }
+
+            return Assign( resultField, blockBody );
         }
     }
 }

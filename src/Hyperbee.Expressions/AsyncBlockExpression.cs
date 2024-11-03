@@ -44,7 +44,7 @@ public class AsyncBlockExpression : Expression
         if ( _stateMachine != null )
             return _stateMachine;
 
-        var visitor = new LoweringVisitor();
+        using var visitor = new LoweringVisitor();
         var source = visitor.Transform( VariableResolver, Expressions );
 
         _stateMachine = GenerateStateMachine( _resultType, source, VariableResolver );

@@ -12,13 +12,13 @@ public class SwitchTransition : Transition
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
         Expression defaultBody;
-
+        
         if ( DefaultNode != null )
         {
-            defaultBody = GotoOrFallThrough(
-                order,
-                DefaultNode,
-                allowNull: true
+            defaultBody = GotoOrFallThrough( 
+                order, 
+                DefaultNode, 
+                allowNull: true 
             );
         }
         else
@@ -27,13 +27,10 @@ public class SwitchTransition : Transition
         }
 
         var cases = CaseNodes
-            .Select( switchCase => switchCase.Reduce( order ) );
+            .Select( switchCase => switchCase.Reduce( order ) )
+            .ToArray();
 
-        return Switch(
-            SwitchValue,
-            defaultBody,
-            [.. cases]
-        );
+        return Switch( SwitchValue, defaultBody, cases );
     }
 
     internal override NodeExpression FallThroughNode => DefaultNode;
