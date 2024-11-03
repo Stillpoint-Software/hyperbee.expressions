@@ -114,7 +114,7 @@ public sealed class StateContext : IDisposable
         return node != null;
     }
 
-    public sealed class Scope
+    public sealed class Scope : IDisposable
     {
         public int ScopeId { get; }
         public Scope Parent { get; }
@@ -127,6 +127,12 @@ public sealed class StateContext : IDisposable
             ScopeId = scopeId;
             Nodes = new PooledArray<NodeExpression>( initialCapacity );
             JumpCases = [];
+        }
+
+        public void Dispose()
+        {
+            Nodes?.Dispose();
+            JumpCases?.Dispose();
         }
     }
 
@@ -156,8 +162,7 @@ public sealed class StateContext : IDisposable
 
         foreach ( var scope in Scopes )
         {
-            scope.Nodes.Dispose();
-            scope.JumpCases.Dispose();
+            scope.Dispose();
         }
 
         Scopes.Dispose();
