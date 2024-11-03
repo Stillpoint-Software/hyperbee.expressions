@@ -19,21 +19,21 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
         _disposed = false;
     }
 
-    public ReadOnlySpan<T> AsReadOnlySpan() => new(_array, 0, _count);
-    public ReadOnlySpan<T> AsReadOnlySpan( int start, int count ) => new(_array, start, Math.Min( count, _count ));
+    public ReadOnlySpan<T> AsReadOnlySpan() => new( _array, 0, _count );
+    public ReadOnlySpan<T> AsReadOnlySpan( int start, int count ) => new( _array, start, Math.Min( count, _count ) );
 
-    public Span<T> AsSpan() => new(_array, 0, _count);
-    public Span<T> AsSpan( int start, int count ) => new(_array, start, Math.Min( count, _count ));
+    public Span<T> AsSpan() => new( _array, 0, _count );
+    public Span<T> AsSpan( int start, int count ) => new( _array, start, Math.Min( count, _count ) );
 
     public int Count => _count;
 
-    public T this[ int index ]
+    public T this[int index]
     {
         [MethodImpl( MethodImplOptions.AggressiveInlining )]
         get
         {
             if ( index < 0 || index >= _count )
-                throw new ArgumentOutOfRangeException( nameof(index) );
+                throw new ArgumentOutOfRangeException( nameof( index ) );
 
             return _array[index];
         }
@@ -68,7 +68,7 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
         _array = newArray;
     }
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]    
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public void Add( T item )
     {
         EnsureCapacity( _count + 1 );
@@ -93,16 +93,16 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
     public void CopyTo( PooledArray<T> destination, int sourceIndex, int destinationIndex, int count )
     {
         if ( destination == null )
-            throw new ArgumentNullException( nameof(destination) );
+            throw new ArgumentNullException( nameof( destination ) );
 
         if ( count == 0 )
             return;
 
         if ( sourceIndex < 0 || sourceIndex >= _count )
-            throw new ArgumentOutOfRangeException( nameof(sourceIndex), "Source index is out of range." );
+            throw new ArgumentOutOfRangeException( nameof( sourceIndex ), "Source index is out of range." );
 
         if ( count < 0 )
-            throw new ArgumentOutOfRangeException( nameof(count), "Count cannot be negative." );
+            throw new ArgumentOutOfRangeException( nameof( count ), "Count cannot be negative." );
 
         if ( sourceIndex + count > _count )
             throw new ArgumentException( "The source array does not have enough elements." );
@@ -119,19 +119,19 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
     public void CopyTo( T[] destination, int sourceIndex, int destinationIndex, int count )
     {
         if ( destination == null )
-            throw new ArgumentNullException( nameof(destination) );
+            throw new ArgumentNullException( nameof( destination ) );
 
         if ( count == 0 )
             return;
 
         if ( sourceIndex < 0 || sourceIndex >= _count )
-            throw new ArgumentOutOfRangeException( nameof(sourceIndex), "Start index is out of range." );
+            throw new ArgumentOutOfRangeException( nameof( sourceIndex ), "Start index is out of range." );
 
         if ( count < 0 )
             count = _count - sourceIndex; // Default to the remaining elements
 
         if ( sourceIndex + count > _count )
-            throw new ArgumentOutOfRangeException( nameof(count), "Count exceeds available elements from the start index." );
+            throw new ArgumentOutOfRangeException( nameof( count ), "Count exceeds available elements from the start index." );
 
         if ( destinationIndex + count > destination.Length )
             throw new ArgumentException( "Destination array is too small to hold the copied elements." );
@@ -142,7 +142,7 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
     public void Insert( int index, T item )
     {
         if ( index < 0 || index > _count )
-            throw new ArgumentOutOfRangeException( nameof(index) );
+            throw new ArgumentOutOfRangeException( nameof( index ) );
 
         EnsureCapacity( _count + 1 );
 
@@ -158,7 +158,7 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
     public void Remove( int index )
     {
         if ( index < 0 || index >= _count )
-            throw new ArgumentOutOfRangeException( nameof(index) );
+            throw new ArgumentOutOfRangeException( nameof( index ) );
 
         for ( var i = index; i < _count - 1; i++ )
         {
@@ -194,7 +194,7 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
     public void Remove( Func<T, int, bool> predicate )
     {
         if ( predicate == null )
-            throw new ArgumentNullException( nameof(predicate) );
+            throw new ArgumentNullException( nameof( predicate ) );
 
         var shiftIndex = 0;
 
@@ -221,7 +221,7 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
     public void Resize( int newSize )
     {
         if ( newSize < 0 )
-            throw new ArgumentOutOfRangeException( nameof(newSize), "Size cannot be negative." );
+            throw new ArgumentOutOfRangeException( nameof( newSize ), "Size cannot be negative." );
 
         if ( newSize < _count )
         {

@@ -37,30 +37,30 @@ public class TryCatchTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
-        var expressions = new List<Expression> 
-        { 
-            JumpTableBuilder.Build( 
-                StateScope, 
-                Scopes, 
-                resolverSource.StateIdField 
-            ) 
+        var expressions = new List<Expression>
+        {
+            JumpTableBuilder.Build(
+                StateScope,
+                Scopes,
+                resolverSource.StateIdField
+            )
         };
 
         expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
-        
+
         MapCatchBlock( order, out var catches, out var switchCases );
 
         return Block(
-            TryCatch( 
-                expressions.Count == 1 
-                    ? expressions[0] 
-                    : Block( expressions ), 
-                catches 
+            TryCatch(
+                expressions.Count == 1
+                    ? expressions[0]
+                    : Block( expressions ),
+                catches
             ),
             Switch( // Handle error
-                TryStateVariable, 
-                Empty(), 
-                switchCases 
+                TryStateVariable,
+                Empty(),
+                switchCases
             )
         );
     }

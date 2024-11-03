@@ -45,13 +45,13 @@ internal sealed class NodeOptimizer : INodeOptimizer
     private static void OptimizeOrder( int currentScopeId, PooledArray<NodeExpression> nodes, HashSet<LabelTarget> references )
     {
         var visited = new HashSet<NodeExpression>( nodes.Count );
-        int stateOrder = 0; 
+        int stateOrder = 0;
         NodeExpression finalNode = null;
 
         nodes[0].StateOrder = 0;
 
         // Perform greedy DFS for each unvisited node
-        for ( var index = 0; index < nodes.Count; index++ ) 
+        for ( var index = 0; index < nodes.Count; index++ )
         {
             var node = nodes[index];
 
@@ -97,7 +97,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
         {
             var scope = scopes[i];
 
-            scope.Nodes.Remove( (node,index) =>
+            scope.Nodes.Remove( ( node, index ) =>
             {
                 if ( !references.Contains( node.NodeLabel ) )
                     return true;

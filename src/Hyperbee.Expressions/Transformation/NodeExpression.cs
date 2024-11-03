@@ -104,11 +104,11 @@ public sealed class NodeExpression : Expression
                 return Assign( resultField, returnValue );
             }
 
-            if ( blockBody.Type == typeof(void) )
+            if ( blockBody.Type == typeof( void ) )
             {
                 return Block(
-                    Assign( resultField, Constant( null, typeof(IVoidResult) ) ),
-                    blockBody 
+                    Assign( resultField, Constant( null, typeof( IVoidResult ) ) ),
+                    blockBody
                 );
             }
 

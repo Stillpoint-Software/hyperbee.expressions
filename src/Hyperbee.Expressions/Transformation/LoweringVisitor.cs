@@ -45,12 +45,12 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
 
         VisitExpressions( expressions );
 
-        return new LoweringResult 
-        { 
-            Scopes = _states.Scopes, 
-            ReturnValue = _returnValue, 
-            AwaitCount = _awaitCount, 
-            Variables = _variableResolver.GetLocalVariables() 
+        return new LoweringResult
+        {
+            Scopes = _states.Scopes,
+            ReturnValue = _returnValue,
+            AwaitCount = _awaitCount,
+            Variables = _variableResolver.GetLocalVariables()
         };
     }
 
