@@ -44,25 +44,17 @@ public class AsyncBlockExpression : Expression
         if ( _stateMachine != null )
             return _stateMachine;
 
+        // create state-machine
+
         using var visitor = new LoweringVisitor();
         var source = visitor.Transform( VariableResolver, Expressions );
 
-        _stateMachine = GenerateStateMachine( _resultType, source, VariableResolver );
+        if ( source.AwaitCount == 0 )
+            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
+
+        _stateMachine = StateMachineBuilder.Create( _resultType, source, VariableResolver );
 
         return _stateMachine;
-    }
-
-    private static Expression GenerateStateMachine(
-        Type resultType,
-        LoweringResult source,
-        IVariableResolver variableResolver )
-    {
-        if ( source.AwaitCount == 0 )
-            throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
-
-        var stateMachine = StateMachineBuilder.Create( resultType, source, variableResolver );
-
-        return stateMachine;
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
