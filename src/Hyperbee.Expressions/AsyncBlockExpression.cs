@@ -50,7 +50,7 @@ public class AsyncBlockExpression : Expression
         var source = visitor.Transform( VariableResolver, Expressions );
 
         if ( source.AwaitCount == 0 )
-            throw new InvalidOperationException( $"{nameof(AsyncBlockExpression)} must contain at least one await." );
+            throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
         _stateMachine = StateMachineBuilder.Create( _resultType, source, VariableResolver );
 
