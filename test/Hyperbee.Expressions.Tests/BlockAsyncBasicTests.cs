@@ -134,7 +134,6 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
     }
 
-
     [TestMethod]
     public async Task BlockAsync_ShouldShareVariablesBetweenBlocks_WithNestedAwaits()
     {
@@ -172,7 +171,6 @@ public class BlockAsyncBasicTests
         // Assert
         Assert.AreEqual( 7, result );
     }
-
 
     [TestMethod]
     public async Task BlockAsync_ShouldHandleSyncAndAsync_WithMixedOperations()
@@ -303,4 +301,59 @@ public class BlockAsyncBasicTests
         // Assert
         Assert.AreEqual( 10, result );
     }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldAllowLambdaParameters()
+    {
+        Expression<Func<Task<int>>> innerAsync = () => Task.FromResult( 5 );
+        Expression<Func<Func<Task<int>>, Task<int>>> isTrueAsync = func => func();
+
+        var asyncBlock = BlockAsync(
+            Await( Invoke( isTrueAsync, innerAsync ) )
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( asyncBlock );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 5, result );
+    }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync()
+    {
+        // Arrange
+        var innerVar = Variable( typeof( int ), "innerVar" );
+        var middleVar = Variable( typeof( int ), "middleVar" );
+        var outerVar = Variable( typeof( int ), "outerVar" );
+
+        var blockAsync = BlockAsync(
+            [outerVar],
+            Block(
+                [middleVar],
+                BlockAsync(
+                    [innerVar],
+                    Assign( innerVar, Constant( 1 ) ),
+                    Assign( middleVar, Constant( 2 ) ),
+                    Assign( outerVar, Await( Constant( Task.FromResult( 3 ) ) ) )
+                ),
+                Assign( middleVar, Constant( 4 ) )
+            ),
+            Await( Constant( Task.FromResult( 6 ) ) ),
+            outerVar
+        );
+
+        // Act
+        var lambda = Lambda<Func<Task<int>>>( blockAsync );
+        var compiledLambda = lambda.Compile();
+
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 3, result );
+    }
+
 }

@@ -131,7 +131,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( variables );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 1, variables: 0 );
+        AssertTransition.AssertResult( result, nodes: 1, variables: 2 );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[0] );
     }
 
@@ -167,7 +167,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( variables );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 1, variables: 0 );
+        AssertTransition.AssertResult( result, nodes: 1, variables: 3 );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[0] );
     }
 
@@ -206,7 +206,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( conditionalParameters );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 4 );
+        AssertTransition.AssertResult( result, nodes: 4, variables: 2 );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
@@ -367,7 +367,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( methodWithParameter );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 4, jumps: 2 );
+        AssertTransition.AssertResult( result, nodes: 5, variables: 6, jumps: 2 );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
 
     }
@@ -394,7 +394,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( methodWithParameter );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 3, variables: 2, jumps: 1 );
+        AssertTransition.AssertResult( result, nodes: 3, variables: 4, jumps: 1 );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
