@@ -14,7 +14,7 @@ public interface IVariableResolver
     bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression );
     ParameterExpression AddVariable( ParameterExpression variable );
     ParameterExpression AddLocalVariable( ParameterExpression variable );
-    
+
     IEnumerable<ParameterExpression> ExcludeFieldMembers( IEnumerable<ParameterExpression> variables );
 
     bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable );

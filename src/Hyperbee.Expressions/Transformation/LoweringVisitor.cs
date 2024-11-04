@@ -151,7 +151,7 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
     protected override Expression VisitBlock( BlockExpression node )
     {
         foreach ( var parameterExpression in node.Variables )
-            _variableResolver.AddLocalVariable( parameterExpression);
+            _variableResolver.AddLocalVariable( parameterExpression );
 
         VisitExpressions( node.Expressions );
 
