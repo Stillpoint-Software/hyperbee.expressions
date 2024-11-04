@@ -209,7 +209,7 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
         Array.Clear( _array, shiftIndex, _count - shiftIndex );
         _count = shiftIndex;
     }
-    
+
     public void Resize( int newSize )
     {
         if ( newSize < 0 )
