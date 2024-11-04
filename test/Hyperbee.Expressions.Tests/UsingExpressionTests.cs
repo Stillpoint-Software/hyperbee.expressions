@@ -76,6 +76,57 @@ public class UsingExpressionTests
     }
 
     [TestMethod]
+    public async Task UsingExpression_ShouldExecuteAsyncExpression()
+    {
+        // Arrange
+        var resource = new TestDisposableResource();
+        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
+
+        // Create an async body
+        var bodyExpression = ExpressionExtensions.BlockAsync(
+            ExpressionExtensions.Await( Expression.Constant( Task.FromResult( 10 ) ) )
+        );
+
+        // Act
+        var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
+
+        var lambda = Expression.Lambda<Func<Task<int>>>( usingExpression );
+        var compiledLambda = lambda.Compile();
+
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 10, result );
+    }
+
+    [TestMethod]
+    public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing()
+    {
+        // Arrange
+        var resource = new TestDisposableResource();
+        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
+
+        var usingExpression = ExpressionExtensions.Using(
+            disposableExpression,
+            ExpressionExtensions.Await( Expression.Constant( Task.FromResult( 10 ) ) )
+        );
+
+        // Create an async body
+        var bodyExpression = ExpressionExtensions.BlockAsync(
+            usingExpression
+        );
+
+        // Act
+        var lambda = Expression.Lambda<Func<Task<int>>>( bodyExpression );
+        var compiledLambda = lambda.Compile();
+
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 10, result );
+    }
+
+    [TestMethod]
     [ExpectedException( typeof( ArgumentException ) )]
     public void UsingExpression_ShouldThrowArgumentException_WhenNonDisposableUsed()
     {
