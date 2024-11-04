@@ -91,7 +91,7 @@ public class UsingExpressionTests
         var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
 
         var lambda = Expression.Lambda<Func<Task<int>>>( usingExpression );
-        var compiledLambda =  lambda.Compile();
+        var compiledLambda = lambda.Compile();
 
         var result = await compiledLambda();
 
