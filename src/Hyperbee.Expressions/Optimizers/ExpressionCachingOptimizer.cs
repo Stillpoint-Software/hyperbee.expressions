@@ -28,8 +28,8 @@ public class ExpressionCachingOptimizer : ExpressionVisitor, IExpressionOptimize
         // If no caching was applied, return the original expression
         // Else return a block with cached assignments and the optimized expression
 
-        return _variables.Count == 0 
-            ? optimizedExpression 
+        return _variables.Count == 0
+            ? optimizedExpression
             : Expression.Block( _variables, _assignments.Append( optimizedExpression ) );
     }
 
