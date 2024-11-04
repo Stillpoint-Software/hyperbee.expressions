@@ -335,7 +335,13 @@ public class LoweringVisitor : ExpressionVisitor
                 return VisitAwait( awaitExpression );
 
             case AsyncBlockExpression asyncBlockExpression:
+                // In order to ensure variables belong to the current state machine we track the hierarchy
+                // through the parent resolver
                 asyncBlockExpression.VariableResolver.Parent = _variableResolver;
+
+                // Returning asyncBlockExpression here stops the processing of child async block expressions
+                // This allows the visitor to process the async block expression as a single node 
+                // and allows it to process from the root to the leaf versus inside out.
                 return asyncBlockExpression;
 
             default:
