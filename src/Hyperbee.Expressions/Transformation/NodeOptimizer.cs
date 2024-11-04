@@ -62,7 +62,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
 
             while ( node != null && visited.Add( node ) )
             {
-                // Optimize transition, which may affect node.Transition
+                // Optimize transition, which may mutate node.Transition
                 node.Transition?.OptimizeTransition( references );
 
                 if ( node.Transition == null )

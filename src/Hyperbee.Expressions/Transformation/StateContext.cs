@@ -98,12 +98,8 @@ public sealed class StateContext : IDisposable
     {
         node = null;
 
-        var span = CurrentScope.Nodes.AsReadOnlySpan();
-
-        for ( var index = 0; index < span.Length; index++ )
+        foreach ( var check in CurrentScope.Nodes.AsReadOnlySpan() )
         {
-            var check = span[index];
-
             if ( check.NodeLabel != target )
                 continue;
 

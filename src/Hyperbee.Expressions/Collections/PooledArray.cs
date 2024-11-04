@@ -9,8 +9,6 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
     private T[] _array;
     private int _count;
     private bool _disposed;
-    private const int DoublingThreshold = 1024;
-    private const int FixedIncrement = 256;
 
     public PooledArray( int initialCapacity = 16 )
     {
@@ -53,14 +51,9 @@ public class PooledArray<T> : IDisposable, IReadOnlyList<T>
         if ( requiredCapacity <= _array.Length )
             return;
 
-        var newCapacity = _array.Length < DoublingThreshold
-            ? _array.Length * 2
-            : _array.Length + FixedIncrement;
-
-        if ( newCapacity < requiredCapacity )
-            newCapacity = requiredCapacity;
-
-        var newArray = ArrayPool<T>.Shared.Rent( newCapacity );
+        // ArrayPool already has smarts re-allocation size
+        // so we can be simpler.
+        var newArray = ArrayPool<T>.Shared.Rent( requiredCapacity );
 
         Array.Copy( _array, newArray, _count );
         ArrayPool<T>.Shared.Return( _array, clearArray: true );

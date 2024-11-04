@@ -11,12 +11,8 @@ internal static class JumpTableBuilder
         var jumpCases = current.JumpCases;
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
 
-        var span = jumpCases.AsReadOnlySpan();
-
-        for ( var index = 0; index < span.Length; index++ )
+        foreach ( var jumpCase in jumpCases.AsReadOnlySpan() )
         {
-            var jumpCase = span[index];
-
             // Go to the result of awaiter
 
             var resultJumpExpression = SwitchCase(
@@ -62,21 +58,13 @@ internal static class JumpTableBuilder
 
         while ( true )
         {
-            var scopeSpan = scopes.AsReadOnlySpan();
-
-            for ( var scopeIndex = 0; scopeIndex < scopeSpan.Length; scopeIndex++ )
+            foreach ( var nestedScope in scopes.AsReadOnlySpan() )
             {
-                var nestedScope = scopeSpan[scopeIndex];
-
                 if ( nestedScope.Parent != scope )
                     continue;
 
-                var jumpCasesSpan = nestedScope.JumpCases.AsReadOnlySpan();
-
-                for ( var jumpIndex = 0; jumpIndex < jumpCasesSpan.Length; jumpIndex++ )
+                foreach ( var childJumpCase in nestedScope.JumpCases.AsReadOnlySpan() )
                 {
-                    var childJumpCase = jumpCasesSpan[jumpIndex];
-
                     if ( childJumpCase.ParentId != stateId )
                         continue;
 
