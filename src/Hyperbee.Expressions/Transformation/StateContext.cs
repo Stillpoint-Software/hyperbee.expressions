@@ -1,18 +1,19 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using Hyperbee.Expressions.Collections;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public sealed class StateContext
+public sealed class StateContext : IDisposable
 {
     private int _stateId;
     private readonly int _initialCapacity;
 
-    private readonly Stack<NodeExpression> _joinStates;
-    private readonly Stack<int> _scopeIndexes;
+    private readonly PooledStack<NodeExpression> _joinStates;
+    private readonly PooledStack<int> _scopeIndexes;
+    public PooledArray<Scope> Scopes { get; }
 
-    public List<Scope> Scopes { get; }
     public NodeExpression TailState { get; private set; }
 
     private Scope CurrentScope => Scopes[_scopeIndexes.Peek()];
@@ -21,13 +22,13 @@ public sealed class StateContext
     {
         _initialCapacity = initialCapacity;
 
-        Scopes = new List<Scope>( _initialCapacity )
+        Scopes = new PooledArray<Scope>( _initialCapacity )
         {
             new ( 0, null, _initialCapacity ) // root scope
         };
 
-        _joinStates = new Stack<NodeExpression>( _initialCapacity );
-        _scopeIndexes = new Stack<int>( _initialCapacity );
+        _joinStates = new PooledStack<NodeExpression>( _initialCapacity );
+        _scopeIndexes = new PooledStack<int>( _initialCapacity );
         _scopeIndexes.Push( 0 ); // root scope index
 
         AddState();
@@ -93,16 +94,12 @@ public sealed class StateContext
         scope.JumpCases.Add( jumpCase );
     }
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public bool TryGetLabelTarget( LabelTarget target, out NodeExpression node )
     {
-        var nodes = CurrentScope.Nodes;
         node = null;
 
-        for ( var index = 0; index < nodes.Count; index++ )
+        foreach ( var check in CurrentScope.Nodes.AsReadOnlySpan() )
         {
-            var check = nodes[index];
-
             if ( check.NodeLabel != target )
                 continue;
 
@@ -113,19 +110,25 @@ public sealed class StateContext
         return node != null;
     }
 
-    public sealed class Scope
+    public sealed class Scope : IDisposable
     {
         public int ScopeId { get; }
         public Scope Parent { get; }
-        public List<NodeExpression> Nodes { get; set; }
-        public List<JumpCase> JumpCases { get; }
+        public PooledArray<NodeExpression> Nodes { get; set; }
+        public PooledArray<JumpCase> JumpCases { get; }
 
         public Scope( int scopeId, Scope parent, int initialCapacity )
         {
             Parent = parent;
             ScopeId = scopeId;
-            Nodes = new List<NodeExpression>( initialCapacity );
+            Nodes = new PooledArray<NodeExpression>( initialCapacity );
             JumpCases = [];
+        }
+
+        public void Dispose()
+        {
+            Nodes?.Dispose();
+            JumpCases?.Dispose();
         }
     }
 
@@ -143,5 +146,21 @@ public sealed class StateContext
             StateId = stateId;
             ParentId = parentId;
         }
+    }
+
+    public void Dispose()
+    {
+        _joinStates?.Dispose();
+        _scopeIndexes?.Dispose();
+
+        if ( Scopes == null )
+            return;
+
+        foreach ( var scope in Scopes )
+        {
+            scope.Dispose();
+        }
+
+        Scopes.Dispose();
     }
 }
