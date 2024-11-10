@@ -13,14 +13,14 @@ public class ExpressionReductionOptimizerTests
         // After:  .Parameter(x)
 
         // Arrange
-        var expression = Expression.Add(Expression.Parameter(typeof(int), "x"), Expression.Constant(0));
+        var expression = Expression.Add( Expression.Parameter( typeof( int ), "x" ), Expression.Constant( 0 ) );
         var optimizer = new ExpressionReductionOptimizer();
 
         // Act
-        var result = optimizer.Optimize(expression);
+        var result = optimizer.Optimize( expression );
 
         // Assert
-        Assert.IsInstanceOfType(result, typeof(ParameterExpression));
+        Assert.IsInstanceOfType( result, typeof( ParameterExpression ) );
     }
 
     [TestMethod]
@@ -30,14 +30,14 @@ public class ExpressionReductionOptimizerTests
         // After:  .Parameter(x)
 
         // Arrange
-        var expression = Expression.Multiply(Expression.Parameter(typeof(int), "x"), Expression.Constant(1));
+        var expression = Expression.Multiply( Expression.Parameter( typeof( int ), "x" ), Expression.Constant( 1 ) );
         var optimizer = new ExpressionReductionOptimizer();
 
         // Act
-        var result = optimizer.Optimize(expression);
+        var result = optimizer.Optimize( expression );
 
         // Assert
-        Assert.IsInstanceOfType(result, typeof(ParameterExpression));
+        Assert.IsInstanceOfType( result, typeof( ParameterExpression ) );
     }
 
     [TestMethod]
@@ -47,14 +47,14 @@ public class ExpressionReductionOptimizerTests
         // After:  .Parameter(x)
 
         // Arrange
-        var andExpression = Expression.AndAlso(Expression.Constant(true), Expression.Parameter(typeof(bool), "x"));
+        var andExpression = Expression.AndAlso( Expression.Constant( true ), Expression.Parameter( typeof( bool ), "x" ) );
         var optimizer = new ExpressionReductionOptimizer();
 
         // Act
-        var result = optimizer.Optimize(andExpression);
+        var result = optimizer.Optimize( andExpression );
 
         // Assert
-        Assert.IsInstanceOfType(result, typeof(ParameterExpression));
+        Assert.IsInstanceOfType( result, typeof( ParameterExpression ) );
     }
 
     [TestMethod]
@@ -64,16 +64,16 @@ public class ExpressionReductionOptimizerTests
         // After:  .Constant(6)
 
         // Arrange
-        var nestedExpression = Expression.Add(Expression.Add(Expression.Constant(1), Expression.Constant(2)), Expression.Constant(3));
+        var nestedExpression = Expression.Add( Expression.Add( Expression.Constant( 1 ), Expression.Constant( 2 ) ), Expression.Constant( 3 ) );
         var optimizer = new ExpressionReductionOptimizer();
 
         // Act
-        var result = optimizer.Optimize(nestedExpression);
-        var constant = (ConstantExpression)result;
+        var result = optimizer.Optimize( nestedExpression );
+        var constant = (ConstantExpression) result;
         var value = constant.Value;
 
         // Assert
-        Assert.AreEqual(6, value);
+        Assert.AreEqual( 6, value );
     }
 
     [TestMethod]
@@ -83,16 +83,16 @@ public class ExpressionReductionOptimizerTests
         // After:  .Parameter(x)
 
         // Arrange
-        var parameter = Expression.Parameter(typeof(int), "x");
-        var addZero = Expression.Add(parameter, Expression.Constant(0));
-        var multiplyByOne = Expression.Multiply(addZero, Expression.Constant(1));
+        var parameter = Expression.Parameter( typeof( int ), "x" );
+        var addZero = Expression.Add( parameter, Expression.Constant( 0 ) );
+        var multiplyByOne = Expression.Multiply( addZero, Expression.Constant( 1 ) );
         var optimizer = new ExpressionReductionOptimizer();
 
         // Act
-        var result = optimizer.Optimize(multiplyByOne);
+        var result = optimizer.Optimize( multiplyByOne );
 
         // Assert
-        Assert.IsInstanceOfType(result, typeof(ParameterExpression));
+        Assert.IsInstanceOfType( result, typeof( ParameterExpression ) );
     }
 
     [TestMethod]
@@ -102,15 +102,15 @@ public class ExpressionReductionOptimizerTests
         // After:  .Constant(true)
 
         // Arrange
-        var orExpression = Expression.OrElse(Expression.Constant(true), Expression.Constant(false));
-        var andExpression = Expression.AndAlso(orExpression, Expression.Constant(true));
+        var orExpression = Expression.OrElse( Expression.Constant( true ), Expression.Constant( false ) );
+        var andExpression = Expression.AndAlso( orExpression, Expression.Constant( true ) );
         var optimizer = new ExpressionReductionOptimizer();
 
         // Act
-        var result = optimizer.Optimize(andExpression);
-        var value = (bool)((ConstantExpression)result).Value!;
+        var result = optimizer.Optimize( andExpression );
+        var value = (bool) ((ConstantExpression) result).Value!;
 
         // Assert
-        Assert.IsTrue(value);
+        Assert.IsTrue( value );
     }
 }

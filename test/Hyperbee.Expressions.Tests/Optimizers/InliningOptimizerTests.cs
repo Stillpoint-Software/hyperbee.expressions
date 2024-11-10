@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Hyperbee.Expressions.Optimizers;
 
 namespace Hyperbee.Expressions.Tests.Optimizers;
@@ -13,15 +13,15 @@ public class InliningOptimizerTests
         // After:  .Constant(15)
 
         // Arrange
-        var expression = Expression.Add(Expression.Constant(10), Expression.Constant(5));
+        var expression = Expression.Add( Expression.Constant( 10 ), Expression.Constant( 5 ) );
         var optimizer = new InliningOptimizer();
 
         // Act
-        var result = optimizer.Optimize(expression);
-        var value = ((ConstantExpression)result).Value;
+        var result = optimizer.Optimize( expression );
+        var value = ((ConstantExpression) result).Value;
 
         // Assert
-        Assert.AreEqual(15, value);
+        Assert.AreEqual( 15, value );
     }
 
     [TestMethod]
@@ -31,17 +31,17 @@ public class InliningOptimizerTests
         // After:  .Constant(8)
 
         // Arrange
-        var parameter = Expression.Parameter(typeof(int), "x");
-        var lambda = Expression.Lambda(Expression.Add(parameter, Expression.Constant(5)), parameter);
-        var invocation = Expression.Invoke(lambda, Expression.Constant(3));
+        var parameter = Expression.Parameter( typeof( int ), "x" );
+        var lambda = Expression.Lambda( Expression.Add( parameter, Expression.Constant( 5 ) ), parameter );
+        var invocation = Expression.Invoke( lambda, Expression.Constant( 3 ) );
         var optimizer = new InliningOptimizer();
 
         // Act
-        var result = optimizer.Optimize(invocation);
-        var value = ((ConstantExpression)result).Value;
+        var result = optimizer.Optimize( invocation );
+        var value = ((ConstantExpression) result).Value;
 
         // Assert
-        Assert.AreEqual(8, value);
+        Assert.AreEqual( 8, value );
     }
 
     [TestMethod]
@@ -51,15 +51,15 @@ public class InliningOptimizerTests
         // After:  .Constant(false)
 
         // Arrange
-        var expression = Expression.AndAlso(Expression.Constant(true), Expression.Constant(false));
+        var expression = Expression.AndAlso( Expression.Constant( true ), Expression.Constant( false ) );
         var optimizer = new InliningOptimizer();
 
         // Act
-        var result = optimizer.Optimize(expression);
-        var value = (bool)((ConstantExpression)result).Value!;
+        var result = optimizer.Optimize( expression );
+        var value = (bool) ((ConstantExpression) result).Value!;
 
         // Assert
-        Assert.IsFalse(value);
+        Assert.IsFalse( value );
     }
 
     [TestMethod]
@@ -69,16 +69,16 @@ public class InliningOptimizerTests
         // After:  .Constant("True")
 
         // Arrange
-        var condition = Expression.Constant(true);
-        var conditional = Expression.Condition(condition, Expression.Constant("True"), Expression.Constant("False"));
+        var condition = Expression.Constant( true );
+        var conditional = Expression.Condition( condition, Expression.Constant( "True" ), Expression.Constant( "False" ) );
         var optimizer = new InliningOptimizer();
 
         // Act
-        var result = optimizer.Optimize(conditional);
-        var value = ((ConstantExpression)result).Value;
+        var result = optimizer.Optimize( conditional );
+        var value = ((ConstantExpression) result).Value;
 
         // Assert
-        Assert.AreEqual("True", value);
+        Assert.AreEqual( "True", value );
     }
 
     [TestMethod]
@@ -89,22 +89,22 @@ public class InliningOptimizerTests
 
         // Arrange
         var innerCondition = Expression.Condition(
-            Expression.Constant(false),
-            Expression.Constant("A"),
-            Expression.Constant("B")
+            Expression.Constant( false ),
+            Expression.Constant( "A" ),
+            Expression.Constant( "B" )
         );
         var outerCondition = Expression.Condition(
-            Expression.Constant(true),
+            Expression.Constant( true ),
             innerCondition,
-            Expression.Constant("C")
+            Expression.Constant( "C" )
         );
         var optimizer = new InliningOptimizer();
 
         // Act
-        var result = optimizer.Optimize(outerCondition);
-        var value = ((ConstantExpression)result).Value;
+        var result = optimizer.Optimize( outerCondition );
+        var value = ((ConstantExpression) result).Value;
 
         // Assert
-        Assert.AreEqual("B", value);
+        Assert.AreEqual( "B", value );
     }
 }

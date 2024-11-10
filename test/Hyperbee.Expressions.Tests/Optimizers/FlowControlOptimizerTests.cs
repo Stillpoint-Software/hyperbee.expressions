@@ -13,15 +13,15 @@ public class FlowControlOptimizerTests
         // After:  .Constant(1)
 
         // Arrange
-        var block = Expression.Block(Expression.Constant(1), Expression.Constant(2));
+        var block = Expression.Block( Expression.Constant( 1 ), Expression.Constant( 2 ) );
         var optimizer = new FlowControlOptimizer();
 
         // Act
-        var result = optimizer.Optimize(block);
-        var value = ((ConstantExpression)((BlockExpression)result).Expressions[0]).Value;
+        var result = optimizer.Optimize( block );
+        var value = ((ConstantExpression) ((BlockExpression) result).Expressions[0]).Value;
 
         // Assert
-        Assert.AreEqual(1, value);
+        Assert.AreEqual( 1, value );
     }
 
     [TestMethod]
@@ -33,15 +33,15 @@ public class FlowControlOptimizerTests
         // Arrange
         var tryCatch = Expression.TryCatch(
             Expression.Empty(),
-            Expression.Catch(Expression.Parameter(typeof(Exception)), Expression.Empty())
+            Expression.Catch( Expression.Parameter( typeof( Exception ) ), Expression.Empty() )
         );
         var optimizer = new FlowControlOptimizer();
 
         // Act
-        var result = optimizer.Optimize(tryCatch);
+        var result = optimizer.Optimize( tryCatch );
 
         // Assert
-        Assert.IsInstanceOfType(result, typeof(DefaultExpression));
+        Assert.IsInstanceOfType( result, typeof( DefaultExpression ) );
     }
 
     [TestMethod]
@@ -51,14 +51,14 @@ public class FlowControlOptimizerTests
         // After:  .Empty()
 
         // Arrange
-        var loop = Expression.Loop(Expression.Constant(1));
+        var loop = Expression.Loop( Expression.Constant( 1 ) );
         var optimizer = new FlowControlOptimizer();
 
         // Act
-        var result = optimizer.Optimize(loop);
+        var result = optimizer.Optimize( loop );
 
         // Assert
-        Assert.IsInstanceOfType(result, typeof(DefaultExpression));
+        Assert.IsInstanceOfType( result, typeof( DefaultExpression ) );
     }
 
     [TestMethod]
@@ -69,24 +69,24 @@ public class FlowControlOptimizerTests
 
         // Arrange
         var innerCondition = Expression.IfThenElse(
-            Expression.Constant(false),
-            Expression.Break(Expression.Label()),
-            Expression.Constant("B")
+            Expression.Constant( false ),
+            Expression.Break( Expression.Label() ),
+            Expression.Constant( "B" )
         );
         var outerCondition = Expression.IfThenElse(
-            Expression.Constant(true),
+            Expression.Constant( true ),
             innerCondition,
-            Expression.Constant("C")
+            Expression.Constant( "C" )
         );
-        var block = Expression.Block(outerCondition);
+        var block = Expression.Block( outerCondition );
         var optimizer = new FlowControlOptimizer();
 
         // Act
-        var result = optimizer.Optimize(block);
-        var value = ((ConstantExpression)result).Value;
+        var result = optimizer.Optimize( block );
+        var value = ((ConstantExpression) result).Value;
 
         // Assert
-        Assert.AreEqual("B", value);
+        Assert.AreEqual( "B", value );
     }
 
     [TestMethod]
@@ -97,17 +97,17 @@ public class FlowControlOptimizerTests
 
         // Arrange
         var loopCondition = Expression.IfThenElse(
-            Expression.Constant(false),
-            Expression.Break(Expression.Label()),
-            Expression.Constant(1)
+            Expression.Constant( false ),
+            Expression.Break( Expression.Label() ),
+            Expression.Constant( 1 )
         );
-        var loop = Expression.Loop(loopCondition);
+        var loop = Expression.Loop( loopCondition );
         var optimizer = new FlowControlOptimizer();
 
         // Act
-        var result = optimizer.Optimize(loop);
+        var result = optimizer.Optimize( loop );
 
         // Assert
-        Assert.IsInstanceOfType(result, typeof(DefaultExpression));
+        Assert.IsInstanceOfType( result, typeof( DefaultExpression ) );
     }
 }
