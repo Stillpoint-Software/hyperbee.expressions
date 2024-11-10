@@ -5,69 +5,74 @@ namespace Hyperbee.Expressions.Optimizers;
 public class Optimizer
 {
     private readonly List<IExpressionOptimizer> _optimizers;
-    private readonly OptimizationOptions _context;
+
+    // Optimizer Pipeline:
+    //
+    // The following pipeline applies a series of expression tree optimizations in a specific order.
+    // Each optimizer focuses on a specific domain to streamline and enhance the expression tree.
+    //
+    // Order of optimizers is crucial to ensure that each optimization step builds on the previous one.
 
     public Optimizer( OptimizationOptions context )
     {
-        _context = context;
         _optimizers = [];
 
-        // 1. Constant Simplification: Perform constant folding and constant propagation first.
-        //    This simplifies expressions by precomputing values, which makes subsequent optimizations easier.
+        // The following pipeline applies a series of expression tree optimizations in a specific order.
+        // Each optimizer focuses on a specific domain to streamline and enhance the expression tree.
+        //
 
-        if ( context.EnableConstantSimplification )
-            _optimizers.Add( new ConstantSimplificationOptimizer() );
+        // InliningOptimizer
+        //
+        //    - Constant Inlining: Inline constants throughout the expression tree.
+        //    - Function and Lambda Inlining: Inline invocation expressions by replacing parameters with arguments.
+        //    - Conditional Inlining: Simplify `ConditionalExpression`s by directly selecting branches based on constant conditions.
+        //    - Boolean Short-Circuiting: Simplify expressions like `x && true` or `x || false`.
 
-        // 2. Inlining: Inline functions, conditional expressions, and apply boolean short-circuiting.
-        //    Inlining removes function calls and known values, which can further simplify expressions.
-
-        if ( context.EnableInlining )
+        if ( context.EnableInliningOptimization )
             _optimizers.Add( new InliningOptimizer() );
 
-        // 3. Control Flow Simplification: Eliminate dead code and simplify conditionals.
-        //    By removing unreachable code, this prepares the expression tree for more targeted optimizations.
+        // ValueBindingOptimizer
+        //
+        //    - Constant Folding: Evaluate arithmetic and logical expressions with constant operands.
+        //    - Variable Inlining: Replace variables with constant values where applicable.
+        //    - Member Access Simplification: Simplify member access by precomputing values for constant fields and properties.
 
-        if ( context.EnableControlFlowSimplification )
-            _optimizers.Add( new ControlFlowSimplificationOptimizer() );
+        if ( context.EnableValueBindingOptimization )
+            _optimizers.Add( new ValueBindingOptimizer() );
 
-        // 4. Variable Optimization: Inline single-use variables and remove redundant assignments.
-        //    This reduces memory usage and simplifies variable handling before structural changes.
-
-        if ( context.EnableVariableOptimization )
-            _optimizers.Add( new VariableOptimizationOptimizer() );
-
-        // 5. Structural Simplification: Flatten nested blocks and remove redundant `BlockExpression` nodes.
-        //    By simplifying the tree structure, this makes subsequent optimizations more efficient.
-
-        if ( context.EnableStructuralSimplification )
-            _optimizers.Add( new StructuralSimplificationOptimizer() );
-
-        // 6. Flow Control Optimization: Remove unreferenced labels and simplify empty `TryCatch`/`TryFinally` blocks.
-        //    This cleans up control flow structures and reduces unnecessary jumps.
+        // FlowControlOptimizer
+        //
+        //    - Dead Code Elimination: Remove unreachable code and simplify conditional expressions.
+        //    - Block Simplification: Flatten nested `BlockExpression`s and remove unreachable expressions.
+        //    - TryCatch Simplification: Remove unreferenced labels and simplify empty `TryCatch`/`TryFinally` blocks.
+        //    - Label Simplification: Remove unused labels and simplify `Goto` expressions.
+        //    - Control Flow Simplification: Optimizes `ConditionalExpression` and `LoopExpression`.
 
         if ( context.EnableFlowControlOptimization )
-            _optimizers.Add( new FlowControlOptimizationOptimizer() );
+            _optimizers.Add( new FlowControlOptimizer() );
 
-        // 7. Expression Caching: Cache reusable sub-expressions to avoid redundant evaluations.
-        //    This improves performance by reusing results of previously computed expressions.
+        // ExpressionReductionOptimizer
+        //
+        //    - Arithmetic Reduction: Remove trivial operations like adding zero or multiplying by one.
+        //    - Logical Reduction: Simplify expressions with logical identities (e.g., `x && true` or `x || false`).
+        //    - Nested Expression Flattening: Simplify nested expressions, such as combining multiple additions or multiplications.
 
-        if ( context.EnableExpressionCaching )
-            _optimizers.Add( new ExpressionCachingOptimizer() );
+        if ( context.EnableExpressionReduction )
+            _optimizers.Add( new ExpressionReductionOptimizer() );
 
-        // 8. Expression Simplification: Simplify arithmetic expressions and combine adjacent expressions.
-        //    This reduces the number of operations, making the expression tree more efficient.
+        // ExpressionCachingOptimizer
+        //
+        //    - Subexpression Caching: Identify repeated subexpressions and cache their results.
+        //    - Caching of Complex Expressions: Cache reusable results of nested or complex expressions to prevent redundant evaluation.
 
-        if ( context.EnableExpressionSimplification )
-            _optimizers.Add( new ExpressionSimplificationOptimizer() );
+        if ( context.EnableExpressionResultCaching )
+            _optimizers.Add( new ExpressionResultCachingOptimizer() );
 
-        // 9. Access Simplification: Remove unnecessary null propagation checks and simplify constant indexing.
-        //    This makes accesses to collections or arrays more efficient and eliminates redundant null checks.
-
-        if ( context.EnableAccessSimplification )
-            _optimizers.Add( new AccessSimplificationOptimizer() );
-
-        // 10. Memory Optimization: Reuse parameters, remove unused temporary variables, and consolidate variable declarations.
-        //     This reduces memory usage and optimizes variable handling for efficient memory management.
+        // MemoryOptimizationOptimizer
+        //
+        //    - Parameter Reuse: Reuse parameters where possible to reduce memory overhead.
+        //    - Variable Cleanup: Remove unused variables, ensuring minimal memory usage for the final expression.
+        //    - Allocation Reduction: Minimize memory allocations in expressions by optimizing variable usage.
 
         if ( context.EnableMemoryOptimization )
             _optimizers.Add( new MemoryOptimizationOptimizer() );
@@ -77,7 +82,7 @@ public class Optimizer
     {
         for ( var index = 0; index < _optimizers.Count; index++ )
         {
-            expression = _optimizers[index].Optimize( expression, _context );
+            expression = _optimizers[index].Optimize( expression );
         }
 
         return expression;

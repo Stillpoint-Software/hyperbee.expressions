@@ -2,19 +2,28 @@
 
 namespace Hyperbee.Expressions.Optimizers;
 
-// FlowControlOptimizationOptimizer: Control Flow Optimization
+// LabelSimplifier: Simplify Conditional and Loop Expressions
+// TryCatchSimplifier: Simplify TryCatch and TryFinally Blocks
+
+
+// GotoLabelTryOptimizer: Control Flow Optimization
 //
 // This optimizer removes unused `Label` and `Goto` expressions and simplifies empty `TryCatch` 
 // and `TryFinally` blocks. It also eliminates unreferenced labels and unused `Goto` targets, 
 // reducing unnecessary jumps and error-handling structures to improve control flow clarity.
 
-public class FlowControlOptimizationOptimizer : ExpressionVisitor, IExpressionOptimizer
+public class GotoLabelTryOptimizer : ExpressionVisitor, IExpressionOptimizer
 {
     private readonly HashSet<LabelTarget> _usedLabels = [];
 
-    public Expression Optimize( Expression expression, OptimizationOptions options )
+    public Expression Optimize( Expression expression )
     {
-        return options.EnableFlowControlOptimization ? Visit( expression ) : expression;
+        return Visit( expression );
+    }
+
+    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
+    {
+        return (TExpr) Visit( expression );
     }
 
     protected override Expression VisitGoto( GotoExpression node )

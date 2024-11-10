@@ -11,9 +11,14 @@ public class MemoryOptimizationOptimizer : ExpressionVisitor, IExpressionOptimiz
 {
     private readonly Dictionary<ParameterExpression, ParameterExpression> _reusedParameters = new();
 
-    public Expression Optimize( Expression expression, OptimizationOptions options )
+    public Expression Optimize( Expression expression )
     {
-        return options.EnableMemoryOptimization ? Visit( expression ) : expression;
+        return Visit( expression );
+    }
+
+    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
+    {
+        return (TExpr) Visit( expression );
     }
 
     protected override Expression VisitParameter( ParameterExpression node )

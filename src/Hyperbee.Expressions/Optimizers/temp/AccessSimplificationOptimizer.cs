@@ -9,9 +9,14 @@ namespace Hyperbee.Expressions.Optimizers;
 
 public class AccessSimplificationOptimizer : ExpressionVisitor, IExpressionOptimizer
 {
-    public Expression Optimize( Expression expression, OptimizationOptions options )
+    public Expression Optimize( Expression expression )
     {
-        return options.EnableAccessSimplification ? Visit( expression ) : expression;
+        return Visit( expression );
+    }
+
+    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
+    {
+        return (TExpr) Visit( expression );
     }
 
     protected override Expression VisitBinary( BinaryExpression node )

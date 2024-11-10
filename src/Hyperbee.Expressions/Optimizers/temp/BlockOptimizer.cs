@@ -2,17 +2,24 @@
 
 namespace Hyperbee.Expressions.Optimizers;
 
-// StructuralSimplificationOptimizer: Structural Simplification
+// BlockSimplifier
+
+// BlockOptimizer: Structural Simplification
 //
 // This optimizer flattens nested `BlockExpression` nodes and removes redundant blocks.
 // It consolidates expressions into a single block where possible, reducing unnecessary nesting,
 // which makes the expression tree more concise and easier to traverse.
 
-public class StructuralSimplificationOptimizer : ExpressionVisitor, IExpressionOptimizer
+public class BlockOptimizer : ExpressionVisitor, IExpressionOptimizer
 {
-    public Expression Optimize( Expression expression, OptimizationOptions options )
+    public Expression Optimize( Expression expression )
     {
-        return options.EnableStructuralSimplification ? Visit( expression ) : expression;
+        return Visit( expression );
+    }
+
+    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
+    {
+        return (TExpr) Visit( expression );
     }
 
     protected override Expression VisitBlock( BlockExpression node )

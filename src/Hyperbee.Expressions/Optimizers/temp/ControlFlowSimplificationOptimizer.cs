@@ -2,17 +2,18 @@
 
 namespace Hyperbee.Expressions.Optimizers;
 
-// ControlFlowSimplificationOptimizer: Control Flow Optimization
-//
-// This optimizer removes unreachable branches, simplifies conditionals with constant conditions,
-// and eliminates loops with constant-false conditions. It also removes code after control flow exits,
-// such as `return`, `throw`, and `goto`, reducing the depth and complexity of control flow structures.
+// ControlFlowSimplifierVisitor
 
 public class ControlFlowSimplificationOptimizer : ExpressionVisitor, IExpressionOptimizer
 {
-    public Expression Optimize( Expression expression, OptimizationOptions options )
+    public Expression Optimize( Expression expression )
     {
-        return options.EnableControlFlowSimplification ? Visit( expression ) : expression;
+        return Visit( expression );
+    }
+
+    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
+    {
+        return (TExpr) Visit( expression );
     }
 
     protected override Expression VisitConditional( ConditionalExpression node )
@@ -22,9 +23,16 @@ public class ControlFlowSimplificationOptimizer : ExpressionVisitor, IExpression
             return base.VisitConditional( node );
         }
 
-        // Eliminate dead code in conditionals based on constant conditions
         var condition = (bool) testConst.Value!;
-        return condition ? Visit( node.IfTrue ) : Visit( node.IfFalse );
+        var result = Visit( condition ? node.IfTrue : node.IfFalse );
+
+        if ( result.Type != node.Type )
+        {
+            result = Expression.Convert( result, node.Type );
+        }
+
+        return result;
+
     }
 
     protected override Expression VisitBlock( BlockExpression node )
@@ -34,11 +42,9 @@ public class ControlFlowSimplificationOptimizer : ExpressionVisitor, IExpression
 
         foreach ( var expr in node.Expressions )
         {
-            // Skip expressions after a control flow exit (e.g., Goto, Throw)
             if ( hasControlFlowExit )
                 continue;
 
-            // Track if we encounter a control flow exit
             if ( expr is GotoExpression ||
                  (expr is UnaryExpression unary && unary.NodeType == ExpressionType.Throw) )
             {
@@ -48,17 +54,26 @@ public class ControlFlowSimplificationOptimizer : ExpressionVisitor, IExpression
             expressions.Add( Visit( expr ) );
         }
 
+        if ( expressions.Count == 0 && node.Type != typeof(void) )
+        {
+            expressions.Add( Expression.Default( node.Type ) );
+        }
+
         return Expression.Block( node.Variables, expressions );
     }
 
     protected override Expression VisitLoop( LoopExpression node )
     {
-        // Remove loops with a constant false condition (never executes)
-        if ( node.Body is ConditionalExpression conditional && conditional.Test is ConstantExpression testConst && (bool) testConst.Value == false )
+        if ( node.Body is not ConditionalExpression conditional || !IsConstantFalse( conditional.Test ) )
         {
-            return Expression.Empty();
+            return base.VisitLoop( node );
         }
 
-        return base.VisitLoop( node );
+        return node.Type == typeof(void) ? Expression.Empty() : Expression.Default( node.Type );
+    }
+
+    private static bool IsConstantFalse( Expression expression )
+    {
+        return expression is ConstantExpression constant && constant.Type == typeof(bool) && !(bool) constant.Value!;
     }
 }

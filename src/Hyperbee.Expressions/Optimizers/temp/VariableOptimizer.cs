@@ -2,17 +2,22 @@
 
 namespace Hyperbee.Expressions.Optimizers;
 
-// VariableOptimizationOptimizer: Variable Optimization
+// VariableOptimizer: Variable Optimization
 //
 // This optimizer inlines single-use variables and eliminates redundant assignments.
 // It also removes unused variables in blocks and avoids redundant assignments to the same variable.
 // By simplifying variable usage, it reduces memory overhead and improves readability.
 
-public class VariableOptimizationOptimizer : ExpressionVisitor, IExpressionOptimizer
+public class VariableOptimizer : ExpressionVisitor, IExpressionOptimizer
 {
-    public Expression Optimize( Expression expression, OptimizationOptions options )
+    public Expression Optimize( Expression expression )
     {
-        return options.EnableVariableOptimization ? Visit( expression ) : expression;
+        return Visit( expression );
+    }
+
+    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
+    {
+        return (TExpr) Visit( expression );
     }
 
     protected override Expression VisitBlock( BlockExpression node )

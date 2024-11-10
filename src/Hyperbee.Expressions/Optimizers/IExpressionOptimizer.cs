@@ -4,5 +4,8 @@ namespace Hyperbee.Expressions.Optimizers;
 
 public interface IExpressionOptimizer
 {
-    Expression Optimize( Expression expression, OptimizationOptions options );
+    Expression Optimize( Expression expression );
+
+    TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression;
 }
+
