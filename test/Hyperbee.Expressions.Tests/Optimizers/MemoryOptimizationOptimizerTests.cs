@@ -7,54 +7,59 @@ namespace Hyperbee.Expressions.Tests.Optimizers;
 public class MemoryOptimizationOptimizerTests
 {
     [TestMethod]
-    public void MemoryOptimization_ShouldReuseParameter()
+    public void MemoryOptimization_ShouldReduceRedundantAllocations()
     {
-        // Arrange
-        var variable = Expression.Parameter( typeof(int), "x" );
-        var referenceExpr = Expression.Lambda<Func<int>>(
-            Expression.Block( [variable],
-                Expression.Assign( variable, Expression.Constant( 10 ) ),
-                variable
-            )
-        );
+        // Before: .Block(.Assign(.Parameter(x), .Constant(1)), .Parameter(x))
+        // After:  .Constant(1)
 
-        var optimizedExpr = new MemoryOptimizationOptimizer().Optimize( referenceExpr );
+        // Arrange
+        var param = Expression.Parameter(typeof(int), "x");
+        var redundantAlloc = Expression.Block( [param], Expression.Assign(param, Expression.Constant(1)), param);
+        var optimizer = new MemoryOptimizationOptimizer();
 
         // Act
-        var reference = referenceExpr.Compile();
-        var result = reference();
-
-        var optimized = optimizedExpr.Compile();
-        var comparand = optimized();
+        var result = optimizer.Optimize(redundantAlloc);
+        var constant = (ConstantExpression)result;
+        var value = constant.Value;
 
         // Assert
-        Assert.AreEqual( 10, result );
-        Assert.AreEqual( 10, comparand );
+        Assert.AreEqual(1, value);
     }
 
     [TestMethod]
-    public void MemoryOptimization_ShouldRemoveUnusedTemporaryVariable()
+    public void MemoryOptimization_ShouldReuseTemporaryVariableInLoop()
     {
-        // Arrange
-        var unusedVar = Expression.Variable( typeof(int), "unused" );
-        var referenceExpr = Expression.Lambda<Func<int>>(
-            Expression.Block( [unusedVar],
-                Expression.Assign( unusedVar, Expression.Constant( 5 ) ),
-                Expression.Constant( 20 )
-            )
-        );
+        // Before: .Loop(.Block(.Assign(.Parameter(temp), .Constant(42)), .Parameter(temp)))
+        // After:  .Constant(42)
 
-        var optimizedExpr = new MemoryOptimizationOptimizer().Optimize( referenceExpr );
+        // Arrange
+        var tempVar = Expression.Parameter(typeof(int), "temp");
+        var loop = Expression.Loop(Expression.Block( [tempVar], Expression.Assign(tempVar, Expression.Constant(42)), tempVar));
+        var optimizer = new MemoryOptimizationOptimizer();
 
         // Act
-        var reference = referenceExpr.Compile();
-        var result = reference();
-
-        var optimized = optimizedExpr.Compile();
-        var comparand = optimized();
+        var result = optimizer.Optimize(loop);
 
         // Assert
-        Assert.AreEqual( 20, result );
-        Assert.AreEqual( 20, comparand );
+        Assert.IsInstanceOfType(result, typeof(ConstantExpression));
+    }
+
+    [TestMethod]
+    public void MemoryOptimization_ShouldReduceAllocationsInNestedBlocks()
+    {
+        // Before: .Block(.Block(.Assign(.Parameter(temp), .Constant(10)), .Parameter(temp)), .Parameter(temp))
+        // After:  .Constant(10)
+
+        // Arrange
+        var tempVar = Expression.Parameter(typeof(int), "temp");
+        var innerBlock = Expression.Block( [tempVar], Expression.Assign(tempVar, Expression.Constant(10)), tempVar);
+        var outerBlock = Expression.Block(innerBlock, tempVar);
+        var optimizer = new MemoryOptimizationOptimizer();
+
+        // Act
+        var result = optimizer.Optimize(outerBlock);
+
+        // Assert
+        Assert.IsInstanceOfType(result, typeof(ConstantExpression));
     }
 }
