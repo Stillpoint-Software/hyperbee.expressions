@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.Expressions.Tests;
 
-public readonly struct LazyAwaiter<T> : ICriticalNotifyCompletion 
+public readonly struct LazyAwaiter<T> : ICriticalNotifyCompletion
 {
     private readonly Lazy<T> _lazy;
 

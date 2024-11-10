@@ -11,7 +11,7 @@ namespace Hyperbee.Expressions.Optimizers;
 
 public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
 {
-    public Expression Optimize(Expression expression)
+    public Expression Optimize( Expression expression )
     {
         // Order of optimization is important, as some optimizations benefit from previous optimizations.
         expression = new VariableInliningVisitor().Visit( expression );
@@ -21,11 +21,11 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
         return expression;
     }
 
-    public TExpr Optimize<TExpr>(TExpr expression) where TExpr : LambdaExpression
+    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
     {
-        var optimizedBody = Optimize(expression.Body);
-        return !ReferenceEquals(expression.Body, optimizedBody)
-            ? (TExpr)Expression.Lambda(expression.Type, optimizedBody, expression.Parameters)
+        var optimizedBody = Optimize( expression.Body );
+        return !ReferenceEquals( expression.Body, optimizedBody )
+            ? (TExpr) Expression.Lambda( expression.Type, optimizedBody, expression.Parameters )
             : expression;
     }
 
@@ -56,43 +56,43 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
     //
     private class ConstantFoldingVisitor : ExpressionVisitor
     {
-        protected override Expression VisitBinary(BinaryExpression node)
+        protected override Expression VisitBinary( BinaryExpression node )
         {
             if ( node.Left is not ConstantExpression leftConst || node.Right is not ConstantExpression rightConst )
             {
                 return base.VisitBinary( node );
             }
 
-            var folded = FoldConstants(node.NodeType, leftConst, rightConst);
-            return folded ?? base.VisitBinary(node);
+            var folded = FoldConstants( node.NodeType, leftConst, rightConst );
+            return folded ?? base.VisitBinary( node );
         }
 
-        protected override Expression VisitUnary(UnaryExpression node)
+        protected override Expression VisitUnary( UnaryExpression node )
         {
-            if (node.Operand is ConstantExpression constOperand)
+            if ( node.Operand is ConstantExpression constOperand )
             {
-                return FoldUnaryOperation(node.NodeType, constOperand) ?? base.VisitUnary(node);
+                return FoldUnaryOperation( node.NodeType, constOperand ) ?? base.VisitUnary( node );
             }
 
-            return base.VisitUnary(node);
+            return base.VisitUnary( node );
         }
 
-        protected override Expression VisitConditional(ConditionalExpression node)
+        protected override Expression VisitConditional( ConditionalExpression node )
         {
-            var test = Visit(node.Test);
+            var test = Visit( node.Test );
 
             if ( test is not ConstantExpression testConst )
             {
                 return base.VisitConditional( node );
             }
 
-            var condition = (bool)testConst.Value!;
+            var condition = (bool) testConst.Value!;
             var result = condition ? node.IfTrue : node.IfFalse;
-            return Visit(result);
+            return Visit( result );
 
         }
 
-        private static ConstantExpression FoldUnaryOperation(ExpressionType nodeType, ConstantExpression operand)
+        private static ConstantExpression FoldUnaryOperation( ExpressionType nodeType, ConstantExpression operand )
         {
             // Unary folding: Supports negation, logical NOT, and bitwise NOT for constants.
             //
@@ -106,25 +106,25 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
             //
             return nodeType switch
             {
-                ExpressionType.Negate when operand.Value is int intValue => Expression.Constant(-intValue),
-                ExpressionType.Not when operand.Value is bool boolValue => Expression.Constant(!boolValue),
-                ExpressionType.OnesComplement when operand.Value is int intValue => Expression.Constant(~intValue),
+                ExpressionType.Negate when operand.Value is int intValue => Expression.Constant( -intValue ),
+                ExpressionType.Not when operand.Value is bool boolValue => Expression.Constant( !boolValue ),
+                ExpressionType.OnesComplement when operand.Value is int intValue => Expression.Constant( ~intValue ),
                 _ => null
             };
         }
 
-        private static ConstantExpression FoldConstants(ExpressionType nodeType, ConstantExpression leftConst, ConstantExpression rightConst)
+        private static ConstantExpression FoldConstants( ExpressionType nodeType, ConstantExpression leftConst, ConstantExpression rightConst )
         {
-            if (!typeof(IConvertible).IsAssignableFrom(leftConst.Type) || !typeof(IConvertible).IsAssignableFrom(rightConst.Type))
+            if ( !typeof( IConvertible ).IsAssignableFrom( leftConst.Type ) || !typeof( IConvertible ).IsAssignableFrom( rightConst.Type ) )
                 return null;
 
             // Arithmetic and logical operations on constants
-            if (IsNumericType(leftConst.Type) && IsNumericType(rightConst.Type))
+            if ( IsNumericType( leftConst.Type ) && IsNumericType( rightConst.Type ) )
             {
-                return FoldNumericOperation(nodeType, leftConst, rightConst);
+                return FoldNumericOperation( nodeType, leftConst, rightConst );
             }
 
-            if (leftConst.Type != rightConst.Type)
+            if ( leftConst.Type != rightConst.Type )
             {
                 return null;
             }
@@ -133,15 +133,15 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
 
             return type switch
             {
-                not null when type == typeof(bool) => FoldBooleanOperation(nodeType, (bool)leftConst.Value!, (bool)rightConst.Value!),
-                not null when type == typeof(string) => FoldStringOperation(nodeType, (string)leftConst.Value!, (string)rightConst.Value!),
-                not null when type == typeof(char) => FoldCharOperation(nodeType, (char)leftConst.Value!, (char)rightConst.Value!),
-                not null when type == typeof(DateTime) => FoldDateTimeOperation(nodeType, (DateTime)leftConst.Value!, rightConst.Value),
+                not null when type == typeof( bool ) => FoldBooleanOperation( nodeType, (bool) leftConst.Value!, (bool) rightConst.Value! ),
+                not null when type == typeof( string ) => FoldStringOperation( nodeType, (string) leftConst.Value!, (string) rightConst.Value! ),
+                not null when type == typeof( char ) => FoldCharOperation( nodeType, (char) leftConst.Value!, (char) rightConst.Value! ),
+                not null when type == typeof( DateTime ) => FoldDateTimeOperation( nodeType, (DateTime) leftConst.Value!, rightConst.Value ),
                 _ => null
             };
         }
 
-        private static ConstantExpression FoldBooleanOperation(ExpressionType nodeType, bool left, bool right)
+        private static ConstantExpression FoldBooleanOperation( ExpressionType nodeType, bool left, bool right )
         {
             // Boolean folding: Simplifies operations like AND, OR, and comparisons.
             //
@@ -155,15 +155,15 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
             //
             return nodeType switch
             {
-                ExpressionType.And => Expression.Constant(left && right),
-                ExpressionType.Or => Expression.Constant(left || right),
-                ExpressionType.Equal => Expression.Constant(left == right),
-                ExpressionType.NotEqual => Expression.Constant(left != right),
+                ExpressionType.And => Expression.Constant( left && right ),
+                ExpressionType.Or => Expression.Constant( left || right ),
+                ExpressionType.Equal => Expression.Constant( left == right ),
+                ExpressionType.NotEqual => Expression.Constant( left != right ),
                 _ => null
             };
         }
 
-        private static ConstantExpression FoldCharOperation(ExpressionType nodeType, char left, char right)
+        private static ConstantExpression FoldCharOperation( ExpressionType nodeType, char left, char right )
         {
             // Char folding: Supports addition and subtraction on char constants.
             //
@@ -180,13 +180,13 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
 
             return nodeType switch
             {
-                ExpressionType.Add => Expression.Constant((char)(leftInt + rightInt)),
-                ExpressionType.Subtract => Expression.Constant((char)(leftInt - rightInt)),
+                ExpressionType.Add => Expression.Constant( (char) (leftInt + rightInt) ),
+                ExpressionType.Subtract => Expression.Constant( (char) (leftInt - rightInt) ),
                 _ => null
             };
         }
 
-        private static ConstantExpression FoldDateTimeOperation(ExpressionType nodeType, DateTime left, object rightValue)
+        private static ConstantExpression FoldDateTimeOperation( ExpressionType nodeType, DateTime left, object rightValue )
         {
             // DateTime folding: Supports addition and subtraction of TimeSpan to DateTime.
             //
@@ -198,18 +198,18 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
             // After:
             //   .Constant(new DateTime(2024, 1, 2))
             //
-            if (rightValue is not TimeSpan rightTimeSpan)
+            if ( rightValue is not TimeSpan rightTimeSpan )
                 return null;
 
             return nodeType switch
             {
-                ExpressionType.Add => Expression.Constant(left + rightTimeSpan),
-                ExpressionType.Subtract => Expression.Constant(left - rightTimeSpan),
+                ExpressionType.Add => Expression.Constant( left + rightTimeSpan ),
+                ExpressionType.Subtract => Expression.Constant( left - rightTimeSpan ),
                 _ => null
             };
         }
 
-        private static ConstantExpression FoldStringOperation(ExpressionType nodeType, string left, string right)
+        private static ConstantExpression FoldStringOperation( ExpressionType nodeType, string left, string right )
         {
             // String folding: Concatenates strings for `Add` operation.
             //
@@ -221,16 +221,16 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
             // After:
             //   .Constant("Hello, World!")
             //
-            return nodeType != ExpressionType.Add ? null : Expression.Constant(left + right);
+            return nodeType != ExpressionType.Add ? null : Expression.Constant( left + right );
         }
 
-        private static ConstantExpression FoldNumericOperation(ExpressionType nodeType, ConstantExpression leftConst, ConstantExpression rightConst)
+        private static ConstantExpression FoldNumericOperation( ExpressionType nodeType, ConstantExpression leftConst, ConstantExpression rightConst )
         {
             Type commonType;
             object leftValue;
             object rightValue;
 
-            if (leftConst.Type == rightConst.Type)
+            if ( leftConst.Type == rightConst.Type )
             {
                 commonType = leftConst.Type;
                 leftValue = leftConst.Value!;
@@ -238,47 +238,47 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
             }
             else
             {
-                commonType = GetNumericType(leftConst.Type, rightConst.Type);
+                commonType = GetNumericType( leftConst.Type, rightConst.Type );
 
-                if (commonType == null)
-                    throw new InvalidOperationException("Incompatible numeric types.");
+                if ( commonType == null )
+                    throw new InvalidOperationException( "Incompatible numeric types." );
 
-                leftValue = Convert.ChangeType(leftConst.Value, commonType)!;
-                rightValue = Convert.ChangeType(rightConst.Value, commonType)!;
+                leftValue = Convert.ChangeType( leftConst.Value, commonType )!;
+                rightValue = Convert.ChangeType( rightConst.Value, commonType )!;
             }
 
             return commonType switch
             {
-                not null when commonType == typeof(byte) => ApplyOperation(nodeType, (byte)leftValue, (byte)rightValue),
-                not null when commonType == typeof(sbyte) => ApplyOperation(nodeType, (sbyte)leftValue, (sbyte)rightValue),
-                not null when commonType == typeof(short) => ApplyOperation(nodeType, (short)leftValue, (short)rightValue),
-                not null when commonType == typeof(ushort) => ApplyOperation(nodeType, (ushort)leftValue, (ushort)rightValue),
-                not null when commonType == typeof(int) => ApplyOperation(nodeType, (int)leftValue, (int)rightValue),
-                not null when commonType == typeof(uint) => ApplyOperation(nodeType, (uint)leftValue, (uint)rightValue),
-                not null when commonType == typeof(long) => ApplyOperation(nodeType, (long)leftValue, (long)rightValue),
-                not null when commonType == typeof(ulong) => ApplyOperation(nodeType, (ulong)leftValue, (ulong)rightValue),
-                not null when commonType == typeof(float) => ApplyOperation(nodeType, (float)leftValue, (float)rightValue),
-                not null when commonType == typeof(double) => ApplyOperation(nodeType, (double)leftValue, (double)rightValue),
-                not null when commonType == typeof(decimal) => ApplyOperation(nodeType, (decimal)leftValue, (decimal)rightValue),
-                _ => throw new InvalidOperationException("Unsupported type for promoted operation.")
+                not null when commonType == typeof( byte ) => ApplyOperation( nodeType, (byte) leftValue, (byte) rightValue ),
+                not null when commonType == typeof( sbyte ) => ApplyOperation( nodeType, (sbyte) leftValue, (sbyte) rightValue ),
+                not null when commonType == typeof( short ) => ApplyOperation( nodeType, (short) leftValue, (short) rightValue ),
+                not null when commonType == typeof( ushort ) => ApplyOperation( nodeType, (ushort) leftValue, (ushort) rightValue ),
+                not null when commonType == typeof( int ) => ApplyOperation( nodeType, (int) leftValue, (int) rightValue ),
+                not null when commonType == typeof( uint ) => ApplyOperation( nodeType, (uint) leftValue, (uint) rightValue ),
+                not null when commonType == typeof( long ) => ApplyOperation( nodeType, (long) leftValue, (long) rightValue ),
+                not null when commonType == typeof( ulong ) => ApplyOperation( nodeType, (ulong) leftValue, (ulong) rightValue ),
+                not null when commonType == typeof( float ) => ApplyOperation( nodeType, (float) leftValue, (float) rightValue ),
+                not null when commonType == typeof( double ) => ApplyOperation( nodeType, (double) leftValue, (double) rightValue ),
+                not null when commonType == typeof( decimal ) => ApplyOperation( nodeType, (decimal) leftValue, (decimal) rightValue ),
+                _ => throw new InvalidOperationException( "Unsupported type for promoted operation." )
             };
 
-            static ConstantExpression ApplyOperation<T>(ExpressionType nodeType, T left, T right) where T : INumber<T>
+            static ConstantExpression ApplyOperation<T>( ExpressionType nodeType, T left, T right ) where T : INumber<T>
             {
                 var constant = nodeType switch
                 {
                     ExpressionType.Add => left + right,
                     ExpressionType.Subtract => left - right,
                     ExpressionType.Multiply => left * right,
-                    ExpressionType.Divide => Divide(left, right),
-                    _ => throw new InvalidOperationException($"Unsupported operation {nodeType} for type {typeof(T)}.")
+                    ExpressionType.Divide => Divide( left, right ),
+                    _ => throw new InvalidOperationException( $"Unsupported operation {nodeType} for type {typeof( T )}." )
                 };
 
-                return Expression.Constant(constant);
+                return Expression.Constant( constant );
 
-                static T Divide(T left, T right)
+                static T Divide( T left, T right )
                 {
-                    if (right == T.Zero)
+                    if ( right == T.Zero )
                         throw new DivideByZeroException();
 
                     return left / right;
@@ -362,7 +362,7 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
     {
         private readonly Dictionary<ParameterExpression, Expression> _replacements = new();
 
-        protected override Expression VisitBlock(BlockExpression node)
+        protected override Expression VisitBlock( BlockExpression node )
         {
             var variables = new List<ParameterExpression>();
             var expressions = new List<Expression>();
@@ -408,12 +408,12 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
                 }
             }
 
-            return Expression.Block(variables, expressions);
+            return Expression.Block( variables, expressions );
         }
 
-        protected override Expression VisitParameter(ParameterExpression node)
+        protected override Expression VisitParameter( ParameterExpression node )
         {
-            return _replacements.TryGetValue(node, out var replacement) ? Visit(replacement) : base.VisitParameter(node);
+            return _replacements.TryGetValue( node, out var replacement ) ? Visit( replacement ) : base.VisitParameter( node );
         }
     }
 
@@ -431,49 +431,49 @@ public class ValueBindingOptimizer : ExpressionVisitor, IExpressionOptimizer
     //
     private class MemberAccessVisitor : ExpressionVisitor
     {
-        protected override Expression VisitMember(MemberExpression node)
+        protected override Expression VisitMember( MemberExpression node )
         {
-            node = (MemberExpression)base.VisitMember(node);
+            node = (MemberExpression) base.VisitMember( node );
 
-            if (node.Expression is not ConstantExpression constExpr)
+            if ( node.Expression is not ConstantExpression constExpr )
             {
                 return node;
             }
 
-            switch (node.Member)
+            switch ( node.Member )
             {
                 case FieldInfo fieldInfo:
-                    var value = fieldInfo.GetValue(constExpr.Value);
-                    return Expression.Constant(value, node.Type);
+                    var value = fieldInfo.GetValue( constExpr.Value );
+                    return Expression.Constant( value, node.Type );
 
                 case PropertyInfo propertyInfo when propertyInfo.CanRead && propertyInfo.GetMethod!.IsStatic:
-                    var staticValue = propertyInfo.GetValue(null);
-                    return Expression.Constant(staticValue, node.Type);
+                    var staticValue = propertyInfo.GetValue( null );
+                    return Expression.Constant( staticValue, node.Type );
 
                 default:
                     return node;
             }
         }
 
-        protected override Expression VisitBinary(BinaryExpression node)
+        protected override Expression VisitBinary( BinaryExpression node )
         {
             if ( node.NodeType != ExpressionType.Coalesce || node.Left is not ConstantExpression leftConst || leftConst.Value != null )
             {
                 return base.VisitBinary( node );
             }
 
-            return Visit(node.Right);
+            return Visit( node.Right );
         }
 
-        protected override Expression VisitIndex(IndexExpression node)
+        protected override Expression VisitIndex( IndexExpression node )
         {
             if ( node.Object is not ConstantExpression constantArray || constantArray.Value is not Array array || node.Arguments[0] is not ConstantExpression indexExpr )
             {
                 return base.VisitIndex( node );
             }
 
-            var index = (int)indexExpr.Value!;
-            return Expression.Constant(array.GetValue(index), node.Type);
+            var index = (int) indexExpr.Value!;
+            return Expression.Constant( array.GetValue( index ), node.Type );
         }
     }
 }
