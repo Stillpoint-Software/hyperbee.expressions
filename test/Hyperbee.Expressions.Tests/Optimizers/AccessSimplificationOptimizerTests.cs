@@ -11,7 +11,7 @@ public class AccessSimplificationOptimizerTests
     {
         // Arrange
         var referenceExpr = Expression.Lambda<Func<int>>(
-            Expression.Coalesce( Expression.Constant( null, typeof(int?) ), Expression.Constant( 5 ) )
+            Expression.Coalesce( Expression.Constant( null, typeof( int? ) ), Expression.Constant( 5 ) )
         );
 
         var optimizedExpr = new AccessSimplificationOptimizer().Optimize( referenceExpr );

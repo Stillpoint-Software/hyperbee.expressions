@@ -10,7 +10,7 @@ public class MemoryOptimizationOptimizerTests
     public void MemoryOptimization_ShouldReuseParameter()
     {
         // Arrange
-        var variable = Expression.Parameter( typeof(int), "x" );
+        var variable = Expression.Parameter( typeof( int ), "x" );
         var referenceExpr = Expression.Lambda<Func<int>>(
             Expression.Block( [variable],
                 Expression.Assign( variable, Expression.Constant( 10 ) ),
@@ -36,7 +36,7 @@ public class MemoryOptimizationOptimizerTests
     public void MemoryOptimization_ShouldRemoveUnusedTemporaryVariable()
     {
         // Arrange
-        var unusedVar = Expression.Variable( typeof(int), "unused" );
+        var unusedVar = Expression.Variable( typeof( int ), "unused" );
         var referenceExpr = Expression.Lambda<Func<int>>(
             Expression.Block( [unusedVar],
                 Expression.Assign( unusedVar, Expression.Constant( 5 ) ),

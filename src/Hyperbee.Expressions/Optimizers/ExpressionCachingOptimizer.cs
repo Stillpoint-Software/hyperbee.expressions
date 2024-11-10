@@ -40,8 +40,8 @@ namespace Hyperbee.Expressions.Optimizers;
 
 public class ExpressionResultCachingOptimizer : ExpressionVisitor, IExpressionOptimizer
 {
-    private readonly Dictionary<byte[], Expression> _fingerprintCache = new(new ByteArrayComparer());
-    private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new(new ByteArrayComparer());
+    private readonly Dictionary<byte[], Expression> _fingerprintCache = new( new ByteArrayComparer() );
+    private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new( new ByteArrayComparer() );
     private readonly Queue<(Expression Original, ParameterExpression Variable)> _deferredReplacements = new();
 
     private readonly ExpressionFingerprintVisitor _fingerprinter = new();
@@ -212,7 +212,7 @@ public class ExpressionResultCachingOptimizer : ExpressionVisitor, IExpressionOp
         public int GetHashCode( byte[] bytes )
         {
             var hash = 17;
-            
+
             foreach ( var x in bytes )
             {
                 hash = hash * 31 + x;

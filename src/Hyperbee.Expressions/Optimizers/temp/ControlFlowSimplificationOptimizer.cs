@@ -54,7 +54,7 @@ public class ControlFlowSimplificationOptimizer : ExpressionVisitor, IExpression
             expressions.Add( Visit( expr ) );
         }
 
-        if ( expressions.Count == 0 && node.Type != typeof(void) )
+        if ( expressions.Count == 0 && node.Type != typeof( void ) )
         {
             expressions.Add( Expression.Default( node.Type ) );
         }
@@ -69,11 +69,11 @@ public class ControlFlowSimplificationOptimizer : ExpressionVisitor, IExpression
             return base.VisitLoop( node );
         }
 
-        return node.Type == typeof(void) ? Expression.Empty() : Expression.Default( node.Type );
+        return node.Type == typeof( void ) ? Expression.Empty() : Expression.Default( node.Type );
     }
 
     private static bool IsConstantFalse( Expression expression )
     {
-        return expression is ConstantExpression constant && constant.Type == typeof(bool) && !(bool) constant.Value!;
+        return expression is ConstantExpression constant && constant.Type == typeof( bool ) && !(bool) constant.Value!;
     }
 }

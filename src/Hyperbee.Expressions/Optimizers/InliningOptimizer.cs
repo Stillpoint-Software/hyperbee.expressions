@@ -25,14 +25,14 @@ namespace Hyperbee.Expressions.Optimizers;
 //
 public class InliningOptimizer : ExpressionVisitor, IExpressionOptimizer
 {
-    public Expression Optimize(Expression expression)
+    public Expression Optimize( Expression expression )
     {
-        return Visit(expression);
+        return Visit( expression );
     }
 
-    public TExpr Optimize<TExpr>(TExpr expression) where TExpr : LambdaExpression
+    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
     {
-        var optimizedBody = Optimize(expression.Body);
+        var optimizedBody = Optimize( expression.Body );
 
         if ( ReferenceEquals( expression.Body, optimizedBody ) )
         {
@@ -53,18 +53,18 @@ public class InliningOptimizer : ExpressionVisitor, IExpressionOptimizer
     // After:
     //   .Constant("True Branch")
     //
-    protected override Expression VisitConditional(ConditionalExpression node)
+    protected override Expression VisitConditional( ConditionalExpression node )
     {
-        var test = Visit(node.Test);
+        var test = Visit( node.Test );
 
         if ( test is not ConstantExpression constantTest )
         {
             return base.VisitConditional( node );
         }
 
-        var condition = (bool)constantTest.Value!;
+        var condition = (bool) constantTest.Value!;
         var result = condition ? node.IfTrue : node.IfFalse;
-        return Visit(result);
+        return Visit( result );
 
     }
 
@@ -84,32 +84,32 @@ public class InliningOptimizer : ExpressionVisitor, IExpressionOptimizer
     //       .Add(.Constant(5), .Constant(2))
     //   )
     //
-    protected override Expression VisitBlock(BlockExpression node)
+    protected override Expression VisitBlock( BlockExpression node )
     {
         var variableReplacements = new Dictionary<ParameterExpression, Expression>();
-        var variables = new List<ParameterExpression>(node.Variables);
+        var variables = new List<ParameterExpression>( node.Variables );
         var expressions = new List<Expression>();
 
-        foreach (var expr in node.Expressions)
+        foreach ( var expr in node.Expressions )
         {
-            if (expr is BinaryExpression assignExpr && assignExpr.NodeType == ExpressionType.Assign &&
-                assignExpr.Left is ParameterExpression variable && assignExpr.Right is ConstantExpression constant)
+            if ( expr is BinaryExpression assignExpr && assignExpr.NodeType == ExpressionType.Assign &&
+                assignExpr.Left is ParameterExpression variable && assignExpr.Right is ConstantExpression constant )
             {
                 // Record the constant assignment for inlining later in the block
                 variableReplacements[variable] = constant;
                 continue;
             }
 
-            var replacedExpression = ReplaceVariables(expr, variableReplacements);
-            expressions.Add(Visit(replacedExpression));
+            var replacedExpression = ReplaceVariables( expr, variableReplacements );
+            expressions.Add( Visit( replacedExpression ) );
         }
 
-        return Expression.Block(variables, expressions);
+        return Expression.Block( variables, expressions );
     }
 
-    private static Expression ReplaceVariables(Expression expression, Dictionary<ParameterExpression, Expression> replacements)
+    private static Expression ReplaceVariables( Expression expression, Dictionary<ParameterExpression, Expression> replacements )
     {
-        return new VariableReplacementVisitor(replacements).Visit(expression);
+        return new VariableReplacementVisitor( replacements ).Visit( expression );
     }
 
     // Short-Circuiting and Invocation Inlining: Optimizes boolean expressions and lambdas
@@ -123,7 +123,7 @@ public class InliningOptimizer : ExpressionVisitor, IExpressionOptimizer
     // After:
     //   expr
     //
-    protected override Expression VisitBinary(BinaryExpression node)
+    protected override Expression VisitBinary( BinaryExpression node )
     {
         if ( (node.NodeType != ExpressionType.AndAlso && node.NodeType != ExpressionType.OrElse) ||
              (node.Left is not ConstantExpression leftConst) )
@@ -131,19 +131,19 @@ public class InliningOptimizer : ExpressionVisitor, IExpressionOptimizer
             return base.VisitBinary( node );
         }
 
-        var leftValue = (bool)leftConst.Value!;
+        var leftValue = (bool) leftConst.Value!;
         return (node.NodeType, leftValue) switch
         {
-            (ExpressionType.AndAlso, true) => Visit(node.Right),
-            (ExpressionType.AndAlso, false) => Expression.Constant(false),
-            (ExpressionType.OrElse, true) => Expression.Constant(true),
-            (ExpressionType.OrElse, false) => Visit(node.Right),
-            _ => base.VisitBinary(node)
+            (ExpressionType.AndAlso, true ) => Visit( node.Right ),
+            (ExpressionType.AndAlso, false ) => Expression.Constant( false ),
+            (ExpressionType.OrElse, true ) => Expression.Constant( true ),
+            (ExpressionType.OrElse, false ) => Visit( node.Right ),
+            _ => base.VisitBinary( node )
         };
 
     }
 
-    protected override Expression VisitInvocation(InvocationExpression node)
+    protected override Expression VisitInvocation( InvocationExpression node )
     {
         if ( node.Expression is not LambdaExpression lambda )
         {
@@ -152,26 +152,26 @@ public class InliningOptimizer : ExpressionVisitor, IExpressionOptimizer
 
         var replacements = new Dictionary<ParameterExpression, Expression>();
 
-        for (int i = 0; i < lambda.Parameters.Count; i++)
+        for ( int i = 0; i < lambda.Parameters.Count; i++ )
         {
-            replacements[lambda.Parameters[i]] = Visit(node.Arguments[i]);
+            replacements[lambda.Parameters[i]] = Visit( node.Arguments[i] );
         }
 
-        return ReplaceVariables(lambda.Body, replacements);
+        return ReplaceVariables( lambda.Body, replacements );
     }
 
     private class VariableReplacementVisitor : ExpressionVisitor
     {
         private readonly Dictionary<ParameterExpression, Expression> _replacements;
 
-        public VariableReplacementVisitor(Dictionary<ParameterExpression, Expression> replacements)
+        public VariableReplacementVisitor( Dictionary<ParameterExpression, Expression> replacements )
         {
             _replacements = replacements;
         }
 
-        protected override Expression VisitParameter(ParameterExpression node)
+        protected override Expression VisitParameter( ParameterExpression node )
         {
-            return _replacements.TryGetValue(node, out var replacement) ? replacement : base.VisitParameter(node);
+            return _replacements.TryGetValue( node, out var replacement ) ? replacement : base.VisitParameter( node );
         }
     }
 }

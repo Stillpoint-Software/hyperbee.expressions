@@ -23,7 +23,7 @@ public class ControlFlowSimplificationOptimizerTests
             )
         );
 
-        var optimizedExpr = new ControlFlowSimplificationOptimizer().Optimize(referenceExpr);
+        var optimizedExpr = new ControlFlowSimplificationOptimizer().Optimize( referenceExpr );
 
         // Act
         var reference = referenceExpr.Compile();
@@ -33,22 +33,22 @@ public class ControlFlowSimplificationOptimizerTests
         var comparand = optimized();
 
         // Assert
-        Assert.AreEqual(20, result);
-        Assert.AreEqual(20, comparand);
+        Assert.AreEqual( 20, result );
+        Assert.AreEqual( 20, comparand );
     }
 
     [TestMethod]
     public void ControlFlowSimplification_ShouldRemoveInfiniteLoop()
     {
         // Arrange
-        var loopLabel = Expression.Label( typeof(void) );
+        var loopLabel = Expression.Label( typeof( void ) );
         var referenceExpr = Expression.Lambda<Func<int>>(
             Expression.Block(
                 Expression.Loop(
                     Expression.IfThenElse(
                         Expression.Constant( false ),
                         Expression.Break( loopLabel ),
-                        Expression.Default( typeof(void) )
+                        Expression.Default( typeof( void ) )
                     ),
                     loopLabel
                 ),

@@ -39,7 +39,7 @@ public class FlowControlOptimizationOptimizerTests
         var referenceExpr = Expression.Lambda<Func<int>>(
             Expression.TryCatch(
                 Expression.Constant( 5 ),
-                Expression.Catch( Expression.Parameter( typeof(Exception), "ex" ), Expression.Constant( 10 ) )
+                Expression.Catch( Expression.Parameter( typeof( Exception ), "ex" ), Expression.Constant( 10 ) )
             )
         );
 

@@ -38,7 +38,7 @@ public class ConstantFoldingOptimizer : ExpressionVisitor, IExpressionOptimizer
 
     private static ConstantExpression FoldConstants( ExpressionType nodeType, ConstantExpression leftConst, ConstantExpression rightConst )
     {
-        if ( !typeof(IConvertible).IsAssignableFrom( leftConst.Type ) || !typeof(IConvertible).IsAssignableFrom( rightConst.Type ) )
+        if ( !typeof( IConvertible ).IsAssignableFrom( leftConst.Type ) || !typeof( IConvertible ).IsAssignableFrom( rightConst.Type ) )
             return null;
 
         if ( IsNumericType( leftConst.Type ) && IsNumericType( rightConst.Type ) )
@@ -55,10 +55,10 @@ public class ConstantFoldingOptimizer : ExpressionVisitor, IExpressionOptimizer
 
         return type switch
         {
-            not null when type == typeof(bool) => FoldBooleanOperation( nodeType, (bool) leftConst.Value!, (bool) rightConst.Value! ),
-            not null when type == typeof(string) => FoldStringOperation( nodeType, (string) leftConst.Value!, (string) rightConst.Value! ),
-            not null when type == typeof(char) => FoldCharOperation( nodeType, (char) leftConst.Value!, (char) rightConst.Value! ),
-            not null when type == typeof(DateTime) => FoldDateTimeOperation( nodeType, (DateTime) leftConst.Value!, rightConst.Value ),
+            not null when type == typeof( bool ) => FoldBooleanOperation( nodeType, (bool) leftConst.Value!, (bool) rightConst.Value! ),
+            not null when type == typeof( string ) => FoldStringOperation( nodeType, (string) leftConst.Value!, (string) rightConst.Value! ),
+            not null when type == typeof( char ) => FoldCharOperation( nodeType, (char) leftConst.Value!, (char) rightConst.Value! ),
+            not null when type == typeof( DateTime ) => FoldDateTimeOperation( nodeType, (DateTime) leftConst.Value!, rightConst.Value ),
             _ => null
         };
     }
@@ -138,17 +138,17 @@ public class ConstantFoldingOptimizer : ExpressionVisitor, IExpressionOptimizer
         // Use a generic method to apply the operation based on the common type
         return commonType switch
         {
-            not null when commonType == typeof(byte) => ApplyOperation( nodeType, (byte) leftValue, (byte) rightValue ),
-            not null when commonType == typeof(sbyte) => ApplyOperation( nodeType, (sbyte) leftValue, (sbyte) rightValue ),
-            not null when commonType == typeof(short) => ApplyOperation( nodeType, (short) leftValue, (short) rightValue ),
-            not null when commonType == typeof(ushort) => ApplyOperation( nodeType, (ushort) leftValue, (ushort) rightValue ),
-            not null when commonType == typeof(int) => ApplyOperation( nodeType, (int) leftValue, (int) rightValue ),
-            not null when commonType == typeof(uint) => ApplyOperation( nodeType, (uint) leftValue, (uint) rightValue ),
-            not null when commonType == typeof(long) => ApplyOperation( nodeType, (long) leftValue, (long) rightValue ),
-            not null when commonType == typeof(ulong) => ApplyOperation( nodeType, (ulong) leftValue, (ulong) rightValue ),
-            not null when commonType == typeof(float) => ApplyOperation( nodeType, (float) leftValue, (float) rightValue ),
-            not null when commonType == typeof(double) => ApplyOperation( nodeType, (double) leftValue, (double) rightValue ),
-            not null when commonType == typeof(decimal) => ApplyOperation( nodeType, (decimal) leftValue, (decimal) rightValue ),
+            not null when commonType == typeof( byte ) => ApplyOperation( nodeType, (byte) leftValue, (byte) rightValue ),
+            not null when commonType == typeof( sbyte ) => ApplyOperation( nodeType, (sbyte) leftValue, (sbyte) rightValue ),
+            not null when commonType == typeof( short ) => ApplyOperation( nodeType, (short) leftValue, (short) rightValue ),
+            not null when commonType == typeof( ushort ) => ApplyOperation( nodeType, (ushort) leftValue, (ushort) rightValue ),
+            not null when commonType == typeof( int ) => ApplyOperation( nodeType, (int) leftValue, (int) rightValue ),
+            not null when commonType == typeof( uint ) => ApplyOperation( nodeType, (uint) leftValue, (uint) rightValue ),
+            not null when commonType == typeof( long ) => ApplyOperation( nodeType, (long) leftValue, (long) rightValue ),
+            not null when commonType == typeof( ulong ) => ApplyOperation( nodeType, (ulong) leftValue, (ulong) rightValue ),
+            not null when commonType == typeof( float ) => ApplyOperation( nodeType, (float) leftValue, (float) rightValue ),
+            not null when commonType == typeof( double ) => ApplyOperation( nodeType, (double) leftValue, (double) rightValue ),
+            not null when commonType == typeof( decimal ) => ApplyOperation( nodeType, (decimal) leftValue, (decimal) rightValue ),
             _ => throw new InvalidOperationException( "Unsupported type for promoted operation." )
         };
 
@@ -162,7 +162,7 @@ public class ConstantFoldingOptimizer : ExpressionVisitor, IExpressionOptimizer
                 ExpressionType.Subtract => left - right,
                 ExpressionType.Multiply => left * right,
                 ExpressionType.Divide => Divide( left, right ),
-                _ => throw new InvalidOperationException( $"Unsupported operation {nodeType} for type {typeof(T)}." )
+                _ => throw new InvalidOperationException( $"Unsupported operation {nodeType} for type {typeof( T )}." )
             };
 
             return Expression.Constant( constant );
@@ -176,7 +176,7 @@ public class ConstantFoldingOptimizer : ExpressionVisitor, IExpressionOptimizer
             }
         }
     }
-    
+
     private static bool IsNumericType( Type type )
     {
         if ( type == null )
@@ -184,36 +184,36 @@ public class ConstantFoldingOptimizer : ExpressionVisitor, IExpressionOptimizer
 
         return Type.GetTypeCode( type ) switch
         {
-            TypeCode.Byte or 
+            TypeCode.Byte or
             TypeCode.SByte or
-            TypeCode.Int16 or 
+            TypeCode.Int16 or
             TypeCode.UInt16 or
-            TypeCode.Int32 or 
+            TypeCode.Int32 or
             TypeCode.UInt32 or
-            TypeCode.Int64 or 
+            TypeCode.Int64 or
             TypeCode.UInt64 or
-            TypeCode.Single or 
+            TypeCode.Single or
             TypeCode.Double or
             TypeCode.Decimal => true,
             _ => false
         };
     }
 
-    private static readonly TypeCode[] TypeCodePromotionOrder = 
+    private static readonly TypeCode[] TypeCodePromotionOrder =
     [
-        TypeCode.Byte, 
-        TypeCode.SByte, 
-        TypeCode.Int16, 
-        TypeCode.UInt16, 
-        TypeCode.Int32, 
-        TypeCode.UInt32, 
-        TypeCode.Int64, 
-        TypeCode.UInt64, 
-        TypeCode.Single, 
-        TypeCode.Double, 
+        TypeCode.Byte,
+        TypeCode.SByte,
+        TypeCode.Int16,
+        TypeCode.UInt16,
+        TypeCode.Int32,
+        TypeCode.UInt32,
+        TypeCode.Int64,
+        TypeCode.UInt64,
+        TypeCode.Single,
+        TypeCode.Double,
         TypeCode.Decimal
     ];
-    
+
     private static Type GetNumericType( Type leftType, Type rightType )
     {
         var leftCode = Type.GetTypeCode( leftType );

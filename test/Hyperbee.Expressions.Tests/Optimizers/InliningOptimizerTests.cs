@@ -10,7 +10,7 @@ public class InliningOptimizerTests
     public void Inlining_ShouldInlineSimpleLambda()
     {
         // Arrange
-        var x = Expression.Parameter( typeof(int), "x" );
+        var x = Expression.Parameter( typeof( int ), "x" );
         var addLambda = Expression.Lambda<Func<int, int>>( Expression.Add( x, Expression.Constant( 5 ) ), x );
         var referenceExpr = Expression.Lambda<Func<int>>( Expression.Invoke( addLambda, Expression.Constant( 3 ) ) );
 

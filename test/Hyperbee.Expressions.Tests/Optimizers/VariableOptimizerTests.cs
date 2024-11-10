@@ -10,7 +10,7 @@ public class VariableOptimizerTests
     public void VariableOptimization_ShouldRemoveUnusedVariable()
     {
         // Arrange
-        var unusedVariable = Expression.Variable( typeof(int), "unused" );
+        var unusedVariable = Expression.Variable( typeof( int ), "unused" );
         var referenceExpr = Expression.Lambda<Func<int>>(
             Expression.Block( [unusedVariable],
                 Expression.Assign( unusedVariable, Expression.Constant( 3 ) ),
@@ -36,7 +36,7 @@ public class VariableOptimizerTests
     public void VariableOptimization_ShouldInlineSingleUseVariable()
     {
         // Arrange
-        var variable = Expression.Variable( typeof(int), "x" );
+        var variable = Expression.Variable( typeof( int ), "x" );
         var referenceExpr = Expression.Lambda<Func<int>>(
             Expression.Block( [variable],
                 Expression.Assign( variable, Expression.Constant( 5 ) ),
