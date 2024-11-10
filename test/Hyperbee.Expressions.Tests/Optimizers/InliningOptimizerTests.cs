@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using Hyperbee.Expressions.Optimizers;
 
 namespace Hyperbee.Expressions.Tests.Optimizers;

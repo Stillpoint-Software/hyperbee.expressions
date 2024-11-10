@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using Hyperbee.Expressions.Optimizers;
 
 namespace Hyperbee.Expressions.Tests.Optimizers;
@@ -8,7 +8,7 @@ public class ValueBindingOptimizerTests
 {
     public class Container
     {
-        public NestedClass Nested { get; } = new NestedClass();
+        public NestedClass Nested { get; } = new();
     }
 
     public class NestedClass
