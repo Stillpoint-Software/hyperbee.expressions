@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace Hyperbee.Expressions.Optimizers;
+namespace Hyperbee.Expressions.Optimizers.Visitors;
 
 // InliningOptimizer: Inlining Functions, Constants, and Conditional Values
 //
@@ -23,23 +23,11 @@ namespace Hyperbee.Expressions.Optimizers;
 // After:
 //   .Constant("True Branch")
 //
-public class InliningOptimizer : ExpressionVisitor, IExpressionOptimizer
+public class ExpressionInliningVisitor : ExpressionVisitor, IExpressionTransformer
 {
-    public Expression Optimize( Expression expression )
+    public Expression Transform( Expression expression )
     {
         return Visit( expression );
-    }
-
-    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
-    {
-        var optimizedBody = Optimize( expression.Body );
-
-        if ( ReferenceEquals( expression.Body, optimizedBody ) )
-        {
-            return expression;
-        }
-
-        return (TExpr) Expression.Lambda( expression.Type, optimizedBody, expression.Parameters );
     }
 
     // Extended Constant Propagation: Simplifies conditionals with constant conditions

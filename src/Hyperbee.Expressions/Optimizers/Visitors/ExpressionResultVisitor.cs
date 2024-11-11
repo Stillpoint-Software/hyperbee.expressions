@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using Hyperbee.Expressions.Visitors;
 
-namespace Hyperbee.Expressions.Optimizers;
+namespace Hyperbee.Expressions.Optimizers.Visitors;
 
 // ExpressionCachingOptimizer: Expression Subexpression Caching
 //
@@ -38,7 +38,7 @@ namespace Hyperbee.Expressions.Optimizers;
 // of this subexpression with `$cacheVar` in the resulting `BlockExpression`. This optimization reduces
 // redundant calculations, resulting in a more efficient expression execution.
 
-public class ExpressionResultCachingOptimizer : ExpressionVisitor, IExpressionOptimizer
+public class ExpressionResultVisitor : ExpressionVisitor, IExpressionTransformer
 {
     private readonly Dictionary<byte[], Expression> _fingerprintCache = new( new ByteArrayComparer() );
     private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new( new ByteArrayComparer() );
@@ -46,7 +46,7 @@ public class ExpressionResultCachingOptimizer : ExpressionVisitor, IExpressionOp
 
     private readonly ExpressionFingerprintVisitor _fingerprinter = new();
 
-    public Expression Optimize( Expression expression )
+    public Expression Transform( Expression expression )
     {
         _deferredReplacements.Clear();
         var visitedExpression = Visit( expression );
@@ -70,18 +70,6 @@ public class ExpressionResultCachingOptimizer : ExpressionVisitor, IExpressionOp
         visitedExpression = Expression.Block( variables, blockExpressions );
 
         return visitedExpression;
-    }
-
-    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
-    {
-        var optimizedBody = Optimize( expression.Body );
-
-        if ( !ReferenceEquals( expression.Body, optimizedBody ) )
-        {
-            return (TExpr) Expression.Lambda( expression.Type, optimizedBody, expression.Parameters );
-        }
-
-        return expression;
     }
 
     protected override Expression VisitLambda<T>( Expression<T> node )
@@ -221,4 +209,6 @@ public class ExpressionResultCachingOptimizer : ExpressionVisitor, IExpressionOp
             return hash;
         }
     }
+
+  
 }

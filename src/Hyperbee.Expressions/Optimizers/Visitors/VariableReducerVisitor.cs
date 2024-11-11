@@ -1,24 +1,19 @@
 ﻿using System.Linq.Expressions;
 
-namespace Hyperbee.Expressions.Optimizers;
+namespace Hyperbee.Expressions.Optimizers.Visitors;
 
-// MemoryOptimizationOptimizer: Memory Optimization
+// VariableReducerVisitor: Memory Optimization
 //
 // This optimizer reuses parameters, removes unused temporary variables, and consolidates variable declarations.
 // By pooling common parameters and eliminating unused variables, it reduces memory overhead and optimizes variable usage.
 
-public class MemoryOptimizationOptimizer : ExpressionVisitor, IExpressionOptimizer
+public class VariableReducerVisitor: ExpressionVisitor, IExpressionTransformer
 {
     private readonly Dictionary<ParameterExpression, ParameterExpression> _reusedParameters = new();
 
-    public Expression Optimize( Expression expression )
+    public Expression Transform( Expression expression )
     {
         return Visit( expression );
-    }
-
-    public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
-    {
-        return (TExpr) Visit( expression );
     }
 
     protected override Expression VisitParameter( ParameterExpression node )

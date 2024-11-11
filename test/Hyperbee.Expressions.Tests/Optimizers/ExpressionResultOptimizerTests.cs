@@ -5,7 +5,7 @@ using Hyperbee.Expressions.Tests.TestSupport;
 namespace Hyperbee.Expressions.Tests.Optimizers;
 
 [TestClass]
-public class ExpressionResultCachingOptimizerTests
+public class ExpressionResultOptimizerTests
 {
     public class TestClass
     {
@@ -24,7 +24,7 @@ public class ExpressionResultCachingOptimizerTests
             Expression.Add( simpleExpr, simpleExpr )
         );
 
-        var optimizer = new ExpressionResultCachingOptimizer();
+        var optimizer = new ExpressionResultOptimizer();
 
         // Act
         var optimizedExpr = optimizer.Optimize( referenceExpr );
@@ -50,7 +50,7 @@ public class ExpressionResultCachingOptimizerTests
             Expression.Add( complexExpr, complexExpr )
         );
 
-        var optimizer = new ExpressionResultCachingOptimizer();
+        var optimizer = new ExpressionResultOptimizer();
 
         // Act
         var optimizedExpr = optimizer.Optimize( referenceExpr );
@@ -72,7 +72,7 @@ public class ExpressionResultCachingOptimizerTests
 
         // Arrange
         Expression<Func<int>> referenceExpr = () => Math.Abs( -5 ) + Math.Abs( -5 );
-        var optimizer = new ExpressionResultCachingOptimizer();
+        var optimizer = new ExpressionResultOptimizer();
 
         // Act
         var optimizedExpr = optimizer.Optimize( referenceExpr );
@@ -96,7 +96,7 @@ public class ExpressionResultCachingOptimizerTests
         var x = Expression.Parameter( typeof( int ), "x" );
         var repeatedExpr = Expression.Add( x, Expression.Constant( 5 ) );
         var complexExpression = Expression.Add( repeatedExpr, repeatedExpr );
-        var optimizer = new ExpressionResultCachingOptimizer();
+        var optimizer = new ExpressionResultOptimizer();
 
         // Act
         var result = optimizer.Optimize( complexExpression );
@@ -116,7 +116,7 @@ public class ExpressionResultCachingOptimizerTests
         var methodCall = Expression.Call( Expression.Constant( new TestClass() ), "Method", null );
         var innerBlock = Expression.Block( methodCall );
         var outerBlock = Expression.Block( methodCall, innerBlock );
-        var optimizer = new ExpressionResultCachingOptimizer();
+        var optimizer = new ExpressionResultOptimizer();
 
         // Act
         var result = optimizer.Optimize( outerBlock );
@@ -135,7 +135,7 @@ public class ExpressionResultCachingOptimizerTests
         var parameter = Expression.Parameter( typeof( int ), "x" );
         var addExpression = Expression.Add( parameter, Expression.Constant( 5 ) );
         var block = Expression.Block( addExpression, addExpression );
-        var optimizer = new ExpressionResultCachingOptimizer();
+        var optimizer = new ExpressionResultOptimizer();
 
         // Act
         var result = optimizer.Optimize( block );

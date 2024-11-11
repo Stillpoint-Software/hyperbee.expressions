@@ -69,10 +69,12 @@ public class ExpressionReductionOptimizerTests
 
         // Act
         var result = optimizer.Optimize( nestedExpression );
-        var constant = (ConstantExpression) result;
-        var value = constant.Value;
+        var constant = result as ConstantExpression;
+        var value = constant?.Value;
 
         // Assert
+        Assert.IsInstanceOfType( result, typeof(ConstantExpression), "Expected a ConstantExpression after optimization." );
+        Assert.IsNotNull( constant, "Expected a non-null ConstantExpression." );
         Assert.AreEqual( 6, value );
     }
 

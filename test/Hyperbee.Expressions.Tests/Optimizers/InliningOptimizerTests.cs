@@ -14,7 +14,7 @@ public class InliningOptimizerTests
 
         // Arrange
         var expression = Expression.Add( Expression.Constant( 10 ), Expression.Constant( 5 ) );
-        var optimizer = new InliningOptimizer();
+        var optimizer = new ExpressionInliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( expression );
@@ -34,7 +34,7 @@ public class InliningOptimizerTests
         var parameter = Expression.Parameter( typeof( int ), "x" );
         var lambda = Expression.Lambda( Expression.Add( parameter, Expression.Constant( 5 ) ), parameter );
         var invocation = Expression.Invoke( lambda, Expression.Constant( 3 ) );
-        var optimizer = new InliningOptimizer();
+        var optimizer = new ExpressionInliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( invocation );
@@ -52,7 +52,7 @@ public class InliningOptimizerTests
 
         // Arrange
         var expression = Expression.AndAlso( Expression.Constant( true ), Expression.Constant( false ) );
-        var optimizer = new InliningOptimizer();
+        var optimizer = new ExpressionInliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( expression );
@@ -71,7 +71,7 @@ public class InliningOptimizerTests
         // Arrange
         var condition = Expression.Constant( true );
         var conditional = Expression.Condition( condition, Expression.Constant( "True" ), Expression.Constant( "False" ) );
-        var optimizer = new InliningOptimizer();
+        var optimizer = new ExpressionInliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( conditional );
@@ -98,7 +98,7 @@ public class InliningOptimizerTests
             innerCondition,
             Expression.Constant( "C" )
         );
-        var optimizer = new InliningOptimizer();
+        var optimizer = new ExpressionInliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( outerCondition );
