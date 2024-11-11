@@ -25,141 +25,91 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 //
 public class ExpressionInliningVisitor : ExpressionVisitor, IExpressionTransformer
 {
-    public Expression Transform( Expression expression )
+    private ConstantFoldingVisitor ConstantFoldingVisitor { get; } = new();
+
+    public Expression Transform(Expression expression)
     {
-        return Visit( expression );
+        return Visit(expression);
     }
 
-    // Extended Constant Propagation: Simplifies conditionals with constant conditions
-    //
-    // This visitor expands constant propagation by simplifying `ConditionalExpression`s
-    // when the condition is constant.
-    //
-    // Before:
-    //   .IfThenElse(.Constant(true), .Constant("True Branch"), .Constant("False Branch"))
-    //
-    // After:
-    //   .Constant("True Branch")
-    //
-    protected override Expression VisitConditional( ConditionalExpression node )
-    {
-        var test = Visit( node.Test );
-
-        if ( test is not ConstantExpression constantTest )
-        {
-            return base.VisitConditional( node );
-        }
-
-        var condition = (bool) constantTest.Value!;
-        var result = condition ? node.IfTrue : node.IfFalse;
-        return Visit( result );
-
-    }
-
-    // BlockExpression Inlining: Replace parameters in blocks with constants where possible
-    //
-    // This visitor handles inlining constants within blocks, ensuring single-use variables
-    // are replaced with constants, enabling further simplification of expressions.
-    //
-    // Before:
-    //   .Block(
-    //       .Assign(.Parameter(x), .Constant(5)),
-    //       .Add(.Parameter(x), .Constant(2))
-    //   )
-    //
-    // After:
-    //   .Block(
-    //       .Add(.Constant(5), .Constant(2))
-    //   )
-    //
-    protected override Expression VisitBlock( BlockExpression node )
-    {
-        var variableReplacements = new Dictionary<ParameterExpression, Expression>();
-        var variables = new List<ParameterExpression>( node.Variables );
-        var expressions = new List<Expression>();
-
-        foreach ( var expr in node.Expressions )
-        {
-            if ( expr is BinaryExpression assignExpr && assignExpr.NodeType == ExpressionType.Assign &&
-                assignExpr.Left is ParameterExpression variable && assignExpr.Right is ConstantExpression constant )
-            {
-                // Record the constant assignment for inlining later in the block
-                variableReplacements[variable] = constant;
-                continue;
-            }
-
-            var replacedExpression = ReplaceVariables( expr, variableReplacements );
-            expressions.Add( Visit( replacedExpression ) );
-        }
-
-        return Expression.Block( variables, expressions );
-    }
-
-    private static Expression ReplaceVariables( Expression expression, Dictionary<ParameterExpression, Expression> replacements )
-    {
-        return new VariableReplacementVisitor( replacements ).Visit( expression );
-    }
-
-    // Short-Circuiting and Invocation Inlining: Optimizes boolean expressions and lambdas
-    //
-    // This visitor performs short-circuiting for `AndAlso` and `OrElse` expressions, and
-    // inlines invocation expressions by replacing parameters in lambdas with invocation arguments.
-    //
-    // Before:
-    //   .AndAlso(.Constant(true), expr)
-    //
-    // After:
-    //   expr
-    //
     protected override Expression VisitBinary( BinaryExpression node )
     {
-        if ( (node.NodeType != ExpressionType.AndAlso && node.NodeType != ExpressionType.OrElse) ||
-             (node.Left is not ConstantExpression leftConst) )
+        // Visit left and right nodes to apply inlining or other optimizations
+        var left = Visit( node.Left );
+        var right = Visit( node.Right );
+
+        // Handle short-circuiting for `AndAlso` and `OrElse`
+        if ( node.NodeType == ExpressionType.AndAlso || node.NodeType == ExpressionType.OrElse )
         {
-            return base.VisitBinary( node );
+            if ( left is ConstantExpression leftConst && leftConst.Value is bool leftBool )
+            {
+                // Short-circuit based on left value
+                return (node.NodeType, leftBool) switch
+                {
+                    (ExpressionType.AndAlso, true) => ConstantFoldingVisitor.Visit( right ), 
+                    (ExpressionType.AndAlso, false) => Expression.Constant( false ),
+                    (ExpressionType.OrElse, true) => Expression.Constant( true ),
+                    (ExpressionType.OrElse, false) => ConstantFoldingVisitor.Visit( right ), 
+                    _ => node.Update( left, node.Conversion, right )
+                };
+            }
         }
 
-        var leftValue = (bool) leftConst.Value!;
-        return (node.NodeType, leftValue) switch
+        // If both sides are constants, and it's not a logical short-circuit case, try folding directly
+        if ( left is ConstantExpression && right is ConstantExpression )
         {
-            (ExpressionType.AndAlso, true ) => Visit( node.Right ),
-            (ExpressionType.AndAlso, false ) => Expression.Constant( false ),
-            (ExpressionType.OrElse, true ) => Expression.Constant( true ),
-            (ExpressionType.OrElse, false ) => Visit( node.Right ),
-            _ => base.VisitBinary( node )
-        };
+            return ConstantFoldingVisitor.Visit( Expression.MakeBinary( node.NodeType, left, right ) );
+        }
 
+        return node.Update( left, node.Conversion, right );
     }
 
-    protected override Expression VisitInvocation( InvocationExpression node )
+    protected override Expression VisitInvocation(InvocationExpression node)
     {
-        if ( node.Expression is not LambdaExpression lambda )
+        if (node.Expression is LambdaExpression lambda)
         {
-            return base.VisitInvocation( node );
+            // Inline lambda expressions by replacing parameters with arguments
+            var argumentMap = lambda.Parameters
+                .Zip(node.Arguments, (parameter, argument) => (parameter, argument))
+                .ToDictionary(pair => pair.parameter, pair => pair.argument);
+
+            var inlinedBody = new ParameterReplacer(argumentMap).Visit(lambda.Body);
+            return ConstantFoldingVisitor.Visit( inlinedBody ); // Apply folding after inlining
         }
 
-        var replacements = new Dictionary<ParameterExpression, Expression>();
-
-        for ( int i = 0; i < lambda.Parameters.Count; i++ )
-        {
-            replacements[lambda.Parameters[i]] = Visit( node.Arguments[i] );
-        }
-
-        return ReplaceVariables( lambda.Body, replacements );
+        return base.VisitInvocation(node);
     }
 
-    private class VariableReplacementVisitor : ExpressionVisitor
+    protected override Expression VisitConditional(ConditionalExpression node)
+    {
+        // Evaluate conditional expressions with constant test conditions
+        var test = Visit(node.Test);
+        var ifTrue = Visit(node.IfTrue);
+        var ifFalse = Visit(node.IfFalse);
+
+        if (test is ConstantExpression constTest && constTest.Value is bool condition)
+        {
+            var result = condition ? ifTrue : ifFalse;
+            return ConstantFoldingVisitor.Visit( result ); // Apply folding after resolving the condition
+        }
+
+        return node.Update(test, ifTrue, ifFalse);
+    }
+
+    // Helper class for inlining: replaces parameters with arguments
+    private class ParameterReplacer : ExpressionVisitor
     {
         private readonly Dictionary<ParameterExpression, Expression> _replacements;
 
-        public VariableReplacementVisitor( Dictionary<ParameterExpression, Expression> replacements )
+        public ParameterReplacer(Dictionary<ParameterExpression, Expression> replacements)
         {
             _replacements = replacements;
         }
 
-        protected override Expression VisitParameter( ParameterExpression node )
+        protected override Expression VisitParameter(ParameterExpression node)
         {
-            return _replacements.TryGetValue( node, out var replacement ) ? replacement : base.VisitParameter( node );
+            return _replacements.TryGetValue(node, out var replacement) ? replacement : base.VisitParameter(node);
         }
     }
 }
+
