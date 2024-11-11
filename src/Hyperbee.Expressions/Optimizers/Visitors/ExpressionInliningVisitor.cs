@@ -27,9 +27,9 @@ public class ExpressionInliningVisitor : ExpressionVisitor, IExpressionTransform
 {
     private ConstantFoldingVisitor ConstantFoldingVisitor { get; } = new();
 
-    public Expression Transform(Expression expression)
+    public Expression Transform( Expression expression )
     {
-        return Visit(expression);
+        return Visit( expression );
     }
 
     protected override Expression VisitBinary( BinaryExpression node )
@@ -46,10 +46,10 @@ public class ExpressionInliningVisitor : ExpressionVisitor, IExpressionTransform
                 // Short-circuit based on left value
                 return (node.NodeType, leftBool) switch
                 {
-                    (ExpressionType.AndAlso, true) => ConstantFoldingVisitor.Visit( right ), 
-                    (ExpressionType.AndAlso, false) => Expression.Constant( false ),
-                    (ExpressionType.OrElse, true) => Expression.Constant( true ),
-                    (ExpressionType.OrElse, false) => ConstantFoldingVisitor.Visit( right ), 
+                    (ExpressionType.AndAlso, true ) => ConstantFoldingVisitor.Visit( right ),
+                    (ExpressionType.AndAlso, false ) => Expression.Constant( false ),
+                    (ExpressionType.OrElse, true ) => Expression.Constant( true ),
+                    (ExpressionType.OrElse, false ) => ConstantFoldingVisitor.Visit( right ),
                     _ => node.Update( left, node.Conversion, right )
                 };
             }
@@ -64,36 +64,36 @@ public class ExpressionInliningVisitor : ExpressionVisitor, IExpressionTransform
         return node.Update( left, node.Conversion, right );
     }
 
-    protected override Expression VisitInvocation(InvocationExpression node)
+    protected override Expression VisitInvocation( InvocationExpression node )
     {
-        if (node.Expression is LambdaExpression lambda)
+        if ( node.Expression is LambdaExpression lambda )
         {
             // Inline lambda expressions by replacing parameters with arguments
             var argumentMap = lambda.Parameters
-                .Zip(node.Arguments, (parameter, argument) => (parameter, argument))
-                .ToDictionary(pair => pair.parameter, pair => pair.argument);
+                .Zip( node.Arguments, ( parameter, argument ) => (parameter, argument) )
+                .ToDictionary( pair => pair.parameter, pair => pair.argument );
 
-            var inlinedBody = new ParameterReplacer(argumentMap).Visit(lambda.Body);
+            var inlinedBody = new ParameterReplacer( argumentMap ).Visit( lambda.Body );
             return ConstantFoldingVisitor.Visit( inlinedBody ); // Apply folding after inlining
         }
 
-        return base.VisitInvocation(node);
+        return base.VisitInvocation( node );
     }
 
-    protected override Expression VisitConditional(ConditionalExpression node)
+    protected override Expression VisitConditional( ConditionalExpression node )
     {
         // Evaluate conditional expressions with constant test conditions
-        var test = Visit(node.Test);
-        var ifTrue = Visit(node.IfTrue);
-        var ifFalse = Visit(node.IfFalse);
+        var test = Visit( node.Test );
+        var ifTrue = Visit( node.IfTrue );
+        var ifFalse = Visit( node.IfFalse );
 
-        if (test is ConstantExpression constTest && constTest.Value is bool condition)
+        if ( test is ConstantExpression constTest && constTest.Value is bool condition )
         {
             var result = condition ? ifTrue : ifFalse;
             return ConstantFoldingVisitor.Visit( result ); // Apply folding after resolving the condition
         }
 
-        return node.Update(test, ifTrue, ifFalse);
+        return node.Update( test, ifTrue, ifFalse );
     }
 
     // Helper class for inlining: replaces parameters with arguments
@@ -101,14 +101,14 @@ public class ExpressionInliningVisitor : ExpressionVisitor, IExpressionTransform
     {
         private readonly Dictionary<ParameterExpression, Expression> _replacements;
 
-        public ParameterReplacer(Dictionary<ParameterExpression, Expression> replacements)
+        public ParameterReplacer( Dictionary<ParameterExpression, Expression> replacements )
         {
             _replacements = replacements;
         }
 
-        protected override Expression VisitParameter(ParameterExpression node)
+        protected override Expression VisitParameter( ParameterExpression node )
         {
-            return _replacements.TryGetValue(node, out var replacement) ? replacement : base.VisitParameter(node);
+            return _replacements.TryGetValue( node, out var replacement ) ? replacement : base.VisitParameter( node );
         }
     }
 }
