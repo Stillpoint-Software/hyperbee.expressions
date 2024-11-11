@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 // This optimizer reuses parameters, removes unused temporary variables, and consolidates variable declarations.
 // By pooling common parameters and eliminating unused variables, it reduces memory overhead and optimizes variable usage.
 
-public class VariableReducerVisitor: ExpressionVisitor, IExpressionTransformer
+public class VariableReducerVisitor : ExpressionVisitor, IExpressionTransformer
 {
     private readonly Dictionary<ParameterExpression, ParameterExpression> _reusedParameters = new();
 

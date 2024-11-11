@@ -1,4 +1,4 @@
-﻿using Hyperbee.Expressions.Optimizers.Visitors;
+using Hyperbee.Expressions.Optimizers.Visitors;
 
 namespace Hyperbee.Expressions.Optimizers;
 

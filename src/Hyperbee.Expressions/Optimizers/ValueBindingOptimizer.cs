@@ -9,11 +9,11 @@ namespace Hyperbee.Expressions.Optimizers;
 
 public class ValueBindingOptimizer : BaseOptimizer
 {
-    public override IExpressionTransformer[] Dependencies => 
+    public override IExpressionTransformer[] Dependencies =>
     [
-         new VariableInliningVisitor(), 
-         new VariableReducerVisitor(), 
-         new ConstantFoldingVisitor(),
-         new MemberAccessVisitor()
+         new VariableInliningVisitor(),
+        new VariableReducerVisitor(),
+        new ConstantFoldingVisitor(),
+        new MemberAccessVisitor()
     ];
 }

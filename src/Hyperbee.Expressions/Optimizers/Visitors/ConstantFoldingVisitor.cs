@@ -290,16 +290,16 @@ public class ConstantFoldingVisitor : ExpressionVisitor, IExpressionTransformer
     private static readonly TypeCode[] TypeCodePromotionOrder =
     [
         TypeCode.Byte,
-            TypeCode.SByte,
-            TypeCode.Int16,
-            TypeCode.UInt16,
-            TypeCode.Int32,
-            TypeCode.UInt32,
-            TypeCode.Int64,
-            TypeCode.UInt64,
-            TypeCode.Single,
-            TypeCode.Double,
-            TypeCode.Decimal
+        TypeCode.SByte,
+        TypeCode.Int16,
+        TypeCode.UInt16,
+        TypeCode.Int32,
+        TypeCode.UInt32,
+        TypeCode.Int64,
+        TypeCode.UInt64,
+        TypeCode.Single,
+        TypeCode.Double,
+        TypeCode.Decimal
     ];
 
     private static Type GetNumericType( Type leftType, Type rightType )
