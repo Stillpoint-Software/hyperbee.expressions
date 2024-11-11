@@ -55,27 +55,27 @@ public class VariableInliningVisitor : ExpressionVisitor, IExpressionTransformer
             var expr = node.Expressions[index];
             switch ( expr )
             {
-                case BinaryExpression binaryExpr 
+                case BinaryExpression binaryExpr
                     when binaryExpr.NodeType == ExpressionType.Assign && binaryExpr.Left is ParameterExpression variable:
-                {
-                    if ( variableUsageCount[variable] == 1 && _replacements[variable] is ConstantExpression )
                     {
-                        // Inline single-use constant assignments
-                        expressions.Add( Visit( _replacements[variable] ) );
-                    }
-                    else
-                    {
-                        variables.Add( variable );
-                        expressions.Add( Visit( expr ) );
-                    }
+                        if ( variableUsageCount[variable] == 1 && _replacements[variable] is ConstantExpression )
+                        {
+                            // Inline single-use constant assignments
+                            expressions.Add( Visit( _replacements[variable] ) );
+                        }
+                        else
+                        {
+                            variables.Add( variable );
+                            expressions.Add( Visit( expr ) );
+                        }
 
-                    break;
-                }
+                        break;
+                    }
                 default:
-                {
-                    expressions.Add( Visit( expr ) );
-                    break;
-                }
+                    {
+                        expressions.Add( Visit( expr ) );
+                        break;
+                    }
             }
         }
 
