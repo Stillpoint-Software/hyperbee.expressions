@@ -124,17 +124,17 @@ public class OptimizerBuilder
 
         bool Visit( Type node )
         {
-            if ( visited.Contains( node ) ) 
+            if ( visited.Contains( node ) )
                 return true;
 
-            if ( !visiting.Add( node ) ) 
+            if ( !visiting.Add( node ) )
                 return false;
 
             if ( graph.TryGetValue( node, out var neighbors ) )
             {
                 foreach ( var neighbor in neighbors )
                 {
-                    if ( !Visit( neighbor ) ) 
+                    if ( !Visit( neighbor ) )
                         return false;
                 }
             }

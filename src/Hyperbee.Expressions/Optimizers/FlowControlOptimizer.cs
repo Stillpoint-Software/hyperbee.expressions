@@ -12,7 +12,7 @@ public class FlowControlOptimizer : BaseOptimizer
     public override IExpressionTransformer[] Dependencies =>
     [
         new BlockReducerVisitor(),
-        new GotoReducerVisitor(),
-        new FlowControlReducerVisitor(),
-        new TryCatchSimplifierVisitor()
+    new GotoReducerVisitor(),
+    new FlowControlReducerVisitor(),
+    new TryCatchSimplifierVisitor()
 }
