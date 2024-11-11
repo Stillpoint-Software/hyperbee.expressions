@@ -15,4 +15,5 @@ public class FlowControlOptimizer : BaseOptimizer
         new GotoReducerVisitor(),
         new FlowControlReducerVisitor(),
         new TryCatchSimplifierVisitor()
+    ];
 }
