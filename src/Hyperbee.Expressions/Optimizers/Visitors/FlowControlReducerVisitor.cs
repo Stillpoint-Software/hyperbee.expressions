@@ -2,30 +2,34 @@
 
 namespace Hyperbee.Expressions.Optimizers.Visitors;
 
-// FlowControlReducerVisitor: Conditional and Loop Expression Optimization
+// FlowControlReducerVisitor: Loop and Conditional Simplification
 //
-// This visitor simplifies `ConditionalExpression` and `LoopExpression` nodes by reducing
-// unnecessary conditions and loop constructs. For conditionals, it pre-evaluates static
-// conditions, replacing them with the appropriate branch. For loops, it removes loops with
-// a `false` condition.
+// This visitor optimizes control flow expressions, specifically focusing on loops and conditional branches.
+// It removes non-operational or non-entering loops and simplifies conditionals with constant expressions.
+// Infinite loops with constant expressions (e.g., `Loop(Constant(1))`) are treated as redundant if they perform
+// no meaningful action and have no side effects or terminating conditions.
 //
-// Before:
+// Transformation Patterns:
 //
-//   .IfThenElse(.Constant(true), .Constant(1), .Constant(0))
+// 1. Non-Entering Loop (Loop with a `false` condition):
+//    Before: .Loop(.IfThenElse(.Constant(false), .Break()))
+//    After:  .Empty()
 //
-// After:
+// 2. No-Op Loop (Loop body performs no action):
+//    Before: .Loop(.Constant(0))  // No-op as it doesn’t affect program state
+//    After:  .Empty()
 //
-//   .Constant(1)
+// 3. Infinite Loop with Constant Expression (No effect):
+//    Before: .Loop(.Constant(1))
+//    After:  .Empty()
 //
-// Before:
+// 4. Unreachable Conditional (Condition is a constant):
+//    Before: .IfThenElse(.Constant(true), .Constant(1), .Constant(0))
+//    After:  .Constant(1)
 //
-//   .Loop(
-//       .IfThenElse(.Constant(false), .Break(loop))
-//   )
-//
-// After:
-//
-//   .Empty()
+// 5. Intentional Infinite Loop (Loop without break and meaningful action):
+//    Before: .Loop(.Constant(1) with meaningful break or continue logic)
+//    After:  (Unchanged - Infinite loop is preserved as it may be intentional)
 //
 public class FlowControlReducerVisitor : ExpressionVisitor, IExpressionTransformer
 {
@@ -52,18 +56,48 @@ public class FlowControlReducerVisitor : ExpressionVisitor, IExpressionTransform
     {
         var body = Visit( node.Body );
 
-        if ( body is ConditionalExpression conditional && IsConstantFalse( conditional.Test ) )
+        // Case 1: Remove non-entering loops or loops with effectively no meaningful effect
+        if ( IsFalsyConstant( body ) || IsNoOpExpression( body ) || IsEffectivelyInfiniteNoOpLoop( body ) )
         {
-            return node.Type == typeof( void ) ? Expression.Empty() : Expression.Default( node.Type );
+            return node.Type == typeof(void) ? Expression.Empty() : Expression.Default( node.Type );
         }
 
         return node.Update( node.BreakLabel, node.ContinueLabel, body );
     }
 
-    private static bool IsConstantFalse( Expression expression )
+    private static bool IsEffectivelyInfiniteNoOpLoop( Expression expression )
     {
-        return expression is ConstantExpression constant &&
-               constant.Type == typeof( bool ) &&
-               !(bool) constant.Value!;
+        // Detects infinite loops with no operational effect (e.g., loops with static constants like Constant(1))
+        return expression is ConstantExpression && !HasControlFlowOrSideEffects( expression );
+    }
+
+    private static bool HasControlFlowOrSideEffects( Expression expression )
+    {
+        // This method can be expanded if we define what constitutes a meaningful action in loop context
+        // For now, it returns false for any ConstantExpression (no side effects).
+        return expression is not ConstantExpression;
+    }
+
+
+    private static bool IsFalsyConstant( Expression expression )
+    {
+        // Detects constants with "falsy" values: null, false, 0, 0.0, etc.
+        return expression is ConstantExpression constant && constant.Value switch
+        {
+            null => true,
+            bool boolValue => !boolValue,
+            int intValue => intValue == 0,
+            double doubleValue => doubleValue == 0.0,
+            float floatValue => floatValue == 0.0f,
+            _ => false
+        };
+    }
+
+    private static bool IsNoOpExpression( Expression expression )
+    {
+        // Checks if an expression is effectively a no-op, such as an empty block or default expression
+        return expression is DefaultExpression ||
+               (expression is BlockExpression block && block.Expressions.All( IsNoOpExpression ));
     }
 }
+

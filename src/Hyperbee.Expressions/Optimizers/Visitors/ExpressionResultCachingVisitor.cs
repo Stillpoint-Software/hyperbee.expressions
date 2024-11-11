@@ -38,10 +38,10 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 // of this subexpression with `$cacheVar` in the resulting `BlockExpression`. This optimization reduces
 // redundant calculations, resulting in a more efficient expression execution.
 
-public class ExpressionResultVisitor : ExpressionVisitor, IExpressionTransformer
+public class ExpressionResultCachingVisitor : ExpressionVisitor, IExpressionTransformer
 {
-    private readonly Dictionary<byte[], Expression> _fingerprintCache = new( new ByteArrayComparer() );
-    private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new( new ByteArrayComparer() );
+    private readonly Dictionary<byte[], Expression> _fingerprintCache = new(new ByteArrayComparer());
+    private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new(new ByteArrayComparer());
     private readonly Queue<(Expression Original, ParameterExpression Variable)> _deferredReplacements = new();
 
     private readonly ExpressionFingerprintVisitor _fingerprinter = new();
@@ -51,7 +51,7 @@ public class ExpressionResultVisitor : ExpressionVisitor, IExpressionTransformer
         _deferredReplacements.Clear();
         var visitedExpression = Visit( expression );
 
-        if ( _deferredReplacements.Count <= 0 )
+        if ( _deferredReplacements.Count == 0 )
         {
             return visitedExpression;
         }
@@ -62,14 +62,18 @@ public class ExpressionResultVisitor : ExpressionVisitor, IExpressionTransformer
         while ( _deferredReplacements.Count > 0 )
         {
             var (original, cacheVariable) = _deferredReplacements.Dequeue();
+
+            if ( variables.Contains( cacheVariable ) )
+            {
+                continue;
+            }
+
             variables.Add( cacheVariable );
             blockExpressions.Add( Expression.Assign( cacheVariable, original ) );
         }
 
         blockExpressions.Add( visitedExpression );
-        visitedExpression = Expression.Block( variables, blockExpressions );
-
-        return visitedExpression;
+        return Expression.Block( variables, blockExpressions );
     }
 
     protected override Expression VisitLambda<T>( Expression<T> node )
@@ -141,20 +145,20 @@ public class ExpressionResultVisitor : ExpressionVisitor, IExpressionTransformer
 
         var fingerprint = _fingerprinter.ComputeFingerprint( visitedNode );
 
-        // Check if a cached node already exists
         if ( !_fingerprintCache.TryGetValue( fingerprint, out var cachedNode ) )
         {
             _fingerprintCache[fingerprint] = visitedNode;
             cachedNode = visitedNode;
         }
 
-        // Ensure only one cached variable per unique subexpression
-        if ( !_cacheVariables.TryGetValue( fingerprint, out var cacheVariable ) )
+        if ( _cacheVariables.TryGetValue( fingerprint, out var cacheVariable ) )
         {
-            cacheVariable = Expression.Variable( cachedNode.Type, "cacheVar" );
-            _cacheVariables[fingerprint] = cacheVariable;
-            _deferredReplacements.Enqueue( (visitedNode, cacheVariable) );
+            return cacheVariable;
         }
+
+        cacheVariable = Expression.Variable( cachedNode.Type, "cacheVar" );
+        _cacheVariables[fingerprint] = cacheVariable;
+        _deferredReplacements.Enqueue( (visitedNode, cacheVariable) );
 
         return cacheVariable;
     }
@@ -163,7 +167,17 @@ public class ExpressionResultVisitor : ExpressionVisitor, IExpressionTransformer
     {
         return node switch
         {
-            BinaryExpression binary => !(binary.Left is ConstantExpression && binary.Right is ConstantExpression) && IsComplexEnoughToCache( binary.Left ) && IsComplexEnoughToCache( binary.Right ),
+            BinaryExpression binary =>
+                (binary.Left is not ConstantExpression || binary.Right is not ConstantExpression) &&
+                (IsComplexEnoughToCache( binary.Left ) || 
+                 IsComplexEnoughToCache( binary.Right ) ||
+                 binary.NodeType is 
+                     ExpressionType.Add or 
+                     ExpressionType.Multiply or
+                     ExpressionType.Divide or 
+                     ExpressionType.Subtract
+                ),
+
             MethodCallExpression or MemberExpression or InvocationExpression => true,
             UnaryExpression unary => unary.Operand is not ConstantExpression && IsComplexEnoughToCache( unary.Operand ),
             BlockExpression block => block.Expressions.Count > 1,
@@ -174,7 +188,7 @@ public class ExpressionResultVisitor : ExpressionVisitor, IExpressionTransformer
             _ => false
         };
     }
-
+    
     private class ByteArrayComparer : IEqualityComparer<byte[]>
     {
         public bool Equals( byte[] x, byte[] y )
@@ -209,6 +223,4 @@ public class ExpressionResultVisitor : ExpressionVisitor, IExpressionTransformer
             return hash;
         }
     }
-
-
 }
