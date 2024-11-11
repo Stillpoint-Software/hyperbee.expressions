@@ -59,7 +59,7 @@ public class FlowControlReducerVisitor : ExpressionVisitor, IExpressionTransform
         // Case 1: Remove non-entering loops or loops with effectively no meaningful effect
         if ( IsFalsyConstant( body ) || IsNoOpExpression( body ) || IsEffectivelyInfiniteNoOpLoop( body ) )
         {
-            return node.Type == typeof(void) ? Expression.Empty() : Expression.Default( node.Type );
+            return node.Type == typeof( void ) ? Expression.Empty() : Expression.Default( node.Type );
         }
 
         return node.Update( node.BreakLabel, node.ContinueLabel, body );

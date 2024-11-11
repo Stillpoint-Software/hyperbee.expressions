@@ -40,8 +40,8 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 
 public class ExpressionResultCachingVisitor : ExpressionVisitor, IExpressionTransformer
 {
-    private readonly Dictionary<byte[], Expression> _fingerprintCache = new(new ByteArrayComparer());
-    private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new(new ByteArrayComparer());
+    private readonly Dictionary<byte[], Expression> _fingerprintCache = new( new ByteArrayComparer() );
+    private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new( new ByteArrayComparer() );
     private readonly Queue<(Expression Original, ParameterExpression Variable)> _deferredReplacements = new();
 
     private readonly ExpressionFingerprintVisitor _fingerprinter = new();
@@ -169,12 +169,12 @@ public class ExpressionResultCachingVisitor : ExpressionVisitor, IExpressionTran
         {
             BinaryExpression binary =>
                 (binary.Left is not ConstantExpression || binary.Right is not ConstantExpression) &&
-                (IsComplexEnoughToCache( binary.Left ) || 
+                (IsComplexEnoughToCache( binary.Left ) ||
                  IsComplexEnoughToCache( binary.Right ) ||
-                 binary.NodeType is 
-                     ExpressionType.Add or 
+                 binary.NodeType is
+                     ExpressionType.Add or
                      ExpressionType.Multiply or
-                     ExpressionType.Divide or 
+                     ExpressionType.Divide or
                      ExpressionType.Subtract
                 ),
 
@@ -188,7 +188,7 @@ public class ExpressionResultCachingVisitor : ExpressionVisitor, IExpressionTran
             _ => false
         };
     }
-    
+
     private class ByteArrayComparer : IEqualityComparer<byte[]>
     {
         public bool Equals( byte[] x, byte[] y )

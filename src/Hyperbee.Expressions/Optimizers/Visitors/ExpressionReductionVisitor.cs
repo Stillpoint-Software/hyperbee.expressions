@@ -50,85 +50,85 @@ public class ExpressionReductionVisitor : ExpressionVisitor, IExpressionTransfor
             // Arithmetic simplifications
             case ExpressionType.Add:
             case ExpressionType.Subtract:
-            {
-                if ( right is ConstantExpression rightConst && rightConst.Value is int rightVal )
                 {
-                    // x + 0 or x - 0
-                    if ( rightVal == 0 ) 
-                        return left;
-                }
+                    if ( right is ConstantExpression rightConst && rightConst.Value is int rightVal )
+                    {
+                        // x + 0 or x - 0
+                        if ( rightVal == 0 )
+                            return left;
+                    }
 
-                if ( node.NodeType == ExpressionType.Add && left is ConstantExpression leftConst && leftConst.Value is int leftValue )
-                {
-                    // 0 + x
-                    if ( leftValue == 0 ) 
-                        return right;
-                }
+                    if ( node.NodeType == ExpressionType.Add && left is ConstantExpression leftConst && leftConst.Value is int leftValue )
+                    {
+                        // 0 + x
+                        if ( leftValue == 0 )
+                            return right;
+                    }
 
-                break;
-            }
+                    break;
+                }
 
             case ExpressionType.Multiply:
-            {
-                if ( right is ConstantExpression rightConst && rightConst.Value is int rightValue )
                 {
-                    // x * 1
-                    if ( rightValue == 1 )
-                        return left;
+                    if ( right is ConstantExpression rightConst && rightConst.Value is int rightValue )
+                    {
+                        // x * 1
+                        if ( rightValue == 1 )
+                            return left;
 
-                    // x * 0
-                    if ( rightValue == 0 )
-                        return Expression.Constant( 0 );
+                        // x * 0
+                        if ( rightValue == 0 )
+                            return Expression.Constant( 0 );
+                    }
+
+                    if ( left is ConstantExpression leftConst && leftConst.Value is int leftValue )
+                    {
+                        // 1 * x
+                        if ( leftValue == 1 )
+                            return right;
+
+                        // 0 * x
+                        if ( leftValue == 0 )
+                            return Expression.Constant( 0 );
+                    }
+
+                    break;
                 }
-
-                if ( left is ConstantExpression leftConst && leftConst.Value is int leftValue )
-                {
-                    // 1 * x
-                    if ( leftValue == 1 )
-                        return right;
-
-                    // 0 * x
-                    if ( leftValue == 0 )
-                        return Expression.Constant( 0 );
-                }
-
-                break;
-            }
 
             // Logical short-circuiting for `&& true`, `|| false`, etc.
             case ExpressionType.AndAlso:
-            {
-                // x && true or true && x
-                if ( right is ConstantExpression rightConst && rightConst.Value is bool rightValue && rightValue )
-                    return left;
+                {
+                    // x && true or true && x
+                    if ( right is ConstantExpression rightConst && rightConst.Value is bool rightValue && rightValue )
+                        return left;
 
-                if ( left is ConstantExpression leftConst && leftConst.Value is bool leftValue && leftValue )
-                    return right;
+                    if ( left is ConstantExpression leftConst && leftConst.Value is bool leftValue && leftValue )
+                        return right;
 
-                // false && x or x && false
-                if ( left is ConstantExpression lConstAndFalse && lConstAndFalse.Value is bool leftValAndFalse && !leftValAndFalse ||
-                     right is ConstantExpression rConstAndFalse && rConstAndFalse.Value is bool rightValAndFalse && !rightValAndFalse )
-                    return Expression.Constant( false );
+                    // false && x or x && false
+                    if ( left is ConstantExpression lConstAndFalse && lConstAndFalse.Value is bool leftValAndFalse && !leftValAndFalse ||
+                         right is ConstantExpression rConstAndFalse && rConstAndFalse.Value is bool rightValAndFalse && !rightValAndFalse )
+                        return Expression.Constant( false );
 
-                break;
-            }
+                    break;
+                }
 
             case ExpressionType.OrElse:
-            {
-                // x || false or false || x
-                if ( right is ConstantExpression rightConst && rightConst.Value is bool rightValue && !rightValue )
-                    return left;
+                {
+                    // x || false or false || x
+                    if ( right is ConstantExpression rightConst && rightConst.Value is bool rightValue && !rightValue )
+                        return left;
 
-                if ( left is ConstantExpression leftConst && leftConst.Value is bool leftValue && !leftValue )
-                    return right;
+                    if ( left is ConstantExpression leftConst && leftConst.Value is bool leftValue && !leftValue )
+                        return right;
 
-                // true || x or x || true
-                if ( left is ConstantExpression lConstOrTrue && lConstOrTrue.Value is bool leftValOrTrue && leftValOrTrue ||
-                     right is ConstantExpression rConstOrTrue && rConstOrTrue.Value is bool rightValOrTrue && rightValOrTrue )
-                    return Expression.Constant( true );
+                    // true || x or x || true
+                    if ( left is ConstantExpression lConstOrTrue && lConstOrTrue.Value is bool leftValOrTrue && leftValOrTrue ||
+                         right is ConstantExpression rConstOrTrue && rConstOrTrue.Value is bool rightValOrTrue && rightValOrTrue )
+                        return Expression.Constant( true );
 
-                break;
-            }
+                    break;
+                }
         }
 
         if ( node.NodeType != ExpressionType.Add && node.NodeType != ExpressionType.Multiply )
