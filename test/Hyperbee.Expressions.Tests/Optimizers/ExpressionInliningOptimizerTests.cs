@@ -4,10 +4,10 @@ using Hyperbee.Expressions.Optimizers;
 namespace Hyperbee.Expressions.Tests.Optimizers;
 
 [TestClass]
-public class InliningOptimizerTests
+public class ExpressionInliningOptimizerTests
 {
     [TestMethod]
-    public void Inlining_ShouldInlineSimpleConstant()
+    public void ExpressionInlining_ShouldInlineSimpleConstant()
     {
         // Before: .Add(.Constant(10), .Constant(5))
         // After:  .Constant(15)
@@ -25,7 +25,7 @@ public class InliningOptimizerTests
     }
 
     [TestMethod]
-    public void Inlining_ShouldInlineLambdaExpression()
+    public void ExpressionInlining_ShouldInlineLambdaExpression()
     {
         // Before: .Invoke((x) => x + 5, .Constant(3))
         // After:  .Constant(8)
@@ -45,7 +45,7 @@ public class InliningOptimizerTests
     }
 
     [TestMethod]
-    public void Inlining_ShouldShortCircuitBoolean()
+    public void ExpressionInlining_ShouldShortCircuitBoolean()
     {
         // Before: .AndAlso(.Constant(true), .Constant(false))
         // After:  .Constant(false)
@@ -63,7 +63,7 @@ public class InliningOptimizerTests
     }
 
     [TestMethod]
-    public void Inlining_ShouldInlineConditionalExpression()
+    public void ExpressionInlining_ShouldInlineConditionalExpression()
     {
         // Before: .Conditional(.Constant(true), .Constant("True"), .Constant("False"))
         // After:  .Constant("True")
@@ -82,7 +82,7 @@ public class InliningOptimizerTests
     }
 
     [TestMethod]
-    public void Inlining_ShouldSimplifyNestedConditionalExpression()
+    public void ExpressionInlining_ShouldSimplifyNestedConditionalExpression()
     {
         // Before: .Conditional(.Constant(true), .Conditional(.Constant(false), .Constant("A"), .Constant("B")), .Constant("C"))
         // After:  .Constant("B")

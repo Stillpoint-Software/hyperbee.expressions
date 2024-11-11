@@ -13,7 +13,7 @@ public class ExpressionResultOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionCaching_ShouldNotCacheSimpleExpressions()
+    public void ExpressionResult_ShouldNotCacheSimpleExpressions()
     {
         // Before: .Add(.Constant(2), .Constant(3)) + .Add(.Constant(2), .Constant(3))
         // After:  .Add(.Constant(2), .Constant(3)) + .Add(.Constant(2), .Constant(3))
@@ -39,7 +39,7 @@ public class ExpressionResultOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionCaching_ShouldCacheComplexExpressions()
+    public void ExpressionResult_ShouldCacheComplexExpressions()
     {
         // Before: .Add(.Multiply(.Constant(5), .Add(.Constant(3), .Constant(2))), .Multiply(.Constant(5), .Add(.Constant(3), .Constant(2))))
         // After:  .Block(.Assign(variable, .Multiply(.Constant(5), .Add(.Constant(3), .Constant(2)))), .Add(variable, variable))
@@ -65,7 +65,7 @@ public class ExpressionResultOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionCaching_ShouldCacheRepeatedMethodCalls()
+    public void ExpressionResult_ShouldCacheRepeatedMethodCalls()
     {
         // Before: .Add(.Call(Method), .Call(Method))
         // After:  .Block(.Assign(variable, .Call(Method)), .Add(variable, variable))
@@ -87,7 +87,7 @@ public class ExpressionResultOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionCaching_ShouldCacheRepeatedExpressions()
+    public void ExpressionResult_ShouldCacheRepeatedExpressions()
     {
         // Before: .Add(.Add(x, .Constant(5)), .Add(x, .Constant(5)))
         // After:  .Block(.Assign(variable, .Add(x, .Constant(5))), .Add(variable, variable))
@@ -107,7 +107,7 @@ public class ExpressionResultOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionCaching_ShouldCacheCrossScopeExpression()
+    public void ExpressionResult_ShouldCacheCrossScopeExpression()
     {
         // Before: .Block(.Call(obj.Method), .Block(.Call(obj.Method)))
         // After:  .Block(.Assign(variable, .Call(obj.Method)), .Variable(variable), .Block(.Variable(variable)))
@@ -126,7 +126,7 @@ public class ExpressionResultOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionCaching_ShouldCacheParameterizedSubexpression()
+    public void ExpressionResult_ShouldCacheParameterizedSubexpression()
     {
         // Before: .Block(.Add(.Parameter(x), .Constant(5)), .Add(.Parameter(x), .Constant(5)))
         // After:  .Block(.Assign(variable, .Add(.Parameter(x), .Constant(5))), .Variable(variable), .Variable(variable))

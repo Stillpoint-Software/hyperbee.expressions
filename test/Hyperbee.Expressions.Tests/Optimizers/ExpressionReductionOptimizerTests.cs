@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Tests.Optimizers;
 public class ExpressionReductionOptimizerTests
 {
     [TestMethod]
-    public void Reduction_ShouldRemoveAddZero()
+    public void ExpressionReduction_ShouldRemoveAddZero()
     {
         // Before: .Add(.Parameter(x), .Constant(0))
         // After:  .Parameter(x)
@@ -24,7 +24,7 @@ public class ExpressionReductionOptimizerTests
     }
 
     [TestMethod]
-    public void Reduction_ShouldRemoveMultiplyByOne()
+    public void ExpressionReduction_ShouldRemoveMultiplyByOne()
     {
         // Before: .Multiply(.Parameter(x), .Constant(1))
         // After:  .Parameter(x)
@@ -41,7 +41,7 @@ public class ExpressionReductionOptimizerTests
     }
 
     [TestMethod]
-    public void Reduction_ShouldSimplifyLogicalIdentity()
+    public void ExpressionReduction_ShouldSimplifyLogicalIdentity()
     {
         // Before: .AndAlso(.Constant(true), .Parameter(x))
         // After:  .Parameter(x)
@@ -58,7 +58,7 @@ public class ExpressionReductionOptimizerTests
     }
 
     [TestMethod]
-    public void Reduction_ShouldFlattenNestedExpressions()
+    public void ExpressionReduction_ShouldFlattenNestedExpressions()
     {
         // Before: .Add(.Add(.Constant(1), .Constant(2)), .Constant(3))
         // After:  .Constant(6)
@@ -79,7 +79,7 @@ public class ExpressionReductionOptimizerTests
     }
 
     [TestMethod]
-    public void Reduction_ShouldSimplifyMultiOperationReduction()
+    public void ExpressionReduction_ShouldSimplifyMultiOperationReduction()
     {
         // Before: .Multiply(.Add(.Parameter(x), .Constant(0)), .Constant(1))
         // After:  .Parameter(x)
@@ -98,7 +98,7 @@ public class ExpressionReductionOptimizerTests
     }
 
     [TestMethod]
-    public void Reduction_ShouldSimplifyComplexBooleanReduction()
+    public void ExpressionReduction_ShouldSimplifyComplexBooleanReduction()
     {
         // Before: .AndAlso(.OrElse(.Constant(true), .Constant(false)), .Constant(true))
         // After:  .Constant(true)
