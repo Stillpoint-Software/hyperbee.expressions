@@ -53,4 +53,14 @@ public class VariableReducerVisitor : ExpressionVisitor, IExpressionTransformer
 
         return Expression.Block( newVariables, expressions );
     }
+
+    protected override Expression VisitLoop( LoopExpression node )
+    {
+        if ( node.Body is ConstantExpression constantBody )
+        {
+            return constantBody;
+        }
+
+        return base.VisitLoop( node );
+    }
 }

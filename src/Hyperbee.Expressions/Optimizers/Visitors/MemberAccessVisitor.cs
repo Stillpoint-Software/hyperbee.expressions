@@ -34,12 +34,14 @@ public class MemberAccessVisitor : ExpressionVisitor, IExpressionTransformer
         switch ( node.Member )
         {
             case FieldInfo fieldInfo:
-                var value = fieldInfo.GetValue( constExpr.Value );
-                return Expression.Constant( value, node.Type );
+                var fieldValue = fieldInfo.GetValue( constExpr.Value );
+                return Expression.Constant( fieldValue, node.Type );
 
-            case PropertyInfo propertyInfo when propertyInfo.CanRead && propertyInfo.GetMethod!.IsStatic:
-                var staticValue = propertyInfo.GetValue( null );
-                return Expression.Constant( staticValue, node.Type );
+            case PropertyInfo propertyInfo when propertyInfo.CanRead:
+                var propertyValue = propertyInfo.GetMethod!.IsStatic
+                    ? propertyInfo.GetValue( null )
+                    : propertyInfo.GetValue( constExpr.Value );
+                return Expression.Constant( propertyValue, node.Type );
 
             default:
                 return node;

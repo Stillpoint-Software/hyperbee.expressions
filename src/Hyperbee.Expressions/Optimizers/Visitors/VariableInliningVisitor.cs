@@ -30,53 +30,63 @@ public class VariableInliningVisitor : ExpressionVisitor, IExpressionTransformer
     {
         var variables = new List<ParameterExpression>();
         var expressions = new List<Expression>();
-        var variableAssignments = new Dictionary<ParameterExpression, Expression>();
         var variableUsageCount = new Dictionary<ParameterExpression, int>();
 
+        // Track usage counts and assignments
         for ( var index = 0; index < node.Expressions.Count; index++ )
         {
             var expr = node.Expressions[index];
-            if ( expr is not BinaryExpression binaryExpr || binaryExpr.NodeType != ExpressionType.Assign || binaryExpr.Left is not ParameterExpression variable )
+
+            if ( expr is not BinaryExpression binaryExpr ||
+                 binaryExpr.NodeType != ExpressionType.Assign ||
+                 binaryExpr.Left is not ParameterExpression variable )
             {
                 continue;
             }
 
             variableUsageCount.TryAdd( variable, 0 );
             variableUsageCount[variable]++;
-            variableAssignments[variable] = binaryExpr.Right;
+            _replacements[variable] = binaryExpr.Right;
         }
 
+        // Inline or retain expressions based on usage
         for ( var index = 0; index < node.Expressions.Count; index++ )
         {
             var expr = node.Expressions[index];
-            if ( expr is not BinaryExpression binaryExpr || binaryExpr.NodeType != ExpressionType.Assign || binaryExpr.Left is not ParameterExpression variable )
+            switch ( expr )
             {
-                expressions.Add( Visit( expr ) );
-                continue;
-            }
-
-            if ( variableUsageCount[variable] != 1 )
-            {
-                if ( variableAssignments[variable] == binaryExpr.Right )
+                case BinaryExpression binaryExpr 
+                    when binaryExpr.NodeType == ExpressionType.Assign && binaryExpr.Left is ParameterExpression variable:
                 {
-                    continue;
-                }
+                    if ( variableUsageCount[variable] == 1 && _replacements[variable] is ConstantExpression )
+                    {
+                        // Inline single-use constant assignments
+                        expressions.Add( Visit( _replacements[variable] ) );
+                    }
+                    else
+                    {
+                        variables.Add( variable );
+                        expressions.Add( Visit( expr ) );
+                    }
 
-                variables.Add( variable );
-                expressions.Add( expr );
-            }
-            else
-            {
-                _replacements[variable] = binaryExpr.Right;
-                expressions.Add( Visit( binaryExpr.Right ) );
+                    break;
+                }
+                default:
+                {
+                    expressions.Add( Visit( expr ) );
+                    break;
+                }
             }
         }
 
-        return Expression.Block( variables, expressions );
+        return variables.Count == 0 ? expressions.Last() : Expression.Block( variables, expressions );
     }
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        return _replacements.TryGetValue( node, out var replacement ) ? Visit( replacement ) : base.VisitParameter( node );
+        // Inline the variable if a replacement is available
+        return _replacements.TryGetValue( node, out var replacement )
+            ? Visit( replacement )
+            : base.VisitParameter( node );
     }
 }
