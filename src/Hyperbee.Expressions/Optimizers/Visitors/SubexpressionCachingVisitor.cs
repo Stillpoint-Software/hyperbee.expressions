@@ -63,7 +63,7 @@ public class SubexpressionCachingVisitor : ExpressionVisitor, IExpressionTransfo
 
         while ( _deferredReplacements.Count > 0 )
         {
-            var (original, cacheVariable) = _deferredReplacements.Dequeue();
+            var (original, cacheVariable) = _deferredReplacements.Dequeue();       
 
             if ( variables.Contains( cacheVariable ) )
             {
@@ -74,68 +74,21 @@ public class SubexpressionCachingVisitor : ExpressionVisitor, IExpressionTransfo
             blockExpressions.Add( Expression.Assign( cacheVariable, original ) );
         }
 
+        if (visitedExpression is LambdaExpression lambda )
+        {
+            blockExpressions.Add( lambda.Body );
+            var lambdaResult =  Expression.Lambda( lambda.Type, Expression.Block( variables, blockExpressions ), lambda.Parameters );
+            return lambdaResult;
+        }
+
         blockExpressions.Add( visitedExpression );
         return Expression.Block( variables, blockExpressions );
     }
 
-    protected override Expression VisitLambda<T>( Expression<T> node )
+    public override Expression Visit( Expression node )
     {
-        var visitedNode = (LambdaExpression) base.VisitLambda( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitBinary( BinaryExpression node )
-    {
-        var visitedNode = base.VisitBinary( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitMethodCall( MethodCallExpression node )
-    {
-        var visitedNode = base.VisitMethodCall( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitUnary( UnaryExpression node )
-    {
-        var visitedNode = base.VisitUnary( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitConditional( ConditionalExpression node )
-    {
-        var visitedNode = base.VisitConditional( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitInvocation( InvocationExpression node )
-    {
-        var visitedNode = base.VisitInvocation( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitMember( MemberExpression node )
-    {
-        var visitedNode = base.VisitMember( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitNew( NewExpression node )
-    {
-        var visitedNode = base.VisitNew( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitNewArray( NewArrayExpression node )
-    {
-        var visitedNode = base.VisitNewArray( node );
-        return ResolveExpression( node, visitedNode );
-    }
-
-    protected override Expression VisitBlock( BlockExpression node )
-    {
-        var visitedNode = base.VisitBlock( node );
-        return ResolveExpression( node, visitedNode );
+        var visited = base.Visit( node );
+        return ResolveExpression( node, visited );
     }
 
     private Expression ResolveExpression( Expression original, Expression visitedNode )

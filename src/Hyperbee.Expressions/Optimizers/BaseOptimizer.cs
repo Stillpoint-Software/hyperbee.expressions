@@ -18,11 +18,9 @@ public abstract class BaseOptimizer : IExpressionOptimizer
 
     public TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression
     {
-        var optimizedBody = Optimize( expression.Body );
-
-        if ( !ReferenceEquals( expression.Body, optimizedBody ) )
+        foreach ( var dependency in Dependencies )
         {
-            return (TExpr) Expression.Lambda( expression.Type, optimizedBody, expression.Parameters );
+            expression = (TExpr) dependency.Transform( expression );
         }
 
         return expression;

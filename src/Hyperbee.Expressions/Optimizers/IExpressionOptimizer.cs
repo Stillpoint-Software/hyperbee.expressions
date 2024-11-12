@@ -8,6 +8,4 @@ public interface IExpressionOptimizer
     IExpressionTransformer[] Dependencies { get; }
 
     Expression Optimize( Expression expression );
-
-    TExpr Optimize<TExpr>( TExpr expression ) where TExpr : LambdaExpression;
 }

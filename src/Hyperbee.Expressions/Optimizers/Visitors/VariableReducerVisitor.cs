@@ -40,6 +40,7 @@ public class VariableReducerVisitor : ExpressionVisitor, IExpressionTransformer
         _replacements.Clear();
         _reusedParameters.Clear();
         _uniqueVariables.Clear();
+
         return Visit( expression );
     }
 

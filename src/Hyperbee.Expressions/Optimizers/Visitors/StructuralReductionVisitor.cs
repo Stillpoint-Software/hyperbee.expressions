@@ -6,7 +6,10 @@ public class StructuralReductionVisitor : ExpressionVisitor, IExpressionTransfor
 {
     public int Priority => PriorityGroup.StructuralReductionAndConsolidation + 50;
 
-    public Expression Transform( Expression expression ) => Visit( expression );
+    public Expression Transform( Expression expression )
+    {
+        return Visit( expression );
+    }
 
     // Visit BlockExpression, handling block flattening and reduction
     protected override Expression VisitBlock( BlockExpression node )
@@ -19,7 +22,8 @@ public class StructuralReductionVisitor : ExpressionVisitor, IExpressionTransfor
             var visitedExpr = Visit( expr );
 
             // Skip over no-op expressions and empty blocks
-            if ( IsNoOpExpression( visitedExpr ) ) continue;
+            if ( IsNoOpExpression( visitedExpr ) ) 
+                continue;
 
             // Flatten nested blocks
             if ( visitedExpr is BlockExpression nestedBlock )
