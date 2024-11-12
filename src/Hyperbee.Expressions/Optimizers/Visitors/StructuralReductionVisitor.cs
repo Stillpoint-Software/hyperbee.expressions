@@ -22,7 +22,7 @@ public class StructuralReductionVisitor : ExpressionVisitor, IExpressionTransfor
             var visitedExpr = Visit( expr );
 
             // Skip over no-op expressions and empty blocks
-            if ( IsNoOpExpression( visitedExpr ) ) 
+            if ( IsNoOpExpression( visitedExpr ) )
                 continue;
 
             // Flatten nested blocks

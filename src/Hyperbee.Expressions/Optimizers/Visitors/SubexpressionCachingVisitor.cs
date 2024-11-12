@@ -63,7 +63,7 @@ public class SubexpressionCachingVisitor : ExpressionVisitor, IExpressionTransfo
 
         while ( _deferredReplacements.Count > 0 )
         {
-            var (original, cacheVariable) = _deferredReplacements.Dequeue();       
+            var (original, cacheVariable) = _deferredReplacements.Dequeue();
 
             if ( variables.Contains( cacheVariable ) )
             {
@@ -74,10 +74,10 @@ public class SubexpressionCachingVisitor : ExpressionVisitor, IExpressionTransfo
             blockExpressions.Add( Expression.Assign( cacheVariable, original ) );
         }
 
-        if (visitedExpression is LambdaExpression lambda )
+        if ( visitedExpression is LambdaExpression lambda )
         {
             blockExpressions.Add( lambda.Body );
-            var lambdaResult =  Expression.Lambda( lambda.Type, Expression.Block( variables, blockExpressions ), lambda.Parameters );
+            var lambdaResult = Expression.Lambda( lambda.Type, Expression.Block( variables, blockExpressions ), lambda.Parameters );
             return lambdaResult;
         }
 
