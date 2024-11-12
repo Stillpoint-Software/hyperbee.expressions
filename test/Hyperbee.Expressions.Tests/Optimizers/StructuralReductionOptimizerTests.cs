@@ -4,17 +4,17 @@ using Hyperbee.Expressions.Optimizers;
 namespace Hyperbee.Expressions.Tests.Optimizers;
 
 [TestClass]
-public class FlowControlOptimizerTests
+public class StructuralReductionOptimizerTests
 {
     [TestMethod]
-    public void FlowControl_ShouldRemoveUnreachableCode()
+    public void StructuralReduction_ShouldRemoveUnreachableCode()
     {
         // Before: .Block(.Constant(1), .Constant(2))
         // After:  .Constant(1)
 
         // Arrange
         var block = Expression.Block( Expression.Constant( 1 ), Expression.Constant( 2 ) );
-        var optimizer = new FlowControlOptimizer();
+        var optimizer = new StructuralReductionOptimizer();
 
         // Act
         var result = optimizer.Optimize( block );
@@ -25,7 +25,7 @@ public class FlowControlOptimizerTests
     }
 
     [TestMethod]
-    public void FlowControl_ShouldSimplifyEmptyTryCatch()
+    public void StructuralReduction_ShouldSimplifyEmptyTryCatch()
     {
         // Before: .TryCatch(.Empty(), .Catch(...))
         // After:  .Empty()
@@ -35,7 +35,7 @@ public class FlowControlOptimizerTests
             Expression.Empty(),
             Expression.Catch( Expression.Parameter( typeof( Exception ) ), Expression.Empty() )
         );
-        var optimizer = new FlowControlOptimizer();
+        var optimizer = new StructuralReductionOptimizer();
 
         // Act
         var result = optimizer.Optimize( tryCatch );
@@ -45,14 +45,14 @@ public class FlowControlOptimizerTests
     }
 
     [TestMethod]
-    public void FlowControl_ShouldRemoveInfiniteLoop()
+    public void StructuralReduction_ShouldRemoveInfiniteLoop()
     {
         // Before: .Loop(.Constant(1))
         // After:  .Empty()
 
         // Arrange
         var loop = Expression.Loop( Expression.Constant( 1 ) );
-        var optimizer = new FlowControlOptimizer();
+        var optimizer = new StructuralReductionOptimizer();
 
         // Act
         var result = optimizer.Optimize( loop );
@@ -62,7 +62,7 @@ public class FlowControlOptimizerTests
     }
 
     [TestMethod]
-    public void FlowControl_ShouldSimplifyNestedConditionalExpression()
+    public void StructuralReduction_ShouldSimplifyNestedConditionalExpression()
     {
         // Before: .Block(.IfThenElse(.Constant(true), .IfThenElse(.Constant(false), .Break(), .Constant("B"))))
         // After:  .Constant("B")
@@ -79,7 +79,7 @@ public class FlowControlOptimizerTests
             Expression.Constant( "C" )
         );
         var block = Expression.Block( outerCondition );
-        var optimizer = new FlowControlOptimizer();
+        var optimizer = new StructuralReductionOptimizer();
 
         // Act
         var result = optimizer.Optimize( block );
@@ -90,7 +90,7 @@ public class FlowControlOptimizerTests
     }
 
     [TestMethod]
-    public void FlowControl_ShouldSimplifyLoopWithComplexCondition()
+    public void StructuralReduction_ShouldSimplifyLoopWithComplexCondition()
     {
         // Before: .Loop(.IfThenElse(.Constant(false), .Break(), .Constant(1)))
         // After:  .Empty()
@@ -102,7 +102,7 @@ public class FlowControlOptimizerTests
             Expression.Constant( 1 )
         );
         var loop = Expression.Loop( loopCondition );
-        var optimizer = new FlowControlOptimizer();
+        var optimizer = new StructuralReductionOptimizer();
 
         // Act
         var result = optimizer.Optimize( loop );
