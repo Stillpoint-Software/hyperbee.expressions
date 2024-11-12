@@ -45,6 +45,30 @@ public sealed class NodeExpression : Expression
         return Reduce();
     }
 
+    // TODO: Implement VisitChildren without a nested reduce
+    // protected override Expression VisitChildren( ExpressionVisitor visitor )
+    // {
+    //     if ( Expressions.Count == 0 )
+    //         return this;
+    //
+    //     var expressions = visitor.Visit( Expressions.AsReadOnly() );
+    //
+    //     return new NodeExpression
+    //     {
+    //         StateId = StateId,
+    //         ScopeId = ScopeId,
+    //         StateOrder  = StateOrder,
+    //         ResultValue = ResultValue,
+    //         ResultVariable = ResultVariable,
+    //         _resolverSource = _resolverSource,
+    //         NodeLabel = NodeLabel,
+    //         Expressions = expressions.ToList(),
+    //         Transition = Transition,
+    //     };
+    //     //
+    //     // return visitor.Visit( Reduce() );
+    // }
+
     public override Expression Reduce()
     {
         if ( _resolverSource == null )

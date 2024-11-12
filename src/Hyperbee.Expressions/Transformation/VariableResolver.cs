@@ -13,6 +13,8 @@ public interface IVariableResolver
     bool TryGetFieldMember( ParameterExpression variable, out MemberExpression fieldAccess );
     bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression );
     ParameterExpression AddVariable( ParameterExpression variable );
+    ParameterExpression AddLocalVariable( ParameterExpression variable );
+
     IEnumerable<ParameterExpression> ExcludeFieldMembers( IEnumerable<ParameterExpression> variables );
 
     bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable );
@@ -30,6 +32,7 @@ internal sealed class VariableResolver : IVariableResolver
 
     public VariableResolver()
     {
+        _variables = [];
     }
 
     public VariableResolver( ParameterExpression[] variables )
@@ -61,6 +64,13 @@ internal sealed class VariableResolver : IVariableResolver
             return existingVariable;
 
         _mappedVariables[variable] = variable;
+        return variable;
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public ParameterExpression AddLocalVariable( ParameterExpression variable )
+    {
+        _variables.Add( variable );
         return variable;
     }
 
