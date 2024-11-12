@@ -19,10 +19,10 @@ public class LoopTransition : Transition
     {
         references.Add( BodyNode.NodeLabel );
 
-        if( BreakLabel != null)
+        if ( BreakLabel != null )
             references.Add( BreakLabel );
 
-        if(ContinueLabel != null)
+        if ( ContinueLabel != null )
             references.Add( ContinueLabel );
     }
 }

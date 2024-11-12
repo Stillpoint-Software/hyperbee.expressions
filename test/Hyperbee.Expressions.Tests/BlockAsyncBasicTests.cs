@@ -316,9 +316,9 @@ public class BlockAsyncBasicTests
         );
 
         var innerLambda = Lambda<Func<Func<Task<int>>, Task<int>>>(
-            BlockAsync( 
+            BlockAsync(
                 [var1],
-                Assign(var1, Await( Invoke( param1 ) ) ),
+                Assign( var1, Await( Invoke( param1 ) ) ),
                 var1
             ),
             parameters: [param1]
@@ -352,7 +352,7 @@ public class BlockAsyncBasicTests
             [outerVar],
             Block(
                 [middleVar],
-                Await( 
+                Await(
                     BlockAsync(
                         [innerVar],
                         Assign( innerVar, Constant( 1 ) ),

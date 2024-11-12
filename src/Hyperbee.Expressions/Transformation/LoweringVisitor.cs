@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
@@ -626,7 +626,7 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
 
         public override bool CanReduce => true;
 
-        public override Expression Reduce() 
+        public override Expression Reduce()
         {
             return Block( [], Expressions );
         }
