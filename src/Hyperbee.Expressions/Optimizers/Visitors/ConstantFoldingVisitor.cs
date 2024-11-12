@@ -30,6 +30,8 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 //
 public class ConstantFoldingVisitor : ExpressionVisitor, IExpressionTransformer
 {
+    public int Priority => PriorityGroup.ConstantEvaluationAndSimplification + 10;
+
     public Expression Transform( Expression expression )
     {
         return Visit( expression );

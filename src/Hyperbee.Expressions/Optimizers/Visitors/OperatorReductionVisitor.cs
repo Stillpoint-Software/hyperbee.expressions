@@ -30,6 +30,8 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 //
 public class OperatorReductionVisitor : ExpressionVisitor, IExpressionTransformer
 {
+    public int Priority => PriorityGroup.ExpressionReductionAndCaching + 60;
+
     public Expression Transform( Expression expression )
     {
         return Visit( expression );

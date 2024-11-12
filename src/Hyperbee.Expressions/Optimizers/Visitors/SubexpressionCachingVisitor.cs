@@ -46,6 +46,8 @@ public class SubexpressionCachingVisitor : ExpressionVisitor, IExpressionTransfo
 
     private readonly ExpressionFingerprintVisitor _fingerprinter = new();
 
+    public int Priority => PriorityGroup.ExpressionReductionAndCaching + 70;
+
     public Expression Transform( Expression expression )
     {
         _deferredReplacements.Clear();

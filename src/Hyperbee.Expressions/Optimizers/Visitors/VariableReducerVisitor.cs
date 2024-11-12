@@ -33,6 +33,8 @@ public class VariableReducerVisitor : ExpressionVisitor, IExpressionTransformer
     private readonly Dictionary<ParameterExpression, ParameterExpression> _reusedParameters = new();
     private readonly HashSet<ParameterExpression> _uniqueVariables = [];
 
+    public int Priority => PriorityGroup.ControlFlowAndVariableSimplification + 40;
+
     public Expression Transform( Expression expression )
     {
         _replacements.Clear();

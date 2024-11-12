@@ -27,6 +27,8 @@ public class InliningVisitor : ExpressionVisitor, IExpressionTransformer
 {
     private ConstantFoldingVisitor ConstantFoldingVisitor { get; } = new();
 
+    public int Priority => PriorityGroup.ControlFlowAndVariableSimplification + 30;
+
     public Expression Transform( Expression expression )
     {
         return Visit( expression );

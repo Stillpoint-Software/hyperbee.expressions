@@ -4,6 +4,8 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 
 public class StructuralReductionVisitor : ExpressionVisitor, IExpressionTransformer
 {
+    public int Priority => PriorityGroup.StructuralReductionAndConsolidation + 50;
+
     public Expression Transform( Expression expression ) => Visit( expression );
 
     // Visit BlockExpression, handling block flattening and reduction

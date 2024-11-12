@@ -17,6 +17,8 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 //
 public class MemberAccessVisitor : ExpressionVisitor, IExpressionTransformer
 {
+    public int Priority => PriorityGroup.ConstantEvaluationAndSimplification + 20;
+
     public Expression Transform( Expression expression )
     {
         return Visit( expression );
