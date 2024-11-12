@@ -33,78 +33,78 @@ public class VariableReducerVisitor : ExpressionVisitor, IExpressionTransformer
     private readonly Dictionary<ParameterExpression, ParameterExpression> _reusedParameters = new();
     private readonly HashSet<ParameterExpression> _uniqueVariables = [];
 
-    public Expression Transform(Expression expression)
+    public Expression Transform( Expression expression )
     {
         _replacements.Clear();
         _reusedParameters.Clear();
         _uniqueVariables.Clear();
-        return Visit(expression);
+        return Visit( expression );
     }
 
-    protected override Expression VisitBlock(BlockExpression node)
+    protected override Expression VisitBlock( BlockExpression node )
     {
         //var variables = new List<ParameterExpression>();
         var expressions = new List<Expression>();
         var variableUsageCount = new Dictionary<ParameterExpression, int>();
 
         // Count usages and track replacements for inlining
-        foreach (var expr in node.Expressions)
+        foreach ( var expr in node.Expressions )
         {
-            if (expr is BinaryExpression binaryExpr && binaryExpr.NodeType == ExpressionType.Assign &&
-                binaryExpr.Left is ParameterExpression variable)
+            if ( expr is BinaryExpression binaryExpr && binaryExpr.NodeType == ExpressionType.Assign &&
+                binaryExpr.Left is ParameterExpression variable )
             {
-                variableUsageCount.TryAdd(variable, 0);
+                variableUsageCount.TryAdd( variable, 0 );
                 variableUsageCount[variable]++;
                 _replacements[variable] = binaryExpr.Right;
             }
         }
 
         // Inline or retain variables based on usage
-        foreach (var expr in node.Expressions)
+        foreach ( var expr in node.Expressions )
         {
-            switch (expr)
+            switch ( expr )
             {
                 case BinaryExpression binaryExpr when binaryExpr.NodeType == ExpressionType.Assign &&
                                                       binaryExpr.Left is ParameterExpression variable:
-                    if (variableUsageCount[variable] == 1 && _replacements[variable] is ConstantExpression)
+                    if ( variableUsageCount[variable] == 1 && _replacements[variable] is ConstantExpression )
                     {
                         // Inline single-use constant assignments
-                        expressions.Add(Visit(_replacements[variable]));
+                        expressions.Add( Visit( _replacements[variable] ) );
                     }
                     else
                     {
-                        _uniqueVariables.Add(variable);
+                        _uniqueVariables.Add( variable );
                         //variables.Add(variable);
-                        expressions.Add(Visit(expr));
+                        expressions.Add( Visit( expr ) );
                     }
                     break;
                 default:
-                    expressions.Add(Visit(expr));
+                    expressions.Add( Visit( expr ) );
                     break;
             }
         }
 
         // Remove unused variables and consolidate variable declarations
-        var finalVariables = new List<ParameterExpression>(_uniqueVariables);
+        var finalVariables = new List<ParameterExpression>( _uniqueVariables );
 
-        return finalVariables.Count == 0 ? expressions.Last() : Expression.Block(finalVariables, expressions);
+        return finalVariables.Count == 0 ? expressions.Last() : Expression.Block( finalVariables, expressions );
     }
 
-    protected override Expression VisitParameter(ParameterExpression node)
+    protected override Expression VisitParameter( ParameterExpression node )
     {
         // Reuse parameters if already processed
-        if (_reusedParameters.TryGetValue(node, out var reusedParam))
+        if ( _reusedParameters.TryGetValue( node, out var reusedParam ) )
         {
             return reusedParam;
         }
 
-        if (_replacements.TryGetValue(node, out var replacement))
+        if ( _replacements.TryGetValue( node, out var replacement ) )
         {
-            return Visit(replacement);
+            return Visit( replacement );
         }
 
         _reusedParameters[node] = node;
-        return base.VisitParameter(node);
+        return base.VisitParameter( node );
     }
 
     protected override Expression VisitLoop( LoopExpression node )

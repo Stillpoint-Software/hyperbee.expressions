@@ -139,7 +139,7 @@ public class ValueBindingOptimizerTests
         // After:  .Constant(42) 
 
         // Arrange
-        var tempVar = Expression.Parameter( typeof(int), "temp" );
+        var tempVar = Expression.Parameter( typeof( int ), "temp" );
         var loop = Expression.Loop( Expression.Block( [tempVar], Expression.Assign( tempVar, Expression.Constant( 42 ) ), tempVar ) );
         var optimizer = new ValueBindingOptimizer();
 
@@ -149,7 +149,7 @@ public class ValueBindingOptimizerTests
         // Assert
         var resultValue = (result as ConstantExpression)?.Value;
 
-        Assert.IsInstanceOfType( result, typeof(ConstantExpression) );
+        Assert.IsInstanceOfType( result, typeof( ConstantExpression ) );
         Assert.AreEqual( 42, resultValue, "Expected the loop body constant to have value 42." );
     }
 
