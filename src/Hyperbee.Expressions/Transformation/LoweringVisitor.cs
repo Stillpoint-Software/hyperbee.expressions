@@ -423,7 +423,9 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
                 return containerExpression;
 
             default:
-                return base.VisitExtension( node );
+                // Lowering visitor shouldn't be used by extentions directly since it changes the shape of the code.
+                Visit( node.Reduce() );
+                return node;
         }
     }
 

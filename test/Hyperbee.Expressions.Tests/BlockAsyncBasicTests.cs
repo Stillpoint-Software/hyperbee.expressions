@@ -450,29 +450,11 @@ public class BlockAsyncBasicTests
             )
         );
 
-        // TODO: Fix issue with using Custom Expression with Visitor
-        // ---------------
-        var disposableVar = Variable( disposableBlock.Type, "disposable" );
-        var disposableAssignment = Assign( disposableVar, disposableBlock );
-
-        var finallyBlock = IfThen(
-            NotEqual( disposableVar, Constant( null ) ),
-            Call( disposableVar, nameof( IDisposable.Dispose ), Type.EmptyTypes )
-        );
-
-        var usingBlock = Block(
-            [disposableVar],
-            disposableAssignment,
-            TryFinally( Await( Constant( Task.FromResult( 3 ) ) ), finallyBlock )
-        );
-        var lambda = Lambda<Func<Task<int>>>( BlockAsync( usingBlock ) );
-        // ---------------
-
         // Act
-        //var lambda = Lambda<Func<Task<int>>>( BlockAsync(
-        //     Using( disposableBlock,
-        //         Await( Constant( Task.FromResult( 3 ) ) )
-        //     ) ) );
+        var lambda = Lambda<Func<Task<int>>>( BlockAsync(
+             Using( disposableBlock,
+                 Await( Constant( Task.FromResult( 3 ) ) )
+             ) ) );
         var compiledLambda = lambda.Compile();
 
         var result = await compiledLambda();

@@ -107,14 +107,12 @@ public class UsingExpressionTests
         var resource = new TestDisposableResource();
         var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
-        var usingExpression = Using(
-            disposableExpression,
-            Await( Constant( Task.FromResult( 10 ) ) )
-        );
-
         // Create an async body
         var bodyExpression = BlockAsync(
-            usingExpression
+            Using(
+                disposableExpression,
+                Await( Constant( Task.FromResult( 10 ) ) )
+            )
         );
 
         // Act
