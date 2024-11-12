@@ -14,3 +14,4 @@ public class StructuralReductionOptimizer : BaseOptimizer
         new StructuralReductionVisitor()
     ];
 }
+
