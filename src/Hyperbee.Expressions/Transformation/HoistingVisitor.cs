@@ -56,6 +56,9 @@ internal sealed class HoistingVisitor : ExpressionVisitor, IHoistingSource
             return base.VisitExtension( node );
 
         nodeExpression.SetResolverSource( this );
-        return Visit( nodeExpression.Reduce() );
+
+        // TODO: we probably should not be reducing here?
+        // TODO: look into VisitChildren?
+        return Visit( nodeExpression.Reduce() ); 
     }
 }

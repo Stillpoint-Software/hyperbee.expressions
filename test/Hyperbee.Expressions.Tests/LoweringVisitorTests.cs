@@ -55,16 +55,18 @@ public class LoweringVisitorTests
         var result = visitor.Transform( blockAwaits );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 4, jumps: 2 );
+        AssertTransition.AssertResult( result, nodes: 8, variables: 5, jumps: 2 );
         AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof( void ) );
 
-        var firstBefore = AssertTransition.AssertAwait( result.Scopes[0].Nodes[0].Transition, "ST_0002" );
-        var firstAfter = AssertTransition.AssertAwaitResult( firstBefore.Transition, "ST_0001" );
-        var secondBefore = AssertTransition.AssertAwait( firstAfter.Transition, "ST_0004" );
-        var secondAfter = AssertTransition.AssertAwaitResult( secondBefore.Transition, "ST_0003" );
-        AssertTransition.AssertFinal( secondAfter );
+        var firstBefore = AssertTransition.AssertAwait( result.Scopes[0].Nodes[2].Transition, "ST_0004" );
+        var firstAfterGoto = AssertTransition.AssertAwaitResult( firstBefore.Transition, "ST_0003" );
+        var firstAfter = AssertTransition.AssertGoto( firstAfterGoto.Transition, "ST_0005" );
+        var secondBefore = AssertTransition.AssertAwait( firstAfter.Transition, "ST_0007" );
+        var secondAfter = AssertTransition.AssertAwaitResult( secondBefore.Transition, "ST_0006" );
+        var secondAfterGoto = AssertTransition.AssertGoto( secondAfter.Transition, "ST_0001" );
+        AssertTransition.AssertFinal( secondAfterGoto );
 
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
 
     }
 
@@ -89,23 +91,32 @@ public class LoweringVisitorTests
         var result = visitor.Transform( ifThenElseExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 6 );
+        AssertTransition.AssertResult( result, nodes: 11, variables: 3 );
         AssertTransition.AssertLabel( result.Scopes[0].Nodes[0].NodeLabel, "ST_0000", typeof( void ) );
 
         var (ifThenTrue, ifThenFalse) =
-            AssertTransition.AssertConditional( result.Scopes[0].Nodes[0].Transition, "ST_0002", "ST_0001" );
+            AssertTransition.AssertConditional( result.Scopes[0].Nodes[2].Transition, "ST_0004", "ST_0003" );
+
+        var ifThenTrueGoto = AssertTransition.AssertGoto( ifThenTrue.Transition, "ST_0006" );
+        var ifThenFalseGoto = AssertTransition.AssertGoto( ifThenFalse.Transition, "ST_0001" );
+
         var (ifThenElseTrue, ifThenElseFalse) =
-            AssertTransition.AssertConditional( ifThenTrue.Transition, "ST_0004", "ST_0005" );
-        Assert.IsNull( ifThenFalse.Transition ); // No else block
+            AssertTransition.AssertConditional( ifThenTrueGoto.Transition, "ST_0008", "ST_0009" );
+        Assert.IsNull( ifThenFalseGoto.Transition ); // No else block
 
         Assert.AreEqual( 1, ifThenElseTrue.Expressions.Count );
-        var joinNode = AssertTransition.AssertGoto( ifThenElseTrue.Transition, "ST_0003" );
-        var finalNodes = AssertTransition.AssertGoto( joinNode.Transition, "ST_0001" );
+        var joinNode = AssertTransition.AssertGoto( ifThenElseTrue.Transition, "ST_0007" );
+        var joinInnerBlock = AssertTransition.AssertGoto( joinNode.Transition, "ST_0005" );
+        var joinBlock = AssertTransition.AssertGoto( joinInnerBlock.Transition, "ST_0003" );
+        var finalNodes = AssertTransition.AssertGoto( joinBlock.Transition, "ST_0001" );
         AssertTransition.AssertFinal( finalNodes );
 
         Assert.AreEqual( 2, ifThenElseFalse.Expressions.Count );
-        joinNode = AssertTransition.AssertGoto( ifThenElseFalse.Transition, "ST_0003" );
-        finalNodes = AssertTransition.AssertGoto( joinNode.Transition, "ST_0001" );
+        joinNode = AssertTransition.AssertGoto( ifThenElseFalse.Transition, "ST_0010" );
+        var deepInnerBlock = AssertTransition.AssertGoto( joinNode.Transition, "ST_0007" );
+        joinInnerBlock = AssertTransition.AssertGoto( deepInnerBlock.Transition, "ST_0005" );
+        joinBlock = AssertTransition.AssertGoto( joinInnerBlock.Transition, "ST_0003" );
+        finalNodes = AssertTransition.AssertGoto( joinBlock.Transition, "ST_0001" );
         AssertTransition.AssertFinal( finalNodes );
     }
 
@@ -131,8 +142,8 @@ public class LoweringVisitorTests
         var result = visitor.Transform( variables );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 1, variables: 2 );
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[0] );
+        AssertTransition.AssertResult( result, nodes: 2, variables: 3 );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
     [TestMethod]
@@ -167,8 +178,8 @@ public class LoweringVisitorTests
         var result = visitor.Transform( variables );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 1, variables: 3 );
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[0] );
+        AssertTransition.AssertResult( result, nodes: 4, variables: 5 );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
     [TestMethod]
@@ -206,7 +217,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( conditionalParameters );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 4, variables: 2 );
+        AssertTransition.AssertResult( result, nodes: 8, variables: 5 );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
@@ -243,15 +254,15 @@ public class LoweringVisitorTests
         var result = visitor.Transform( switchBlock );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 10, variables: 2 );
+        AssertTransition.AssertResult( result, nodes: 14, variables: 4 );
 
-        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[0].Transition,
-            defaultLabel: "ST_0002",
-            "ST_0003", "ST_0004", "ST_0009" );
+        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[2].Transition,
+            defaultLabel: "ST_0004",
+            "ST_0005", "ST_0006", "ST_0013" );
 
-        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[4].Transition,
-            defaultLabel: "ST_0006",
-            "ST_0007", "ST_0008" );
+        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[8].Transition,
+            defaultLabel: "ST_0010",
+            "ST_0011", "ST_0012" );
 
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
@@ -276,11 +287,11 @@ public class LoweringVisitorTests
         var result = visitor.Transform( switchBlock );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 0 );
+        AssertTransition.AssertResult( result, nodes: 7, variables: 0 );
 
-        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[0].Transition,
+        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[2].Transition,
             defaultLabel: null,
-            "ST_0002", "ST_0003", "ST_0004" );
+            "ST_0004", "ST_0005", "ST_0006" );
 
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
@@ -307,11 +318,11 @@ public class LoweringVisitorTests
         var result = visitor.Transform( switchBlock );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 6, variables: 1 );
+        AssertTransition.AssertResult( result, nodes: 8, variables: 2 );
 
-        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[0].Transition,
-            defaultLabel: "ST_0002",
-            "ST_0003", "ST_0004", "ST_0005" );
+        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[2].Transition,
+            defaultLabel: "ST_0004",
+            "ST_0005", "ST_0006", "ST_0007" );
 
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
@@ -336,13 +347,13 @@ public class LoweringVisitorTests
         var result = visitor.Transform( switchBlock );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 10, variables: 5, jumps: 2 );
+        AssertTransition.AssertResult( result, nodes: 12, variables: 6, jumps: 2 );
 
-        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[1].Transition,
-            defaultLabel: "ST_0004",
-            "ST_0005", "ST_0006", "ST_0009" );
+        AssertTransition.AssertSwitch( result.Scopes[0].Nodes[3].Transition,
+            defaultLabel: "ST_0006",
+            "ST_0007", "ST_0008", "ST_0011" );
 
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
     [TestMethod]
@@ -367,8 +378,8 @@ public class LoweringVisitorTests
         var result = visitor.Transform( methodWithParameter );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 6, jumps: 2 );
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
+        AssertTransition.AssertResult( result, nodes: 8, variables: 7, jumps: 2 );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
 
     }
 
@@ -394,7 +405,7 @@ public class LoweringVisitorTests
         var result = visitor.Transform( methodWithParameter );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 3, variables: 4, jumps: 1 );
+        AssertTransition.AssertResult( result, nodes: 5, variables: 5, jumps: 1 );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
@@ -417,9 +428,9 @@ public class LoweringVisitorTests
         var result = visitor.Transform( callExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 3, variables: 2, jumps: 1 );
+        AssertTransition.AssertResult( result, nodes: 5, variables: 3, jumps: 1 );
 
-        AssertTransition.AssertAwait( result.Scopes[0].Nodes[0].Transition, "ST_0002" );
+        AssertTransition.AssertAwait( result.Scopes[0].Nodes[2].Transition, "ST_0004" );
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
@@ -440,11 +451,11 @@ public class LoweringVisitorTests
         var result = visitor.Transform( callExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 4, jumps: 2 );
+        AssertTransition.AssertResult( result, nodes: 7, variables: 5, jumps: 2 );
 
-        AssertTransition.AssertAwait( result.Scopes[0].Nodes[0].Transition, "ST_0002" );
-        AssertTransition.AssertAwait( result.Scopes[0].Nodes[1].Transition, "ST_0004" );
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
+        AssertTransition.AssertAwait( result.Scopes[0].Nodes[2].Transition, "ST_0004" );
+        AssertTransition.AssertAwait( result.Scopes[0].Nodes[3].Transition, "ST_0006" );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
     [TestMethod]
@@ -473,13 +484,17 @@ public class LoweringVisitorTests
         var result = visitor.Transform( whileBlockExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 6, variables: 1 );
+        AssertTransition.AssertResult( result, nodes: 10, variables: 3 );
 
-        AssertTransition.AssertLoop( result.Scopes[0].Nodes[0].Transition, "ST_0002" );
+        AssertTransition.AssertLoop( result.Scopes[0].Nodes[2].Transition, "ST_0004" );
 
-        AssertTransition.AssertGoto( result.Scopes[0].Nodes[3].Transition, "ST_0002" );
-        AssertTransition.AssertGoto( result.Scopes[0].Nodes[4].Transition, "ST_0001" );
-        AssertTransition.AssertGoto( result.Scopes[0].Nodes[5].Transition, "ST_0002" );
+        AssertTransition.AssertGoto( result.Scopes[0].Nodes[3].Transition, "ST_0001" );
+        AssertTransition.AssertGoto( result.Scopes[0].Nodes[4].Transition, "ST_0006" );
+        AssertTransition.AssertGoto( result.Scopes[0].Nodes[5].Transition, "ST_0004" );
+
+        AssertTransition.AssertGoto( result.Scopes[0].Nodes[7].Transition, "ST_0005" );
+        AssertTransition.AssertGoto( result.Scopes[0].Nodes[8].Transition, "ST_0003" );
+        AssertTransition.AssertGoto( result.Scopes[0].Nodes[9].Transition, "ST_0004" );
 
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
@@ -507,9 +522,9 @@ public class LoweringVisitorTests
         var result = visitor.Transform( tryCatchExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 4, variables: 3 );
+        AssertTransition.AssertResult( result, nodes: 8, variables: 7 );
 
-        AssertTransition.AssertTryCatch( result.Scopes[0].Nodes[0].Transition, null,
+        AssertTransition.AssertTryCatch( result.Scopes[0].Nodes[2].Transition, null,
             typeof( Exception ),
             typeof( ArgumentException ) );
     }
@@ -539,9 +554,9 @@ public class LoweringVisitorTests
         var result = visitor.Transform( tryCatchExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 5, variables: 3 );
+        AssertTransition.AssertResult( result, nodes: 10, variables: 8 );
 
-        AssertTransition.AssertTryCatch( result.Scopes[0].Nodes[0].Transition, "ST_0002",
+        AssertTransition.AssertTryCatch( result.Scopes[0].Nodes[2].Transition, "ST_0004",
             typeof( Exception ),
             typeof( ArgumentException ) );
     }
@@ -579,8 +594,8 @@ public class LoweringVisitorTests
         var result = visitor.Transform( ifThenElseExpr );
 
         // Assert
-        AssertTransition.AssertResult( result, nodes: 17, variables: 7, jumps: 3 );
-        AssertTransition.AssertFinal( result.Scopes[0].Nodes[3] );
+        AssertTransition.AssertResult( result, nodes: 24, variables: 10, jumps: 3 );
+        AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
     public static class AssertTransition

@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -305,21 +306,38 @@ public class BlockAsyncBasicTests
     [TestMethod]
     public async Task BlockAsync_ShouldAllowLambdaParameters()
     {
-        Expression<Func<Task<int>>> innerAsync = () => Task.FromResult( 5 );
-        Expression<Func<Func<Task<int>>, Task<int>>> isTrueAsync = func => func();
+        var var1 = Variable( typeof( int ), "var1" );
+        var param1 = Parameter( typeof( Func<Task<int>> ), "param1" );
+
+        var parameterAsync = Lambda<Func<Task<int>>>(
+            BlockAsync(
+                Await( Constant( Task.FromResult( 15 ) ) )
+            )
+        );
+
+        var innerLambda = Lambda<Func<Func<Task<int>>, Task<int>>>(
+            BlockAsync( 
+                [var1],
+                Assign(var1, Await( Invoke( param1 ) ) ),
+                var1
+            ),
+            parameters: [param1]
+        );
 
         var asyncBlock = BlockAsync(
-            Await( Invoke( isTrueAsync, innerAsync ) )
+
+            Await( Invoke( innerLambda, parameterAsync ) )
         );
 
         var lambda = Lambda<Func<Task<int>>>( asyncBlock );
+
         var compiledLambda = lambda.Compile();
 
         // Act
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 5, result );
+        Assert.AreEqual( 15, result );
     }
 
     [TestMethod]
@@ -334,16 +352,18 @@ public class BlockAsyncBasicTests
             [outerVar],
             Block(
                 [middleVar],
-                BlockAsync(
-                    [innerVar],
-                    Assign( innerVar, Constant( 1 ) ),
-                    Assign( middleVar, Constant( 2 ) ),
-                    Assign( outerVar, Await( Constant( Task.FromResult( 3 ) ) ) )
+                Await( 
+                    BlockAsync(
+                        [innerVar],
+                        Assign( innerVar, Constant( 1 ) ),
+                        Assign( middleVar, Constant( 2 ) ),
+                        Assign( outerVar, Await( Constant( Task.FromResult( 3 ) ) ) )
+                    )
                 ),
-                Assign( middleVar, Constant( 4 ) )
+                Assign( middleVar, Await( Constant( Task.FromResult( 4 ) ) ) )
             ),
             Await( Constant( Task.FromResult( 6 ) ) ),
-            outerVar
+            Add( outerVar, middleVar )
         );
 
         // Act
@@ -353,7 +373,111 @@ public class BlockAsyncBasicTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 3, result );
+        Assert.AreEqual( 7, result );
     }
 
+    [TestMethod]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithBlockConditional()
+    {
+        // Arrange
+        var block = BlockAsync(
+            Block(
+                Constant( 5 ),
+                Condition( Constant( true ),
+                    Await( Constant( Task.FromResult( 1 ) ) ),
+                    Constant( 0 )
+                )
+            )
+        );
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 1, result );
+    }
+    public class TestContext
+    {
+        public int Id { get; set; }
+    }
+
+    private sealed class Disposable( Action dispose ) : IDisposable
+    {
+        public static readonly ConstructorInfo ConstructorInfo = typeof( Disposable ).GetConstructors()[0];
+
+        private int _disposed;
+        private Action Disposer { get; } = dispose;
+
+        public void Dispose()
+        {
+            if ( Interlocked.CompareExchange( ref _disposed, 1, 0 ) == 0 )
+                Disposer.Invoke();
+        }
+    }
+
+    [TestMethod]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithNestedLambdaArgument()
+    {
+        // Arrange
+        var control = Constant( new TestContext() );
+        var idVariable = Variable( typeof( int ), "originalId" );
+        var idProperty = Property( control, "Id" );
+        var exception = Variable( typeof( Exception ), "exception" );
+
+        var disposableBlock = Block(
+            [idVariable],
+            Assign( idVariable, idProperty ),
+            TryCatch(
+                Block(
+                    Assign( idProperty, Constant( 10 ) ),
+                    New( Disposable.ConstructorInfo,
+                        Lambda<Action>(
+                            Block(
+                                Assign( idProperty, idVariable )
+                            )
+                        ) )
+                ),
+                Catch(
+                    exception,
+                    Block(
+                        [exception],
+                        Assign( idProperty, idVariable ),
+                        Throw( exception, typeof( Disposable ) )
+                    )
+                )
+            )
+        );
+
+        // TODO: Fix issue with using Custom Expression with Visitor
+        // ---------------
+        var disposableVar = Variable( disposableBlock.Type, "disposable" );
+        var disposableAssignment = Assign( disposableVar, disposableBlock );
+
+        var finallyBlock = IfThen(
+            NotEqual( disposableVar, Constant( null ) ),
+            Call( disposableVar, nameof( IDisposable.Dispose ), Type.EmptyTypes )
+        );
+
+        var usingBlock = Block(
+            [disposableVar],
+            disposableAssignment,
+            TryFinally( Await( Constant( Task.FromResult( 3 ) ) ), finallyBlock )
+        );
+        var lambda = Lambda<Func<Task<int>>>( BlockAsync( usingBlock ) );
+        // ---------------
+
+        // Act
+        //var lambda = Lambda<Func<Task<int>>>( BlockAsync(
+        //     Using( disposableBlock,
+        //         Await( Constant( Task.FromResult( 3 ) ) )
+        //     ) ) );
+        var compiledLambda = lambda.Compile();
+
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 3, result );
+    }
 }
