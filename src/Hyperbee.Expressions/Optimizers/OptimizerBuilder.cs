@@ -6,52 +6,52 @@ public class OptimizerBuilder
 
     public OptimizerBuilder With<T>() where T : IExpressionOptimizer, new()
     {
-        _optimizers.Add(new T());
+        _optimizers.Add( new T() );
         return this;
     }
 
     public IExpressionOptimizer Build()
     {
-        var multiDependencyOptimizers = _optimizers.Where(opt => opt.Dependencies.Length > 1).ToList();
+        var multiDependencyOptimizers = _optimizers.Where( opt => opt.Dependencies.Length > 1 ).ToList();
         var standaloneTransformers = _optimizers
-            .Where(opt => opt.Dependencies.Length == 1)
-            .SelectMany(opt => opt.Dependencies)
-            .OrderBy(tran => tran.Priority)
+            .Where( opt => opt.Dependencies.Length == 1 )
+            .SelectMany( opt => opt.Dependencies )
+            .OrderBy( tran => tran.Priority )
             .ToList();
 
-        var dependencyGraph = BuildDependencyGraph(multiDependencyOptimizers);
-        var sortedDependencies = TopologicalSort(dependencyGraph);
+        var dependencyGraph = BuildDependencyGraph( multiDependencyOptimizers );
+        var sortedDependencies = TopologicalSort( dependencyGraph );
 
         var wovenTransformers = WeaveStandaloneTransformers(
-            sortedDependencies, 
+            sortedDependencies,
             standaloneTransformers
         );
 
-        return new CompositeOptimizer(wovenTransformers.ToArray());
+        return new CompositeOptimizer( wovenTransformers.ToArray() );
     }
 
-    private static Dictionary<Type, List<Type>> BuildDependencyGraph(IEnumerable<IExpressionOptimizer> optimizers)
+    private static Dictionary<Type, List<Type>> BuildDependencyGraph( IEnumerable<IExpressionOptimizer> optimizers )
     {
         var graph = new Dictionary<Type, List<Type>>();
 
-        foreach (var optimizer in optimizers)
+        foreach ( var optimizer in optimizers )
         {
             var dependencies = optimizer.Dependencies;
-            for (var i = 0; i < dependencies.Length - 1; i++)
+            for ( var i = 0; i < dependencies.Length - 1; i++ )
             {
                 var current = dependencies[i].GetType();
                 var next = dependencies[i + 1].GetType();
 
-                if (!graph.ContainsKey(current))
+                if ( !graph.ContainsKey( current ) )
                     graph[current] = [];
 
-                if (!graph[current].Contains(next))
-                    graph[current].Add(next);
+                if ( !graph[current].Contains( next ) )
+                    graph[current].Add( next );
             }
 
-            foreach (var dep in dependencies.Select(d => d.GetType()))
+            foreach ( var dep in dependencies.Select( d => d.GetType() ) )
             {
-                if (!graph.ContainsKey(dep))
+                if ( !graph.ContainsKey( dep ) )
                     graph[dep] = [];
             }
         }
@@ -59,29 +59,29 @@ public class OptimizerBuilder
         return graph;
     }
 
-    private List<IExpressionTransformer> TopologicalSort(Dictionary<Type, List<Type>> graph)
+    private List<IExpressionTransformer> TopologicalSort( Dictionary<Type, List<Type>> graph )
     {
         var sorted = new List<Type>();
         var visited = new HashSet<Type>();
         var visiting = new HashSet<Type>();
 
-        foreach (var node in graph.Keys)
+        foreach ( var node in graph.Keys )
         {
-            if (!Visit(node))
-                throw new InvalidOperationException($"Cycle detected in dependencies involving {node}.");
+            if ( !Visit( node ) )
+                throw new InvalidOperationException( $"Cycle detected in dependencies involving {node}." );
         }
 
-        return sorted.Select(type => 
-            _optimizers.SelectMany(opt => opt.Dependencies)
-                .First(dep => dep.GetType() == type)
+        return sorted.Select( type =>
+            _optimizers.SelectMany( opt => opt.Dependencies )
+                .First( dep => dep.GetType() == type )
         ).ToList();
 
-        bool Visit(Type node)
+        bool Visit( Type node )
         {
-            if (visited.Contains(node))
+            if ( visited.Contains( node ) )
                 return true;
 
-            if (!visiting.Add(node))
+            if ( !visiting.Add( node ) )
                 return false; // Cycle detected
 
             for ( var index = 0; index < graph[node].Count; index++ )
@@ -91,15 +91,15 @@ public class OptimizerBuilder
                     return false;
             }
 
-            visiting.Remove(node);
-            visited.Add(node);
-            sorted.Add(node);
+            visiting.Remove( node );
+            visited.Add( node );
+            sorted.Add( node );
 
             return true;
         }
     }
 
-    private List<IExpressionTransformer> WeaveStandaloneTransformers( List<IExpressionTransformer> sortedTransformers, List<IExpressionTransformer> standaloneTransformers)
+    private List<IExpressionTransformer> WeaveStandaloneTransformers( List<IExpressionTransformer> sortedTransformers, List<IExpressionTransformer> standaloneTransformers )
     {
         var finalTransformers = new List<IExpressionTransformer>();
         int standaloneIndex = 0;
@@ -116,9 +116,9 @@ public class OptimizerBuilder
             finalTransformers.Add( transformer );
         }
 
-        while (standaloneIndex < standaloneTransformers.Count)
+        while ( standaloneIndex < standaloneTransformers.Count )
         {
-            finalTransformers.Add(standaloneTransformers[standaloneIndex]);
+            finalTransformers.Add( standaloneTransformers[standaloneIndex] );
             standaloneIndex++;
         }
 
@@ -129,7 +129,7 @@ public class OptimizerBuilder
     {
         public override IExpressionTransformer[] Dependencies { get; }
 
-        internal CompositeOptimizer(IExpressionTransformer[] dependencies)
+        internal CompositeOptimizer( IExpressionTransformer[] dependencies )
         {
             Dependencies = dependencies;
         }
