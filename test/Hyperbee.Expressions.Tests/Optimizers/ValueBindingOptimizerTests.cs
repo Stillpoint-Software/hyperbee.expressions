@@ -136,10 +136,10 @@ public class ValueBindingOptimizerTests
     public void ValueBinding_ShouldReuseTemporaryVariableInLoop()
     {
         // Before: .Loop(.Block(.Assign(.Parameter(temp), .Constant(42)), .Parameter(temp)))
-        // After:  .Constant(42)
+        // After:  .Constant(42) 
 
         // Arrange
-        var tempVar = Expression.Parameter( typeof( int ), "temp" );
+        var tempVar = Expression.Parameter( typeof(int), "temp" );
         var loop = Expression.Loop( Expression.Block( [tempVar], Expression.Assign( tempVar, Expression.Constant( 42 ) ), tempVar ) );
         var optimizer = new ValueBindingOptimizer();
 
@@ -147,7 +147,10 @@ public class ValueBindingOptimizerTests
         var result = optimizer.Optimize( loop );
 
         // Assert
-        Assert.IsInstanceOfType( result, typeof( ConstantExpression ) );
+        var resultValue = (result as ConstantExpression)?.Value;
+
+        Assert.IsInstanceOfType( result, typeof(ConstantExpression) );
+        Assert.AreEqual( 42, resultValue, "Expected the loop body constant to have value 42." );
     }
 
     [TestMethod]

@@ -11,7 +11,6 @@ public class ValueBindingOptimizer : BaseOptimizer
 {
     public override IExpressionTransformer[] Dependencies =>
     [
-        new VariableInliningVisitor(),
         new VariableReducerVisitor(),
         new ConstantFoldingVisitor(),
         new MemberAccessVisitor()
