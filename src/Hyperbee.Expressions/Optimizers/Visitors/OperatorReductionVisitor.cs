@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Optimizers.Visitors;
 
-// ExpressionReductionOptimizer: Arithmetic and Logical Reduction
+// OperatorReductionVisitor: Arithmetic and Logical Operator Reduction
 //
 // This visitor eliminates trivial arithmetic expressions (like adding zero, multiplying by one),
 // simplifies logical identities (like x && true or x || false), and flattens nested expressions
@@ -28,7 +28,7 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 // After:
 //   .Add(.Parameter(x), .Parameter(y), .Parameter(z))
 //
-public class ExpressionReductionVisitor : ExpressionVisitor, IExpressionTransformer
+public class OperatorReductionVisitor : ExpressionVisitor, IExpressionTransformer
 {
     public Expression Transform( Expression expression )
     {

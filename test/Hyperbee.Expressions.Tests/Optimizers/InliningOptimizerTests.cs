@@ -4,17 +4,17 @@ using Hyperbee.Expressions.Optimizers;
 namespace Hyperbee.Expressions.Tests.Optimizers;
 
 [TestClass]
-public class ExpressionInliningOptimizerTests
+public class InliningOptimizerTests
 {
     [TestMethod]
-    public void ExpressionInlining_ShouldInlineSimpleConstant()
+    public void Inlining_ShouldInlineSimpleConstant()
     {
         // Before: .Add(.Constant(10), .Constant(5))
         // After:  .Constant(15)
 
         // Arrange
         var expression = Expression.Add( Expression.Constant( 10 ), Expression.Constant( 5 ) );
-        var optimizer = new ExpressionInliningOptimizer();
+        var optimizer = new InliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( expression );
@@ -25,7 +25,7 @@ public class ExpressionInliningOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionInlining_ShouldInlineLambdaExpression()
+    public void Inlining_ShouldInlineLambdaExpression()
     {
         // Before: .Invoke((x) => x + 5, .Constant(3))
         // After:  .Constant(8)
@@ -34,7 +34,7 @@ public class ExpressionInliningOptimizerTests
         var parameter = Expression.Parameter( typeof( int ), "x" );
         var lambda = Expression.Lambda( Expression.Add( parameter, Expression.Constant( 5 ) ), parameter );
         var invocation = Expression.Invoke( lambda, Expression.Constant( 3 ) );
-        var optimizer = new ExpressionInliningOptimizer();
+        var optimizer = new InliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( invocation );
@@ -45,14 +45,14 @@ public class ExpressionInliningOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionInlining_ShouldShortCircuitBoolean()
+    public void Inlining_ShouldShortCircuitBoolean()
     {
         // Before: .AndAlso(.Constant(true), .Constant(false))
         // After:  .Constant(false)
 
         // Arrange
         var expression = Expression.AndAlso( Expression.Constant( true ), Expression.Constant( false ) );
-        var optimizer = new ExpressionInliningOptimizer();
+        var optimizer = new InliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( expression );
@@ -63,7 +63,7 @@ public class ExpressionInliningOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionInlining_ShouldInlineConditionalExpression()
+    public void Inlining_ShouldInlineConditionalExpression()
     {
         // Before: .Conditional(.Constant(true), .Constant("True"), .Constant("False"))
         // After:  .Constant("True")
@@ -71,7 +71,7 @@ public class ExpressionInliningOptimizerTests
         // Arrange
         var condition = Expression.Constant( true );
         var conditional = Expression.Condition( condition, Expression.Constant( "True" ), Expression.Constant( "False" ) );
-        var optimizer = new ExpressionInliningOptimizer();
+        var optimizer = new InliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( conditional );
@@ -82,7 +82,7 @@ public class ExpressionInliningOptimizerTests
     }
 
     [TestMethod]
-    public void ExpressionInlining_ShouldSimplifyNestedConditionalExpression()
+    public void Inlining_ShouldSimplifyNestedConditionalExpression()
     {
         // Before: .Conditional(.Constant(true), .Conditional(.Constant(false), .Constant("A"), .Constant("B")), .Constant("C"))
         // After:  .Constant("B")
@@ -98,7 +98,7 @@ public class ExpressionInliningOptimizerTests
             innerCondition,
             Expression.Constant( "C" )
         );
-        var optimizer = new ExpressionInliningOptimizer();
+        var optimizer = new InliningOptimizer();
 
         // Act
         var result = optimizer.Optimize( outerCondition );

@@ -23,7 +23,7 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 // After:
 //   .Constant("True Branch")
 //
-public class ExpressionInliningVisitor : ExpressionVisitor, IExpressionTransformer
+public class InliningVisitor : ExpressionVisitor, IExpressionTransformer
 {
     private ConstantFoldingVisitor ConstantFoldingVisitor { get; } = new();
 

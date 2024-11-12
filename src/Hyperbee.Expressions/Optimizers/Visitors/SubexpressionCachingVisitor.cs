@@ -3,7 +3,7 @@ using Hyperbee.Expressions.Visitors;
 
 namespace Hyperbee.Expressions.Optimizers.Visitors;
 
-// ExpressionCachingOptimizer: Expression Subexpression Caching
+// SubexpressionCachingVisitor: Subexpression Caching
 //
 // This optimizer performs subexpression caching to reduce repeated computation in complex expressions. 
 // By identifying and reusing common subexpressions, it improves execution efficiency, especially in cases
@@ -38,7 +38,7 @@ namespace Hyperbee.Expressions.Optimizers.Visitors;
 // of this subexpression with `$cacheVar` in the resulting `BlockExpression`. This optimization reduces
 // redundant calculations, resulting in a more efficient expression execution.
 
-public class ExpressionResultCachingVisitor : ExpressionVisitor, IExpressionTransformer
+public class SubexpressionCachingVisitor : ExpressionVisitor, IExpressionTransformer
 {
     private readonly Dictionary<byte[], Expression> _fingerprintCache = new( new ByteArrayComparer() );
     private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new( new ByteArrayComparer() );

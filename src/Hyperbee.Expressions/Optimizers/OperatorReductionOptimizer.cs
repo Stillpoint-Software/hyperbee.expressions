@@ -21,12 +21,12 @@ namespace Hyperbee.Expressions.Optimizers;
 // After:
 //   .Parameter(x)
 //
-public class ExpressionReductionOptimizer : BaseOptimizer
+public class OperatorReductionOptimizer : BaseOptimizer
 {
     public override IExpressionTransformer[] Dependencies =>
     [
         new ConstantFoldingVisitor(),
-        new ExpressionReductionVisitor()
+        new OperatorReductionVisitor()
     ];
 }
 
