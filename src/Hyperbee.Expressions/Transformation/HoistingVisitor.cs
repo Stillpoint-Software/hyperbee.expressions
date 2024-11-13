@@ -11,13 +11,4 @@ internal sealed class HoistingVisitor( IVariableResolver variableResolver ) : Ex
 
         return node;
     }
-
-    protected override Expression VisitBlock( BlockExpression node )
-    {
-        // Update each expression in a block to use only state machine fields/variables
-        return node.Update(
-            variableResolver.ExcludeFieldMembers( node.Variables ),
-            node.Expressions.Select( Visit )
-        );
-    }
 }
