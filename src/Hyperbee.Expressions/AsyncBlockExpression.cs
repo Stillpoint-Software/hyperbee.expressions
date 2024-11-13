@@ -46,7 +46,7 @@ public class AsyncBlockExpression : Expression
 
         // create state-machine
 
-        using var visitor = new LoweringVisitor();
+        var visitor = new LoweringVisitor();
         var source = visitor.Transform( VariableResolver, Expressions );
 
         if ( source.AwaitCount == 0 )

@@ -5,9 +5,27 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class SwitchTransition : Transition
 {
-    internal readonly List<SwitchCaseDefinition> CaseNodes = [];
+    internal List<SwitchCaseDefinition> CaseNodes = [];
     public NodeExpression DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
+
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        return Update( visitor.Visit( SwitchValue ) );
+    }
+
+    internal SwitchTransition Update( Expression switchValue )
+    {
+        if ( switchValue == SwitchValue )
+            return this;
+
+        return new SwitchTransition
+        {
+            DefaultNode = DefaultNode,
+            SwitchValue = switchValue,
+            CaseNodes = CaseNodes  // TODO: fix visiting Case Test Values
+        };
+    }
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {

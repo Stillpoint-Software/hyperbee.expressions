@@ -1,5 +1,6 @@
 ﻿//#define BUILD_STRUCT
 
+using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -358,16 +359,35 @@ public class StateMachineBuilder<TResult>
 
         // Create the body 
 
-        var hoistingVisitor = new HoistingVisitor(
+        // Loop over all the source scopes and the internal Nodes and call SetResolverSource
+        var hoistingSource = new HoistingSource(
             stateMachine,
-            variableResolver,
+            exitLabel,
             stateField,
             builderField,
             finalResultField,
-            exitLabel,
-            source.ReturnValue );
+            source.ReturnValue
+        );
+        
+        foreach ( var scope in source.Scopes )
+        {
+            foreach ( var node in scope.Nodes )
+            {
+                node.SetResolverSource( hoistingSource );
+            }
+        }
 
-        var bodyExpressions = BodyExpressions( jumpTable, source.Scopes[0].Nodes, hoistingVisitor );
+        var hoistingVisitor = new HoistingVisitor( variableResolver );
+        var expressionBody = new List<Expression>();
+
+        foreach ( var n in source.Scopes.SelectMany( x => x.Nodes ) )
+        {
+            expressionBody.Add( hoistingVisitor.Visit( n ) );
+        }
+
+        //var nodes = hoistingVisitor.Visit( new ReadOnlyCollection<Expression>( [..source.Scopes[0].Nodes] ) );
+
+        //var bodyExpressions = BodyExpressions( jumpTable, source.Scopes[0].Nodes, hoistingVisitor );
 
         // Create a try-catch block to handle exceptions
 
@@ -379,7 +399,7 @@ public class StateMachineBuilder<TResult>
                 source.ReturnValue != null
                     ? [source.ReturnValue]
                     : [],
-                bodyExpressions
+                source.Scopes[0].Nodes
             ),
             Catch(
                 exceptionParam,

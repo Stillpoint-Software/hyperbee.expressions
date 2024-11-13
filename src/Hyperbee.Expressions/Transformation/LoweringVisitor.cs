@@ -140,22 +140,6 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
 
     protected override Expression VisitBlock( BlockExpression node )
     {
-        //var joinState = _states.EnterGroup( out var sourceState );
-
-        //var resultVariable = _variableVisitor.GetResultVariable( node, sourceState.StateId );
-
-        //var blockState = _states.AddState();
-
-        //blockState.Expressions.AddRange( Visit(node.Expressions) );
-        //blockState.Transition = new GotoTransition { TargetNode = joinState };
-
-        //sourceState.ResultVariable = resultVariable;
-        //joinState.ResultValue = resultVariable;
-
-        //_states.ExitGroup( sourceState, new GotoTransition { TargetNode = blockState } );
-
-        //return sourceState;
-
 
         var joinState = _states.EnterGroup( out var sourceState );
 
@@ -168,7 +152,7 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
         NodeExpression firstGoto = null;
         NodeExpression previousTail = null;
 
-        var previousVariable = resultVariable;
+        Expression previousVariable = resultVariable;
 
         foreach ( var expression in node.Expressions )
         {
@@ -477,23 +461,6 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
     }
 
     //// Helpers
-
-    //[MethodImpl( MethodImplOptions.AggressiveInlining )]
-    //private ParameterExpression GetResultVariable( Expression node, int stateId )
-    //{
-    //    if ( node.Type == typeof( void ) )
-    //        return null;
-
-    //    return _variableResolver.AddVariable(
-    //        Expression.Parameter( node.Type, VariableName.Result( stateId, ref _variableId ) )
-    //    );
-    //}
-
-    //[MethodImpl( MethodImplOptions.AggressiveInlining )]
-    //private ParameterExpression CreateVariable( Type type, string name )
-    //{
-    //    return _variableResolver.AddVariable( Expression.Variable( type, name ) );
-    //}
 
     internal class HandlingVisitor : ExpressionVisitor
     {

@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation.Transitions;
 
@@ -7,11 +8,11 @@ namespace Hyperbee.Expressions.Transformation;
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
 public sealed class NodeExpression : Expression
 {
-    public int StateId { get; }
-    public int ScopeId { get; }
+    public int StateId { get; init; }
+    public int ScopeId { get; init; }
 
     internal int StateOrder { get; set; }
-    public ParameterExpression ResultVariable { get; set; } // Left-hand side of the result assignment
+    public Expression ResultVariable { get; set; } // Left-hand side of the result assignment
     public Expression ResultValue { get; set; } // Right-hand side of the result assignment
 
     public LabelTarget NodeLabel { get; set; }
@@ -21,6 +22,8 @@ public sealed class NodeExpression : Expression
     private Expression _expression;
     private IHoistingSource _resolverSource;
 
+    internal NodeExpression() { }
+
     public NodeExpression( int stateId, int scopeId )
     {
         StateId = stateId;
@@ -29,7 +32,7 @@ public sealed class NodeExpression : Expression
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => ResultValue?.Type ?? typeof( void );
+    public override Type Type => typeof(void); //ResultValue?.Type ?? typeof( void );
     public override bool CanReduce => true;
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
@@ -45,29 +48,25 @@ public sealed class NodeExpression : Expression
         return Reduce();
     }
 
-    // TODO: Implement VisitChildren without a nested reduce
-    // protected override Expression VisitChildren( ExpressionVisitor visitor )
-    // {
-    //     if ( Expressions.Count == 0 )
-    //         return this;
-    //
-    //     var expressions = visitor.Visit( Expressions.AsReadOnly() );
-    //
-    //     return new NodeExpression
-    //     {
-    //         StateId = StateId,
-    //         ScopeId = ScopeId,
-    //         StateOrder  = StateOrder,
-    //         ResultValue = ResultValue,
-    //         ResultVariable = ResultVariable,
-    //         _resolverSource = _resolverSource,
-    //         NodeLabel = NodeLabel,
-    //         Expressions = expressions.ToList(),
-    //         Transition = Transition,
-    //     };
-    //     //
-    //     // return visitor.Visit( Reduce() );
-    // }
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        return Update(
+            visitor.Visit( Expressions.AsReadOnly() ),
+            visitor.Visit( ResultValue ),
+            visitor.Visit( ResultVariable ),
+            (Transition) visitor.Visit( Transition )
+        );
+    }
+
+    public Expression Update( ReadOnlyCollection<Expression> expressions, Expression resultValue, Expression resultVariable, Transition transition )
+    {
+        Expressions = expressions.ToList();
+        ResultValue = resultValue;
+        ResultVariable = resultVariable;
+        Transition = transition;
+
+        return this;
+    }
 
     public override Expression Reduce()
     {

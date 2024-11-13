@@ -325,7 +325,6 @@ public class BlockAsyncBasicTests
         );
 
         var asyncBlock = BlockAsync(
-
             Await( Invoke( innerLambda, parameterAsync ) )
         );
 

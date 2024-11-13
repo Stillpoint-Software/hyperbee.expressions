@@ -1,14 +1,35 @@
 ﻿using System.Linq.Expressions;
-using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class AwaitResultTransition : Transition
 {
-    public ParameterExpression AwaiterVariable { get; set; }
-    public ParameterExpression ResultVariable { get; set; }
+    public Expression AwaiterVariable { get; set; }
+    public Expression ResultVariable { get; set; }
     public NodeExpression TargetNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
+
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        return Update(
+            visitor.Visit( AwaiterVariable ),
+            visitor.Visit( ResultVariable )
+        );
+    }
+
+    internal AwaitResultTransition Update( Expression awaiterVariable, Expression resultVariable )
+    {
+        if ( awaiterVariable == AwaiterVariable && resultVariable == ResultVariable )
+            return this;
+
+        return new AwaitResultTransition
+        {
+            AwaiterVariable = awaiterVariable,
+            ResultVariable = resultVariable,
+            TargetNode = TargetNode,
+            AwaitBinder = AwaitBinder
+        };
+    }
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {

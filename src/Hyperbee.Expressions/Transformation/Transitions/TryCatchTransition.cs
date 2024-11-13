@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.ObjectModel;
+using System.Linq.Expressions;
 using Hyperbee.Expressions.Collections;
 using static System.Linq.Expressions.Expression;
 
@@ -6,7 +7,7 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class TryCatchTransition : Transition
 {
-    internal readonly List<CatchBlockDefinition> CatchBlocks = [];
+    internal List<CatchBlockDefinition> CatchBlocks = [];
     public NodeExpression TryNode { get; set; }
     public NodeExpression FinallyNode { get; set; }
 
@@ -29,11 +30,40 @@ public class TryCatchTransition : Transition
         }
     }
 
-    public ParameterExpression TryStateVariable { get; set; }
-    public ParameterExpression ExceptionVariable { get; set; }
+    public Expression TryStateVariable { get; set; }
+    public Expression ExceptionVariable { get; set; }
 
     public StateContext.Scope StateScope { get; init; }
     public PooledArray<StateContext.Scope> Scopes { get; init; }
+
+    protected override Transition VisitChildren( ExpressionVisitor visitor )
+    {
+        return Update(
+            CatchBlocks.Select( c => new CatchBlockDefinition( c.Handler, visitor.Visit( c.UpdateBody ), c.CatchState ) ).ToList(),
+            visitor.Visit( TryStateVariable ),
+            visitor.Visit( ExceptionVariable )
+        );
+    }
+
+    internal TryCatchTransition Update( 
+        List<CatchBlockDefinition> catchBlocks, 
+        Expression tryStateVariable, 
+        Expression exceptionVariable )
+    {
+        if ( catchBlocks == CatchBlocks && tryStateVariable == TryStateVariable && exceptionVariable == ExceptionVariable )
+            return this;
+
+        return new TryCatchTransition
+        {
+            TryNode = TryNode,
+            FinallyNode = FinallyNode,
+            CatchBlocks = catchBlocks,
+            TryStateVariable = tryStateVariable,
+            ExceptionVariable = exceptionVariable,
+            StateScope = StateScope,
+            Scopes = Scopes
+        };
+    }
 
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
@@ -46,7 +76,8 @@ public class TryCatchTransition : Transition
             )
         };
 
-        expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
+        //expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
+        expressions.AddRange( StateScope.Nodes );
 
         MapCatchBlock( order, out var catches, out var switchCases );
 
@@ -110,7 +141,7 @@ public class TryCatchTransition : Transition
 
     internal class CatchBlockDefinition( CatchBlock handler, Expression updateBody, int catchState )
     {
-        public CatchBlock Reduce( ParameterExpression exceptionVariable, ParameterExpression tryStateVariable )
+        public CatchBlock Reduce( Expression exceptionVariable, Expression tryStateVariable )
         {
             if ( Handler.Variable == null )
             {

@@ -6,9 +6,14 @@ public class LoopTransition : Transition
 {
     public NodeExpression BodyNode { get; set; }
 
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        return this;
+    }
+
     internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
     {
-        return Expression.Empty();
+        return Empty();
     }
 
     internal override NodeExpression FallThroughNode => BodyNode; // We won't reduce, but we need to provide a value for ordering

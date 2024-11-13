@@ -1,12 +1,14 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
-using static System.Linq.Expressions.Expression;
-
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
 [DebuggerDisplay( "Transition = {GetType().Name,nq}" )]
-public abstract class Transition
+public abstract class Transition : Expression
 {
+    public override ExpressionType NodeType => ExpressionType.Extension;
+    public override Type Type => typeof( void );
+    public override bool CanReduce => true;
+
     internal abstract Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource );
     internal abstract NodeExpression FallThroughNode { get; } // this node is used to optimize state order
     internal abstract void OptimizeTransition( HashSet<LabelTarget> references ); // this method is used to optimize state transitions
