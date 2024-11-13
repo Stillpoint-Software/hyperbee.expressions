@@ -1,4 +1,4 @@
-namespace Hyperbee.Expressions.Optimizers;
+﻿namespace Hyperbee.Expressions.Optimizers;
 
 public class OptimizerBuilder
 {
@@ -44,7 +44,7 @@ public class OptimizerBuilder
     //
     // This ensures all relative dependencies are respected, creating a coherent dependency graph.
 
-    private static Dictionary<Type, List<Type>> BuildDependencyGraph( IEnumerable<IExpressionOptimizer> optimizers )
+    private static Dictionary<Type, List<Type>> BuildDependencyGraph( IEnumerable<ExpressionOptimizer> optimizers )
     {
         var graph = new Dictionary<Type, List<Type>>();
 
