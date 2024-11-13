@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Optimizers;
 // This optimizer handles optimizations related to variables, constants, and member accesses,
 // performing constant folding, variable inlining, and simplifying member access.
 
-public class ValueBindingOptimizer : BaseOptimizer
+public class ValueBindingOptimizer : ExpressionOptimizer
 {
     public override IExpressionTransformer[] Dependencies =>
     [

@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Optimizers;
 
-public abstract class BaseOptimizer : IExpressionOptimizer
+public abstract class ExpressionOptimizer //: IExpressionOptimizer
 {
     public abstract IExpressionTransformer[] Dependencies { get; }
 

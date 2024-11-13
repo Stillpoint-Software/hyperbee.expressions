@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Optimizers;
 // This optimizer manages blocks, labels, loops, and conditionals, removing unreachable
 // code and dead branches based on control flow and constant conditions.
 
-public class StructuralReductionOptimizer : BaseOptimizer
+public class StructuralReductionOptimizer : ExpressionOptimizer
 {
     public override IExpressionTransformer[] Dependencies =>
     [

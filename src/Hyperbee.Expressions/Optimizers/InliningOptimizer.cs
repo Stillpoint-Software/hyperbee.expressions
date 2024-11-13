@@ -23,7 +23,7 @@ namespace Hyperbee.Expressions.Optimizers;
 // After:
 //   .Constant("True Branch")
 //
-public class InliningOptimizer : BaseOptimizer
+public class InliningOptimizer : ExpressionOptimizer
 {
     public override IExpressionTransformer[] Dependencies =>
     [

@@ -21,7 +21,7 @@ namespace Hyperbee.Expressions.Optimizers;
 // After:
 //   .Parameter(x)
 //
-public class OperatorReductionOptimizer : BaseOptimizer
+public class OperatorReductionOptimizer : ExpressionOptimizer
 {
     public override IExpressionTransformer[] Dependencies =>
     [

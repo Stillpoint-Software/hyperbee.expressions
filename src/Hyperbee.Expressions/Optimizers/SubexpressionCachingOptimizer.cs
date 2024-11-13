@@ -30,7 +30,7 @@ namespace Hyperbee.Expressions.Optimizers;
 // of this subexpression with `$cacheVar` in the resulting `BlockExpression`. This optimization reduces
 // redundant calculations, resulting in a more efficient expression execution.
 
-public class SubexpressionCachingOptimizer : BaseOptimizer
+public class SubexpressionCachingOptimizer : ExpressionOptimizer
 {
     public override IExpressionTransformer[] Dependencies =>
     [

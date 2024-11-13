@@ -6,7 +6,7 @@ namespace Hyperbee.Expressions.Optimizers;
 //
 // This optimizer evaluates constant expressions and simplifies them to their simplest form.
 
-public class ConstantFoldingOptimizer : BaseOptimizer
+public class ConstantFoldingOptimizer : ExpressionOptimizer
 {
     public override IExpressionTransformer[] Dependencies =>
     [

@@ -1,16 +1,16 @@
-﻿namespace Hyperbee.Expressions.Optimizers;
+namespace Hyperbee.Expressions.Optimizers;
 
 public class OptimizerBuilder
 {
-    private readonly List<IExpressionOptimizer> _optimizers = [];
+    private readonly List<ExpressionOptimizer> _optimizers = [];
 
-    public OptimizerBuilder With<T>() where T : IExpressionOptimizer, new()
+    public OptimizerBuilder With<T>() where T : ExpressionOptimizer, new()
     {
         _optimizers.Add( new T() );
         return this;
     }
 
-    public IExpressionOptimizer Build()
+    public ExpressionOptimizer Build()
     {
         // Separate optimizers based on dependency count
         var multiDependencyOptimizers = _optimizers.Where( opt => opt.Dependencies.Length > 1 ).ToList();
@@ -168,7 +168,7 @@ public class OptimizerBuilder
         return finalTransformers;
     }
 
-    public class CompositeOptimizer : BaseOptimizer
+    public class CompositeOptimizer : ExpressionOptimizer
     {
         public override IExpressionTransformer[] Dependencies { get; }
 
