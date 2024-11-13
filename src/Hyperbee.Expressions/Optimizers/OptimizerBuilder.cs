@@ -129,8 +129,8 @@ public class OptimizerBuilder
     }
 
     // Weave standalone transformers into the sorted list of multi-dependency transformers, based on priority.
-    // This ensures that standalone transformers with lower priority execute before higher-priority transformers,
-    // while respecting the sorted execution order of multi-dependency transformers.
+    // This ensures that standalone transformers ordered according to priority, while respecting the sorted
+    // execution order of multi-dependency transformers.
     //
     // Example:
     // Sorted Transformers: [A, B, C]
