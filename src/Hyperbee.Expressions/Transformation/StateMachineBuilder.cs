@@ -1,6 +1,5 @@
 ﻿//#define BUILD_STRUCT
 
-using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -168,7 +167,7 @@ public class StateMachineBuilder<TResult>
             FieldAttributes.Public
         );
 
-        foreach ( var parameterExpression in source.Variables )
+        foreach ( var parameterExpression in source.Variables.OfType<ParameterExpression>() )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -267,7 +266,7 @@ public class StateMachineBuilder<TResult>
         LoweringResult source,
         Type stateMachineType,
         IVariableResolver variableResolver,
-        IEnumerable<FieldInfo> fields
+        FieldInfo[] fields
     )
     {
         /* Example state-machine:
@@ -337,12 +336,6 @@ public class StateMachineBuilder<TResult>
         var builderField = Field( stateMachine, FieldName.Builder );
         var finalResultField = Field( stateMachine, FieldName.FinalResult );
 
-        var fieldMembers = fields
-            .Select( field => Field( stateMachine, field ) )
-            .ToDictionary( x => x.Member.Name );
-
-        variableResolver.SetFieldMembers( fieldMembers );
-
         var exitLabel = Label( "ST_EXIT" );
 
         // Optimize node ordering to reduce goto calls
@@ -359,35 +352,7 @@ public class StateMachineBuilder<TResult>
 
         // Create the body 
 
-        // Loop over all the source scopes and the internal Nodes and call SetResolverSource
-        var hoistingSource = new HoistingSource(
-            stateMachine,
-            exitLabel,
-            stateField,
-            builderField,
-            finalResultField,
-            source.ReturnValue
-        );
-        
-        foreach ( var scope in source.Scopes )
-        {
-            foreach ( var node in scope.Nodes )
-            {
-                node.SetResolverSource( hoistingSource );
-            }
-        }
-
-        var hoistingVisitor = new HoistingVisitor( variableResolver );
-        var expressionBody = new List<Expression>();
-
-        foreach ( var n in source.Scopes.SelectMany( x => x.Nodes ) )
-        {
-            expressionBody.Add( hoistingVisitor.Visit( n ) );
-        }
-
-        //var nodes = hoistingVisitor.Visit( new ReadOnlyCollection<Expression>( [..source.Scopes[0].Nodes] ) );
-
-        //var bodyExpressions = BodyExpressions( jumpTable, source.Scopes[0].Nodes, hoistingVisitor );
+        HoistVariables( source, fields, stateMachine, exitLabel, stateField, builderField, finalResultField );
 
         // Create a try-catch block to handle exceptions
 
@@ -429,18 +394,37 @@ public class StateMachineBuilder<TResult>
         // Helper to create the body expressions with hoisted variables
     }
 
-    private static Expression[] BodyExpressions( Expression jumpTable, IReadOnlyList<NodeExpression> nodes, HoistingVisitor hoistingVisitor )
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    private static void HoistVariables( 
+        LoweringResult source, 
+        FieldInfo[] fields, 
+        ParameterExpression stateMachine, 
+        LabelTarget exitLabel, 
+        MemberExpression stateField,
+        MemberExpression builderField, 
+        MemberExpression finalResultField
+    )
     {
-        var bodyExpressions = new Expression[1 + nodes.Count];
+        var fieldMembers = fields
+            .Select( field => Field( stateMachine, field ) )
+            .ToDictionary( x => x.Member.Name );
 
-        bodyExpressions[0] = jumpTable;
+        var hoistingVisitor = new HoistingVisitor( fieldMembers );
 
-        for ( var index = 0; index < nodes.Count; index++ )
+        var stateMachineSource = new StateMachineSource(
+            stateMachine,
+            exitLabel,
+            stateField,
+            builderField,
+            finalResultField,
+            source.ReturnValue
+        );
+
+        foreach ( var node in source.Scopes.SelectMany( x => x.Nodes ) )
         {
-            bodyExpressions[index + 1] = hoistingVisitor.Visit( nodes[index] );
+            node.SetStateMachineSource( stateMachineSource );
+            hoistingVisitor.Visit( node );
         }
-
-        return bodyExpressions;
     }
 }
 

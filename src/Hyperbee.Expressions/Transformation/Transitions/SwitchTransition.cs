@@ -27,7 +27,7 @@ public class SwitchTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
     {
         Expression defaultBody;
 

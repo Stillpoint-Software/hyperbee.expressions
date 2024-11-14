@@ -9,9 +9,11 @@ public abstract class Transition : Expression
     public override Type Type => typeof( void );
     public override bool CanReduce => true;
 
-    internal abstract Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource );
+    internal abstract Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource );
     internal abstract NodeExpression FallThroughNode { get; } // this node is used to optimize state order
     internal abstract void OptimizeTransition( HashSet<LabelTarget> references ); // this method is used to optimize state transitions
+
+    protected override Expression VisitChildren( ExpressionVisitor visitor ) => this;
 
     protected static NodeExpression OptimizeTransition( NodeExpression node )
     {

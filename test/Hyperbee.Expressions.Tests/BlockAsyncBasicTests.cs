@@ -346,7 +346,7 @@ public class BlockAsyncBasicTests
         var innerVar = Variable( typeof( int ), "innerVar" );
         var middleVar = Variable( typeof( int ), "middleVar" );
         var outerVar = Variable( typeof( int ), "outerVar" );
-
+        
         var blockAsync = BlockAsync(
             [outerVar],
             Block(
@@ -354,9 +354,9 @@ public class BlockAsyncBasicTests
                 Await(
                     BlockAsync(
                         [innerVar],
+                        Assign( outerVar, Await( Constant( Task.FromResult( 3 ) ) ) ),
                         Assign( innerVar, Constant( 1 ) ),
-                        Assign( middleVar, Constant( 2 ) ),
-                        Assign( outerVar, Await( Constant( Task.FromResult( 3 ) ) ) )
+                        Assign( middleVar, Constant( 2 ) )
                     )
                 ),
                 Assign( middleVar, Await( Constant( Task.FromResult( 4 ) ) ) )

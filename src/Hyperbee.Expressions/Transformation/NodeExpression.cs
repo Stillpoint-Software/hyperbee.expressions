@@ -1,15 +1,17 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-[DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
+[DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
 public sealed class NodeExpression : Expression
 {
-    public int StateId { get; init; }
-    public int ScopeId { get; init; }
+    public int StateId { get; set; }
+    public int GroupId { get; set; }
+    public int ScopeId { get; set; }
 
     internal int StateOrder { get; set; }
     public Expression ResultVariable { get; set; } // Left-hand side of the result assignment
@@ -20,47 +22,42 @@ public sealed class NodeExpression : Expression
     public Transition Transition { get; set; }
 
     private Expression _expression;
-    private IHoistingSource _resolverSource;
+    private StateMachineSource _stateMachineSource;
 
     internal NodeExpression() { }
 
-    public NodeExpression( int stateId, int scopeId )
+    public NodeExpression( int stateId, int scopeId, int groupId )
     {
         StateId = stateId;
         ScopeId = scopeId;
+        GroupId = groupId;
         NodeLabel = Label( $"ST_{StateId:0000}" );
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof(void); //ResultValue?.Type ?? typeof( void );
+    public override Type Type => typeof(void);
     public override bool CanReduce => true;
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
 
-    internal void SetResolverSource( IHoistingSource resolverSource )
+    internal void SetStateMachineSource( StateMachineSource stateMachineSource )
     {
-        _resolverSource = resolverSource;
-    }
-
-    internal Expression Reduce( IHoistingSource resolverSource )
-    {
-        _resolverSource = resolverSource;
-        return Reduce();
+        _stateMachineSource = stateMachineSource;
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
         return Update(
-            visitor.Visit( Expressions.AsReadOnly() ),
+            Expressions.Select( visitor.Visit ).ToList(),
             visitor.Visit( ResultValue ),
             visitor.Visit( ResultVariable ),
             (Transition) visitor.Visit( Transition )
         );
     }
 
-    public Expression Update( ReadOnlyCollection<Expression> expressions, Expression resultValue, Expression resultVariable, Transition transition )
+    public Expression Update( List<Expression> expressions, Expression resultValue, Expression resultVariable, Transition transition )
     {
-        Expressions = expressions.ToList();
+        Expressions = expressions;
         ResultValue = resultValue;
         ResultVariable = resultVariable;
         Transition = transition;
@@ -70,8 +67,8 @@ public sealed class NodeExpression : Expression
 
     public override Expression Reduce()
     {
-        if ( _resolverSource == null )
-            throw new InvalidOperationException( $"Reduce requires an {nameof( IHoistingSource )} instance." );
+        if ( _stateMachineSource == null )
+            throw new InvalidOperationException( $"Reduce requires an {nameof( StateMachineSource )} instance." );
 
         return _expression ??= Transition != null
             ? ReduceBlock()
@@ -89,7 +86,7 @@ public sealed class NodeExpression : Expression
             Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
         }
 
-        var transitionExpression = Transition.Reduce( StateOrder, this, _resolverSource );
+        var transitionExpression = Transition.Reduce( StateOrder, this, _stateMachineSource );
         Expressions.Add( transitionExpression );
 
         // Add the label to the beginning of the block
@@ -100,7 +97,7 @@ public sealed class NodeExpression : Expression
 
     private BlockExpression ReduceFinalBlock()
     {
-        var (_, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
+        var (_, _, stateIdField, builderField, resultField, returnValue) = _stateMachineSource;
 
         return Block(
             Label( NodeLabel ),

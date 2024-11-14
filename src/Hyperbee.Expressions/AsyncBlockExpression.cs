@@ -46,6 +46,7 @@ public class AsyncBlockExpression : Expression
 
         // create state-machine
 
+        // TODO: had to remove using because of the deferred execution of the transformation
         var visitor = new LoweringVisitor();
         var source = visitor.Transform( VariableResolver, Expressions );
 

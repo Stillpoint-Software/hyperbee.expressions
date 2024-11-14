@@ -9,7 +9,7 @@ public record LoweringResult
     public PooledArray<StateContext.Scope> Scopes { get; init; }
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
-    public IReadOnlyCollection<ParameterExpression> Variables { get; init; }
+    public IReadOnlyCollection<Expression> Variables { get; init; }
 
     internal string DebugView
     {

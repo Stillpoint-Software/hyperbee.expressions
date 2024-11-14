@@ -65,7 +65,7 @@ public class TryCatchTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
     {
         var expressions = new List<Expression>
         {
@@ -76,7 +76,6 @@ public class TryCatchTransition : Transition
             )
         };
 
-        //expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
         expressions.AddRange( StateScope.Nodes );
 
         MapCatchBlock( order, out var catches, out var switchCases );

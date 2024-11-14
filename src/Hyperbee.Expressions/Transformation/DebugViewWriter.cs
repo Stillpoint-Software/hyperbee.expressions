@@ -13,7 +13,7 @@ internal static class DebugViewWriter
     private const string Indent4 = "\t\t\t\t";
 
     public static void WriteTo( StringWriter writer, PooledArray<StateContext.Scope> scopes,
-        IEnumerable<ParameterExpression> variables )
+        IEnumerable<Expression> variables )
     {
         // variables
         var parameterExpressions = variables ?? [];
@@ -333,9 +333,12 @@ internal static class DebugViewWriter
         };
     }
 
-    private static string VariableToString( ParameterExpression expr )
+    private static string VariableToString( Expression expr )
     {
-        return $"{TypeToString( expr.Type )} {expr.Name}";
+        if( expr is ParameterExpression parameter )
+            return $"{TypeToString( parameter.Type )} {parameter.Name}";
+        
+        return TypeToString( expr.Type );
 
         static string TypeToString( Type type )
         {

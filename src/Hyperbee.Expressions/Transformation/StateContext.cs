@@ -8,6 +8,7 @@ namespace Hyperbee.Expressions.Transformation;
 public sealed class StateContext : IDisposable
 {
     private int _stateId;
+    private int _groupId;
     private readonly int _initialCapacity;
 
     private readonly PooledStack<NodeExpression> _joinStates;
@@ -57,7 +58,7 @@ public sealed class StateContext : IDisposable
     public NodeExpression EnterGroup( out NodeExpression sourceState )
     {
         var scope = CurrentScope;
-        var joinState = new NodeExpression( _stateId++, scope.ScopeId );
+        var joinState = new NodeExpression( _stateId++, scope.ScopeId, _groupId++ );
 
         scope.Nodes.Add( joinState );
         _joinStates.Push( joinState );
@@ -79,7 +80,7 @@ public sealed class StateContext : IDisposable
     public NodeExpression AddState()
     {
         var scope = CurrentScope;
-        var node = new NodeExpression( _stateId++, scope.ScopeId );
+        var node = new NodeExpression( _stateId++, scope.ScopeId, _groupId );
         scope.Nodes.Add( node );
         TailState = node;
 

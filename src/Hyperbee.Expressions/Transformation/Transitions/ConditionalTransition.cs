@@ -27,7 +27,7 @@ public class ConditionalTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
     {
         var fallThrough = GotoOrFallThrough( order, IfFalse, true );
 
