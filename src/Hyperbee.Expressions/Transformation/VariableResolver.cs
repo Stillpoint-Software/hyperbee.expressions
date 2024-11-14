@@ -4,130 +4,117 @@ using System.Runtime.CompilerServices;
 
 namespace Hyperbee.Expressions.Transformation;
 
-
-internal static class VariableName
+public interface IVariableResolver
 {
-    // use special names to prevent collisions
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public static string Awaiter( int stateId, ref int variableId ) => $"__awaiter<{stateId}_{variableId++}>";
+    Expression Resolve( Expression node );
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public static string Result( int stateId, ref int variableId ) => $"__result<{stateId}_{variableId++}>";
+    Expression GetResultVariable( Expression node, int stateId );
+    Expression GetAwaiterVariable( Type type, int stateId );
+    Expression GetTryVariable( int stateId );
+    Expression GetExceptionVariable( int stateId );
+    ParameterExpression GetReturnVariable( Type type );
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public static string Try( int stateId ) => $"__try<{stateId}>";
+    IReadOnlyCollection<Expression> GetLocalVariables();
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public static string Exception( int stateId ) => $"__ex<{stateId}>";
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
-
-    public const string Return = "return<>";
+    void AddLocalVariables( ReadOnlyCollection<ParameterExpression> variables );
 }
 
-internal class VariableVisitor : ExpressionVisitor
+internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
 {
-    internal int VariableId = 0;
-
-
-    public IVariableResolver VariableResolver { get; private set; }
-    public StateContext States { get; private set; }
-
-    public VariableVisitor( IVariableResolver variableResolver, StateContext states )
+    internal static class VariableName
     {
-        VariableResolver = variableResolver;
-        States = states;
+        // use special names to prevent collisions
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Awaiter( int stateId, ref int variableId ) => $"__awaiter<{stateId}_{variableId++}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Result( int stateId, ref int variableId ) => $"__result<{stateId}_{variableId++}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Try( int stateId ) => $"__try<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Exception( int stateId ) => $"__ex<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
+
+        public const string Return = "return<>";
+    }
+
+    private const int InitialCapacity = 8;
+
+    private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new( InitialCapacity );
+    private readonly HashSet<ParameterExpression> _variables;
+    private readonly StateContext _states;
+
+    private int _variableId = 0;
+
+    public VariableResolver( ParameterExpression[] variables, StateContext states )
+    {
+        _states = states;
+        _variables = [.. variables];
+    }
+
+    // Helpers
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public Expression GetResultVariable( Expression node, int stateId )
+    {
+        if ( node.Type == typeof( void ) )
+            return null;
+
+        return AddVariable( Expression.Parameter( node.Type, VariableName.Result( stateId, ref _variableId ) ) );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public Expression GetAwaiterVariable( Type type, int stateId )
+    {
+        return AddVariable( Expression.Variable( type, VariableName.Awaiter( stateId, ref _variableId ) ) );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public Expression GetTryVariable( int stateId )
+    {
+        return AddVariable( Expression.Variable( typeof( int ), VariableName.Try( stateId ) ) );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public Expression GetExceptionVariable( int stateId )
+    {
+        return AddVariable( Expression.Variable( typeof( object ), VariableName.Exception( stateId ) ) );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public ParameterExpression GetReturnVariable( Type type )
+    {
+        return AddVariable( Expression.Variable( type, VariableName.Return ) );
+    }
+
+    // Resolving Visitor
+
+    public Expression Resolve( Expression node )
+    {
+        return Visit( node );
     }
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        return VariableResolver.TryAddVariable( node, CreateParameter, out var updatedVariable )
+        return TryAddVariable( node, CreateParameter, out var updatedVariable )
             ? updatedVariable
             : base.VisitParameter( node );
 
         ParameterExpression CreateParameter( ParameterExpression n )
         {
-            return Expression.Parameter( n.Type, VariableName.Variable( n.Name, States.TailState.StateId, ref VariableId ) );
+            return Expression.Parameter( n.Type, VariableName.Variable( n.Name, _states.TailState.StateId, ref _variableId ) );
         }
     }
 
-
-    // Helpers
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal void AddLocalVariables( ReadOnlyCollection<ParameterExpression> variables )
-    {
-        VariableResolver.AddLocalVariables( variables );
-    }
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal Expression GetResultVariable( Expression node, int stateId )
-    {
-        if ( node.Type == typeof( void ) )
-            return null;
-
-        return VariableResolver.AddVariable(
-            Expression.Parameter( node.Type, VariableName.Result( stateId, ref VariableId ) )
-        );
-    }
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal ParameterExpression CreateVariable( Type type, string name )
-    {
-        return VariableResolver.AddVariable( Expression.Variable( type, name ) );
-    }
-
-
-}
-
-public interface IVariableResolver
-{
-    IReadOnlyCollection<Expression> GetLocalVariables();
-
-    bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out ParameterExpression updatedParameterExpression );
-    ParameterExpression AddVariable( ParameterExpression variable );
-    void AddLocalVariables( ReadOnlyCollection<ParameterExpression> variables );
-}
-
-internal sealed class VariableResolver : IVariableResolver
-{
-    private const int InitialCapacity = 8;
-
-    private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new( InitialCapacity );
-    private readonly HashSet<ParameterExpression> _variables;
-
-    public IVariableResolver Parent { get; set; }
-
-    public VariableResolver()
-    {
-        _variables = [];
-    }
-
-    public VariableResolver( ParameterExpression[] variables )
-    {
-        _variables = [.. variables];
-    }
-
-    public VariableResolver( ReadOnlyCollection<ParameterExpression> variables )
-    {
-        _variables = [.. variables];
-    }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public IReadOnlyCollection<Expression> GetLocalVariables()
     {
         return _mappedVariables.Values;
-    }
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public ParameterExpression AddVariable( ParameterExpression variable )
-    {
-        if ( _mappedVariables.TryGetValue( variable, out var existingVariable ) )
-            return existingVariable;
-
-        _mappedVariables[variable] = variable;
-        return variable;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -139,7 +126,19 @@ internal sealed class VariableResolver : IVariableResolver
         }
     }
 
-    public bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out ParameterExpression updatedParameterExpression )
+    // helpers
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    private ParameterExpression AddVariable( ParameterExpression variable )
+    {
+        if ( _mappedVariables.TryGetValue( variable, out var existingVariable ) )
+            return existingVariable;
+
+        _mappedVariables[variable] = variable;
+        return variable;
+    }
+
+    private bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out ParameterExpression updatedParameterExpression )
     {
         if ( _mappedVariables.TryGetValue( parameter, out var mappedVariable ) )
         {

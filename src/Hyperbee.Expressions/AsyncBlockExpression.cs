@@ -8,8 +8,6 @@ namespace Hyperbee.Expressions;
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression : Expression
 {
-    internal IVariableResolver VariableResolver { get; }
-
     private readonly Type _resultType;
     private readonly Type _taskType;
 
@@ -23,8 +21,6 @@ public class AsyncBlockExpression : Expression
     {
         if ( expressions == null || expressions.Count == 0 )
             throw new ArgumentException( $"{nameof( AsyncBlockExpression )} must contain at least one expression.", nameof( expressions ) );
-
-        VariableResolver = new VariableResolver( variables );
 
         Variables = variables;
         Expressions = expressions;
@@ -48,12 +44,12 @@ public class AsyncBlockExpression : Expression
 
         // TODO: had to remove using because of the deferred execution of the transformation
         var visitor = new LoweringVisitor();
-        var source = visitor.Transform( VariableResolver, Expressions );
+        var source = visitor.Transform( Variables, Expressions );
 
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        _stateMachine = StateMachineBuilder.Create( _resultType, source, VariableResolver );
+        _stateMachine = StateMachineBuilder.Create( _resultType, source );
 
         return _stateMachine;
     }

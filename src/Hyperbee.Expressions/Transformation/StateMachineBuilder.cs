@@ -46,7 +46,7 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( LoweringResult source, int id, IVariableResolver variableResolver )
+    public Expression CreateStateMachine( LoweringResult source, int id )
     {
         if ( source.Scopes[0].Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
@@ -60,7 +60,7 @@ public class StateMachineBuilder<TResult>
         // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
 
         var stateMachineType = CreateStateMachineType( source, out var fields );
-        var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, variableResolver, fields );
+        var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, fields );
 
         // Initialize the state machine
 
@@ -265,7 +265,6 @@ public class StateMachineBuilder<TResult>
         int id,
         LoweringResult source,
         Type stateMachineType,
-        IVariableResolver variableResolver,
         FieldInfo[] fields
     )
     {
@@ -449,7 +448,7 @@ public static class StateMachineBuilder
         NodeOptimizer = new NodeOptimizer();
     }
 
-    public static Expression Create( Type resultType, LoweringResult source, IVariableResolver variableResolver )
+    public static Expression Create( Type resultType, LoweringResult source )
     {
         // If the result type is void, use the internal IVoidResult type
         if ( resultType == typeof( void ) )
@@ -457,15 +456,15 @@ public static class StateMachineBuilder
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
 
-        return (Expression) buildStateMachine.Invoke( null, [source, variableResolver] );
+        return (Expression) buildStateMachine.Invoke( null, [source] );
     }
 
-    internal static Expression Create<TResult>( LoweringResult source, IVariableResolver variableResolver )
+    internal static Expression Create<TResult>( LoweringResult source )
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, NodeOptimizer, typeName );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, variableResolver );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }
