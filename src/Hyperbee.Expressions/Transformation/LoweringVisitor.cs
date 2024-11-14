@@ -398,8 +398,8 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
         var awaitBinder = node.GetAwaitBinder();
 
         var awaiterVariable = _variableResolver.GetAwaiterVariable(
-            awaitBinder.GetAwaiterMethod.ReturnType,  
-            sourceState.StateId 
+            awaitBinder.GetAwaiterMethod.ReturnType,
+            sourceState.StateId
         );
 
         completionState.Transition = new AwaitResultTransition { TargetNode = joinState, AwaiterVariable = awaiterVariable, ResultVariable = resultVariable, AwaitBinder = awaitBinder };
