@@ -395,13 +395,13 @@ public class StateMachineBuilder<TResult>
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    private static void HoistVariables( 
-        LoweringResult source, 
-        FieldInfo[] fields, 
-        ParameterExpression stateMachine, 
-        LabelTarget exitLabel, 
+    private static void HoistVariables(
+        LoweringResult source,
+        FieldInfo[] fields,
+        ParameterExpression stateMachine,
+        LabelTarget exitLabel,
         MemberExpression stateField,
-        MemberExpression builderField, 
+        MemberExpression builderField,
         MemberExpression finalResultField
     )
     {

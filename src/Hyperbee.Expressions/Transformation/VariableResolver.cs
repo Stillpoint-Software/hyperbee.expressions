@@ -141,13 +141,13 @@ internal sealed class VariableResolver : IVariableResolver
 
     public bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out ParameterExpression updatedParameterExpression )
     {
-        if ( _mappedVariables.TryGetValue( parameter, out var mappedVariable ) ) 
-        { 
+        if ( _mappedVariables.TryGetValue( parameter, out var mappedVariable ) )
+        {
             updatedParameterExpression = mappedVariable;
             return true;
         }
 
-        if ( _variables == null || !_variables.Contains( parameter ) ) 
+        if ( _variables == null || !_variables.Contains( parameter ) )
         {
             updatedParameterExpression = null;
             return false;

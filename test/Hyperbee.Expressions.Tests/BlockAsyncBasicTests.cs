@@ -346,7 +346,7 @@ public class BlockAsyncBasicTests
         var innerVar = Variable( typeof( int ), "innerVar" );
         var middleVar = Variable( typeof( int ), "middleVar" );
         var outerVar = Variable( typeof( int ), "outerVar" );
-        
+
         var blockAsync = BlockAsync(
             [outerVar],
             Block(

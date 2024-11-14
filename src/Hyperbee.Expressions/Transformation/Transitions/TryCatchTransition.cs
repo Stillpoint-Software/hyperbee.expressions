@@ -45,9 +45,9 @@ public class TryCatchTransition : Transition
         );
     }
 
-    internal TryCatchTransition Update( 
-        List<CatchBlockDefinition> catchBlocks, 
-        Expression tryStateVariable, 
+    internal TryCatchTransition Update(
+        List<CatchBlockDefinition> catchBlocks,
+        Expression tryStateVariable,
         Expression exceptionVariable )
     {
         if ( catchBlocks == CatchBlocks && tryStateVariable == TryStateVariable && exceptionVariable == ExceptionVariable )

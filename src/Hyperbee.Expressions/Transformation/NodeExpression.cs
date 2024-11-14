@@ -35,7 +35,7 @@ public sealed class NodeExpression : Expression
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof(void);
+    public override Type Type => typeof( void );
     public override bool CanReduce => true;
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;

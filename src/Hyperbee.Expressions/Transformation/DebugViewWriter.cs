@@ -335,9 +335,9 @@ internal static class DebugViewWriter
 
     private static string VariableToString( Expression expr )
     {
-        if( expr is ParameterExpression parameter )
+        if ( expr is ParameterExpression parameter )
             return $"{TypeToString( parameter.Type )} {parameter.Name}";
-        
+
         return TypeToString( expr.Type );
 
         static string TypeToString( Type type )
