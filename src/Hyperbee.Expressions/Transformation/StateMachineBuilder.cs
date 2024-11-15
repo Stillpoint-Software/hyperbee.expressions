@@ -343,8 +343,9 @@ public class StateMachineBuilder<TResult>
 
         // Create the jump table
 
+        var firstScope = source.Scopes[0];
         var jumpTable = JumpTableBuilder.Build(
-            source.Scopes[0],
+            firstScope,
             source.Scopes,
             stateField
         );
@@ -355,6 +356,10 @@ public class StateMachineBuilder<TResult>
 
         // Create a try-catch block to handle exceptions
 
+        var nodes = firstScope.Nodes;
+        var blockBody = new List<Expression>( nodes.Count + 1 ) { jumpTable };
+        blockBody.AddRange ( nodes );
+
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
         var tryCatchBlock = TryCatch(
@@ -363,7 +368,7 @@ public class StateMachineBuilder<TResult>
                 source.ReturnValue != null
                     ? [source.ReturnValue]
                     : [],
-                source.Scopes[0].Nodes
+                blockBody
             ),
             Catch(
                 exceptionParam,
