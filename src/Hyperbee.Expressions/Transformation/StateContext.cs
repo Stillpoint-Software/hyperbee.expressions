@@ -98,8 +98,9 @@ public sealed class StateContext
     {
         node = null;
 
-        foreach ( var check in CurrentScope.Nodes )
+        for ( var index = 0; index < CurrentScope.Nodes.Count; index++ )
         {
+            var check = CurrentScope.Nodes[index];
             if ( check.NodeLabel != target )
                 continue;
 
