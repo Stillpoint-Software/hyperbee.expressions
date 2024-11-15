@@ -12,21 +12,22 @@ internal sealed class NodeOptimizer : INodeOptimizer
     public void Optimize( IReadOnlyList<StateContext.Scope> scopes )
     {
         var references = new HashSet<LabelTarget>();
+        int stateOrder = 0;
 
         foreach ( var scope in scopes )
         {
-            OptimizeOrder( scope, references );
+            OptimizeOrder( ref stateOrder, scope, references );
         }
 
         RemoveUnreferenced( scopes, references );
     }
 
-    private static void OptimizeOrder( StateContext.Scope scope, HashSet<LabelTarget> references )
+    private static void OptimizeOrder( ref int stateOrder, StateContext.Scope scope, HashSet<LabelTarget> references )
     {
         var nodes = scope.Nodes;
 
         var visited = new HashSet<NodeExpression>( nodes.Count );
-        int stateOrder = 0;
+
 
         NodeExpression finalNode = null;
 

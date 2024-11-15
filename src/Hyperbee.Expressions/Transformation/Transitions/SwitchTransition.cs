@@ -29,7 +29,7 @@ public class SwitchTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
     {
         Expression defaultBody;
 
@@ -37,7 +37,6 @@ public class SwitchTransition : Transition
         {
             defaultBody = GotoOrFallThrough(
                 order,
-                scopeId,
                 DefaultNode,
                 allowNull: true
             );
@@ -48,7 +47,7 @@ public class SwitchTransition : Transition
         }
 
         var cases = CaseNodes
-            .Select( switchCase => switchCase.Reduce( order, scopeId ) )
+            .Select( switchCase => switchCase.Reduce( order ) )
             .ToArray();
 
         return Switch( SwitchValue, defaultBody, cases );
@@ -79,7 +78,7 @@ public class SwitchTransition : Transition
     {
         public List<Expression> TestValues = testValues;
         public NodeExpression Body { get; set; } = body;
-        public SwitchCase Reduce( int order, int scopeId ) => SwitchCase( GotoOrFallThrough( order, scopeId, Body ), TestValues );
+        public SwitchCase Reduce( int order ) => SwitchCase( GotoOrFallThrough( order, Body ), TestValues );
 
         internal SwitchCaseDefinition Update( List<Expression> testValues )
         {

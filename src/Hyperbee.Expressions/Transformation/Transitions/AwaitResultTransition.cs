@@ -31,7 +31,7 @@ public class AwaitResultTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
     {
         var getResultMethod = AwaitBinder.GetResultMethod;
 
@@ -41,7 +41,7 @@ public class AwaitResultTransition : Transition
 
         if ( ResultVariable == null )
         {
-            var transition = GotoOrFallThrough( order, scopeId, TargetNode );
+            var transition = GotoOrFallThrough( order, TargetNode );
 
             return transition == Empty()
                 ? getResultCall
@@ -52,7 +52,7 @@ public class AwaitResultTransition : Transition
 
         return Block(
             getResult,
-            GotoOrFallThrough( order, scopeId, TargetNode )
+            GotoOrFallThrough( order, TargetNode )
         );
     }
 

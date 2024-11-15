@@ -9,7 +9,7 @@ public abstract class Transition : Expression
     public override Type Type => typeof( void );
     public override bool CanReduce => true;
 
-    internal abstract Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource );
+    internal abstract Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource );
     internal abstract NodeExpression FallThroughNode { get; } // this node is used to optimize state order
     internal abstract void OptimizeTransition( HashSet<LabelTarget> references ); // this method is used to optimize state transitions
 
@@ -25,11 +25,8 @@ public abstract class Transition : Expression
         return node;
     }
 
-    protected static Expression GotoOrFallThrough( int order, int scopeId, NodeExpression node, bool allowNull = false )
+    protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )
     {
-        if ( node.ScopeId != scopeId )
-            return Goto( node.NodeLabel );
-
         return order + 1 == node.StateOrder
             ? allowNull
                 ? null

@@ -62,7 +62,7 @@ public class TryCatchTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
     {
         var expressions = new List<Expression>
         {
@@ -75,7 +75,7 @@ public class TryCatchTransition : Transition
 
         expressions.AddRange( StateScope.Nodes );
 
-        MapCatchBlock( order, scopeId, out var catches, out var switchCases );
+        MapCatchBlock( order, out var catches, out var switchCases );
 
         return Block(
             TryCatch(
@@ -92,7 +92,7 @@ public class TryCatchTransition : Transition
         );
     }
 
-    private void MapCatchBlock( int order, int scopeId, out CatchBlock[] catches, out SwitchCase[] switchCases )
+    private void MapCatchBlock( int order, out CatchBlock[] catches, out SwitchCase[] switchCases )
     {
         var includeFinal = FinallyNode != null;
         var size = CatchBlocks.Count + (includeFinal ? 1 : 0);
@@ -108,7 +108,7 @@ public class TryCatchTransition : Transition
 
             switchCases[index] = SwitchCase(
                 (catchBlock.UpdateBody is NodeExpression nodeExpression)
-                    ? GotoOrFallThrough( order, scopeId, nodeExpression )
+                    ? GotoOrFallThrough( order, nodeExpression )
                     : Block( typeof( void ), catchBlock.UpdateBody ),
                 Constant( catchBlock.CatchState ) );
         }

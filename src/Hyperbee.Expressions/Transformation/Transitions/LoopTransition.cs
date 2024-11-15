@@ -6,7 +6,7 @@ public class LoopTransition : Transition
 {
     public NodeExpression BodyNode { get; set; }
 
-    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
+    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
     {
         return Empty();
     }
