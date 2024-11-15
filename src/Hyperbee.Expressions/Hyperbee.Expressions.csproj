@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
 
@@ -10,7 +10,6 @@
     <PackageTags>expression-tree;expressions;async;await;expression-extension</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
-    <TargetFrameworks>net8.0</TargetFrameworks>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Stillpoint Software, Inc.</Copyright>
     <Title>Hyperbee Expressions</Title>
