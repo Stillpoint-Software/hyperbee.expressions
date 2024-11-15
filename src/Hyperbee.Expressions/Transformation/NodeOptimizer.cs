@@ -93,7 +93,7 @@ internal sealed class NodeOptimizer : INodeOptimizer
         {
             var scope = scopes[i];
 
-            for( var n = 0; n < scope.Nodes.Count; n++ )
+            for ( var n = 0; n < scope.Nodes.Count; n++ )
             {
                 var node = scope.Nodes[n];
 

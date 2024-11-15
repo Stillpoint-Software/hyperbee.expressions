@@ -27,7 +27,7 @@ public abstract class Transition : Expression
 
     protected static Expression GotoOrFallThrough( int order, int scopeId, NodeExpression node, bool allowNull = false )
     {
-        if( node.ScopeId != scopeId )
+        if ( node.ScopeId != scopeId )
             return Goto( node.NodeLabel );
 
         return order + 1 == node.StateOrder

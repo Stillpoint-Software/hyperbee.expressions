@@ -10,8 +10,8 @@ public class SwitchTransition : Transition
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        return Update( 
-            visitor.Visit( SwitchValue ), 
+        return Update(
+            visitor.Visit( SwitchValue ),
             CaseNodes.Select( x => x.Update( x.TestValues.Select( visitor.Visit ).ToList() ) ).ToList()
         );
     }
@@ -36,7 +36,7 @@ public class SwitchTransition : Transition
         if ( DefaultNode != null )
         {
             defaultBody = GotoOrFallThrough(
-                order, 
+                order,
                 scopeId,
                 DefaultNode,
                 allowNull: true
@@ -87,7 +87,7 @@ public class SwitchTransition : Transition
             if ( testValues.SequenceEqual( TestValues ) )
                 return this;
 
-            return new SwitchCaseDefinition(testValues, Body);
+            return new SwitchCaseDefinition( testValues, Body );
         }
     }
 }
