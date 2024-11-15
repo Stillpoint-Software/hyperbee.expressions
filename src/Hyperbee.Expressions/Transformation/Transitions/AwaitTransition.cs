@@ -28,6 +28,7 @@ public class AwaitTransition : Transition
 
         return new AwaitTransition
         {
+            StateId = StateId,
             Target = target,
             AwaiterVariable = awaiterVariable,
             CompletionNode = CompletionNode,
