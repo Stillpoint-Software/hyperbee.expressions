@@ -1,12 +1,11 @@
 ﻿using System.Globalization;
 using System.Linq.Expressions;
-using Hyperbee.Expressions.Collections;
 
 namespace Hyperbee.Expressions.Transformation;
 
 public record LoweringResult
 {
-    public PooledArray<StateContext.Scope> Scopes { get; init; }
+    public List<StateContext.Scope> Scopes { get; init; }
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
     public IReadOnlyCollection<Expression> Variables { get; init; }

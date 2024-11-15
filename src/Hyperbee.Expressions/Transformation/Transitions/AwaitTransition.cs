@@ -36,7 +36,7 @@ public class AwaitTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
     {
         var awaitable = Variable( Target.Type, "awaitable" );
 
@@ -77,7 +77,7 @@ public class AwaitTransition : Transition
             )
         };
 
-        var fallThrough = GotoOrFallThrough( order, CompletionNode, true );
+        var fallThrough = GotoOrFallThrough( order, scopeId, CompletionNode, true );
 
         if ( fallThrough != null )
             expressions.Add( fallThrough );

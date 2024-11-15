@@ -84,7 +84,7 @@ public sealed class NodeExpression : Expression
             Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
         }
 
-        var transitionExpression = Transition.Reduce( StateOrder, this, _stateMachineSource );
+        var transitionExpression = Transition.Reduce( StateOrder, ScopeId, this, _stateMachineSource );
         Expressions.Add( transitionExpression );
 
         // Add the label to the beginning of the block

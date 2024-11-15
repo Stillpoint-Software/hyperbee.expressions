@@ -5,7 +5,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public class LoweringVisitor : ExpressionVisitor, IDisposable
+public class LoweringVisitor : ExpressionVisitor
 {
     private const int InitialCapacity = 4;
 
@@ -16,7 +16,7 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
     private readonly StateContext _states = new( InitialCapacity );
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
-    private IVariableResolver _variableResolver;
+    private VariableResolver _variableResolver;
 
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
     {
@@ -41,10 +41,6 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
     public LoweringResult Transform( params Expression[] expressions )
     {
         return Transform( [], expressions );
-    }
-    public void Dispose()
-    {
-        _states?.Dispose();
     }
 
     // Visit methods
@@ -457,7 +453,9 @@ public class LoweringVisitor : ExpressionVisitor, IDisposable
 
             // TODO: would like to only lower if async/await exists and ignore internal lower,
             //       there seems to be issues with hoisting and it's hacky reduce
-            // return expr is AwaitExpression;
+
+            // TODO: should also look into cacheing and quick return if already handled
+            //return expr is AwaitExpression;
         }
 
     }

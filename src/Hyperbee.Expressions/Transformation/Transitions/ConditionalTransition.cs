@@ -26,9 +26,9 @@ public class ConditionalTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
     {
-        var fallThrough = GotoOrFallThrough( order, IfFalse, true );
+        var fallThrough = GotoOrFallThrough( order, scopeId, IfFalse, true );
 
         if ( fallThrough == null )
             return IfThen( Test, Goto( IfTrue.NodeLabel ) );

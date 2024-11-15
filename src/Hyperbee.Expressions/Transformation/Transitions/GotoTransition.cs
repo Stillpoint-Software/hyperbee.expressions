@@ -6,15 +6,13 @@ public class GotoTransition : Transition
 {
     public NodeExpression TargetNode { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
     {
-        //return GotoOrFallThrough(
-        //    order,
-        //    TargetNode
-        //);
-
-        // TODO: Fix fall through order number
-        return Goto( TargetNode.NodeLabel );
+        return GotoOrFallThrough(
+            order,
+            scopeId,
+            TargetNode
+        );
     }
 
     internal override NodeExpression FallThroughNode => TargetNode;

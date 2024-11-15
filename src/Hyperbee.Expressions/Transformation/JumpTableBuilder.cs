@@ -1,17 +1,16 @@
 ﻿using System.Linq.Expressions;
-using Hyperbee.Expressions.Collections;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation;
 
 internal static class JumpTableBuilder
 {
-    public static Expression Build( StateContext.Scope current, PooledArray<StateContext.Scope> scopes, Expression stateField )
+    public static Expression Build( StateContext.Scope current, List<StateContext.Scope> scopes, Expression stateField )
     {
         var jumpCases = current.JumpCases;
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
 
-        foreach ( var jumpCase in jumpCases.AsReadOnlySpan() )
+        foreach ( var jumpCase in jumpCases )
         {
             // Go to the result of awaiter
 
@@ -51,19 +50,19 @@ internal static class JumpTableBuilder
     }
 
     // Iterative function to build jump table cases
-    private static List<Expression> JumpCaseTests( StateContext.Scope scope, int stateId, PooledArray<StateContext.Scope> scopes )
+    private static List<Expression> JumpCaseTests( StateContext.Scope scope, int stateId, List<StateContext.Scope> scopes )
     {
         var testValues = new List<Expression>();
         var stack = new Stack<(StateContext.Scope, int)>();
 
         while ( true )
         {
-            foreach ( var nestedScope in scopes.AsReadOnlySpan() )
+            foreach ( var nestedScope in scopes )
             {
                 if ( nestedScope.Parent != scope )
                     continue;
 
-                foreach ( var childJumpCase in nestedScope.JumpCases.AsReadOnlySpan() )
+                foreach ( var childJumpCase in nestedScope.JumpCases )
                 {
                     if ( childJumpCase.ParentId != stateId )
                         continue;

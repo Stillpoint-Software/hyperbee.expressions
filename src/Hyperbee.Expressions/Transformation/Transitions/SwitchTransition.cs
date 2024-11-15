@@ -10,10 +10,13 @@ public class SwitchTransition : Transition
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        return Update( visitor.Visit( SwitchValue ) );
+        return Update( 
+            visitor.Visit( SwitchValue ), 
+            CaseNodes.Select( x => x.Update( x.TestValues.Select( visitor.Visit ).ToList() ) ).ToList()
+        );
     }
 
-    internal SwitchTransition Update( Expression switchValue )
+    internal SwitchTransition Update( Expression switchValue, List<SwitchCaseDefinition> caseNodes )
     {
         if ( switchValue == SwitchValue )
             return this;
@@ -22,18 +25,19 @@ public class SwitchTransition : Transition
         {
             DefaultNode = DefaultNode,
             SwitchValue = switchValue,
-            CaseNodes = CaseNodes  // TODO: fix visiting Case Test Values
+            CaseNodes = caseNodes
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
     {
         Expression defaultBody;
 
         if ( DefaultNode != null )
         {
             defaultBody = GotoOrFallThrough(
-                order,
+                order, 
+                scopeId,
                 DefaultNode,
                 allowNull: true
             );
@@ -44,7 +48,7 @@ public class SwitchTransition : Transition
         }
 
         var cases = CaseNodes
-            .Select( switchCase => switchCase.Reduce( order ) )
+            .Select( switchCase => switchCase.Reduce( order, scopeId ) )
             .ToArray();
 
         return Switch( SwitchValue, defaultBody, cases );
@@ -75,6 +79,15 @@ public class SwitchTransition : Transition
     {
         public List<Expression> TestValues = testValues;
         public NodeExpression Body { get; set; } = body;
-        public SwitchCase Reduce( int order ) => SwitchCase( GotoOrFallThrough( order, Body ), TestValues );
+        public SwitchCase Reduce( int order, int scopeId ) => SwitchCase( GotoOrFallThrough( order, scopeId, Body ), TestValues );
+
+        internal SwitchCaseDefinition Update( List<Expression> testValues )
+        {
+            // Check if TestValues are the same
+            if ( testValues.SequenceEqual( TestValues ) )
+                return this;
+
+            return new SwitchCaseDefinition(testValues, Body);
+        }
     }
 }
