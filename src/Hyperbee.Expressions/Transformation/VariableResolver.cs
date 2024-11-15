@@ -6,59 +6,130 @@ namespace Hyperbee.Expressions.Transformation;
 
 public interface IVariableResolver
 {
-    IVariableResolver Parent { get; set; }
+    Expression Resolve( Expression node );
 
-    IReadOnlyCollection<ParameterExpression> GetLocalVariables();
-    void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions );
-    bool TryGetFieldMember( ParameterExpression variable, out MemberExpression fieldAccess );
-    bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression );
-    ParameterExpression AddVariable( ParameterExpression variable );
-    ParameterExpression AddLocalVariable( ParameterExpression variable );
+    Expression GetResultVariable( Expression node, int stateId );
+    Expression GetAwaiterVariable( Type type, int stateId );
+    Expression GetTryVariable( int stateId );
+    Expression GetExceptionVariable( int stateId );
+    ParameterExpression GetReturnVariable( Type type );
 
-    IEnumerable<ParameterExpression> ExcludeFieldMembers( IEnumerable<ParameterExpression> variables );
+    IReadOnlyCollection<Expression> GetLocalVariables();
 
-    bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable );
+    void AddLocalVariables( ReadOnlyCollection<ParameterExpression> variables );
 }
 
-internal sealed class VariableResolver : IVariableResolver
+internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
 {
+    internal static class VariableName
+    {
+        // use special names to prevent collisions
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Awaiter( int stateId, ref int variableId ) => $"__awaiter<{stateId}_{variableId++}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Result( int stateId, ref int variableId ) => $"__result<{stateId}_{variableId++}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Try( int stateId ) => $"__try<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Exception( int stateId ) => $"__ex<{stateId}>";
+
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
+
+        public const string Return = "return<>";
+    }
+
     private const int InitialCapacity = 8;
 
     private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new( InitialCapacity );
     private readonly HashSet<ParameterExpression> _variables;
-    private IDictionary<string, MemberExpression> _memberExpressions;
+    private readonly StateContext _states;
 
-    public IVariableResolver Parent { get; set; }
+    private int _variableId = 0;
 
-    public VariableResolver()
+    public VariableResolver( ParameterExpression[] variables, StateContext states )
     {
-        _variables = [];
-    }
-
-    public VariableResolver( ParameterExpression[] variables )
-    {
+        _states = states;
         _variables = [.. variables];
     }
 
-    public VariableResolver( ReadOnlyCollection<ParameterExpression> variables )
+    // Helpers
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public Expression GetResultVariable( Expression node, int stateId )
     {
-        _variables = [.. variables];
+        if ( node.Type == typeof( void ) )
+            return null;
+
+        return AddVariable( Expression.Parameter( node.Type, VariableName.Result( stateId, ref _variableId ) ) );
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void SetFieldMembers( IDictionary<string, MemberExpression> memberExpressions )
+    public Expression GetAwaiterVariable( Type type, int stateId )
     {
-        _memberExpressions = memberExpressions;
+        return AddVariable( Expression.Variable( type, VariableName.Awaiter( stateId, ref _variableId ) ) );
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public IReadOnlyCollection<ParameterExpression> GetLocalVariables()
+    public Expression GetTryVariable( int stateId )
+    {
+        return AddVariable( Expression.Variable( typeof( int ), VariableName.Try( stateId ) ) );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public Expression GetExceptionVariable( int stateId )
+    {
+        return AddVariable( Expression.Variable( typeof( object ), VariableName.Exception( stateId ) ) );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public ParameterExpression GetReturnVariable( Type type )
+    {
+        return AddVariable( Expression.Variable( type, VariableName.Return ) );
+    }
+
+    // Resolving Visitor
+
+    public Expression Resolve( Expression node )
+    {
+        return Visit( node );
+    }
+
+    protected override Expression VisitParameter( ParameterExpression node )
+    {
+        return TryAddVariable( node, CreateParameter, out var updatedVariable )
+            ? updatedVariable
+            : base.VisitParameter( node );
+
+        ParameterExpression CreateParameter( ParameterExpression n )
+        {
+            return Expression.Parameter( n.Type, VariableName.Variable( n.Name, _states.TailState.StateId, ref _variableId ) );
+        }
+    }
+
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public IReadOnlyCollection<Expression> GetLocalVariables()
     {
         return _mappedVariables.Values;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public ParameterExpression AddVariable( ParameterExpression variable )
+    public void AddLocalVariables( ReadOnlyCollection<ParameterExpression> variables )
+    {
+        for ( var i = 0; i < variables.Count; i++ )
+        {
+            _variables.Add( variables[i] );
+        }
+    }
+
+    // helpers
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    private ParameterExpression AddVariable( ParameterExpression variable )
     {
         if ( _mappedVariables.TryGetValue( variable, out var existingVariable ) )
             return existingVariable;
@@ -67,69 +138,24 @@ internal sealed class VariableResolver : IVariableResolver
         return variable;
     }
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public ParameterExpression AddLocalVariable( ParameterExpression variable )
+    private bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out ParameterExpression updatedParameterExpression )
     {
-        _variables.Add( variable );
-        return variable;
-    }
-
-    public bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out Expression updatedParameterExpression )
-    {
-        if ( TryFindVariableInHierarchy( parameter, out updatedParameterExpression ) )
-            return true;
-
-        if ( _variables == null || !_variables.Contains( parameter ) )
-            return false;
-
         if ( _mappedVariables.TryGetValue( parameter, out var mappedVariable ) )
         {
             updatedParameterExpression = mappedVariable;
             return true;
         }
 
-        var updated = createParameter( parameter );
-        _mappedVariables[parameter] = updated;
-        updatedParameterExpression = updated;
+        if ( _variables == null || !_variables.Contains( parameter ) )
+        {
+            updatedParameterExpression = null;
+            return false;
+        }
+
+        updatedParameterExpression = createParameter( parameter );
+        _mappedVariables[parameter] = updatedParameterExpression;
 
         return true;
     }
 
-    public bool TryGetFieldMember( ParameterExpression variable, out MemberExpression fieldAccess )
-    {
-        fieldAccess = null;
-
-        if ( _memberExpressions == null )
-            return false;
-
-        var name = variable.Name ?? variable.ToString();
-        return _memberExpressions.TryGetValue( name, out fieldAccess );
-    }
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public IEnumerable<ParameterExpression> ExcludeFieldMembers( IEnumerable<ParameterExpression> variables )
-    {
-        return variables.Where( variable => _memberExpressions == null || !_memberExpressions.ContainsKey( variable.Name ?? variable.ToString() ) );
-    }
-
-    public bool TryFindVariableInHierarchy( ParameterExpression variable, out Expression updatedVariable )
-    {
-        // Check current resolver for mapped variable
-        if ( _mappedVariables.TryGetValue( variable, out var updated ) )
-            variable = updated;
-
-        // Check current resolver for member expression
-        if ( TryGetFieldMember( variable, out var expression ) )
-        {
-            updatedVariable = expression;
-            return true;
-        }
-
-        // Check parent resolver for variable
-        if ( Parent != null )
-            return Parent.TryFindVariableInHierarchy( variable, out updatedVariable );
-
-        updatedVariable = null;
-        return false;
-    }
 }

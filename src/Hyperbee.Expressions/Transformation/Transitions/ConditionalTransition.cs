@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
@@ -9,9 +8,27 @@ public class ConditionalTransition : Transition
     public NodeExpression IfTrue { get; set; }
     public NodeExpression IfFalse { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        var fallThrough = GotoOrFallThrough( order, IfFalse, true );
+        return Update( visitor.Visit( Test ) );
+    }
+
+    internal ConditionalTransition Update( Expression test )
+    {
+        if ( test == Test )
+            return this;
+
+        return new ConditionalTransition
+        {
+            Test = test,
+            IfTrue = IfTrue,
+            IfFalse = IfFalse
+        };
+    }
+
+    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
+    {
+        var fallThrough = GotoOrFallThrough( order, scopeId, IfFalse, true );
 
         if ( fallThrough == null )
             return IfThen( Test, Goto( IfTrue.NodeLabel ) );

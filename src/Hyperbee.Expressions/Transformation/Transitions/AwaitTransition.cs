@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
@@ -8,12 +7,36 @@ public class AwaitTransition : Transition
     public int StateId { get; set; }
 
     public Expression Target { get; set; }
-    public ParameterExpression AwaiterVariable { get; set; }
+    public Expression AwaiterVariable { get; set; }
     public NodeExpression CompletionNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
     public bool ConfigureAwait { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        return Update(
+            visitor.Visit( Target ),
+            visitor.Visit( AwaiterVariable )
+        );
+    }
+
+    internal AwaitTransition Update( Expression target, Expression awaiterVariable )
+    {
+        if ( target == Target && awaiterVariable == AwaiterVariable )
+            return this;
+
+        return new AwaitTransition
+        {
+            Target = target,
+            AwaiterVariable = awaiterVariable,
+            CompletionNode = CompletionNode,
+            AwaitBinder = AwaitBinder,
+            ConfigureAwait = ConfigureAwait
+        };
+    }
+
+    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
     {
         var awaitable = Variable( Target.Type, "awaitable" );
 
@@ -54,7 +77,7 @@ public class AwaitTransition : Transition
             )
         };
 
-        var fallThrough = GotoOrFallThrough( order, CompletionNode, true );
+        var fallThrough = GotoOrFallThrough( order, scopeId, CompletionNode, true );
 
         if ( fallThrough != null )
             expressions.Add( fallThrough );

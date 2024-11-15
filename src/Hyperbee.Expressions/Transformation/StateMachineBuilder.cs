@@ -46,7 +46,7 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( LoweringResult source, int id, IVariableResolver variableResolver )
+    public Expression CreateStateMachine( LoweringResult source, int id )
     {
         if ( source.Scopes[0].Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
@@ -60,7 +60,7 @@ public class StateMachineBuilder<TResult>
         // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
 
         var stateMachineType = CreateStateMachineType( source, out var fields );
-        var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, variableResolver, fields );
+        var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, fields );
 
         // Initialize the state machine
 
@@ -167,7 +167,7 @@ public class StateMachineBuilder<TResult>
             FieldAttributes.Public
         );
 
-        foreach ( var parameterExpression in source.Variables )
+        foreach ( var parameterExpression in source.Variables.OfType<ParameterExpression>() )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -265,8 +265,7 @@ public class StateMachineBuilder<TResult>
         int id,
         LoweringResult source,
         Type stateMachineType,
-        IVariableResolver variableResolver,
-        IEnumerable<FieldInfo> fields
+        FieldInfo[] fields
     )
     {
         /* Example state-machine:
@@ -336,12 +335,6 @@ public class StateMachineBuilder<TResult>
         var builderField = Field( stateMachine, FieldName.Builder );
         var finalResultField = Field( stateMachine, FieldName.FinalResult );
 
-        var fieldMembers = fields
-            .Select( field => Field( stateMachine, field ) )
-            .ToDictionary( x => x.Member.Name );
-
-        variableResolver.SetFieldMembers( fieldMembers );
-
         var exitLabel = Label( "ST_EXIT" );
 
         // Optimize node ordering to reduce goto calls
@@ -358,16 +351,7 @@ public class StateMachineBuilder<TResult>
 
         // Create the body 
 
-        var hoistingVisitor = new HoistingVisitor(
-            stateMachine,
-            variableResolver,
-            stateField,
-            builderField,
-            finalResultField,
-            exitLabel,
-            source.ReturnValue );
-
-        var bodyExpressions = BodyExpressions( jumpTable, source.Scopes[0].Nodes, hoistingVisitor );
+        HoistVariables( source, fields, stateMachine, exitLabel, stateField, builderField, finalResultField );
 
         // Create a try-catch block to handle exceptions
 
@@ -379,7 +363,7 @@ public class StateMachineBuilder<TResult>
                 source.ReturnValue != null
                     ? [source.ReturnValue]
                     : [],
-                bodyExpressions
+                source.Scopes[0].Nodes
             ),
             Catch(
                 exceptionParam,
@@ -409,18 +393,37 @@ public class StateMachineBuilder<TResult>
         // Helper to create the body expressions with hoisted variables
     }
 
-    private static Expression[] BodyExpressions( Expression jumpTable, IReadOnlyList<NodeExpression> nodes, HoistingVisitor hoistingVisitor )
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    private static void HoistVariables(
+        LoweringResult source,
+        FieldInfo[] fields,
+        ParameterExpression stateMachine,
+        LabelTarget exitLabel,
+        MemberExpression stateField,
+        MemberExpression builderField,
+        MemberExpression finalResultField
+    )
     {
-        var bodyExpressions = new Expression[1 + nodes.Count];
+        var fieldMembers = fields
+            .Select( field => Field( stateMachine, field ) )
+            .ToDictionary( x => x.Member.Name );
 
-        bodyExpressions[0] = jumpTable;
+        var hoistingVisitor = new HoistingVisitor( fieldMembers );
 
-        for ( var index = 0; index < nodes.Count; index++ )
+        var stateMachineSource = new StateMachineSource(
+            stateMachine,
+            exitLabel,
+            stateField,
+            builderField,
+            finalResultField,
+            source.ReturnValue
+        );
+
+        foreach ( var node in source.Scopes.SelectMany( x => x.Nodes ) )
         {
-            bodyExpressions[index + 1] = hoistingVisitor.Visit( nodes[index] );
+            node.SetStateMachineSource( stateMachineSource );
+            hoistingVisitor.Visit( node );
         }
-
-        return bodyExpressions;
     }
 }
 
@@ -445,7 +448,7 @@ public static class StateMachineBuilder
         NodeOptimizer = new NodeOptimizer();
     }
 
-    public static Expression Create( Type resultType, LoweringResult source, IVariableResolver variableResolver )
+    public static Expression Create( Type resultType, LoweringResult source )
     {
         // If the result type is void, use the internal IVoidResult type
         if ( resultType == typeof( void ) )
@@ -453,15 +456,15 @@ public static class StateMachineBuilder
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
 
-        return (Expression) buildStateMachine.Invoke( null, [source, variableResolver] );
+        return (Expression) buildStateMachine.Invoke( null, [source] );
     }
 
-    internal static Expression Create<TResult>( LoweringResult source, IVariableResolver variableResolver )
+    internal static Expression Create<TResult>( LoweringResult source )
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, NodeOptimizer, typeName );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, variableResolver );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }

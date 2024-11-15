@@ -4,14 +4,15 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-[DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
+[DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
 public sealed class NodeExpression : Expression
 {
-    public int StateId { get; }
-    public int ScopeId { get; }
+    public int StateId { get; set; }
+    public int GroupId { get; set; }
+    public int ScopeId { get; set; }
 
     internal int StateOrder { get; set; }
-    public ParameterExpression ResultVariable { get; set; } // Left-hand side of the result assignment
+    public Expression ResultVariable { get; set; } // Left-hand side of the result assignment
     public Expression ResultValue { get; set; } // Right-hand side of the result assignment
 
     public LabelTarget NodeLabel { get; set; }
@@ -19,60 +20,53 @@ public sealed class NodeExpression : Expression
     public Transition Transition { get; set; }
 
     private Expression _expression;
-    private IHoistingSource _resolverSource;
+    private StateMachineSource _stateMachineSource;
 
-    public NodeExpression( int stateId, int scopeId )
+    internal NodeExpression() { }
+
+    public NodeExpression( int stateId, int scopeId, int groupId )
     {
         StateId = stateId;
         ScopeId = scopeId;
+        GroupId = groupId;
         NodeLabel = Label( $"ST_{StateId:0000}" );
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => ResultValue?.Type ?? typeof( void );
+    public override Type Type => typeof( void );
     public override bool CanReduce => true;
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
 
-    internal void SetResolverSource( IHoistingSource resolverSource )
+    internal void SetStateMachineSource( StateMachineSource stateMachineSource )
     {
-        _resolverSource = resolverSource;
+        _stateMachineSource = stateMachineSource;
     }
 
-    internal Expression Reduce( IHoistingSource resolverSource )
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        _resolverSource = resolverSource;
-        return Reduce();
+        return Update(
+            Expressions.Select( visitor.Visit ).ToList(),
+            visitor.Visit( ResultValue ),
+            visitor.Visit( ResultVariable ),
+            (Transition) visitor.Visit( Transition )
+        );
     }
 
-    // TODO: Implement VisitChildren without a nested reduce
-    // protected override Expression VisitChildren( ExpressionVisitor visitor )
-    // {
-    //     if ( Expressions.Count == 0 )
-    //         return this;
-    //
-    //     var expressions = visitor.Visit( Expressions.AsReadOnly() );
-    //
-    //     return new NodeExpression
-    //     {
-    //         StateId = StateId,
-    //         ScopeId = ScopeId,
-    //         StateOrder  = StateOrder,
-    //         ResultValue = ResultValue,
-    //         ResultVariable = ResultVariable,
-    //         _resolverSource = _resolverSource,
-    //         NodeLabel = NodeLabel,
-    //         Expressions = expressions.ToList(),
-    //         Transition = Transition,
-    //     };
-    //     //
-    //     // return visitor.Visit( Reduce() );
-    // }
+    public Expression Update( List<Expression> expressions, Expression resultValue, Expression resultVariable, Transition transition )
+    {
+        Expressions = expressions;
+        ResultValue = resultValue;
+        ResultVariable = resultVariable;
+        Transition = transition;
+
+        return this;
+    }
 
     public override Expression Reduce()
     {
-        if ( _resolverSource == null )
-            throw new InvalidOperationException( $"Reduce requires an {nameof( IHoistingSource )} instance." );
+        if ( _stateMachineSource == null )
+            throw new InvalidOperationException( $"Reduce requires an {nameof( StateMachineSource )} instance." );
 
         return _expression ??= Transition != null
             ? ReduceBlock()
@@ -90,7 +84,7 @@ public sealed class NodeExpression : Expression
             Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
         }
 
-        var transitionExpression = Transition.Reduce( StateOrder, this, _resolverSource );
+        var transitionExpression = Transition.Reduce( StateOrder, ScopeId, this, _stateMachineSource );
         Expressions.Add( transitionExpression );
 
         // Add the label to the beginning of the block
@@ -101,7 +95,7 @@ public sealed class NodeExpression : Expression
 
     private BlockExpression ReduceFinalBlock()
     {
-        var (_, _, stateIdField, builderField, resultField, returnValue) = _resolverSource;
+        var (_, _, stateIdField, builderField, resultField, returnValue) = _stateMachineSource;
 
         return Block(
             Label( NodeLabel ),

@@ -93,15 +93,15 @@ internal sealed class NodeOptimizer : INodeOptimizer
         {
             var scope = scopes[i];
 
-            scope.Nodes.Remove( ( node, index ) =>
+            for ( var n = 0; n < scope.Nodes.Count; n++ )
             {
-                if ( !references.Contains( node.NodeLabel ) )
-                    return true;
+                var node = scope.Nodes[n];
 
-                node.StateOrder = index;
+                if ( references.Contains( node.NodeLabel ) )
+                    continue;
 
-                return false;
-            } );
+                scope.Nodes.RemoveAt( n-- );
+            }
         }
     }
 }

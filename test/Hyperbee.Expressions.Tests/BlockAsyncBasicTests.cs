@@ -325,7 +325,6 @@ public class BlockAsyncBasicTests
         );
 
         var asyncBlock = BlockAsync(
-
             Await( Invoke( innerLambda, parameterAsync ) )
         );
 
@@ -355,9 +354,9 @@ public class BlockAsyncBasicTests
                 Await(
                     BlockAsync(
                         [innerVar],
+                        Assign( outerVar, Await( Constant( Task.FromResult( 3 ) ) ) ),
                         Assign( innerVar, Constant( 1 ) ),
-                        Assign( middleVar, Constant( 2 ) ),
-                        Assign( outerVar, Await( Constant( Task.FromResult( 3 ) ) ) )
+                        Assign( middleVar, Constant( 2 ) )
                     )
                 ),
                 Assign( middleVar, Await( Constant( Task.FromResult( 4 ) ) ) )

@@ -1,16 +1,37 @@
 ﻿using System.Linq.Expressions;
-using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class AwaitResultTransition : Transition
 {
-    public ParameterExpression AwaiterVariable { get; set; }
-    public ParameterExpression ResultVariable { get; set; }
+    public Expression AwaiterVariable { get; set; }
+    public Expression ResultVariable { get; set; }
     public NodeExpression TargetNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        return Update(
+            visitor.Visit( AwaiterVariable ),
+            visitor.Visit( ResultVariable )
+        );
+    }
+
+    internal AwaitResultTransition Update( Expression awaiterVariable, Expression resultVariable )
+    {
+        if ( awaiterVariable == AwaiterVariable && resultVariable == ResultVariable )
+            return this;
+
+        return new AwaitResultTransition
+        {
+            AwaiterVariable = awaiterVariable,
+            ResultVariable = resultVariable,
+            TargetNode = TargetNode,
+            AwaitBinder = AwaitBinder
+        };
+    }
+
+    internal override Expression Reduce( int order, int scopeId, NodeExpression expression, StateMachineSource resolverSource )
     {
         var getResultMethod = AwaitBinder.GetResultMethod;
 
@@ -20,7 +41,7 @@ public class AwaitResultTransition : Transition
 
         if ( ResultVariable == null )
         {
-            var transition = GotoOrFallThrough( order, TargetNode );
+            var transition = GotoOrFallThrough( order, scopeId, TargetNode );
 
             return transition == Empty()
                 ? getResultCall
@@ -31,7 +52,7 @@ public class AwaitResultTransition : Transition
 
         return Block(
             getResult,
-            GotoOrFallThrough( order, TargetNode )
+            GotoOrFallThrough( order, scopeId, TargetNode )
         );
     }
 
