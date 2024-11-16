@@ -271,14 +271,17 @@ public class BlockAsyncBasicTests
 
         var block = BlockAsync(
             [resultValue],
-            Assign( resultValue, Constant( 5 ) ),
-            Await(
-                AsyncHelper.Completable(
-                    Constant( completeImmediately ),
-                    Constant( 10 ) 
-                )
+            Assign( resultValue, 
+                Add( 
+                    Await(
+                        AsyncHelper.Completable(
+                            Constant( completeImmediately ),
+                            Constant( 37 )
+                        )
+                    ), 
+                    Constant( 5 ) 
+                ) 
             ),
-            Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
             resultValue 
         );
 
@@ -289,7 +292,7 @@ public class BlockAsyncBasicTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 15, result ); // 5 + 10
+        Assert.AreEqual( 42, result ); 
     }
 
     [TestMethod]

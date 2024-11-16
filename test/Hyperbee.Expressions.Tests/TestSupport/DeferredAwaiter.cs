@@ -17,27 +17,17 @@ internal class DeferredAwaiter : INotifyCompletion
     {
         get
         {
-            // If the event is not set, we are not completed
-            
             if ( _completedEvent.IsSet )
-            {
                 return _task.IsCompleted;
-            }
 
+            // If the event is not set, we are not completed
             _completedEvent.Set();
             return false;
         }
     }
 
-    public void OnCompleted( Action continuation )
-    {
-        _task.GetAwaiter().OnCompleted( continuation ); // Forward
-    }
-
-    public void GetResult()
-    {
-        _task.GetAwaiter().GetResult(); // Forward
-    }
+    public void OnCompleted( Action continuation ) => _task.GetAwaiter().OnCompleted( continuation ); 
+    public void GetResult() => _task.GetAwaiter().GetResult();
 
     public DeferredAwaiter GetAwaiter() => this;
 }
