@@ -74,7 +74,7 @@ public class CustomAwaiterTests
     [DataTestMethod]
     [DataRow( true )] // Immediate completion
     [DataRow( false )] // Deferred completion
-    public async Task TestCustomAwaiter_TaskLike( bool completeImmediately ) //BF for ME review
+    public async Task TestCustomAwaiter_TaskLike( bool immediately ) //BF for ME review
     {
         // Arrange
         var resultValue = Parameter( typeof(int), "result" );
@@ -84,7 +84,7 @@ public class CustomAwaiterTests
             Assign( resultValue, Constant( 5 ) ),
             Await(
                 AsyncHelper.Completable(
-                    Constant( completeImmediately )
+                    Constant( immediately )
                 )
             ),
             Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
@@ -104,7 +104,7 @@ public class CustomAwaiterTests
     [DataTestMethod]
     [DataRow( true )] // Immediate completion
     [DataRow( false )] // Deferred completion
-    public async Task TestCustomAwaiter_TaskResultLike( bool completeImmediately ) //BF for ME review
+    public async Task TestCustomAwaiter_TaskResultLike( bool immediately ) //BF for ME review
     {
         // Arrange
         var resultValue = Parameter( typeof(int), "result" );
@@ -115,7 +115,7 @@ public class CustomAwaiterTests
                 Add(
                     Await(
                         AsyncHelper.Completable(
-                            Constant( completeImmediately ),
+                            Constant( immediately ),
                             Constant( 37 )
                         )
                     ),
