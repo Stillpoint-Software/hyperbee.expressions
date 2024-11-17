@@ -45,6 +45,9 @@ internal sealed class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletio
 
     public void Complete( T result )
     {
+        if ( !_completedEvent.IsSet )
+            _completedEvent.Set();
+
         _tcs.SetResult( result );
     }
 
