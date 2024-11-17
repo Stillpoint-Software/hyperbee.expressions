@@ -34,6 +34,13 @@ internal static class AwaitBinderFactory
     private static MethodInfo CreateGetAwaiterImplDelegateMethod;
     private static MethodInfo CreateGetResultImplDelegateMethod;
 
+    private static readonly FieldInfo VoidResultInstance = typeof( VoidResult ).GetField( nameof( VoidResult.Instance ) );
+
+    private sealed class VoidResult : IVoidResult
+    {
+        public static readonly VoidResult Instance = new();
+    }
+
     static AwaitBinderFactory()
     {
         // Pre-cache MethodInfo to reduce reflection overhead
@@ -266,24 +273,33 @@ internal static class AwaitBinderFactory
     {
         var dynamicMethod = new DynamicMethod(
             name: getResultImplMethod.Name,
-            returnType: typeof( TResult ),
-            parameterTypes: [typeof( TAwaiter ).MakeByRefType()],
-            typeof( AwaitBinder ).Module,
+            returnType: typeof(TResult),
+            parameterTypes: [typeof(TAwaiter).MakeByRefType()],
+            typeof(AwaitBinder).Module,
             skipVisibility: true
         );
 
         var il = dynamicMethod.GetILGenerator();
 
-        il.Emit( OpCodes.Ldarg_0 );
-        il.Emit( OpCodes.Call, getResultImplMethod );
+        il.Emit( OpCodes.Ldarg_0 ); 
+        il.Emit( OpCodes.Ldind_Ref );
 
-        il.DeclareLocal( typeof( TResult ) );
-        il.Emit( OpCodes.Stloc_0 );
-        il.Emit( OpCodes.Ldloc_0 );
+        il.Emit( OpCodes.Callvirt, getResultImplMethod ); 
 
-        il.Emit( OpCodes.Ret );
+        if ( typeof(TResult) == typeof(IVoidResult) )
+        {
+            il.Emit( OpCodes.Ldsfld, VoidResultInstance ); 
+        }
+        else
+        {
+            il.DeclareLocal( typeof(TResult) ); 
+            il.Emit( OpCodes.Stloc_0 ); 
+            il.Emit( OpCodes.Ldloc_0 ); 
+        }
 
-        return dynamicMethod.CreateDelegate( typeof( AwaitBinderGetResultDelegate<TAwaiter, TResult> ) );
+        il.Emit( OpCodes.Ret ); 
+
+        return dynamicMethod.CreateDelegate( typeof(AwaitBinderGetResultDelegate<TAwaiter, TResult>) );
     }
 
     // Pre-Cache factory MethodInfos

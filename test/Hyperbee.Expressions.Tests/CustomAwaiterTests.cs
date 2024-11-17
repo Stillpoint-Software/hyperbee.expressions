@@ -6,7 +6,7 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
-public readonly struct LazyAwaiter<T> : ICriticalNotifyCompletion
+public class LazyAwaiter<T> : ICriticalNotifyCompletion
 {
     private readonly Lazy<T> _lazy;
 

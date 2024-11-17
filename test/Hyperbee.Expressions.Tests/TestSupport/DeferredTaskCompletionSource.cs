@@ -1,10 +1,9 @@
 ﻿
 using System.Runtime.CompilerServices;
-using Hyperbee.Expressions.Transformation;
 
 namespace Hyperbee.Expressions.Tests.TestSupport;
 
-internal sealed class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletion, IInterceptAwaiter<T>
+internal sealed class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletion
 {
     private readonly ManualResetEventSlim _completedEvent = new();
     private readonly TaskCompletionSource<T> _tcs = new();
@@ -55,15 +54,9 @@ internal sealed class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletio
     }
 
     public DeferredTaskCompletionSource<T> GetAwaiter() => this;
-    
-    public T InterceptAwaiter()
-    {
-        var result = GetResult();
-        return result;
-    }
 }
 
-internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion, IInterceptAwaiter
+internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion
 {
     private readonly ManualResetEventSlim _completedEvent = new();
     private readonly TaskCompletionSource _tcs = new();
@@ -113,9 +106,5 @@ internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion, 
     }
 
     public DeferredTaskCompletionSource GetAwaiter() => this;
-    public void InterceptAwaiter()
-    {
-        GetResult();
-    }
 }
 
