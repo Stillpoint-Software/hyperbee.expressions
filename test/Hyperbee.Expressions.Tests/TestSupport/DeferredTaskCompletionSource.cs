@@ -67,6 +67,10 @@ internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion
     {
         get
         {
+            // We set the event after the first time the property is accessed.
+            // This effectively defers the completion of the task until later
+            // by ensuring that the first call to the property getter returns false.
+
             if ( _completedEvent.IsSet )
                 return _tcs.Task.IsCompleted;
 
@@ -97,6 +101,9 @@ internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion
 
     public void Complete()
     {
+        if ( !_completedEvent.IsSet )
+            _completedEvent.Set();
+
         _tcs.SetResult();
     }
 
