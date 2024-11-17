@@ -87,8 +87,8 @@ public class CustomAwaiterTests
                     Constant( immediately )
                 )
             ),
-            Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
-            resultValue // Return the result
+            Assign( resultValue, Add( resultValue, Constant( 37 ) ) ),
+            resultValue 
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -98,7 +98,7 @@ public class CustomAwaiterTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 15, result ); // 5 + 10
+        Assert.AreEqual( 42, result, "The result should be 42." ); 
     }
 
     [DataTestMethod]
@@ -132,6 +132,6 @@ public class CustomAwaiterTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 42, result );
+        Assert.AreEqual( 42, result, "The result should be 42." );
     }
 }
