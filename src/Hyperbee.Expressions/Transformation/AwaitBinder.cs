@@ -118,6 +118,13 @@ public class AwaitBinder
         if ( GetResultImplDelegate == null )
             throw new InvalidOperationException( $"The {nameof( GetResultImplDelegate )} is not set for {awaiter.GetType()}." );
 
+        if ( awaiter is IInterceptAwaiter interceptor )
+        {
+            interceptor.InterceptAwaiter();
+            return;
+        }
+
+
         var getResult = (AwaitBinderGetResultDelegate<TAwaiter, IVoidResult>) GetResultImplDelegate;
         getResult( ref awaiter );
     }
@@ -134,9 +141,25 @@ public class AwaitBinder
         if ( GetResultImplDelegate == null )
             throw new InvalidOperationException( $"The {nameof( GetResultImplDelegate )} is not set for {awaiter.GetType()}." );
 
+        if ( awaiter is IInterceptAwaiter<TResult> interceptor)
+        {
+            var interceptedResult = interceptor.InterceptAwaiter();
+            return interceptedResult;
+        }
+
         var getResult = (AwaitBinderGetResultDelegate<TAwaiter, TResult>) GetResultImplDelegate;
         var result = getResult( ref awaiter );
 
         return result;
     }
+}
+
+public interface IInterceptAwaiter<T>
+{
+    T InterceptAwaiter();
+}
+
+public interface IInterceptAwaiter
+{
+    void InterceptAwaiter();
 }

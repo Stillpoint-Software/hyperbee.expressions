@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Hyperbee.Expressions.Tests.TestSupport;
 
@@ -8,22 +9,15 @@ internal static class AsyncHelper
     {
         var resultType = resultExpression.Type;
 
-        var taskResultExpression = Expression.Call(
-            typeof(Task),
-            nameof(Task.FromResult),
-            [resultType],
-            resultExpression
-        );
-
         var asyncHelperMethod = typeof(AsyncHelper).GetMethod(
             nameof(CompletableResultAsync),
-            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public
+            BindingFlags.Static | BindingFlags.NonPublic
         )!.MakeGenericMethod( resultType );
 
         return Expression.Call(
             asyncHelperMethod,
             completeImmediatelyExpression,
-            taskResultExpression
+            resultExpression
         );
     }
 
@@ -31,7 +25,7 @@ internal static class AsyncHelper
     {
         var asyncHelperMethod = typeof(AsyncHelper).GetMethod(
             nameof(CompletableAsync),
-            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public
+            BindingFlags.Static | BindingFlags.NonPublic
         );
 
         return Expression.Call(
@@ -40,43 +34,42 @@ internal static class AsyncHelper
         );
     }
 
-    public static Task<T> CompletableResultAsync<T>( bool completeImmediately, Task<T> task )
+    private static DeferredTaskCompletionSource CompletableAsync( bool completeImmediately )
     {
+        var deferredTcs = new DeferredTaskCompletionSource();
+
         if ( completeImmediately )
         {
-            return task;
+            deferredTcs.Complete();
+            return deferredTcs;
         }
 
-        var tcs = new TaskCompletionSource<T>();
-        var completedEvent = new ManualResetEventSlim();
-
-        Task.Run( async () =>
+        Task.Run( () =>
         {
-            var awaiter = new DeferredAwaiter( task, completedEvent );
-            await awaiter;
-            tcs.SetResult( await task );
+            deferredTcs.WaitForSignal();
+            deferredTcs.Complete();
         } );
 
-        return tcs.Task;
+        return deferredTcs;
     }
 
-    public static Task CompletableAsync( bool completeImmediately )
+    private static DeferredTaskCompletionSource<T> CompletableResultAsync<T>( bool completeImmediately, T result )
     {
+        var deferredTcs = new DeferredTaskCompletionSource<T>();
+
         if ( completeImmediately )
         {
-            return Task.CompletedTask;
+            deferredTcs.Complete( result );
+            return deferredTcs;
         }
 
-        var tcs = new TaskCompletionSource();
-        var completedEvent = new ManualResetEventSlim();
-
-        Task.Run( async () =>
+        Task.Run( () =>
         {
-            var awaiter = new DeferredAwaiter( Task.CompletedTask, completedEvent );
-            await awaiter;
-            tcs.SetResult();
+            deferredTcs.WaitForSignal();
+            deferredTcs.Complete( result );
         } );
 
-        return tcs.Task;
+        return deferredTcs;
     }
 }
+

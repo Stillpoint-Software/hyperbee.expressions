@@ -1,6 +1,5 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
-using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -229,70 +228,6 @@ public class BlockAsyncBasicTests
 
         // Assert
         Assert.AreEqual( 15, result );
-    }
-
-    [DataTestMethod]
-    [DataRow( true )] // Immediate completion
-    [DataRow( false )] // Deferred completion
-    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwaitX( bool completeImmediately ) //BF for ME review
-    {
-        // Arrange
-        var resultValue = Parameter( typeof(int), "result" );
-
-        var block = BlockAsync(
-            [resultValue],
-            Assign( resultValue, Constant( 5 ) ),
-            Await(
-                AsyncHelper.Completable(
-                    Constant( completeImmediately )
-                )
-            ),
-            Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
-            resultValue // Return the result
-        );
-
-        var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
-
-        // Act
-        var result = await compiledLambda();
-
-        // Assert
-        Assert.AreEqual( 15, result ); // 5 + 10
-    }
-
-    [DataTestMethod]
-    [DataRow( true )] // Immediate completion
-    [DataRow( false )] // Deferred completion
-    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwaitR( bool completeImmediately ) //BF for ME review
-    {
-        // Arrange
-        var resultValue = Parameter( typeof(int), "result" );
-
-        var block = BlockAsync(
-            [resultValue],
-            Assign( resultValue, 
-                Add( 
-                    Await(
-                        AsyncHelper.Completable(
-                            Constant( completeImmediately ),
-                            Constant( 37 )
-                        )
-                    ), 
-                    Constant( 5 ) 
-                ) 
-            ),
-            resultValue 
-        );
-
-        var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
-
-        // Act
-        var result = await compiledLambda();
-
-        // Assert
-        Assert.AreEqual( 42, result ); 
     }
 
     [TestMethod]
