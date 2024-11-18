@@ -13,7 +13,7 @@ public class BlockAsyncConditionalTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenCondition( bool immediateFlag )
     {
         // Arrange: Condition depends on awaited value
-        var condition = Await( AsyncHelper.Completable( 
+        var condition = Await( AsyncHelper.Completable(
             Constant( immediateFlag ),
             Constant( true )
         ) );
