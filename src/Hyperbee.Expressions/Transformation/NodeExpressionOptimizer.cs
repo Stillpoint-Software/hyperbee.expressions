@@ -2,12 +2,12 @@
 
 namespace Hyperbee.Expressions.Transformation;
 
-public interface INodeOptimizer
+public interface INodeExpressionOptimizer
 {
     public void Optimize( IReadOnlyList<StateContext.Scope> scopes );
 }
 
-internal sealed class NodeOptimizer : INodeOptimizer
+internal sealed class NodeExpressionOptimizer : INodeExpressionOptimizer
 {
     public void Optimize( IReadOnlyList<StateContext.Scope> scopes )
     {
