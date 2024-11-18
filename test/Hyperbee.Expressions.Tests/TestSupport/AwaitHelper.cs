@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Tests.TestSupport;
 
 internal static class AsyncHelper
 {
-    public static Expression Completable( Expression completeImmediatelyExpression, Expression resultExpression )
+    public static Expression Completable( Expression completeimmediateFlagExpression, Expression resultExpression )
     {
         var resultType = resultExpression.Type;
 
@@ -16,12 +16,12 @@ internal static class AsyncHelper
 
         return Expression.Call(
             asyncHelperMethod,
-            completeImmediatelyExpression,
+            completeimmediateFlagExpression,
             resultExpression
         );
     }
 
-    public static Expression Completable( Expression completeImmediatelyExpression )
+    public static Expression Completable( Expression completeimmediateFlagExpression )
     {
         var asyncHelperMethod = typeof( AsyncHelper ).GetMethod(
             nameof( CompletableAsync ),
@@ -30,15 +30,15 @@ internal static class AsyncHelper
 
         return Expression.Call(
             asyncHelperMethod!,
-            completeImmediatelyExpression
+            completeimmediateFlagExpression
         );
     }
 
-    private static DeferredTaskCompletionSource CompletableAsync( bool completeImmediately )
+    private static DeferredTaskCompletionSource CompletableAsync( bool completeimmediateFlag )
     {
         var deferredTcs = new DeferredTaskCompletionSource();
 
-        if ( completeImmediately )
+        if ( completeimmediateFlag )
         {
             deferredTcs.SetResult();
             return deferredTcs;
@@ -53,11 +53,11 @@ internal static class AsyncHelper
         return deferredTcs;
     }
 
-    private static DeferredTaskCompletionSource<T> CompletableResultAsync<T>( bool completeImmediately, T result )
+    private static DeferredTaskCompletionSource<T> CompletableResultAsync<T>( bool completeimmediateFlag, T result )
     {
         var deferredTcs = new DeferredTaskCompletionSource<T>();
 
-        if ( completeImmediately )
+        if ( completeimmediateFlag )
         {
             deferredTcs.SetResult( result );
             return deferredTcs;

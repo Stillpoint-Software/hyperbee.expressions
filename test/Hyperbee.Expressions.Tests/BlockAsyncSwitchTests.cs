@@ -10,10 +10,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValue( bool immediately )
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValue( bool immediateFlag )
     {
         // Arrange: Await in the switch value
-        var switchValue = Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) );
+        var switchValue = Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 1 ) ) );
         var block = BlockAsync(
             Switch(
                 switchValue,
@@ -35,14 +35,14 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInDefaultBody( bool immediately )
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInDefaultBody( bool immediateFlag )
     {
         // Arrange: Default case contains an awaited task
         var switchValue = Constant( 3 ); // No case matches this value
         var block = BlockAsync(
             Switch(
                 switchValue,
-                Await( AsyncHelper.Completable( Constant( immediately ), Constant( 99 ) ) ), // Default body
+                Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 99 ) ) ), // Default body
                 SwitchCase( Constant( 10 ), Constant( 1 ) ),
                 SwitchCase( Constant( 20 ), Constant( 2 ) )
             )
@@ -60,7 +60,7 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchCaseBody( bool immediately )
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchCaseBody( bool immediateFlag )
     {
         // Arrange: One of the case bodies contains an awaited task
         var switchValue = Constant( 1 );
@@ -68,7 +68,7 @@ public class BlockAsyncSwitchTests
             Switch(
                 switchValue,
                 Constant( 0 ),
-                SwitchCase( Await( AsyncHelper.Completable( Constant( immediately ), Constant( 100 ) ) ), Constant( 1 ) ),
+                SwitchCase( Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 100 ) ) ), Constant( 1 ) ),
                 SwitchCase( Constant( 200 ), Constant( 2 ) )
             )
         );
@@ -85,15 +85,15 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValueAndCaseBody( bool immediately )
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValueAndCaseBody( bool immediateFlag )
     {
         // Arrange: Await both in switch value and case body
-        var switchValue = Await( AsyncHelper.Completable( Constant( immediately ), Constant( 2 ) ) );
+        var switchValue = Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 2 ) ) );
         var block = BlockAsync(
             Switch(
                 switchValue,
                 Constant( 0 ),
-                SwitchCase( Await( AsyncHelper.Completable( Constant( immediately ), Constant( 50 ) ) ), Constant( 2 ) ),
+                SwitchCase( Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 50 ) ) ), Constant( 2 ) ),
                 SwitchCase( Constant( 20 ), Constant( 3 ) )
             )
         );
@@ -110,14 +110,14 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedSwitchesAndAwaits( bool immediately )
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedSwitchesAndAwaits( bool immediateFlag )
     {
         // Arrange: Outer and inner switch cases involve awaited tasks
         var switchValue = Constant( 1 );
         var nestedSwitch = Switch(
             Constant( 1 ),
             Constant( 0 ),
-            SwitchCase( Await( AsyncHelper.Completable( Constant( immediately ), Constant( 30 ) ) ), Constant( 1 ) ),
+            SwitchCase( Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 30 ) ) ), Constant( 1 ) ),
             SwitchCase( Constant( 50 ), Constant( 2 ) )
         );
 
@@ -142,14 +142,14 @@ public class BlockAsyncSwitchTests
     [DataRow( true )]
     [DataRow( false )]
     [ExpectedException( typeof( ArgumentException ) )]
-    public async Task AsyncBlock_ShouldThrowException_WithAwaitInSwitchCaseTestValues( bool immediately )
+    public async Task AsyncBlock_ShouldThrowException_WithAwaitInSwitchCaseTestValues( bool immediateFlag )
     {
         // Arrange: Switch case test values cannot contain awaited tasks
         var block = Switch(
             Constant( 1 ),
             Constant( 0 ),
             SwitchCase( Constant( 10 ),
-                Await( BlockAsync( Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) ) ) ) ),
+                Await( BlockAsync( Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 1 ) ) ) ) ) ),
             SwitchCase( Constant( 20 ), Constant( 2 ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -162,11 +162,11 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task AsyncBlock_ShouldUseAwaitedValue_WithComplexExpressionInSwitchTestValues( bool immediately )
+    public async Task AsyncBlock_ShouldUseAwaitedValue_WithComplexExpressionInSwitchTestValues( bool immediateFlag )
     {
         // Arrange: Complex expression affects the switch value
         var switchValue = Add(
-            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 2 ) ) ),
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 2 ) ) ),
             Constant( 1 )
         );
         var block = BlockAsync(
@@ -214,18 +214,18 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeAndAfterSwitch( bool immediately )
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeAndAfterSwitch( bool immediateFlag )
     {
         // Arrange: Awaiting tasks before and after the switch expression
         var block = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 5 ) ) ),
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 5 ) ) ),
             Switch(
                 Constant( 1 ),
                 Constant( 0 ),
                 SwitchCase( Constant( 10 ), Constant( 1 ) ),
                 SwitchCase( Constant( 20 ), Constant( 2 ) )
             ),
-            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 15 ) ) )
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 15 ) ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();

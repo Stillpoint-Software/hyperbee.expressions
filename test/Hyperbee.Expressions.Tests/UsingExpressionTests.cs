@@ -79,14 +79,14 @@ public class UsingExpressionTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task UsingExpression_ShouldExecuteAsyncExpression( bool immediately )
+    public async Task UsingExpression_ShouldExecuteAsyncExpression( bool immediateFlag )
     {
         // Arrange
         var resource = new TestDisposableResource();
         var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
         var bodyExpression = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 10 ) ) )
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) )
         );
 
         // Act
@@ -105,7 +105,7 @@ public class UsingExpressionTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing( bool immediately )
+    public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing( bool immediateFlag )
     {
         // Arrange
         var resource = new TestDisposableResource();
@@ -114,7 +114,7 @@ public class UsingExpressionTests
         var bodyExpression = BlockAsync(
             Using(
                 disposableExpression,
-                Await( AsyncHelper.Completable( Constant( immediately ), Constant( 10 ) ) )
+                Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) )
             )
         );
 

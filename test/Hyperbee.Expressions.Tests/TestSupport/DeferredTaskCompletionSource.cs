@@ -56,6 +56,9 @@ internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion
 
     public void SetException( Exception exception )
     {
+        if ( !_completedEvent.IsSet )
+            _completedEvent.Set();
+
         _tcs.SetException( exception );
     }
 
@@ -115,6 +118,9 @@ internal sealed class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletio
 
     public void SetException( Exception exception )
     {
+        if ( !_completedEvent.IsSet )
+            _completedEvent.Set();
+
         _tcs.SetException( exception );
     }
 

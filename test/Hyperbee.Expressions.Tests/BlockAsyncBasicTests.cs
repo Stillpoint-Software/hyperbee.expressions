@@ -13,11 +13,11 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithCompletedTask( bool immediately )
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithCompletedTask( bool immediateFlag )
     {
         // Arrange
         var block = BlockAsync( Await( AsyncHelper.Completable(
-                        Constant( immediately ),
+                        Constant( immediateFlag ),
                         Constant( 1 )
                     ) ) );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -49,16 +49,16 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldAwaitMultipleTasks_WithDifferentResults( bool immediately )
+    public async Task BlockAsync_ShouldAwaitMultipleTasks_WithDifferentResults( bool immediateFlag )
     {
         // Arrange
         var block = BlockAsync(
             Await( AsyncHelper.Completable(
-                        Constant( immediately ),
+                        Constant( immediateFlag ),
                         Constant( 1 )
                     ) ),
             Await( AsyncHelper.Completable(
-                        Constant( immediately ),
+                        Constant( immediateFlag ),
                         Constant( 2 )
                     ) )
         );
@@ -107,14 +107,14 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedTasks( bool immediately )
+    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedTasks( bool immediateFlag )
     {
         // Arrange
         var innerBlock = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 2 ) ) )
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 2 ) ) )
         );
         var block = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) ),
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 1 ) ) ),
             Await( innerBlock )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -130,17 +130,17 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedLambdas( bool immediately )
+    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedLambdas( bool immediateFlag )
     {
         // Arrange
         var innerBlock = Lambda<Func<Task<int>>>(
             BlockAsync(
-                Await( AsyncHelper.Completable( Constant( immediately ), Constant( 2 ) ) )
+                Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 2 ) ) )
             )
         );
 
         var block = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) ),
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 1 ) ) ),
             Await( Invoke( innerBlock ) )
         );
 
@@ -157,7 +157,7 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldShareVariablesBetweenBlocks_WithNestedAwaits( bool immediately )
+    public async Task BlockAsync_ShouldShareVariablesBetweenBlocks_WithNestedAwaits( bool immediateFlag )
     {
         // Arrange
         var var1 = Variable( typeof( int ), "var1" );
@@ -168,7 +168,7 @@ public class BlockAsyncBasicTests
             BlockAsync(
                 Assign( var1, Add( var1, var2 ) ),
                 Await( AsyncHelper.Completable(
-                        Constant( immediately )
+                        Constant( immediateFlag )
                     ) )
             ) );
 
@@ -199,12 +199,12 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldHandleSyncAndAsync_WithMixedOperations( bool immediately )
+    public async Task BlockAsync_ShouldHandleSyncAndAsync_WithMixedOperations( bool immediateFlag )
     {
         // Arrange
         var block = BlockAsync(
             Constant( 10 ),
-            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 20 ) ) )
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 20 ) ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
@@ -234,7 +234,7 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait( bool immediately )
+    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait( bool immediateFlag )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -243,7 +243,7 @@ public class BlockAsyncBasicTests
             [resultValue],
             Assign( resultValue, Constant( 5 ) ),
             Await( AsyncHelper.Completable(
-                        Constant( immediately )
+                        Constant( immediateFlag )
                     ) ),
             Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
             resultValue // Return the result
@@ -262,7 +262,7 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldPreserveVariablesInNestedBlock_WithAwaits( bool immediately )
+    public async Task BlockAsync_ShouldPreserveVariablesInNestedBlock_WithAwaits( bool immediateFlag )
     {
         // Arrange
         // NOTE: this test is also verifying the hoisting visitor and reuse of names
@@ -280,7 +280,7 @@ public class BlockAsyncBasicTests
                 Block(
                     Assign( otherValue1, Condition( Constant( false ), Constant( 100 ), Block( Constant( 150 ) ) ) ),
                     Assign( otherValue2, Constant( "200" ) ),
-                    Await( AsyncHelper.Completable( Constant( immediately ) ) ),
+                    Await( AsyncHelper.Completable( Constant( immediateFlag ) ) ),
                     innerValue ),
                 Condition( Constant( false ), Assign( innerValue, Constant( "200" ) ), Assign( otherValue2, Constant( "250" ) ) )
             ),
@@ -337,7 +337,7 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldAllowLambdaParameters( bool immediately )
+    public async Task BlockAsync_ShouldAllowLambdaParameters( bool immediateFlag )
     {
         var var1 = Variable( typeof( int ), "var1" );
         var param1 = Parameter( typeof( Func<Task<int>> ), "param1" );
@@ -345,7 +345,7 @@ public class BlockAsyncBasicTests
         var parameterAsync = Lambda<Func<Task<int>>>(
             BlockAsync(
                 Await( AsyncHelper.Completable(
-                        Constant( immediately ),
+                        Constant( immediateFlag ),
                         Constant( 15 )
                     ) )
             )
@@ -378,7 +378,7 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync( bool immediately )
+    public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync( bool immediateFlag )
     {
         // Arrange
         var innerVar = Variable( typeof( int ), "innerVar" );
@@ -393,7 +393,7 @@ public class BlockAsyncBasicTests
                     BlockAsync(
                         [innerVar],
                         Assign( outerVar, Await( AsyncHelper.Completable(
-                            Constant( immediately ),
+                            Constant( immediateFlag ),
                             Constant( 3 )
                         ) ) ),
                         Assign( innerVar, Constant( 1 ) ),
@@ -401,12 +401,12 @@ public class BlockAsyncBasicTests
                     )
                 ),
                 Assign( middleVar, Await( AsyncHelper.Completable(
-                        Constant( immediately ),
+                        Constant( immediateFlag ),
                         Constant( 4 )
                     ) ) )
             ),
             Await( AsyncHelper.Completable(
-                        Constant( immediately ),
+                        Constant( immediateFlag ),
                         Constant( 6 )
                     ) ),
             Add( outerVar, middleVar )
@@ -426,7 +426,7 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithBlockConditional( bool immediately )
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithBlockConditional( bool immediateFlag )
     {
         // Arrange
         var block = BlockAsync(
@@ -434,7 +434,7 @@ public class BlockAsyncBasicTests
                 Constant( 5 ),
                 Condition( Constant( true ),
                     Await( AsyncHelper.Completable(
-                        Constant( immediately ),
+                        Constant( immediateFlag ),
                         Constant( 1 )
                     ) ),
                     Constant( 0 )
@@ -474,7 +474,7 @@ public class BlockAsyncBasicTests
     //[DataTestMethod]
     //[DataRow( true )]
     //[DataRow( false )]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithNestedLambdaArgument( bool immediately )
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithNestedLambdaArgument( bool immediateFlag )
     {
         // Arrange
         var control = Constant( new TestContext() );
@@ -510,7 +510,7 @@ public class BlockAsyncBasicTests
         var lambda = Lambda<Func<Task<int>>>( BlockAsync(
              Using( disposableBlock,
                  Await( AsyncHelper.Completable(
-                        Constant( immediately ),
+                        Constant( immediateFlag ),
                         Constant( 3 )
                     ) ) )
              ) );
