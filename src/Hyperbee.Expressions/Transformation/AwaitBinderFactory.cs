@@ -13,7 +13,7 @@ internal static class AwaitBinderFactory
     const string GetAwaiterName = "GetAwaiter";
     const string ConfigureAwaitName = "ConfigureAwait";
 
-    // Pre-cached MethodInfo
+    // Cached reflection members
 
     private static MethodInfo AwaitMethod;
     private static MethodInfo AwaitResultMethod;
@@ -34,7 +34,7 @@ internal static class AwaitBinderFactory
     private static MethodInfo CreateGetAwaiterImplDelegateMethod;
     private static MethodInfo CreateGetResultImplDelegateMethod;
 
-    private static readonly FieldInfo VoidResultInstance = typeof( VoidResult ).GetField( nameof( VoidResult.Instance ) );
+    private static FieldInfo VoidResultInstance;
 
     private sealed class VoidResult : IVoidResult
     {
@@ -43,8 +43,8 @@ internal static class AwaitBinderFactory
 
     static AwaitBinderFactory()
     {
-        // Pre-cache MethodInfo to reduce reflection overhead
-        PreCacheMethodInfo();
+        // cache reflection member to reduce overhead
+        CacheReflectionMembers();
     }
 
     public static void Clear() => Cache.Clear();
@@ -302,10 +302,12 @@ internal static class AwaitBinderFactory
         return dynamicMethod.CreateDelegate( typeof( AwaitBinderGetResultDelegate<TAwaiter, TResult> ) );
     }
 
-    // Pre-Cache factory MethodInfos
-
-    private static void PreCacheMethodInfo()
+    private static void CacheReflectionMembers()
     {
+        // VoidResult
+
+        VoidResultInstance = typeof(VoidResult).GetField( nameof(VoidResult.Instance) );
+
         // Await methods
 
         Reflection.GetMethods(
