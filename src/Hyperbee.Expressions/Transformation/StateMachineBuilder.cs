@@ -350,7 +350,7 @@ public class StateMachineBuilder<TResult>
             stateField
         );
 
-        // Create the body 
+        // Variable Hoisting 
 
         HoistVariables( source, fields, stateMachine, exitLabel, stateField, builderField, finalResultField );
 
@@ -394,8 +394,6 @@ public class StateMachineBuilder<TResult>
             ),
             stateMachine
         );
-
-        // Helper to create the body expressions with hoisted variables
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
