@@ -306,7 +306,7 @@ internal static class AwaitBinderFactory
     {
         // VoidResult
 
-        VoidResultInstance = typeof(VoidResult).GetField( nameof(VoidResult.Instance) );
+        VoidResultInstance = typeof( VoidResult ).GetField( nameof( VoidResult.Instance ) );
 
         // Await methods
 
