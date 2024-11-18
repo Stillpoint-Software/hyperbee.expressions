@@ -13,9 +13,9 @@ public class BlockAsyncSwitchTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValue( bool immediateFlag )
     {
         // Arrange: Await in the switch value
-        var switchValue = Await( AsyncHelper.Completable( 
-            Constant( immediateFlag ), 
-            Constant( 1 ) 
+        var switchValue = Await( AsyncHelper.Completable(
+            Constant( immediateFlag ),
+            Constant( 1 )
         ) );
         var block = BlockAsync(
             Switch(
@@ -45,9 +45,9 @@ public class BlockAsyncSwitchTests
         var block = BlockAsync(
             Switch(
                 switchValue,
-                Await( AsyncHelper.Completable( 
-                    Constant( immediateFlag ), 
-                    Constant( 99 ) 
+                Await( AsyncHelper.Completable(
+                    Constant( immediateFlag ),
+                    Constant( 99 )
                 ) ), // Default body
                 SwitchCase( Constant( 10 ), Constant( 1 ) ),
                 SwitchCase( Constant( 20 ), Constant( 2 ) )
@@ -74,12 +74,12 @@ public class BlockAsyncSwitchTests
             Switch(
                 switchValue,
                 Constant( 0 ),
-                SwitchCase( 
-                    Await( AsyncHelper.Completable( 
-                        Constant( immediateFlag ), 
-                        Constant( 100 ) 
-                    ) ), 
-                    Constant( 1 ) 
+                SwitchCase(
+                    Await( AsyncHelper.Completable(
+                        Constant( immediateFlag ),
+                        Constant( 100 )
+                    ) ),
+                    Constant( 1 )
                 ),
                 SwitchCase( Constant( 200 ), Constant( 2 ) )
             )
@@ -105,12 +105,12 @@ public class BlockAsyncSwitchTests
             Switch(
                 switchValue,
                 Constant( 0 ),
-                SwitchCase( 
-                    Await( AsyncHelper.Completable( 
-                        Constant( immediateFlag ), 
-                        Constant( 50 ) 
-                    ) ), 
-                    Constant( 2 ) 
+                SwitchCase(
+                    Await( AsyncHelper.Completable(
+                        Constant( immediateFlag ),
+                        Constant( 50 )
+                    ) ),
+                    Constant( 2 )
                 ),
                 SwitchCase( Constant( 20 ), Constant( 3 ) )
             )
@@ -135,12 +135,12 @@ public class BlockAsyncSwitchTests
         var nestedSwitch = Switch(
             Constant( 1 ),
             Constant( 0 ),
-            SwitchCase( 
-                Await( AsyncHelper.Completable( 
-                    Constant( immediateFlag ), 
-                    Constant( 30 ) 
-                ) ), 
-                Constant( 1 ) 
+            SwitchCase(
+                Await( AsyncHelper.Completable(
+                    Constant( immediateFlag ),
+                    Constant( 30 )
+                ) ),
+                Constant( 1 )
             ),
             SwitchCase( Constant( 50 ), Constant( 2 ) )
         );
@@ -172,14 +172,14 @@ public class BlockAsyncSwitchTests
         var block = Switch(
             Constant( 1 ),
             Constant( 0 ),
-            SwitchCase( 
+            SwitchCase(
                 Constant( 10 ),
-                Await( BlockAsync( 
-                    Await( AsyncHelper.Completable( 
-                        Constant( immediateFlag ), 
-                        Constant( 1 ) 
-                    ) ) 
-                ) ) 
+                Await( BlockAsync(
+                    Await( AsyncHelper.Completable(
+                        Constant( immediateFlag ),
+                        Constant( 1 )
+                    ) )
+                ) )
             ),
             SwitchCase( Constant( 20 ), Constant( 2 ) )
         );
@@ -197,9 +197,9 @@ public class BlockAsyncSwitchTests
     {
         // Arrange: Complex expression affects the switch value
         var switchValue = Add(
-            Await( AsyncHelper.Completable( 
-                Constant( immediateFlag ), 
-                Constant( 2 ) 
+            Await( AsyncHelper.Completable(
+                Constant( immediateFlag ),
+                Constant( 2 )
             ) ),
             Constant( 1 )
         );
@@ -252,9 +252,9 @@ public class BlockAsyncSwitchTests
     {
         // Arrange: Awaiting tasks before and after the switch expression
         var block = BlockAsync(
-            Await( AsyncHelper.Completable( 
-                Constant( immediateFlag ), 
-                Constant( 5 ) 
+            Await( AsyncHelper.Completable(
+                Constant( immediateFlag ),
+                Constant( 5 )
             ) ),
             Switch(
                 Constant( 1 ),
