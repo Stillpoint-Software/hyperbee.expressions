@@ -61,7 +61,6 @@ public class ForEachExpressionTests
         var customBreakLabel = Expression.Label( "customBreak" );
         var customContinueLabel = Expression.Label( "customContinue" );
 
-        // Body: If element == 4, break; if element == 2, continue
         var breakCondition = Expression.Equal( element, Expression.Constant( 4 ) );
         var continueCondition = Expression.Equal( element, Expression.Constant( 2 ) );
 
@@ -84,6 +83,6 @@ public class ForEachExpressionTests
 
         compiledLambda();
 
-        // Assert: No assertion needed
+        // Assert: No assert needed
     }
 }

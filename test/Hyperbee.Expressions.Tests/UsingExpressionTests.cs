@@ -18,7 +18,6 @@ public class UsingExpressionTests
 
     private bool _wasBodyExecuted;
 
-    // Helper method used in the body expression
     public void SetWasBodyExecuted()
     {
         _wasBodyExecuted = true;
@@ -83,7 +82,6 @@ public class UsingExpressionTests
         var resource = new TestDisposableResource();
         var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
-        // Create an async body
         var bodyExpression = BlockAsync(
             Await( Constant( Task.FromResult( 10 ) ) )
         );
@@ -107,7 +105,6 @@ public class UsingExpressionTests
         var resource = new TestDisposableResource();
         var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
-        // Create an async body
         var bodyExpression = BlockAsync(
             Using(
                 disposableExpression,
@@ -146,7 +143,6 @@ public class UsingExpressionTests
         var resource = new TestDisposableResource();
         var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
-        // Create a body expression that throws an exception
         var bodyExpression = Throw( New( typeof( Exception ) ) );
 
         // Act
