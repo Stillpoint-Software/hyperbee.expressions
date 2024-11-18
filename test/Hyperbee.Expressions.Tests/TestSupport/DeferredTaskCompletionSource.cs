@@ -46,7 +46,7 @@ internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion
         _completedEvent.Wait();
     }
 
-    public void Complete()
+    public void SetResult()
     {
         if ( !_completedEvent.IsSet )
             _completedEvent.Set();
@@ -54,7 +54,7 @@ internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion
         _tcs.SetResult();
     }
 
-    public void CompleteWithException( Exception exception )
+    public void SetException( Exception exception )
     {
         _tcs.SetException( exception );
     }
@@ -105,7 +105,7 @@ internal sealed class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletio
         _completedEvent.Wait();
     }
 
-    public void Complete( T result )
+    public void SetResult( T result )
     {
         if ( !_completedEvent.IsSet )
             _completedEvent.Set();
@@ -113,7 +113,7 @@ internal sealed class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletio
         _tcs.SetResult( result );
     }
 
-    public void CompleteWithException( Exception exception )
+    public void SetException( Exception exception )
     {
         _tcs.SetException( exception );
     }
