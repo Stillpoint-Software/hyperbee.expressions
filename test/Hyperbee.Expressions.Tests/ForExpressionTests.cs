@@ -60,7 +60,7 @@ public class ForExpressionTests
         var block = Expression.Block(
             [counter],
             forExpr,
-            counter 
+            counter
         );
 
         // Act
