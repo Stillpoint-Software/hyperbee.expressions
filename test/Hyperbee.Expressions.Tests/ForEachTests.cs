@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using static System.Linq.Expressions.Expression;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
@@ -9,16 +10,16 @@ public class ForEachExpressionTests
     public void ForEachExpression_ShouldIterateOverCollection()
     {
         // Arrange
-        var list = Expression.Constant( new List<int> { 1, 2, 3, 4, 5 } );
-        var element = Expression.Variable( typeof( int ), "element" );
+        var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
+        var element = Variable( typeof( int ), "element" );
 
         var writeLineMethod = typeof( Console ).GetMethod( "WriteLine", [typeof( int )] );
-        var body = Expression.Call( writeLineMethod!, element );
+        var body = Call( writeLineMethod!, element );
 
-        var forEachExpr = ExpressionExtensions.ForEach( list, element, body );
+        var forEachExpr = ForEach( list, element, body );
 
         // Act
-        var lambda = Expression.Lambda<Action>( forEachExpr );
+        var lambda = Lambda<Action>( forEachExpr );
         var compiledLambda = lambda.Compile();
 
         compiledLambda();
@@ -30,20 +31,20 @@ public class ForEachExpressionTests
     public void ForEachExpression_ShouldBreakOnCondition()
     {
         // Arrange
-        var list = Expression.Constant( new List<int> { 1, 2, 3, 4, 5 } );
-        var element = Expression.Variable( typeof( int ), "element" );
+        var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
+        var element = Variable( typeof( int ), "element" );
 
         var writeLineMethod = typeof( Console ).GetMethod( "WriteLine", [typeof( int )] )!;
 
-        var forEachExpr = ExpressionExtensions.ForEach( list, element, ( breakLabel, continueLabel ) =>
-            Expression.IfThenElse(
-                Expression.Equal( element, Expression.Constant( 3 ) ),
-                Expression.Break( breakLabel ),
-                Expression.Call( writeLineMethod, element )
+        var forEachExpr = ForEach( list, element, ( breakLabel, continueLabel ) =>
+            IfThenElse(
+                Equal( element, Constant( 3 ) ),
+                Break( breakLabel ),
+                Call( writeLineMethod, element )
         ) );
 
         // Act
-        var lambda = Expression.Lambda<Action>( forEachExpr );
+        var lambda = Lambda<Action>( forEachExpr );
         var compiledLambda = lambda.Compile();
 
         compiledLambda();
@@ -55,30 +56,30 @@ public class ForEachExpressionTests
     public void ForEachExpression_ShouldUseCustomBreakAndContinueLabels()
     {
         // Arrange
-        var list = Expression.Constant( new List<int> { 1, 2, 3, 4, 5 } );
-        var element = Expression.Variable( typeof( int ), "element" );
+        var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
+        var element = Variable( typeof( int ), "element" );
 
-        var customBreakLabel = Expression.Label( "customBreak" );
-        var customContinueLabel = Expression.Label( "customContinue" );
+        var customBreakLabel = Label( "customBreak" );
+        var customContinueLabel = Label( "customContinue" );
 
-        var breakCondition = Expression.Equal( element, Expression.Constant( 4 ) );
-        var continueCondition = Expression.Equal( element, Expression.Constant( 2 ) );
+        var breakCondition = Equal( element, Constant( 4 ) );
+        var continueCondition = Equal( element, Constant( 2 ) );
 
         var writeLineMethod = typeof( Console ).GetMethod( "WriteLine", [typeof( int )] )!;
 
-        var body = Expression.Block(
-            Expression.IfThen( continueCondition, Expression.Continue( customContinueLabel ) ),
-            Expression.IfThenElse(
+        var body = Block(
+            IfThen( continueCondition, Continue( customContinueLabel ) ),
+            IfThenElse(
                 breakCondition,
-                Expression.Break( customBreakLabel ),
-                Expression.Call( writeLineMethod, element )
+                Break( customBreakLabel ),
+                Call( writeLineMethod, element )
             )
         );
 
-        var forEachExpr = ExpressionExtensions.ForEach( list, element, body, customBreakLabel, customContinueLabel );
+        var forEachExpr = ForEach( list, element, body, customBreakLabel, customContinueLabel );
 
         // Act
-        var lambda = Expression.Lambda<Action>( forEachExpr );
+        var lambda = Lambda<Action>( forEachExpr );
         var compiledLambda = lambda.Compile();
 
         compiledLambda();

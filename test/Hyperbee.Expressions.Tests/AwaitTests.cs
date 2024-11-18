@@ -1,5 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
+using static System.Linq.Expressions.Expression;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
@@ -63,10 +65,10 @@ public class AwaitTests
         {
             case ExpressionKind.Lambda:
                 var (lambdaExpression, lambdaArguments) = GetLambdaExpression( methodInfo, arguments );
-                return Expression.Invoke( lambdaExpression, lambdaArguments );
+                return Invoke( lambdaExpression, lambdaArguments );
 
             case ExpressionKind.Method:
-                return Expression.Call( methodInfo, arguments );
+                return Call( methodInfo, arguments );
 
             default:
                 throw new ArgumentOutOfRangeException( nameof( kind ) );
@@ -83,8 +85,8 @@ public class AwaitTests
         var parameterExpressions = arguments.OfType<ParameterExpression>().ToArray();
         var lambdaArguments = parameterExpressions.Cast<Expression>().ToArray();
 
-        var callExpression = Expression.Call( methodInfo, arguments );
-        var lambdaExpression = Expression.Lambda( callExpression, parameterExpressions );
+        var callExpression = Call( methodInfo, arguments );
+        var lambdaExpression = Lambda( callExpression, parameterExpressions );
 
         return (lambdaExpression, lambdaArguments);
     }
@@ -97,9 +99,9 @@ public class AwaitTests
         var methodInfo = GetMethodInfo( nameof( GetNumberAsync ) );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo! );
-        var awaitExpression = ExpressionExtensions.Await( asyncExpression, configureAwait: false );
+        var awaitExpression = Await( asyncExpression, configureAwait: false );
 
-        var lambda = Expression.Lambda<Func<int>>( awaitExpression );
+        var lambda = Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda();
@@ -114,9 +116,9 @@ public class AwaitTests
         var methodInfo = GetMethodInfo( nameof( Delay ) );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo! );
-        var awaitExpression = ExpressionExtensions.Await( asyncExpression, configureAwait: false );
+        var awaitExpression = Await( asyncExpression, configureAwait: false );
 
-        var lambda = Expression.Lambda<Action>( awaitExpression );
+        var lambda = Lambda<Action>( awaitExpression );
         var compiledLambda = lambda.Compile();
 
         compiledLambda();
@@ -129,14 +131,14 @@ public class AwaitTests
     {
         var methodInfo = GetMethodInfo( nameof( AddThreeNumbersAsync ) );
 
-        var paramExpr1 = Expression.Parameter( typeof( int ), "a" );
-        var paramExpr2 = Expression.Parameter( typeof( int ), "b" );
-        var paramExpr3 = Expression.Parameter( typeof( int ), "c" );
+        var paramExpr1 = Parameter( typeof( int ), "a" );
+        var paramExpr2 = Parameter( typeof( int ), "b" );
+        var paramExpr3 = Parameter( typeof( int ), "c" );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo!, paramExpr1, paramExpr2, paramExpr3 );
-        var awaitExpression = ExpressionExtensions.Await( asyncExpression, configureAwait: false );
+        var awaitExpression = Await( asyncExpression, configureAwait: false );
 
-        var lambda = Expression.Lambda<Func<int, int, int, int>>( awaitExpression, paramExpr1, paramExpr2, paramExpr3 );
+        var lambda = Lambda<Func<int, int, int, int>>( awaitExpression, paramExpr1, paramExpr2, paramExpr3 );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda( 10, 20, 12 );
@@ -150,14 +152,14 @@ public class AwaitTests
     {
         var methodInfo = GetMethodInfo( nameof( AddThreeNumbersAsync ) );
 
-        var paramExpr1 = Expression.Constant( 10 );
-        var paramExpr2 = Expression.Constant( 20 );
-        var paramExpr3 = Expression.Constant( 12 );
+        var paramExpr1 = Constant( 10 );
+        var paramExpr2 = Constant( 20 );
+        var paramExpr3 = Constant( 12 );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo!, paramExpr1, paramExpr2, paramExpr3 );
-        var awaitExpression = ExpressionExtensions.Await( asyncExpression, configureAwait: false );
+        var awaitExpression = Await( asyncExpression, configureAwait: false );
 
-        var lambda = Expression.Lambda<Func<int>>( awaitExpression );
+        var lambda = Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda();
@@ -174,16 +176,16 @@ public class AwaitTests
         var addTwoNumbersMethod = GetMethodInfo( nameof( AddTwoNumbersAsync ) );
         var sayHelloMethod = GetMethodInfo( nameof( SayHelloAsync ) );
 
-        var paramA = Expression.Parameter( typeof( int ), "a" );
-        var paramB = Expression.Parameter( typeof( int ), "b" );
+        var paramA = Parameter( typeof( int ), "a" );
+        var paramB = Parameter( typeof( int ), "b" );
 
         var asyncExpressionAdd = GetAsyncExpression( kind, addTwoNumbersMethod, paramA, paramB );
-        var awaitExpressionAdd = ExpressionExtensions.Await( asyncExpressionAdd, configureAwait: false );
+        var awaitExpressionAdd = Await( asyncExpressionAdd, configureAwait: false );
 
         var asyncExpressionSayHello = GetAsyncExpression( kind, sayHelloMethod, awaitExpressionAdd );
-        var awaitExpressionSayHello = ExpressionExtensions.Await( asyncExpressionSayHello, configureAwait: false );
+        var awaitExpressionSayHello = Await( asyncExpressionSayHello, configureAwait: false );
 
-        var lambda = Expression.Lambda<Func<int, int, string>>( awaitExpressionSayHello, paramA, paramB );
+        var lambda = Lambda<Func<int, int, string>>( awaitExpressionSayHello, paramA, paramB );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda( 10, 32 );
@@ -202,16 +204,16 @@ public class AwaitTests
         var incrementMethodInfo = GetMethodInfo( nameof( IncrementValue ) );
         var methodInfo = GetMethodInfo( nameof( AddThreeNumbersAsync ) );
 
-        var paramExpr1 = Expression.Parameter( typeof( int ), "a" );
-        var paramExpr2 = Expression.Parameter( typeof( int ), "b" );
-        var paramExpr3 = Expression.Parameter( typeof( int ), "c" );
+        var paramExpr1 = Parameter( typeof( int ), "a" );
+        var paramExpr2 = Parameter( typeof( int ), "b" );
+        var paramExpr3 = Parameter( typeof( int ), "c" );
 
-        var incrementValueCall = Expression.Call( incrementMethodInfo!, paramExpr3 );
+        var incrementValueCall = Call( incrementMethodInfo!, paramExpr3 );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo!, paramExpr1, paramExpr2, incrementValueCall );
-        var awaitExpression = ExpressionExtensions.Await( asyncExpression, configureAwait: false );
+        var awaitExpression = Await( asyncExpression, configureAwait: false );
 
-        var lambda = Expression.Lambda<Func<int, int, int, int>>( awaitExpression, paramExpr1, paramExpr2, paramExpr3 );
+        var lambda = Lambda<Func<int, int, int, int>>( awaitExpression, paramExpr1, paramExpr2, paramExpr3 );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda( 10, 20, 11 ); // Pass 10, 20, and 11 as parameters; IncrementValue will increment 11
@@ -226,18 +228,18 @@ public class AwaitTests
         var methodInfo1 = GetMethodInfo( nameof( GetNumberAsync ) );
         var methodInfo2 = GetMethodInfo( nameof( AddThreeNumbersAsync ) );
 
-        var paramExpr1 = Expression.Parameter( typeof( int ), "a" );
-        var paramExpr2 = Expression.Parameter( typeof( int ), "b" );
-        var paramExpr3 = Expression.Parameter( typeof( int ), "c" );
+        var paramExpr1 = Parameter( typeof( int ), "a" );
+        var paramExpr2 = Parameter( typeof( int ), "b" );
+        var paramExpr3 = Parameter( typeof( int ), "c" );
 
         var asyncExpression1 = GetAsyncExpression( kind, methodInfo1! );
         var asyncExpression2 = GetAsyncExpression( kind, methodInfo2!, paramExpr1, paramExpr2, paramExpr3 );
 
-        var awaitExpression1 = ExpressionExtensions.Await( asyncExpression1, configureAwait: false );
-        var awaitExpression2 = ExpressionExtensions.Await( asyncExpression2, configureAwait: false );
+        var awaitExpression1 = Await( asyncExpression1, configureAwait: false );
+        var awaitExpression2 = Await( asyncExpression2, configureAwait: false );
 
-        var lambda1 = Expression.Lambda<Func<int>>( awaitExpression1 );
-        var lambda2 = Expression.Lambda<Func<int, int, int, int>>( awaitExpression2, paramExpr1, paramExpr2, paramExpr3 );
+        var lambda1 = Lambda<Func<int>>( awaitExpression1 );
+        var lambda2 = Lambda<Func<int, int, int, int>>( awaitExpression2, paramExpr1, paramExpr2, paramExpr3 );
 
         var compiledLambda1 = lambda1.Compile();
         var compiledLambda2 = lambda2.Compile();
@@ -257,18 +259,18 @@ public class AwaitTests
         var addTwoNumbersMethod = GetMethodInfo( nameof( AddTwoNumbersAsync ) );
 
         // Create AsyncExpression for AddTwoNumbers
-        var paramA = Expression.Parameter( typeof( int ), "a" );
-        var paramB = Expression.Parameter( typeof( int ), "b" );
+        var paramA = Parameter( typeof( int ), "a" );
+        var paramB = Parameter( typeof( int ), "b" );
 
         var asyncAddTwoNumbers = GetAsyncExpression( kind, addTwoNumbersMethod!, paramA, paramB );
-        var awaitAddTwoNumbers = ExpressionExtensions.Await( asyncAddTwoNumbers, configureAwait: false );
+        var awaitAddTwoNumbers = Await( asyncAddTwoNumbers, configureAwait: false );
 
-        var resultFromAdd = Expression.Variable( typeof( int ), "resultFromAdd" );
+        var resultFromAdd = Variable( typeof( int ), "resultFromAdd" );
 
         // Create the "Hello " + resultFromAdd expression
-        var helloStringExpression = Expression.Constant( "Hello " );
-        var resultToStringExpression = Expression.Call( resultFromAdd, typeof( object ).GetMethod( "ToString", Type.EmptyTypes )! );
-        var helloConcatExpression = Expression.Call(
+        var helloStringExpression = Constant( "Hello " );
+        var resultToStringExpression = Call( resultFromAdd, typeof( object ).GetMethod( "ToString", Type.EmptyTypes )! );
+        var helloConcatExpression = Call(
             typeof( string ).GetMethod( "Concat", [typeof( string ), typeof( string )] )!,
             helloStringExpression,
             resultToStringExpression
@@ -276,20 +278,20 @@ public class AwaitTests
 
         // Wrap the concatenated string in Task.FromResult
         var taskFromResultMethod = typeof( Task ).GetMethod( "FromResult" )!.MakeGenericMethod( typeof( string ) );
-        var taskWrappedExpression = Expression.Call( taskFromResultMethod, helloConcatExpression );
+        var taskWrappedExpression = Call( taskFromResultMethod, helloConcatExpression );
 
         // Combine the expressions in a block
-        var combinedExpression = Expression.Block(
+        var combinedExpression = Block(
             [resultFromAdd],
-            Expression.Assign( resultFromAdd, awaitAddTwoNumbers ),
+            Assign( resultFromAdd, awaitAddTwoNumbers ),
             taskWrappedExpression
         );
 
         // Compile the nested expression into a lambda and execute it
-        var lambda = Expression.Lambda<Func<int, int, Task<string>>>( combinedExpression, paramA, paramB );
+        var lambda = Lambda<Func<int, int, Task<string>>>( combinedExpression, paramA, paramB );
 
-        var asyncLambda = Expression.Invoke( lambda, paramA, paramB );
-        var compiledLambda = Expression.Lambda<Func<int, int, Task<string>>>( asyncLambda, paramA, paramB ).Compile();
+        var asyncLambda = Invoke( lambda, paramA, paramB );
+        var compiledLambda = Lambda<Func<int, int, Task<string>>>( asyncLambda, paramA, paramB ).Compile();
 
         var result = await compiledLambda( 32, 10 );
 
@@ -302,13 +304,13 @@ public class AwaitTests
     {
         var incrementExpression = ToExpression( Increment );
 
-        var paramA = Expression.Parameter( typeof( Task<int> ), "a" );
+        var paramA = Parameter( typeof( Task<int> ), "a" );
 
-        var l1 = Expression.Invoke( incrementExpression, paramA );
-        var l2 = Expression.Invoke( incrementExpression, l1 );
-        var l3 = Expression.Invoke( incrementExpression, l2 );
+        var l1 = Invoke( incrementExpression, paramA );
+        var l2 = Invoke( incrementExpression, l1 );
+        var l3 = Invoke( incrementExpression, l2 );
 
-        var compiled = Expression.Lambda<Func<Task<int>, Task<int>>>( l3, paramA ).Compile();
+        var compiled = Lambda<Func<Task<int>, Task<int>>>( l3, paramA ).Compile();
         var expressionResult = await compiled( Task.FromResult( 2 ) );
 
         var runtimeResult = await Increment( Increment( Increment( Task.FromResult( 2 ) ) ) );
@@ -331,13 +333,13 @@ public class AwaitTests
     {
         var incrementExpression = ToExpression( Increment );
 
-        var paramA = Expression.Parameter( typeof( int ), "a" );
+        var paramA = Parameter( typeof( int ), "a" );
 
-        var l1 = ExpressionExtensions.Await( Expression.Invoke( incrementExpression, paramA ), configureAwait: false );
-        var l2 = ExpressionExtensions.Await( Expression.Invoke( incrementExpression, l1 ), configureAwait: false );
-        var l3 = Expression.Invoke( incrementExpression, l2 );
+        var l1 = Await( Invoke( incrementExpression, paramA ), configureAwait: false );
+        var l2 = Await( Invoke( incrementExpression, l1 ), configureAwait: false );
+        var l3 = Invoke( incrementExpression, l2 );
 
-        var compiled = Expression.Lambda<Func<int, Task<int>>>( l3, paramA ).Compile();
+        var compiled = Lambda<Func<int, Task<int>>>( l3, paramA ).Compile();
         var expressionResult = await compiled( 2 );
 
         var runtimeResult = await Increment( await Increment( await Increment( 2 ) ) );
@@ -364,27 +366,27 @@ public class AwaitTests
         var sayHelloMethod = GetMethodInfo( nameof( SayHelloAsync ) );
 
         // Create AsyncExpression and AwaitExpression for AddTwoNumbers
-        var paramA = Expression.Parameter( typeof( int ), "a" );
-        var paramB = Expression.Parameter( typeof( int ), "b" );
+        var paramA = Parameter( typeof( int ), "a" );
+        var paramB = Parameter( typeof( int ), "b" );
 
         var asyncAddTwoNumbers = GetAsyncExpression( kind, addTwoNumbersMethod!, paramA, paramB );
-        var awaitAddTwoNumbers = ExpressionExtensions.Await( asyncAddTwoNumbers, configureAwait: false );
+        var awaitAddTwoNumbers = Await( asyncAddTwoNumbers, configureAwait: false );
 
-        var resultAddTwoNumbers = Expression.Variable( typeof( int ), "resultAddTwoNumbers" );
+        var resultAddTwoNumbers = Variable( typeof( int ), "resultAddTwoNumbers" );
 
         // Create AsyncExpression and AwaitExpression for SayHello
         var asyncSayHello = GetAsyncExpression( kind, sayHelloMethod!, resultAddTwoNumbers );
-        var awaitSayHello = ExpressionExtensions.Await( asyncSayHello, configureAwait: false );
+        var awaitSayHello = Await( asyncSayHello, configureAwait: false );
 
         // Combine both expressions in a block
-        var combinedExpression = Expression.Block(
+        var combinedExpression = Block(
             [resultAddTwoNumbers],
-            Expression.Assign( resultAddTwoNumbers, awaitAddTwoNumbers ),
+            Assign( resultAddTwoNumbers, awaitAddTwoNumbers ),
             awaitSayHello
         );
 
         // Compile and execute
-        var lambda = Expression.Lambda<Func<int, int, string>>( combinedExpression, paramA, paramB );
+        var lambda = Lambda<Func<int, int, string>>( combinedExpression, paramA, paramB );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda( 32, 10 );
@@ -400,9 +402,9 @@ public class AwaitTests
         var methodInfo = GetMethodInfo( nameof( ThrowExceptionAsync ) );
 
         var asyncThrowException = GetAsyncExpression( kind, methodInfo! );
-        var awaitThrowException = ExpressionExtensions.Await( asyncThrowException, configureAwait: false );
+        var awaitThrowException = Await( asyncThrowException, configureAwait: false );
 
-        var lambda = Expression.Lambda<Func<int>>( awaitThrowException );
+        var lambda = Lambda<Func<int>>( awaitThrowException );
         var compiledLambda = lambda.Compile();
 
         try

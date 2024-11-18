@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using static System.Linq.Expressions.Expression;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
@@ -9,16 +10,16 @@ public class WhileExpressionTests
     public void WhileExpression_ShouldBreak_WhenConditionMet()
     {
         // Arrange
-        var counter = Expression.Variable( typeof( int ), "counter" );
-        var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
+        var counter = Variable( typeof( int ), "counter" );
+        var counterInit = Assign( counter, Constant( 0 ) );
 
-        var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
+        var condition = LessThan( counter, Constant( 10 ) );
 
-        var whileExpr = ExpressionExtensions.While( condition,
-            Expression.PostIncrementAssign( counter )
+        var whileExpr = While( condition,
+            PostIncrementAssign( counter )
         );
 
-        var block = Expression.Block(
+        var block = Block(
             [counter],
             counterInit,
             whileExpr,
@@ -26,7 +27,7 @@ public class WhileExpressionTests
         );
 
         // Act
-        var lambda = Expression.Lambda<Func<int>>( block );
+        var lambda = Lambda<Func<int>>( block );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda();
@@ -39,20 +40,20 @@ public class WhileExpressionTests
     public void WhileExpression_ShouldBreak()
     {
         // Arrange
-        var counter = Expression.Variable( typeof( int ), "counter" );
-        var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
+        var counter = Variable( typeof( int ), "counter" );
+        var counterInit = Assign( counter, Constant( 0 ) );
 
-        var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
+        var condition = LessThan( counter, Constant( 10 ) );
 
-        var whileExpr = ExpressionExtensions.While( condition, ( breakLabel, _ ) =>
-            Expression.IfThenElse(
-                Expression.Equal( counter, Expression.Constant( 5 ) ),
-                Expression.Break( breakLabel ),
-                Expression.PostIncrementAssign( counter )
+        var whileExpr = While( condition, ( breakLabel, _ ) =>
+            IfThenElse(
+                Equal( counter, Constant( 5 ) ),
+                Break( breakLabel ),
+                PostIncrementAssign( counter )
             )
         );
 
-        var block = Expression.Block(
+        var block = Block(
             [counter],
             counterInit,
             whileExpr,
@@ -60,7 +61,7 @@ public class WhileExpressionTests
         );
 
         // Act
-        var lambda = Expression.Lambda<Func<int>>( block );
+        var lambda = Lambda<Func<int>>( block );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda();

@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using static System.Linq.Expressions.Expression;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
@@ -9,26 +10,26 @@ public class ForExpressionTests
     public void ForExpression_ShouldLoopCorrectly()
     {
         // Arrange
-        var counter = Expression.Variable( typeof( int ), "counter" );
-        var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
+        var counter = Variable( typeof( int ), "counter" );
+        var counterInit = Assign( counter, Constant( 0 ) );
 
-        var condition = Expression.LessThan( counter, Expression.Constant( 5 ) );
-        var iteration = Expression.PostIncrementAssign( counter );
+        var condition = LessThan( counter, Constant( 5 ) );
+        var iteration = PostIncrementAssign( counter );
 
         var writeLineMethod = typeof( Console ).GetMethod( "WriteLine", [typeof( int )] );
-        var body = Expression.Call( writeLineMethod!, counter );
+        var body = Call( writeLineMethod!, counter );
 
-        var forExpr = ExpressionExtensions.For( counterInit, condition, iteration, body );
+        var forExpr = For( counterInit, condition, iteration, body );
 
         // Wrap in a block to capture the counter value
-        var block = Expression.Block(
+        var block = Block(
             [counter],
             forExpr,
             counter // Return counter
         );
 
         // Act
-        var lambda = Expression.Lambda<Func<int>>( block );
+        var lambda = Lambda<Func<int>>( block );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda();
@@ -44,27 +45,27 @@ public class ForExpressionTests
 
         var writeLine = typeof( Console ).GetMethod( "WriteLine", [typeof( int )] )!;
 
-        var counter = Expression.Variable( typeof( int ), "counter" );
-        var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
+        var counter = Variable( typeof( int ), "counter" );
+        var counterInit = Assign( counter, Constant( 0 ) );
 
-        var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
-        var iteration = Expression.PostIncrementAssign( counter );
+        var condition = LessThan( counter, Constant( 10 ) );
+        var iteration = PostIncrementAssign( counter );
 
-        var forExpr = ExpressionExtensions.For( counterInit, condition, iteration, ( breakLabel, continueLabel ) =>
-            Expression.IfThenElse(
-                Expression.Equal( counter, Expression.Constant( 5 ) ),
-                Expression.Break( breakLabel ), // break when counter == 5
-                Expression.Call( writeLine, counter )
+        var forExpr = For( counterInit, condition, iteration, ( breakLabel, continueLabel ) =>
+            IfThenElse(
+                Equal( counter, Constant( 5 ) ),
+                Break( breakLabel ), // break when counter == 5
+                Call( writeLine, counter )
         ) );
 
-        var block = Expression.Block(
+        var block = Block(
             [counter],
             forExpr,
             counter
         );
 
         // Act
-        var lambda = Expression.Lambda<Func<int>>( block );
+        var lambda = Lambda<Func<int>>( block );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda();
