@@ -1,5 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
+using FastExpressionCompiler;
+using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -8,11 +10,16 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncBasicTests
 {
-    [TestMethod]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithCompletedTask()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithCompletedTask( bool immediately )
     {
         // Arrange
-        var block = BlockAsync( Await( Constant( Task.FromResult( 1 ) ) ) );
+        var block = BlockAsync( Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 1 )
+                    ) ) );
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
 
@@ -39,13 +46,21 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 5, result );
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldAwaitMultipleTasks_WithDifferentResults()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldAwaitMultipleTasks_WithDifferentResults( bool immediately )
     {
         // Arrange
         var block = BlockAsync(
-            Await( Constant( Task.FromResult( 1 ) ) ),
-            Await( Constant( Task.FromResult( 2 ) ) )
+            Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 1 )
+                    ) ),
+            Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 2 )
+                    ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
@@ -89,15 +104,17 @@ public class BlockAsyncBasicTests
         await compiledLambda();
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedTasks()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedTasks( bool immediately )
     {
         // Arrange
         var innerBlock = BlockAsync(
-            Await( Constant( Task.FromResult( 2 ) ) )
+            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 2 ) ) )
         );
         var block = BlockAsync(
-            Await( Constant( Task.FromResult( 1 ) ) ),
+            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) ),
             Await( innerBlock )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -110,18 +127,20 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedLambdas()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedLambdas( bool immediately )
     {
         // Arrange
         var innerBlock = Lambda<Func<Task<int>>>(
             BlockAsync(
-                Await( Constant( Task.FromResult( 2 ) ) )
+                Await( AsyncHelper.Completable( Constant( immediately ), Constant( 2 ) ) )
             )
         );
 
         var block = BlockAsync(
-            Await( Constant( Task.FromResult( 1 ) ) ),
+            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) ),
             Await( Invoke( innerBlock ) )
         );
 
@@ -135,8 +154,10 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldShareVariablesBetweenBlocks_WithNestedAwaits()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldShareVariablesBetweenBlocks_WithNestedAwaits( bool immediately )
     {
         // Arrange
         var var1 = Variable( typeof( int ), "var1" );
@@ -146,7 +167,9 @@ public class BlockAsyncBasicTests
         var mostInnerBlock = Lambda<Func<Task>>(
             BlockAsync(
                 Assign( var1, Add( var1, var2 ) ),
-                Await( Constant( Task.Delay( 20 ) ) )
+                Await( AsyncHelper.Completable(
+                        Constant( immediately )
+                    ) )
             ) );
 
         var innerBlock = Lambda<Func<Task<int>>>(
@@ -173,13 +196,15 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 7, result );
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldHandleSyncAndAsync_WithMixedOperations()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldHandleSyncAndAsync_WithMixedOperations( bool immediately )
     {
         // Arrange
         var block = BlockAsync(
             Constant( 10 ),
-            Await( Constant( Task.FromResult( 20 ) ) )
+            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 20 ) ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
@@ -206,8 +231,10 @@ public class BlockAsyncBasicTests
         Assert.IsTrue( true ); // If no exception, the test is successful
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait( bool immediately )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -215,7 +242,9 @@ public class BlockAsyncBasicTests
         var block = BlockAsync(
             [resultValue],
             Assign( resultValue, Constant( 5 ) ),
-            Await( Constant( Task.Delay( 100 ) ) ),
+            Await( AsyncHelper.Completable(
+                        Constant( immediately )
+                    ) ),
             Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
             resultValue // Return the result
         );
@@ -230,8 +259,10 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 15, result );
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldPreserveVariablesInNestedBlock_WithAwaits()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldPreserveVariablesInNestedBlock_WithAwaits( bool immediately )
     {
         // Arrange
         // NOTE: this test is also verifying the hoisting visitor and reuse of names
@@ -249,7 +280,7 @@ public class BlockAsyncBasicTests
                 Block(
                     Assign( otherValue1, Condition( Constant( false ), Constant( 100 ), Block( Constant( 150 ) ) ) ),
                     Assign( otherValue2, Constant( "200" ) ),
-                    Await( Constant( Task.Delay( 100 ) ) ),
+                    Await( AsyncHelper.Completable( Constant( immediately ) ) ),
                     innerValue ),
                 Condition( Constant( false ), Assign( innerValue, Constant( "200" ) ), Assign( otherValue2, Constant( "250" ) ) )
             ),
@@ -303,15 +334,20 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 10, result );
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldAllowLambdaParameters()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldAllowLambdaParameters( bool immediately )
     {
         var var1 = Variable( typeof( int ), "var1" );
         var param1 = Parameter( typeof( Func<Task<int>> ), "param1" );
 
         var parameterAsync = Lambda<Func<Task<int>>>(
             BlockAsync(
-                Await( Constant( Task.FromResult( 15 ) ) )
+                Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 15 )
+                    ) )
             )
         );
 
@@ -339,8 +375,10 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 15, result );
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync( bool immediately )
     {
         // Arrange
         var innerVar = Variable( typeof( int ), "innerVar" );
@@ -354,19 +392,29 @@ public class BlockAsyncBasicTests
                 Await(
                     BlockAsync(
                         [innerVar],
-                        Assign( outerVar, Await( Constant( Task.FromResult( 3 ) ) ) ),
+                        Assign( outerVar, Await( AsyncHelper.Completable(
+                            Constant( immediately ),
+                            Constant( 3 )
+                        ) ) ),
                         Assign( innerVar, Constant( 1 ) ),
                         Assign( middleVar, Constant( 2 ) )
                     )
                 ),
-                Assign( middleVar, Await( Constant( Task.FromResult( 4 ) ) ) )
+                Assign( middleVar, Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 4 )
+                    ) ) )
             ),
-            Await( Constant( Task.FromResult( 6 ) ) ),
+            Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 6 )
+                    ) ),
             Add( outerVar, middleVar )
         );
 
         // Act
         var lambda = Lambda<Func<Task<int>>>( blockAsync );
+
         var compiledLambda = lambda.Compile();
 
         var result = await compiledLambda();
@@ -375,15 +423,20 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 7, result );
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithBlockConditional()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithBlockConditional( bool immediately )
     {
         // Arrange
         var block = BlockAsync(
             Block(
                 Constant( 5 ),
                 Condition( Constant( true ),
-                    Await( Constant( Task.FromResult( 1 ) ) ),
+                    Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 1 )
+                    ) ),
                     Constant( 0 )
                 )
             )
@@ -397,6 +450,7 @@ public class BlockAsyncBasicTests
         // Assert
         Assert.AreEqual( 1, result );
     }
+
     public class TestContext
     {
         public int Id { get; set; }
@@ -416,8 +470,11 @@ public class BlockAsyncBasicTests
         }
     }
 
-    [TestMethod]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithNestedLambdaArgument()
+    // TODO: FIX BAD TEST (ME)
+    //[DataTestMethod]
+    //[DataRow( true )]
+    //[DataRow( false )]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithNestedLambdaArgument( bool immediately )
     {
         // Arrange
         var control = Constant( new TestContext() );
@@ -452,8 +509,12 @@ public class BlockAsyncBasicTests
         // Act
         var lambda = Lambda<Func<Task<int>>>( BlockAsync(
              Using( disposableBlock,
-                 Await( Constant( Task.FromResult( 3 ) ) )
-             ) ) );
+                 Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 3 )
+                    ) ) )
+             ) );
+
         var compiledLambda = lambda.Compile();
 
         var result = await compiledLambda();

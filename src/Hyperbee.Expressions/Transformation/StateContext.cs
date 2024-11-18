@@ -24,7 +24,7 @@ public sealed class StateContext
 
         Scopes = new List<Scope>( _initialCapacity )
         {
-            new ( 0, null, _initialCapacity ) // root scope
+            new ( 0, null, null, _initialCapacity ) // root scope
         };
 
         _joinStates = new Stack<NodeExpression>( _initialCapacity );
@@ -34,12 +34,12 @@ public sealed class StateContext
         AddState();
     }
 
-    public Scope EnterScope()
+    public Scope EnterScope( NodeExpression initialNode )
     {
         var parentScope = CurrentScope;
 
         var newScopeId = Scopes.Count;
-        var newScope = new Scope( newScopeId, parentScope, _initialCapacity );
+        var newScope = new Scope( newScopeId, parentScope, initialNode?.NodeLabel, _initialCapacity );
 
         Scopes.Add( newScope );
         _scopeIndexes.Push( newScopeId );
@@ -114,14 +114,16 @@ public sealed class StateContext
     public sealed class Scope
     {
         public int ScopeId { get; }
+        public LabelTarget InitialLabel { get; }
         public Scope Parent { get; }
         public List<NodeExpression> Nodes { get; set; }
         public List<JumpCase> JumpCases { get; }
 
-        public Scope( int scopeId, Scope parent, int initialCapacity )
+        public Scope( int scopeId, Scope parent, LabelTarget initialLabel, int initialCapacity )
         {
             Parent = parent;
             ScopeId = scopeId;
+            InitialLabel = initialLabel;
             Nodes = new List<NodeExpression>( initialCapacity );
             JumpCases = [];
         }
@@ -131,6 +133,7 @@ public sealed class StateContext
     {
         public LabelTarget ResultLabel { get; }
         public LabelTarget ContinueLabel { get; }
+
         public int StateId { get; }
         public int? ParentId { get; }
 

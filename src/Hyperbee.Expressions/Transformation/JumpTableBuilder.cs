@@ -23,18 +23,19 @@ internal static class JumpTableBuilder
             );
 
             jumpTable.Add( resultJumpExpression );
+        }
 
-            // Go to nested jump cases
-
-            var testValues = JumpCaseTests( current, jumpCase.StateId, scopes );
+        // Loop over scopes and flattent nested by parent.
+        foreach ( var childScope in scopes.Where( x => x.Parent == current ) )
+        {
+            var testValues = GetNestedTestValues( childScope, scopes );
 
             if ( testValues.Count <= 0 )
                 continue;
 
             var nestedJumpExpression = SwitchCase(
                 Block(
-                    Assign( stateField, Constant( -1 ) ),
-                    Goto( jumpCase.ContinueLabel )
+                    Goto( childScope.InitialLabel )
                 ),
                 testValues
             );
@@ -49,38 +50,30 @@ internal static class JumpTableBuilder
         );
     }
 
-    // Iterative function to build jump table cases
-    private static List<Expression> JumpCaseTests( StateContext.Scope scope, int stateId, List<StateContext.Scope> scopes )
+    private static List<ConstantExpression> GetNestedTestValues( StateContext.Scope current, List<StateContext.Scope> scopes )
     {
-        var testValues = new List<Expression>();
-        var stack = new Stack<(StateContext.Scope, int)>();
+        var testCases = current.JumpCases.Select( c => Constant( c.StateId ) ).ToList();
+        var stack = new Stack<StateContext.Scope>();
 
         while ( true )
         {
-            foreach ( var nestedScope in scopes )
+            // Push children onto the stack in reverse order for consistent traversal
+            foreach ( var child in scopes.Where( s => s.Parent == current ) )
             {
-                if ( nestedScope.Parent != scope )
-                    continue;
-
-                foreach ( var childJumpCase in nestedScope.JumpCases )
-                {
-                    if ( childJumpCase.ParentId != stateId )
-                        continue;
-
-                    // Return self
-                    testValues.Add( Constant( childJumpCase.StateId ) );
-
-                    // Push nested jump cases onto the stack
-                    stack.Push( (nestedScope, childJumpCase.StateId) );
-                }
+                stack.Push( child );
             }
 
-            if ( !stack.TryPop( out var item ) )
+            if ( !stack.TryPop( out current ) )
                 break;
 
-            (scope, stateId) = item;
-        }
+            foreach ( var childJumpCase in current.JumpCases )
+            {
+                testCases.Add( Constant( childJumpCase.StateId ) );
+            }
 
-        return testValues;
+        };
+
+        return testCases;
     }
+
 }

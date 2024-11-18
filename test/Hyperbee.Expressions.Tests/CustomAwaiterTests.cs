@@ -74,10 +74,10 @@ public class CustomAwaiterTests
     [DataTestMethod]
     [DataRow( true )] // Immediate completion
     [DataRow( false )] // Deferred completion
-    public async Task TestCustomAwaiter_TaskLike( bool immediately ) //BF for ME review
+    public async Task TestCustomAwaiter_TaskLike( bool immediately )
     {
         // Arrange
-        var resultValue = Parameter( typeof(int), "result" );
+        var resultValue = Parameter( typeof( int ), "result" );
 
         var block = BlockAsync(
             [resultValue],
@@ -88,7 +88,7 @@ public class CustomAwaiterTests
                 )
             ),
             Assign( resultValue, Add( resultValue, Constant( 37 ) ) ),
-            resultValue 
+            resultValue
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -98,16 +98,16 @@ public class CustomAwaiterTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 42, result, "The result should be 42." ); 
+        Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
     [DataTestMethod]
     [DataRow( true )] // Immediate completion
     [DataRow( false )] // Deferred completion
-    public async Task TestCustomAwaiter_TaskResultLike( bool immediately ) //BF for ME review
+    public async Task TestCustomAwaiter_TaskResultLike( bool immediately )
     {
         // Arrange
-        var resultValue = Parameter( typeof(int), "result" );
+        var resultValue = Parameter( typeof( int ), "result" );
 
         var block = BlockAsync(
             [resultValue],

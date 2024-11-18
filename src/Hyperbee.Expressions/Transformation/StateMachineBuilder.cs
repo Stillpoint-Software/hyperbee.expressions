@@ -358,7 +358,7 @@ public class StateMachineBuilder<TResult>
 
         var nodes = firstScope.Nodes;
         var blockBody = new List<Expression>( nodes.Count + 1 ) { jumpTable };
-        blockBody.AddRange ( nodes );
+        blockBody.AddRange( nodes );
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 

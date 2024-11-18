@@ -1,4 +1,5 @@
-﻿using static System.Linq.Expressions.Expression;
+﻿using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -76,8 +77,10 @@ public class UsingExpressionTests
         Assert.IsTrue( _wasBodyExecuted, "The body expression should be executed." );
     }
 
-    [TestMethod]
-    public async Task UsingExpression_ShouldExecuteAsyncExpression()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task UsingExpression_ShouldExecuteAsyncExpression( bool immediately )
     {
         // Arrange
         var resource = new TestDisposableResource();
@@ -85,7 +88,7 @@ public class UsingExpressionTests
 
         // Create an async body
         var bodyExpression = BlockAsync(
-            Await( Constant( Task.FromResult( 10 ) ) )
+            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 10 ) ) )
         );
 
         // Act
@@ -100,8 +103,11 @@ public class UsingExpressionTests
         Assert.AreEqual( 10, result );
     }
 
-    [TestMethod]
-    public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing()
+    // TODO: FIX BAD TEST (ME)
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing( bool immediately )
     {
         // Arrange
         var resource = new TestDisposableResource();
@@ -111,7 +117,7 @@ public class UsingExpressionTests
         var bodyExpression = BlockAsync(
             Using(
                 disposableExpression,
-                Await( Constant( Task.FromResult( 10 ) ) )
+                Await( AsyncHelper.Completable( Constant( immediately ), Constant( 10 ) ) )
             )
         );
 

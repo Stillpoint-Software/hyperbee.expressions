@@ -9,8 +9,8 @@ internal static class AsyncHelper
     {
         var resultType = resultExpression.Type;
 
-        var asyncHelperMethod = typeof(AsyncHelper).GetMethod(
-            nameof(CompletableResultAsync),
+        var asyncHelperMethod = typeof( AsyncHelper ).GetMethod(
+            nameof( CompletableResultAsync ),
             BindingFlags.Static | BindingFlags.NonPublic
         )!.MakeGenericMethod( resultType );
 
@@ -23,8 +23,8 @@ internal static class AsyncHelper
 
     public static Expression Completable( Expression completeImmediatelyExpression )
     {
-        var asyncHelperMethod = typeof(AsyncHelper).GetMethod(
-            nameof(CompletableAsync),
+        var asyncHelperMethod = typeof( AsyncHelper ).GetMethod(
+            nameof( CompletableAsync ),
             BindingFlags.Static | BindingFlags.NonPublic
         );
 

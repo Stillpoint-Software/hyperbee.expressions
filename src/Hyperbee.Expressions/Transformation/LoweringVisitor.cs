@@ -310,7 +310,7 @@ public class LoweringVisitor : ExpressionVisitor
             joinState = finalExpression;
         }
 
-        var nodeScope = _states.EnterScope();
+        var nodeScope = _states.EnterScope( sourceState );
 
         var tryCatchTransition = new TryCatchTransition
         {
@@ -374,7 +374,12 @@ public class LoweringVisitor : ExpressionVisitor
 
             default:
                 // Lowering visitor shouldn't be used by extentions directly since it changes the shape of the code.
-                Visit( node.Reduce() );
+                var updatedExpression = Visit( node.Reduce() );
+
+                // TODO: not sure if this is always valid, might help with clean up of NodeExpression's ReduceFinalBlock()
+                if ( updatedExpression is NodeExpression nodeExpression )
+                    return nodeExpression.ResultVariable;
+
                 return node;
         }
     }

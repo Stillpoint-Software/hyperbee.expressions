@@ -1,4 +1,6 @@
-﻿using static System.Linq.Expressions.Expression;
+﻿using FastExpressionCompiler;
+using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -6,14 +8,19 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncTryCatchTests
 {
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryBlock()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryBlock( bool immediately )
     {
         // Arrange: Await in the try block
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
         var block = BlockAsync(
             TryCatch(
-                Await( Constant( Task.FromResult( 10 ) ) ),
+                Await( AsyncHelper.Completable(
+                    Constant( immediately ),
+                    Constant( 10 )
+                ) ),
                 Catch( exceptionParam, Constant( 0 ) )
             )
         );
@@ -27,8 +34,10 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 10, result );
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldCatchExceptionSuccessfully_WithAwaitInCatchBlock()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldCatchExceptionSuccessfully_WithAwaitInCatchBlock( bool immediately )
     {
         // Arrange: Await in the catch block
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
@@ -42,7 +51,10 @@ public class BlockAsyncTryCatchTests
                 ),
                 Catch(
                     exceptionParam,
-                    Assign( resultValue, Await( Constant( Task.FromResult( 99 ) ) ) )
+                    Assign( resultValue, Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 99 )
+                    ) ) )
                 )
             ),
             resultValue
@@ -58,8 +70,10 @@ public class BlockAsyncTryCatchTests
 
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldHandleExceptionSuccessfully_WithTryCatchFinally()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldHandleExceptionSuccessfully_WithTryCatchFinally( bool immediately )
     {
         // Arrange: Await in both catch and finally blocks
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
@@ -72,10 +86,15 @@ public class BlockAsyncTryCatchTests
                     Constant( 1 )
                 ),
                 Assign( resultValue,
-                    Await( Constant(
-                        Task.FromResult( 50 ) ) ) ), // This Await will still be executed after the exception
+                    Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 50 )
+                    ) ) ), // This Await will still be executed after the exception
                 Catch( exceptionParam,
-                    Assign( resultValue, Await( Constant( Task.FromResult( 30 ) ) ) )
+                    Assign( resultValue, Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 30 )
+                    ) ) )
                 )
             ),
             resultValue
@@ -90,15 +109,17 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 50, result ); // Catch block handles the exception and returns 30
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryAndFinallyBlocks()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryAndFinallyBlocks( bool immediately )
     {
         // Arrange: Await in both try and finally blocks
         var resultValue = Parameter( typeof( int ) );
         var block = BlockAsync(
             [resultValue],
             TryFinally(
-                Assign( resultValue, Await( Constant( Task.FromResult( 15 ) ) ) ), // Try block
+                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 15 ) ) ) ), // Try block
                 Assign( resultValue, Constant( 25 ) ) // Finally block
             ),
             resultValue
@@ -113,8 +134,10 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 25, result ); // Catch block handles the exception and returns 30
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryCatchAndFinallyBlocks()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryCatchAndFinallyBlocks( bool immediately )
     {
         // Arrange: Await in Try, Catch, and Finally blocks
         var resultValue = Parameter( typeof( int ) );
@@ -122,10 +145,10 @@ public class BlockAsyncTryCatchTests
         var block = BlockAsync(
             [resultValue],
             TryCatchFinally(
-                Assign( resultValue, Await( Constant( Task.FromResult( 10 ) ) ) ), // Try block
-                Assign( resultValue, Await( Constant( Task.FromResult( 30 ) ) ) ), // Finally block
+                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 10 ) ) ) ), // Try block
+                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 30 ) ) ) ), // Finally block
                 Catch( exceptionParam,
-                    Assign( resultValue, Await( Constant( Task.FromResult( 20 ) ) ) ) // Catch block
+                    Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 20 ) ) ) ) // Catch block
                 )
             ),
             resultValue
@@ -140,8 +163,10 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 30, result ); // Finally block should execute and return 30
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldCatchMultipleExceptionsInNestedTryBlocks()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldCatchMultipleExceptionsInNestedTryBlocks( bool immediately )
     {
         // Arrange: Multiple exceptions in nested Try-Catch blocks
         var resultValue = Parameter( typeof( int ) );
@@ -158,7 +183,7 @@ public class BlockAsyncTryCatchTests
                             Throw( Constant( new Exception( "Inner Exception" ) ) ),
                             Constant( 0 )
                         ),
-                        Catch( innerExceptionParam, Assign( resultValue, Await( Constant( Task.FromResult( 20 ) ) ) ) )
+                        Catch( innerExceptionParam, Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 20 ) ) ) ) )
                     ),
                     Constant( 0 )
                 ),
@@ -176,32 +201,34 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 50, result ); // Outer catch handles the exception
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryBlock()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryBlock( bool immediately )
     {
         // Arrange: Await in the try block
         var resultValue = Parameter( typeof( int ) );
         var block = BlockAsync(
             [resultValue],
-            Await( Constant( Task.FromResult( 0 ) ) ),
+            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 0 ) ) ),
             TryCatch(
                 Block(
-                    Assign( resultValue, Await( Constant( Task.FromResult( 10 ) ) ) ),
+                    Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 10 ) ) ) ),
                     TryCatch(
                         Block(
-                            Assign( resultValue, Await( Constant( Task.FromResult( 20 ) ) ) ),
+                            Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 20 ) ) ) ),
                             TryCatch(
-                                Assign( resultValue, Await( Constant( Task.FromResult( 30 ) ) ) ),
+                                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 30 ) ) ) ),
                                 Catch( typeof( Exception ), Assign( resultValue, Constant( 1 ) ) )
                             ) ),
                         Catch( typeof( Exception ), Assign( resultValue, Constant( 2 ) ) )
                     ),
-                    Assign( resultValue, Await( Constant( Task.FromResult( 40 ) ) ) ),
+                    Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 40 ) ) ) ),
                     TryCatch(
                         Block(
-                            Assign( resultValue, Await( Constant( Task.FromResult( 50 ) ) ) ),
+                            Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 50 ) ) ) ),
                             TryCatch(
-                                Assign( resultValue, Await( Constant( Task.FromResult( 60 ) ) ) ),
+                                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediately ), Constant( 60 ) ) ) ),
                                 Catch( typeof( Exception ), Assign( resultValue, Constant( 3 ) ) )
                             ) )
                         ,
@@ -222,32 +249,52 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 60, result );
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryFinallyBlock()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryFinallyBlock( bool immediately )
     {
         // Arrange: Await in the try block
         var resultValue = Parameter( typeof( int ) );
         var block = BlockAsync(
             [resultValue],
-            Await( Constant( Task.FromResult( 0 ) ) ),
+            Await( AsyncHelper.Completable( Constant( immediately ), Constant( 0 ) ) ),
             TryCatchFinally(
                 Block(
-                    Assign( resultValue, Await( Constant( Task.FromResult( 10 ) ) ) ),
+                    Assign( resultValue, Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 10 )
+                    ) ) ),
                     TryCatch(
                         Block(
-                            Assign( resultValue, Await( Constant( Task.FromResult( 20 ) ) ) ),
+                            Assign( resultValue, Await( AsyncHelper.Completable(
+                                Constant( immediately ),
+                                Constant( 20 )
+                            ) ) ),
                             TryCatch(
-                                Assign( resultValue, Await( Constant( Task.FromResult( 30 ) ) ) ),
+                                Assign( resultValue, Await( AsyncHelper.Completable(
+                                    Constant( immediately ),
+                                    Constant( 30 )
+                                ) ) ),
                                 Catch( typeof( Exception ), Assign( resultValue, Constant( 1 ) ) )
                             ) ),
                         Catch( typeof( Exception ), Assign( resultValue, Constant( 2 ) ) )
                     ),
-                    Assign( resultValue, Await( Constant( Task.FromResult( 40 ) ) ) ),
+                    Assign( resultValue, Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 40 )
+                    ) ) ),
                     TryCatch(
                         Block(
-                            Assign( resultValue, Await( Constant( Task.FromResult( 50 ) ) ) ),
+                            Assign( resultValue, Await( AsyncHelper.Completable(
+                                Constant( immediately ),
+                                Constant( 50 )
+                            ) ) ),
                             TryCatch(
-                                Assign( resultValue, Await( Constant( Task.FromResult( 60 ) ) ) ),
+                                Assign( resultValue, Await( AsyncHelper.Completable(
+                                    Constant( immediately ),
+                                    Constant( 60 )
+                                ) ) ),
                                 Catch( typeof( Exception ), Assign( resultValue, Constant( 3 ) ) )
                             ) )
                         ,
@@ -255,7 +302,10 @@ public class BlockAsyncTryCatchTests
 
                     ) ),
                 TryCatch(
-                    Assign( resultValue, Await( Constant( Task.FromResult( 40 ) ) ) ),  // Finally block should be result
+                    Assign( resultValue, Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 40 )
+                    ) ) ),  // Finally block should be result
                     Catch( typeof( Exception ), Assign( resultValue, Constant( 5 ) ) )
                 ),
                 Catch( typeof( Exception ), Assign( resultValue, Constant( 6 ) ) )

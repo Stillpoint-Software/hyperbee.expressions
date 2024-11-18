@@ -273,33 +273,33 @@ internal static class AwaitBinderFactory
     {
         var dynamicMethod = new DynamicMethod(
             name: getResultImplMethod.Name,
-            returnType: typeof(TResult),
-            parameterTypes: [typeof(TAwaiter).MakeByRefType()],
-            typeof(AwaitBinder).Module,
+            returnType: typeof( TResult ),
+            parameterTypes: [typeof( TAwaiter ).MakeByRefType()],
+            typeof( AwaitBinder ).Module,
             skipVisibility: true
         );
 
         var il = dynamicMethod.GetILGenerator();
 
-        il.Emit( OpCodes.Ldarg_0 ); 
+        il.Emit( OpCodes.Ldarg_0 );
         il.Emit( OpCodes.Ldind_Ref );
 
-        il.Emit( OpCodes.Callvirt, getResultImplMethod ); 
+        il.Emit( OpCodes.Callvirt, getResultImplMethod );
 
-        if ( typeof(TResult) == typeof(IVoidResult) )
+        if ( typeof( TResult ) == typeof( IVoidResult ) )
         {
-            il.Emit( OpCodes.Ldsfld, VoidResultInstance ); 
+            il.Emit( OpCodes.Ldsfld, VoidResultInstance );
         }
         else
         {
-            il.DeclareLocal( typeof(TResult) ); 
-            il.Emit( OpCodes.Stloc_0 ); 
-            il.Emit( OpCodes.Ldloc_0 ); 
+            il.DeclareLocal( typeof( TResult ) );
+            il.Emit( OpCodes.Stloc_0 );
+            il.Emit( OpCodes.Ldloc_0 );
         }
 
-        il.Emit( OpCodes.Ret ); 
+        il.Emit( OpCodes.Ret );
 
-        return dynamicMethod.CreateDelegate( typeof(AwaitBinderGetResultDelegate<TAwaiter, TResult>) );
+        return dynamicMethod.CreateDelegate( typeof( AwaitBinderGetResultDelegate<TAwaiter, TResult> ) );
     }
 
     // Pre-Cache factory MethodInfos

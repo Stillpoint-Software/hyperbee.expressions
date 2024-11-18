@@ -1,4 +1,5 @@
-﻿using static System.Linq.Expressions.Expression;
+﻿using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -6,8 +7,10 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncLoopTests
 {
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeBreak()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeBreak( bool immediately )
     {
         // Arrange: Await before break in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -17,7 +20,10 @@ public class BlockAsyncLoopTests
             Assign( loopCount, Constant( 0 ) ),
             Loop(
                 Block(
-                    Await( Constant( Task.FromResult( 1 ) ) ), // Await before break
+                    Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 1 )
+                    ) ), // Await before break
                     IfThen(
                         Equal( loopCount, Constant( 1 ) ),
                         Break( breakLabel )
@@ -39,8 +45,10 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 1, result ); // Loop should break after 1 iteration
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterLoop()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterLoop( bool immediately )
     {
         // Arrange: Await after break in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -60,7 +68,10 @@ public class BlockAsyncLoopTests
                 breakLabel,
                 null
             ),
-            Await( Constant( Task.FromResult( 5 ) ) ), // Await after loop ends
+            Await( AsyncHelper.Completable(
+                        Constant( immediately ),
+                        Constant( 5 )
+                    ) ), // Await after loop ends
             loopCount
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -73,8 +84,10 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 2, result ); // Loop breaks after 2 iterations
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeContinue()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeContinue( bool immediately )
     {
         // Arrange: Await before continue in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -85,9 +98,8 @@ public class BlockAsyncLoopTests
             Assign( loopCount, Constant( 0 ) ),
             Loop(
                 Block(
-
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( Constant( Task.FromResult( 1 ) ) ),
+                    Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) ),
                     IfThen(
                         LessThan( loopCount, Constant( 2 ) ),
                         Continue( continueLabel )
@@ -109,8 +121,10 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 2, result ); // Loop continues past the first iteration
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterContinue()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterContinue( bool immediately )
     {
         // Arrange: Await after continue in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -126,7 +140,7 @@ public class BlockAsyncLoopTests
                         Equal( loopCount, Constant( 1 ) ),
                         Continue( continueLabel )
                     ),
-                    Await( Constant( Task.FromResult( 3 ) ) ),
+                    Await( AsyncHelper.Completable( Constant( immediately ), Constant( 3 ) ) ),
                     Break( breakLabel )
                 ),
                 breakLabel,
@@ -144,8 +158,10 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 2, result ); // Loop processes all iterations
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithMultipleAwaitsInLoop()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithMultipleAwaitsInLoop( bool immediately )
     {
         // Arrange: Multiple awaits in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -155,9 +171,9 @@ public class BlockAsyncLoopTests
             Assign( loopCount, Constant( 0 ) ),
             Loop(
                 Block(
-                    Await( Constant( Task.FromResult( 1 ) ) ),
+                    Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) ),
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( Constant( Task.FromResult( 3 ) ) ),
+                    Await( AsyncHelper.Completable( Constant( immediately ), Constant( 3 ) ) ),
                     Break( breakLabel )
                 ),
                 breakLabel,
@@ -175,8 +191,10 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 1, result ); // Loop processes all iterations
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithBreakAndContinueLabels()
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithBreakAndContinueLabels( bool immediately )
     {
         // Arrange: Use both breakLabel and continueLabel in the loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -189,7 +207,7 @@ public class BlockAsyncLoopTests
             Loop(
                 Block(
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( Constant( Task.FromResult( 1 ) ) ),
+                    Await( AsyncHelper.Completable( Constant( immediately ), Constant( 1 ) ) ),
                     IfThen(
                         Equal( loopCount, Constant( 3 ) ),
                         Break( breakLabel )
