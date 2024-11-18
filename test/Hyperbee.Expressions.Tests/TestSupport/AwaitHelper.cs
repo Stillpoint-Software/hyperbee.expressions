@@ -40,14 +40,14 @@ internal static class AsyncHelper
 
         if ( completeImmediately )
         {
-            deferredTcs.Complete();
+            deferredTcs.SetResult();
             return deferredTcs;
         }
 
         Task.Run( () =>
         {
             deferredTcs.WaitForSignal();
-            deferredTcs.Complete();
+            deferredTcs.SetResult();
         } );
 
         return deferredTcs;
@@ -59,14 +59,14 @@ internal static class AsyncHelper
 
         if ( completeImmediately )
         {
-            deferredTcs.Complete( result );
+            deferredTcs.SetResult( result );
             return deferredTcs;
         }
 
         Task.Run( () =>
         {
             deferredTcs.WaitForSignal();
-            deferredTcs.Complete( result );
+            deferredTcs.SetResult( result );
         } );
 
         return deferredTcs;

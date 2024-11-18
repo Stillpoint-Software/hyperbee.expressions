@@ -12,16 +12,12 @@ public class WhileExpressionTests
         var counter = Expression.Variable( typeof( int ), "counter" );
         var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
 
-        // Condition: while (counter < 10)
         var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
 
         var whileExpr = ExpressionExtensions.While( condition,
-
-            // increment counter
             Expression.PostIncrementAssign( counter )
         );
 
-        // Block to initialize the counter and execute the loop
         var block = Expression.Block(
             [counter],
             counterInit,
@@ -46,12 +42,9 @@ public class WhileExpressionTests
         var counter = Expression.Variable( typeof( int ), "counter" );
         var counterInit = Expression.Assign( counter, Expression.Constant( 0 ) );
 
-        // Condition: while (counter < 10)
         var condition = Expression.LessThan( counter, Expression.Constant( 10 ) );
 
         var whileExpr = ExpressionExtensions.While( condition, ( breakLabel, _ ) =>
-
-            // if (counter == 5) break; else counter++
             Expression.IfThenElse(
                 Expression.Equal( counter, Expression.Constant( 5 ) ),
                 Expression.Break( breakLabel ),
@@ -59,7 +52,6 @@ public class WhileExpressionTests
             )
         );
 
-        // Block to initialize the counter and execute the loop
         var block = Expression.Block(
             [counter],
             counterInit,

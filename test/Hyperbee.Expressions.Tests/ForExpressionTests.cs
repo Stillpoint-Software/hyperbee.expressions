@@ -53,14 +53,14 @@ public class ForExpressionTests
         var forExpr = ExpressionExtensions.For( counterInit, condition, iteration, ( breakLabel, continueLabel ) =>
             Expression.IfThenElse(
                 Expression.Equal( counter, Expression.Constant( 5 ) ),
-                Expression.Break( breakLabel ), // Use break label when counter == 5
+                Expression.Break( breakLabel ), // break when counter == 5
                 Expression.Call( writeLine, counter )
         ) );
 
         var block = Expression.Block(
             [counter],
             forExpr,
-            counter // Return counter
+            counter 
         );
 
         // Act
