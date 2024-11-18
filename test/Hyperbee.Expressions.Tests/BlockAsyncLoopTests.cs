@@ -99,7 +99,10 @@ public class BlockAsyncLoopTests
             Loop(
                 Block(
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 1 ) ) ),
+                    Await( AsyncHelper.Completable( 
+                        Constant( immediateFlag ), 
+                        Constant( 1 ) 
+                    ) ),
                     IfThen(
                         LessThan( loopCount, Constant( 2 ) ),
                         Continue( continueLabel )
@@ -140,7 +143,10 @@ public class BlockAsyncLoopTests
                         Equal( loopCount, Constant( 1 ) ),
                         Continue( continueLabel )
                     ),
-                    Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 3 ) ) ),
+                    Await( AsyncHelper.Completable( 
+                        Constant( immediateFlag ), 
+                        Constant( 3 ) 
+                    ) ),
                     Break( breakLabel )
                 ),
                 breakLabel,
@@ -171,9 +177,15 @@ public class BlockAsyncLoopTests
             Assign( loopCount, Constant( 0 ) ),
             Loop(
                 Block(
-                    Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 1 ) ) ),
+                    Await( AsyncHelper.Completable( 
+                        Constant( immediateFlag ), 
+                        Constant( 1 ) 
+                    ) ),
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 3 ) ) ),
+                    Await( AsyncHelper.Completable( 
+                        Constant( immediateFlag ), 
+                        Constant( 3 ) 
+                    ) ),
                     Break( breakLabel )
                 ),
                 breakLabel,
@@ -207,7 +219,10 @@ public class BlockAsyncLoopTests
             Loop(
                 Block(
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 1 ) ) ),
+                    Await( AsyncHelper.Completable( 
+                        Constant( immediateFlag ), 
+                        Constant( 1 ) 
+                    ) ),
                     IfThen(
                         Equal( loopCount, Constant( 3 ) ),
                         Break( breakLabel )

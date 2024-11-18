@@ -13,13 +13,15 @@ public class BlockAsyncConditionalTests
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenCondition( bool immediateFlag )
     {
         // Arrange: Condition depends on awaited value
-        var condition = Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( true )
-                    ) );
+        var condition = Await( AsyncHelper.Completable( 
+            Constant( immediateFlag ),
+            Constant( true )
+        ) );
+
         var block = BlockAsync(
             IfThen( condition, Constant( 1 ) )
         );
+
         var lambda = Lambda<Func<Task>>( block );
         var compiledLambda = lambda.Compile();
 
@@ -40,9 +42,9 @@ public class BlockAsyncConditionalTests
         var block = BlockAsync(
             Condition( condition,
                 Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 1 )
-                    ) ),
+                    Constant( immediateFlag ),
+                    Constant( 1 )
+                ) ),
                 Constant( 0 )
             )
         );
@@ -67,9 +69,9 @@ public class BlockAsyncConditionalTests
             Condition( condition,
                 Constant( 0 ),
                 Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 2 )
-                    ) )
+                    Constant( immediateFlag ),
+                    Constant( 2 )
+                ) )
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -89,12 +91,14 @@ public class BlockAsyncConditionalTests
     {
         // Arrange: Test depends on awaited value
         var test = Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( true )
-                    ) );
+            Constant( immediateFlag ),
+            Constant( true )
+        ) );
+
         var block = BlockAsync(
             Condition( test, Constant( 1 ), Constant( 0 ) )
         );
+
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
 
@@ -115,13 +119,13 @@ public class BlockAsyncConditionalTests
         var block = BlockAsync(
             Condition( condition,
                 Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 10 )
-                    ) ),
-               Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 20 )
-                    ) )
+                    Constant( immediateFlag ),
+                    Constant( 10 )
+                ) ),
+                Await( AsyncHelper.Completable(
+                    Constant( immediateFlag ),
+                    Constant( 20 )
+                ) )
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -142,14 +146,14 @@ public class BlockAsyncConditionalTests
         // Arrange: Await a task before and after a conditional expression
         var block = BlockAsync(
             Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 5 )
-                    ) ),
+                Constant( immediateFlag ),
+                Constant( 5 )
+            ) ),
             Condition( Constant( true ), Constant( 10 ), Constant( 0 ) ),
             Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 15 )
-                    ) )
+                Constant( immediateFlag ),
+                Constant( 15 )
+            ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
@@ -172,9 +176,9 @@ public class BlockAsyncConditionalTests
             Condition( condition,
                 Constant( 10 ),
                 Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 20 )
-                    ) )
+                    Constant( immediateFlag ),
+                    Constant( 20 )
+                ) )
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -196,23 +200,23 @@ public class BlockAsyncConditionalTests
         var block = BlockAsync(
             Condition( Constant( true ),
                 Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 10 )
-                    ) ),
+                    Constant( immediateFlag ),
+                    Constant( 10 )
+                ) ),
                 Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 5 )
-                    ) )
+                    Constant( immediateFlag ),
+                    Constant( 5 )
+                ) )
             ),
             Condition( Constant( false ),
                 Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 1 )
-                    ) ),
+                    Constant( immediateFlag ),
+                    Constant( 1 )
+                ) ),
                 Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 2 )
-                    ) )
+                    Constant( immediateFlag ),
+                    Constant( 2 )
+                ) )
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -307,5 +311,4 @@ public class BlockAsyncConditionalTests
         // Act & Assert
         await compiledLambda();
     }
-
 }
