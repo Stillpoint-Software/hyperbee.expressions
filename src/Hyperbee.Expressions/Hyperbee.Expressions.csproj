@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
 
     <Authors>Stillpoint Software, Inc.</Authors>
-
+    <PackageId>Hyperbee.Expressions</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>expression-tree;expressions;async;await;expression-extension</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
