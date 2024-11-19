@@ -123,7 +123,6 @@ public class LoweringVisitor : ExpressionVisitor
 
     // Override methods for specific expression types
 
-
     protected override Expression VisitLambda<T>( Expression<T> node )
     {
         // Lambda expressions should not be lowered with this visitor.
@@ -369,11 +368,11 @@ public class LoweringVisitor : ExpressionVisitor
                 return VisitAwait( awaitExpression );
 
             case AsyncBlockExpression:
-                // Nested blocks should be visted by their own visitor, but nested variables need to be replaced
+                // Nested blocks should be visited by their own visitor, but nested variables need to be replaced
                 return _variableResolver.Resolve( node );
 
             default:
-                // Lowering visitor shouldn't be used by extentions directly since it changes the shape of the code.
+                // Lowering visitor shouldn't be used by extensions directly since it changes the shape of the code.
                 var updatedExpression = Visit( _variableResolver.Resolve( node.Reduce() ) );
 
                 // TODO: not sure if this is always valid, might help with clean up of NodeExpression's ReduceFinalBlock()
@@ -428,10 +427,10 @@ public class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, awaitTransition );
 
-        return (Expression) resultVariable ?? Expression.Empty();
+        return resultVariable ?? Expression.Empty();
     }
 
-    //// Helpers
+    // Helpers
 
     internal class HandlingVisitor : ExpressionVisitor
     {
@@ -459,7 +458,7 @@ public class LoweringVisitor : ExpressionVisitor
             // TODO: would like to only lower if async/await exists and ignore internal lower,
             //       there seems to be issues with hoisting and it's hacky reduce
 
-            // TODO: should also look into cacheing and quick return if already handled
+            // TODO: should also look into caching and quick return if already handled
             //return expr is AwaitExpression;
         }
 
