@@ -88,7 +88,7 @@ public class AsyncBlockExpression : Expression
 
     private static Type GetTaskType( Type resultType )
     {
-        return resultType == typeof(void) ? typeof(Task) : typeof(Task<>).MakeGenericType( resultType );
+        return resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( resultType );
     }
 
     private class AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node )
