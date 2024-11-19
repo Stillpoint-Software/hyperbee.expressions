@@ -98,11 +98,11 @@ public class ForEachExpressionTests
         var element = Variable( typeof( int ), "element" );
         var result = Variable( typeof( int ), "result" );
 
-        var body = Block( 
+        var body = Block(
             Assign( result, Add( result, Await( AsyncHelper.Completable(
                 Constant( immediateFlag ),
                 Constant( 1 )
-            ) ) )));
+            ) ) ) ) );
 
         var forEachExpr = BlockAsync(
             [result],
