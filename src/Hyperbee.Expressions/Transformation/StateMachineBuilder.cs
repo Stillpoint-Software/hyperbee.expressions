@@ -191,7 +191,7 @@ public class StateMachineBuilder<TResult>
         return stateMachineType;
     }
 
-    private static void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldInfo builderFieldInfo )
+    private static void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldBuilder builderFieldInfo )
     {
         // Define the IAsyncStateMachine.SetStateMachine method
         //

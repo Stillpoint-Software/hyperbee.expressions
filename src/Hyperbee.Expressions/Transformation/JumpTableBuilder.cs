@@ -57,7 +57,6 @@ internal static class JumpTableBuilder
 
         while ( true )
         {
-            // Push children onto the stack in reverse order for consistent traversal
             foreach ( var child in scopes.Where( s => s.Parent == current ) )
             {
                 stack.Push( child );

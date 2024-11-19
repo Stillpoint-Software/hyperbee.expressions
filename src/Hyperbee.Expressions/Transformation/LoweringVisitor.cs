@@ -35,7 +35,7 @@ public class LoweringVisitor : ExpressionVisitor
 
     internal LoweringResult Transform( ReadOnlyCollection<ParameterExpression> variables, IReadOnlyCollection<Expression> expressions )
     {
-        return Transform( variables.ToArray(), expressions.ToArray() );
+        return Transform( [.. variables], [.. expressions] );
     }
 
     public LoweringResult Transform( params Expression[] expressions )
