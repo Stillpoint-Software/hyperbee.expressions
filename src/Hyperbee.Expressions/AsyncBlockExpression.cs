@@ -8,9 +8,7 @@ namespace Hyperbee.Expressions;
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression : Expression
 {
-    private readonly Type _resultType;
     private readonly Type _taskType;
-
     private Expression _stateMachine;
 
     public ReadOnlyCollection<Expression> Expressions { get; }
@@ -25,8 +23,7 @@ public class AsyncBlockExpression : Expression
         Variables = variables;
         Expressions = expressions;
 
-        _resultType = Result.Type;
-        _taskType = _resultType == typeof( void ) ? typeof( Task ) : typeof( Task<> ).MakeGenericType( _resultType );
+        _taskType = GetTaskType( Result.Type );
     }
 
     public override bool CanReduce => true;
@@ -48,7 +45,7 @@ public class AsyncBlockExpression : Expression
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        _stateMachine = StateMachineBuilder.Create( _resultType, source );
+        _stateMachine = StateMachineBuilder.Create( Result.Type, source );
 
         return _stateMachine;
     }
@@ -87,6 +84,11 @@ public class AsyncBlockExpression : Expression
         }
 
         return true;
+    }
+
+    private static Type GetTaskType( Type resultType )
+    {
+        return resultType == typeof(void) ? typeof(Task) : typeof(Task<>).MakeGenericType( resultType );
     }
 
     private class AsyncBlockExpressionDebuggerProxy( AsyncBlockExpression node )
