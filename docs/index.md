@@ -22,6 +22,14 @@ trees to handle asynchronous workflows and other language constructs.
     * `ForExpression`: An expression that represents a for loop.
     * `ForEachExpression`: An expression that represents a foreach loop.
 
+* **Expression Optimizers**
+    * `OptimizerBuilder`: An composite optimizer builder.
+    * `ConstantFoldingOptimizer`: An optimizer that precomputes constant expressions.
+    * `OperatorReductionOptimizer`: An optimizer that simplifies arithmetic and logical expressions.
+    * `StructuralReductionOptimizer`: An optimizer that removes unreachable code and consolidates nested or redundant constructs.
+    * `ValueBindingOptimizer`: An optimizer that simplifies and inlines, variable, constant, and member access operations.
+    * `SubExpressionCachingOptimizer`: An optimizer that identifies and caches repeated subexpressions within a tree.
+     
 * Supports Fast Expression Compiler (FEC) for improved performance.
 
 ## Examples
