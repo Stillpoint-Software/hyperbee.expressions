@@ -101,7 +101,6 @@ public class UsingExpressionTests
         Assert.AreEqual( 10, result );
     }
 
-    // TODO: FIX BAD TEST (ME)
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]

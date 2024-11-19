@@ -469,10 +469,9 @@ public class BlockAsyncBasicTests
         }
     }
 
-    // TODO: FIX BAD TEST (ME)
-    //[DataTestMethod]
-    //[DataRow( true )]
-    //[DataRow( false )]
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
     public async Task BlockAsync_ShouldAwaitSuccessfully_WithNestedLambdaArgument( bool immediateFlag )
     {
         // Arrange
