@@ -374,11 +374,11 @@ public class LoweringVisitor : ExpressionVisitor
 
             default:
                 // Lowering visitor shouldn't be used by extentions directly since it changes the shape of the code.
-                var updatedExpression = Visit( node.Reduce() );
+                var updatedExpression = Visit( _variableResolver.Resolve( node.Reduce() ) );
 
                 // TODO: not sure if this is always valid, might help with clean up of NodeExpression's ReduceFinalBlock()
                 if ( updatedExpression is NodeExpression nodeExpression )
-                    return nodeExpression.ResultVariable;
+                    return nodeExpression.ResultVariable ?? nodeExpression;
 
                 return node;
         }

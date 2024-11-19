@@ -1,4 +1,5 @@
-﻿using static System.Linq.Expressions.Expression;
+﻿using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -85,5 +86,36 @@ public class ForEachExpressionTests
         compiledLambda();
 
         // Assert: No assert needed
+    }
+
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task ForEachExpression_ShouldIterateOverCollection_WithAwaits( bool immediateFlag )
+    {
+        // Arrange
+        var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
+        var element = Variable( typeof( int ), "element" );
+        var result = Variable( typeof( int ), "result" );
+
+        var body = Block( 
+            Assign( result, Add( result, Await( AsyncHelper.Completable(
+                Constant( immediateFlag ),
+                Constant( 1 )
+            ) ) )));
+
+        var forEachExpr = BlockAsync(
+            [result],
+            ForEach( list, element, body ),
+            result
+        );
+        // Act
+        var lambda = Lambda<Func<Task<int>>>( forEachExpr );
+        var compiledLambda = lambda.Compile();
+
+        var total = await compiledLambda();
+
+        // Assert:
+        Assert.AreEqual( 5, total );
     }
 }
