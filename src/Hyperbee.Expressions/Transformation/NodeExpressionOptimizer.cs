@@ -88,21 +88,9 @@ internal sealed class NodeExpressionOptimizer : INodeExpressionOptimizer
 
     private static void RemoveUnreferenced( IReadOnlyList<StateContext.Scope> scopes, HashSet<LabelTarget> references )
     {
-        // Remove any nodes that are not referenced
-
-        for ( var i = 0; i < scopes.Count; i++ )
+        foreach ( var scope in scopes )
         {
-            var scope = scopes[i];
-
-            for ( var n = 0; n < scope.Nodes.Count; n++ )
-            {
-                var node = scope.Nodes[n];
-
-                if ( references.Contains( node.NodeLabel ) )
-                    continue;
-
-                scope.Nodes.RemoveAt( n-- );
-            }
+            scope.Nodes.RemoveAll( node => !references.Contains( node.NodeLabel ) );
         }
     }
 }
