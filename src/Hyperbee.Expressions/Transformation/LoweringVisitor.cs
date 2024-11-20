@@ -93,7 +93,7 @@ public class LoweringVisitor : ExpressionVisitor
                     tailState.Transition = new GotoTransition { TargetNode = targetNode };
                 }
             }
-            else if( visited is not NodeExpression ) // TODO: Not adding NodeExpression seems like a hack
+            else if ( visited is not NodeExpression ) // TODO: Not adding NodeExpression seems like a hack
             {
                 tailState.Expressions.Add( visited );
             }
