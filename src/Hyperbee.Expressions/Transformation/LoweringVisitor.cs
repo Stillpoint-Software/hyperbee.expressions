@@ -365,25 +365,25 @@ public class LoweringVisitor : ExpressionVisitor
         switch ( node )
         {
             case AwaitExpression awaitExpression:
-                return VisitAwait( awaitExpression );
+                return VisitAwaitExtension( awaitExpression );
 
-            case AsyncBlockExpression:
-                // Nested blocks should be visited by their own visitor, but nested variables need to be replaced
-                return _variableResolver.Resolve( node );
+            case AsyncBlockExpression asyncBlockExpression:
+                return VisitAsyncBlockExtension( asyncBlockExpression );
 
             default:
-                // Lowering visitor shouldn't be used by extensions directly since it changes the shape of the code.
-                var updatedExpression = Visit( _variableResolver.Resolve( node.Reduce() ) );
-
-                // TODO: not sure if this is always valid, might help with clean up of NodeExpression's ReduceFinalBlock()
-                if ( updatedExpression is NodeExpression nodeExpression )
-                    return nodeExpression.ResultVariable ?? nodeExpression;
-
-                return node;
+                return VisitDefaultExtension( node );
         }
     }
 
-    protected Expression VisitAwait( AwaitExpression node )
+    protected Expression VisitAsyncBlockExtension( AsyncBlockExpression node )
+    {
+        // Nested blocks should be visited by their own visitor,
+        // but nested variables need to be replaced
+
+        return _variableResolver.Resolve( node );
+    }
+
+    protected Expression VisitAwaitExtension( AwaitExpression node )
     {
         var updatedNode = Visit( node.Target );
 
@@ -428,6 +428,24 @@ public class LoweringVisitor : ExpressionVisitor
         _states.ExitGroup( sourceState, awaitTransition );
 
         return resultVariable ?? Expression.Empty();
+    }
+
+    protected Expression VisitDefaultExtension( Expression node )
+    {
+        // Lowering visitor shouldn't be used by extensions directly
+        // since it changes the shape of the code
+
+        var reduced = node.Reduce();
+        var resolved = _variableResolver.Resolve( reduced );
+
+        var updatedExpression = Visit( resolved );
+
+        // TODO: not sure if this is always valid, might help with clean up of NodeExpression's ReduceFinalBlock()
+
+        if ( updatedExpression is NodeExpression nodeExpression )
+            return nodeExpression.ResultVariable ?? nodeExpression;
+
+        return node;
     }
 
     // Helpers
