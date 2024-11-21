@@ -47,35 +47,23 @@ public class AsyncExample
 {
     public async Task ExampleAsync()
     {
-        // Variables to store the results
-        var result1 = Expression.Variable( typeof(int), "result1" );
-        var result2 = Expression.Variable( typeof(int), "result2" );
+        // Create an async block that calls async methods and assigns their results
+        var instance = Constant( this );
+        var result1 = Variable( typeof(int), "result1" );
+        var result2 = Variable( typeof(int), "result2" );
 
-        // Define two async method calls
-
-        var instance = Expression.Constant( this );
-
-        var awaitExpr1 = ExpressionExtensions.Await( 
-            Expression.Call( instance, nameof(FirstAsyncMethod), Type.EmptyTypes ) 
-        );
-
-        var awaitExpr2 = ExpressionExtensions.Await( 
-            Expression.Call( instance, nameof(SecondAsyncMethod), Type.EmptyTypes, result1 )
-        );
-
-        // Assign the results of the await
-        var assignResult1 = Expression.Assign( result1, awaitExpr1 );
-        var assignResult2 = Expression.Assign( result2, awaitExpr2 );
-
-        // Create an async block that calls both methods and assigns their results
-        var asyncBlock = AsyncExpression.BlockAsync(
+        var asyncBlock = BlockAsync(
             [result1, result2],
-            assignResult1,
-            assignResult2
+            Assign( result1, Await(
+                Call( instance, nameof(FirstAsyncMethod), Type.EmptyTypes )
+            ) ),
+            Assign( result2, Await(
+                Call( instance, nameof(SecondAsyncMethod), Type.EmptyTypes, result1 )
+            ) )
         );
 
         // Compile and execute the async block
-        var lambda = Expression.Lambda<Func<Task<int>>>( asyncBlock );
+        var lambda = Lambda<Func<Task<int>>>( asyncBlock );
         var compiledLambda = lambda.Compile();
         var resultValue2 = await compiledLambda();
 

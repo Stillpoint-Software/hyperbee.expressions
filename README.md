@@ -1,7 +1,7 @@
 ﻿# Welcome to Hyperbee Expressions
 
-`Hyperbee.Expressions` is a library for creating c# expression trees that extend the capabilities of standard expression 
-trees to handle asynchronous workflows and other language constructs.
+`Hyperbee.Expressions` is a C# library that extends the capabilities of expression trees to handle asynchronous 
+workflows and other language constructs.
 
 ## Features
 
@@ -16,7 +16,6 @@ trees to handle asynchronous workflows and other language constructs.
     * `WhileExpression`: An expression that represents a while loop.
     * `ForExpression`: An expression that represents a for loop.
     * `ForEachExpression`: An expression that represents a foreach loop.
-
 
 * **Expression Optimizers**
     * `OptimizerBuilder`: An composite optimizer builder.
@@ -46,35 +45,24 @@ public class AsyncExample
 {
     public async Task ExampleAsync()
     {
-        // Variables to store the results
-        var result1 = Expression.Variable( typeof(int), "result1" );
-        var result2 = Expression.Variable( typeof(int), "result2" );
+        // Create an async block that calls async methods and assigns their results
 
-        // Define two async method calls
+        var instance = Constant( this );
+        var result1 = Variable( typeof(int), "result1" );
+        var result2 = Variable( typeof(int), "result2" );
 
-        var instance = Expression.Constant( this );
-
-        var awaitExpr1 = ExpressionExtensions.Await( 
-            Expression.Call( instance, nameof(FirstAsyncMethod), Type.EmptyTypes ) 
-        );
-
-        var awaitExpr2 = ExpressionExtensions.Await( 
-            Expression.Call( instance, nameof(SecondAsyncMethod), Type.EmptyTypes, result1 )
-        );
-
-        // Assign the results of the await
-        var assignResult1 = Expression.Assign( result1, awaitExpr1 );
-        var assignResult2 = Expression.Assign( result2, awaitExpr2 );
-
-        // Create an async block that calls both methods and assigns their results
-        var asyncBlock = AsyncExpression.BlockAsync(
+        var asyncBlock = BlockAsync(
             [result1, result2],
-            assignResult1,
-            assignResult2
+            Assign( result1, Await(
+                Call( instance, nameof(FirstAsyncMethod), Type.EmptyTypes )
+            ) ),
+            Assign( result2, Await(
+                Call( instance, nameof(SecondAsyncMethod), Type.EmptyTypes, result1 )
+            ) )
         );
 
         // Compile and execute the async block
-        var lambda = Expression.Lambda<Func<Task<int>>>( asyncBlock );
+        var lambda = Lambda<Func<Task<int>>>( asyncBlock );
         var compiledLambda = lambda.Compile();
         var resultValue2 = await compiledLambda();
 
