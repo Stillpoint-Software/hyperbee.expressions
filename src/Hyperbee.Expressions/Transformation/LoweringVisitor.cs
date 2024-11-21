@@ -456,30 +456,11 @@ public class LoweringVisitor : ExpressionVisitor
 
         public override Expression Visit( Expression node )
         {
-            if ( !IsHandled( node ) )
+            if ( !IsExplicitlyHandledType( node ) )
                 return base.Visit( node );
 
             Handled = true;
             return node;
         }
-
-        private static bool IsHandled( Expression expr )
-        {
-            return expr
-                is BlockExpression
-                or ConditionalExpression
-                or SwitchExpression
-                or TryExpression
-                or AwaitExpression
-                or LoopExpression;
-
-            // TODO: would like to only lower if async/await exists and ignore internal lower,
-            //       there seems to be issues with hoisting and it's hacky reduce
-
-            // TODO: should also look into caching and quick return if already handled
-            //return expr is AwaitExpression;
-        }
-
     }
-
 }
