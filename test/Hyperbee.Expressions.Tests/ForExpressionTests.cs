@@ -42,7 +42,6 @@ public class ForExpressionTests
     public void ForExpression_ShouldSupportCustomBreak()
     {
         // Arrange
-
         var writeLine = typeof( Console ).GetMethod( "WriteLine", [typeof( int )] )!;
 
         var counter = Variable( typeof( int ), "counter" );

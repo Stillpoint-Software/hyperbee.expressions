@@ -12,6 +12,9 @@ public sealed class NodeExpression : Expression
     public int ScopeId { get; set; }
 
     internal int StateOrder { get; set; }
+
+    public List<ParameterExpression> Variables { get; set; } = new();
+
     public Expression ResultVariable { get; set; } // Left-hand side of the result assignment
     public Expression ResultValue { get; set; } // Right-hand side of the result assignment
 
@@ -90,7 +93,10 @@ public sealed class NodeExpression : Expression
         // Add the label to the beginning of the block
         Expressions.Insert( 0, Label( NodeLabel ) );
 
-        return Block( Expressions );
+        return Block(
+            Variables, // TODO: Temporary fix for handling variables in blocks
+            Expressions 
+        );
     }
 
     private BlockExpression ReduceFinalBlock()
@@ -98,6 +104,7 @@ public sealed class NodeExpression : Expression
         var (_, _, stateIdField, builderField, resultField, returnValue) = _stateMachineSource;
 
         return Block(
+            Variables, // TODO: Temporary fix for handling variables in blocks
             Label( NodeLabel ),
             GetFinalResultExpression( returnValue, resultField, ResultValue, Expressions ),
             Assign( stateIdField, Constant( -2 ) ),

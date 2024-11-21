@@ -136,7 +136,9 @@ public class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
 
-        _variableResolver.AddLocalVariables( node.Variables );
+        // TODO: Temporary fix for handling variables in blocks
+        sourceState.Variables.AddRange( node.Variables.Where( v => v.Name.StartsWith( "_nh_" ) ) );
+        _variableResolver.AddLocalVariables( node.Variables.Where( v => !v.Name.StartsWith( "_nh_" ) ) );
 
         var currentSource = sourceState;
         NodeExpression firstGoto = null;

@@ -16,7 +16,7 @@ public interface IVariableResolver
 
     IReadOnlyCollection<Expression> GetLocalVariables();
 
-    void AddLocalVariables( ReadOnlyCollection<ParameterExpression> variables );
+    void AddLocalVariables( IEnumerable<ParameterExpression> variables );
 }
 
 internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
@@ -118,11 +118,11 @@ internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void AddLocalVariables( ReadOnlyCollection<ParameterExpression> variables )
+    public void AddLocalVariables( IEnumerable<ParameterExpression> variables )
     {
-        for ( var i = 0; i < variables.Count; i++ )
+        foreach ( var variable in variables )
         {
-            _variables.Add( variables[i] );
+            _variables.Add( variable );
         }
     }
 
