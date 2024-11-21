@@ -95,7 +95,7 @@ public sealed class NodeExpression : Expression
 
         return Block(
             Variables, // TODO: Temporary fix for handling variables in blocks
-            Expressions 
+            Expressions
         );
     }
 
