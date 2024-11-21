@@ -105,6 +105,7 @@ csharp_new_line_before_finally = true
 csharp_new_line_before_members_in_object_initializers = true
 csharp_new_line_before_members_in_anonymous_types = true
 csharp_new_line_between_query_expression_clauses = true
+csharp_new_line_before_members_in_object_and_collection_initializers = true
 # Indentation preferences
 csharp_indent_case_contents = true
 csharp_indent_switch_labels = true

@@ -402,7 +402,13 @@ public class LoweringVisitor : ExpressionVisitor
             sourceState.StateId
         );
 
-        completionState.Transition = new AwaitResultTransition { TargetNode = joinState, AwaiterVariable = awaiterVariable, ResultVariable = resultVariable, AwaitBinder = awaitBinder };
+        completionState.Transition = new AwaitResultTransition
+        {
+            TargetNode = joinState,
+            AwaiterVariable = awaiterVariable,
+            ResultVariable = resultVariable,
+            AwaitBinder = awaitBinder
+        };
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
