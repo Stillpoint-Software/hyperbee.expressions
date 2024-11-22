@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
+using Hyperbee.Expressions.Visitors;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -17,11 +18,12 @@ public class LoweringVisitor : ExpressionVisitor
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private VariableResolver _variableResolver;
-    private ExpressionCounter _expressionCounter = new();
+    private ExpressionCounter _expressionCounter;
 
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
     {
         _variableResolver = new VariableResolver( variables, _states );
+        _expressionCounter = new(expr => expr is AwaitExpression || expr is AsyncBlockExpression);
 
         VisitExpressions( expressions );
 
@@ -477,55 +479,6 @@ public class LoweringVisitor : ExpressionVisitor
 
             Handled = true;
             return node;
-        }
-    }
-
-    internal class ExpressionCounter : ExpressionVisitor
-    {
-        private readonly Dictionary<Expression, int> _countDictionary = new();
-        private int _counter;
-
-        public int GetCount( Expression expression )
-        {
-            if ( _countDictionary.TryGetValue( expression, out var count ) )
-                return count;
-
-            _counter = 0;
-            Visit( expression );
-
-            return _countDictionary[expression];
-        }
-
-        public void Reset()
-        {
-            _countDictionary.Clear();
-            _counter = 0;
-        }
-
-        public override Expression Visit( Expression node )
-        {
-            if ( node == null || _countDictionary.ContainsKey( node ) )
-                return node;
-
-            var parentCount = _counter;
-            _counter = 0;
-
-            var result = base.Visit( node );
-
-            var childCount = _counter;
-            _counter += parentCount;
-
-            _countDictionary[node] = childCount;
-
-            return result;
-        }
-
-        protected override Expression VisitExtension( Expression node )
-        {
-            if ( node is AwaitExpression || node is AsyncBlockExpression )
-                _counter++;
-
-            return base.VisitExtension( node );
         }
     }
 }

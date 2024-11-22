@@ -3,6 +3,7 @@ using System.Reflection;
 using Hyperbee.Expressions.Tests.TestSupport;
 using Hyperbee.Expressions.Transformation;
 using Hyperbee.Expressions.Transformation.Transitions;
+using Hyperbee.Expressions.Visitors;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -600,7 +601,7 @@ public class LoweringVisitorTests
     }
 
     [TestMethod]
-    public void Lowering_ExpressionCounter_ShouldFindAwaits()
+    public void Lowering_ExpressionCounter_ShouldFindAwaits() //BF 4 ME
     {
         // Arrange
 
@@ -620,7 +621,7 @@ public class LoweringVisitorTests
         );
 
         var rootExpr = Block( blockAsyncExpr );
-        var counter = new LoweringVisitor.ExpressionCounter();
+        var counter = new ExpressionCounter( expr => expr is AsyncBlockExpression || expr is AwaitExpression );
 
         // Act
         var rootExprCount = counter.GetCount( rootExpr );
