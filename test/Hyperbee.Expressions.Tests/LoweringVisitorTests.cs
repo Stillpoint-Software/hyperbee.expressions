@@ -632,7 +632,7 @@ public class LoweringVisitorTests
         Assert.AreEqual( 3, rootExprCount );
         Assert.AreEqual( 3, blockAsyncExprCount );
         Assert.AreEqual( 1, awaitExpr1Count );
-        Assert.AreEqual( 1, awaitExpr2Count ); 
+        Assert.AreEqual( 1, awaitExpr2Count );
     }
 
     // Helpers
