@@ -1,7 +1,9 @@
 ﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
+using Microsoft.VisualBasic;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -17,6 +19,7 @@ public class LoweringVisitor : ExpressionVisitor
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private VariableResolver _variableResolver;
+    private ExpressionCounterVisitor _expressionCounterVisitor = new();
 
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
     {
@@ -132,13 +135,20 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitBlock( BlockExpression node )
     {
+        if ( node.Variables.Any( v => v.Name.StartsWith( "_nh_" ) ) )
+        {
+            _states.TailState.Expressions.Add( node );
+            return _variableResolver.Resolve( node );
+        }
+
         var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
 
         // TODO: Temporary fix for handling variables in blocks
-        sourceState.Variables.AddRange( node.Variables.Where( v => v.Name.StartsWith( "_nh_" ) ) );
-        _variableResolver.AddLocalVariables( node.Variables.Where( v => !v.Name.StartsWith( "_nh_" ) ) );
+        //sourceState.Variables.AddRange( node.Variables.Where( v => v.Name.StartsWith( "_nh_" ) ) );
+        //_variableResolver.AddLocalVariables( node.Variables.Where( v => !v.Name.StartsWith( "_nh_" ) ) );
+        _variableResolver.AddLocalVariables( node.Variables );
 
         var currentSource = sourceState;
         NodeExpression firstGoto = null;
@@ -471,4 +481,54 @@ public class LoweringVisitor : ExpressionVisitor
             return node;
         }
     }
+
+    public class ExpressionCounterVisitor : ExpressionVisitor
+    {
+        private readonly Dictionary<Expression, int> _countDictionary = new();
+        private int _counter;
+
+        public int GetCount( Expression expression )
+        {
+            if ( _countDictionary.TryGetValue( expression, out var count ) )
+                return count;
+
+            _counter = 0;
+            Visit( expression );
+
+            return _countDictionary[expression];
+        }
+
+        public void Reset()
+        {
+            _countDictionary.Clear();
+            _counter = 0;
+        }
+
+        public override Expression Visit( Expression node )
+        {
+            if ( node == null || _countDictionary.ContainsKey( node ) )
+                return node;
+
+            var parentCount = _counter;
+            _counter = 0;
+
+            var result = base.Visit( node );
+
+            var childCount = _counter;
+            _counter += parentCount;
+
+            _countDictionary[node] = childCount;
+
+            return result;
+        }
+
+        protected override Expression VisitExtension( Expression node )
+        {
+            if ( node is AwaitExpression || node is AsyncBlockExpression )
+                _counter++;
+
+            return base.VisitExtension( node );
+        }
+    }
+
 }

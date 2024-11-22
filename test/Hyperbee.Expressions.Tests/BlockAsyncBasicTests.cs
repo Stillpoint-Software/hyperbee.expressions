@@ -1,7 +1,9 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics.Metrics;
+using System.Linq.Expressions;
 using System.Reflection;
 using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -377,6 +379,80 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
+    public async Task BlockAsync_ShouldAllowParallelBlocks_WithTaskWhenAll( bool immediateFlag )
+    {
+        // Arrange
+        /*
+        var counter = 0;
+        var tasks = new List<Task>();
+        for( int i = 0; i < 5; i++ ) 
+        {
+            var temp = i;
+            tasks.Add( Task.Run( async () =>
+                {
+                    counter += temp;
+                    await Task.Completable...
+                } )
+             );
+        }
+        await Task.WhenAll( tasks );
+        return counter;
+        */
+
+        var counter = Variable( typeof( int ), "counter" );
+        var temp = Variable( typeof( int ), "temp" );
+
+        var tasks = Variable( typeof( List<Task> ), "tasks" );
+        var i = Variable( typeof( int ), "i" );
+
+        var delayMethod = typeof( Task ).GetMethod( nameof( Task.Delay ), BindingFlags.Public | BindingFlags.Static, [typeof( int )] );
+
+        var taskRun = Call(
+            typeof( Task ).GetMethod( nameof( Task.Run ), [typeof( Func<Task> )] )!,
+            Lambda<Func<Task>>(
+                BlockAsync(
+                    Await( AsyncHelper.Completable( Constant( immediateFlag ) ) ),
+                    Await( Call( delayMethod, Multiply( Divide( Constant(5), i ), Constant( 1000 ) ) ) ),
+                    Assign( counter, temp ), // Add( counter, temp ) ),
+                    Await( AsyncHelper.Completable( Constant( immediateFlag ) ), false )
+                )
+            )
+        );
+
+        var initIncrement = Assign( i, Constant( 0 ) ); // i = 0;
+        var condition = LessThan( i, Constant( 5 ) ); // i < 5;
+        var iteration = PostIncrementAssign( i ); // i++;
+        
+        var block = BlockAsync(
+            [counter, tasks, i],
+            Assign( counter, Constant( 0 ) ),
+            Assign( tasks, New( typeof( List<Task> ).GetConstructors()[0] ) ),
+            For( initIncrement, condition, iteration,
+                Block(
+                    [temp],
+                    //Await( Constant( Task.Delay( Random.Shared.Next( 10, 1000 ) ) ) ),
+                    Assign( temp, i ),
+                    Call( tasks, typeof( List<Task> ).GetMethod( nameof( List<Task>.Add ) ), taskRun )
+                )
+            ),
+            Await( Call( typeof( Task ).GetMethod( nameof( Task.WhenAll ), [typeof( IEnumerable<Task> )] ), tasks ), false ),
+            counter
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        // ( 0 + 0) + (0 + 1) + (1 + 2) + (3 + 3) + (6 + 4) = 20
+        Assert.AreEqual( 20, result );
+    }
+
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
     public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync( bool immediateFlag )
     {
         // Arrange
@@ -402,13 +478,13 @@ public class BlockAsyncBasicTests
                 Assign( middleVar, Await( AsyncHelper.Completable(
                         Constant( immediateFlag ),
                         Constant( 4 )
-                    ) ) )
+                    ) ) ),
+                Assign( outerVar, Add( outerVar, middleVar ) )
             ),
-            Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
-                        Constant( 6 )
-                    ) ),
-            Add( outerVar, middleVar )
+            Await( 
+                AsyncHelper.Completable( Constant( immediateFlag ) ) 
+            ),
+            outerVar
         );
 
         // Act
