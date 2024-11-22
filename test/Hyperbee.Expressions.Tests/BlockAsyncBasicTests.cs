@@ -412,7 +412,7 @@ public class BlockAsyncBasicTests
             Lambda<Func<Task>>(
                 BlockAsync(
                     Await( AsyncHelper.Completable( Constant( immediateFlag ) ) ),
-                    Await( Call( delayMethod, Multiply( Divide( Constant(5), i ), Constant( 1000 ) ) ) ),
+                    Await( Call( delayMethod, Multiply( Divide( Constant( 5 ), i ), Constant( 1000 ) ) ) ),
                     Assign( counter, temp ), // Add( counter, temp ) ),
                     Await( AsyncHelper.Completable( Constant( immediateFlag ) ), false )
                 )
@@ -422,7 +422,7 @@ public class BlockAsyncBasicTests
         var initIncrement = Assign( i, Constant( 0 ) ); // i = 0;
         var condition = LessThan( i, Constant( 5 ) ); // i < 5;
         var iteration = PostIncrementAssign( i ); // i++;
-        
+
         var block = BlockAsync(
             [counter, tasks, i],
             Assign( counter, Constant( 0 ) ),
@@ -481,8 +481,8 @@ public class BlockAsyncBasicTests
                     ) ) ),
                 Assign( outerVar, Add( outerVar, middleVar ) )
             ),
-            Await( 
-                AsyncHelper.Completable( Constant( immediateFlag ) ) 
+            Await(
+                AsyncHelper.Completable( Constant( immediateFlag ) )
             ),
             outerVar
         );
