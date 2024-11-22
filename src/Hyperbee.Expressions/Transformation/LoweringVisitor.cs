@@ -1,9 +1,7 @@
 ﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
-using Microsoft.VisualBasic;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -19,7 +17,7 @@ public class LoweringVisitor : ExpressionVisitor
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private VariableResolver _variableResolver;
-    private ExpressionCounterVisitor _expressionCounterVisitor = new();
+    private ExpressionCounter _expressionCounter = new();
 
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
     {
@@ -482,7 +480,7 @@ public class LoweringVisitor : ExpressionVisitor
         }
     }
 
-    public class ExpressionCounterVisitor : ExpressionVisitor
+    internal class ExpressionCounter : ExpressionVisitor
     {
         private readonly Dictionary<Expression, int> _countDictionary = new();
         private int _counter;

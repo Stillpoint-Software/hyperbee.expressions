@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
+using Hyperbee.Expressions.Tests.TestSupport;
 using Hyperbee.Expressions.Transformation;
 using Hyperbee.Expressions.Transformation.Transitions;
 using static System.Linq.Expressions.Expression;
@@ -598,9 +599,46 @@ public class LoweringVisitorTests
         AssertTransition.AssertFinal( result.Scopes[0].Nodes[1] );
     }
 
+    [TestMethod]
+    public void Lowering_ExpressionCounter_ShouldFindAwaits()
+    {
+        // Arrange
+
+        var awaitExpr1 = Await( AsyncHelper.Completable(
+            Constant( false ),
+            Constant( 1 )
+        ) );
+
+        var awaitExpr2 = Await( AsyncHelper.Completable(
+            Constant( false ),
+            Constant( 2 )
+        ) );
+
+        var blockAsyncExpr = BlockAsync(
+            awaitExpr1,
+            awaitExpr2
+        );
+
+        var rootExpr = Block( blockAsyncExpr );
+        var counter = new LoweringVisitor.ExpressionCounter();
+
+        // Act
+        var rootExprCount = counter.GetCount( rootExpr );
+        var blockAsyncExprCount = counter.GetCount( blockAsyncExpr );
+        var awaitExpr1Count = counter.GetCount( awaitExpr1 );
+        var awaitExpr2Count = counter.GetCount( awaitExpr2 );
+
+        // Assert
+        Assert.AreEqual( 3, rootExprCount );
+        Assert.AreEqual( 3, blockAsyncExprCount );
+        Assert.AreEqual( 1, awaitExpr1Count );
+        Assert.AreEqual( 1, awaitExpr2Count ); 
+    }
+
+    // Helpers
+
     public static class AssertTransition
     {
-
         public static class TransitionType
         {
             public static Type Goto => typeof( GotoTransition );
