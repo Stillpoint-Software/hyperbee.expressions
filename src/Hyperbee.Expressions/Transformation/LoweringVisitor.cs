@@ -530,5 +530,4 @@ public class LoweringVisitor : ExpressionVisitor
             return base.VisitExtension( node );
         }
     }
-
 }

@@ -1,9 +1,7 @@
-﻿using System.Diagnostics.Metrics;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -63,6 +61,7 @@ public class BlockAsyncBasicTests
                         Constant( 2 )
                     ) )
         );
+
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
 
