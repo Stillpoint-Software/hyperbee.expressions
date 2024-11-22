@@ -10,13 +10,13 @@ internal class ExpressionCounter : ExpressionVisitor
 
     public ExpressionCounter( Func<Expression, bool> countPredicate )
     {
-        _countPredicate = countPredicate ?? throw new ArgumentNullException( nameof(countPredicate) );
+        _countPredicate = countPredicate ?? throw new ArgumentNullException( nameof( countPredicate ) );
     }
 
     public int GetCount( Expression expression )
     {
         if ( expression == null )
-            throw new ArgumentNullException( nameof(expression) );
+            throw new ArgumentNullException( nameof( expression ) );
 
         if ( _countDictionary.TryGetValue( expression, out var count ) )
             return count;

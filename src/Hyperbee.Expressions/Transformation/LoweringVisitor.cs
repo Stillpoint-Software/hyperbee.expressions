@@ -23,7 +23,7 @@ public class LoweringVisitor : ExpressionVisitor
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
     {
         _variableResolver = new VariableResolver( variables, _states );
-        _expressionCounter = new(expr => expr is AwaitExpression || expr is AsyncBlockExpression);
+        _expressionCounter = new( expr => expr is AwaitExpression || expr is AsyncBlockExpression );
 
         VisitExpressions( expressions );
 
