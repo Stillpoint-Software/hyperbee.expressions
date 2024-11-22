@@ -601,7 +601,7 @@ public class LoweringVisitorTests
     }
 
     [TestMethod]
-    public void Lowering_ExpressionCounter_ShouldFindAwaits() //BF 4 ME
+    public void Lowering_ExpressionCounter_ShouldFindAwaits()
     {
         // Arrange
 
