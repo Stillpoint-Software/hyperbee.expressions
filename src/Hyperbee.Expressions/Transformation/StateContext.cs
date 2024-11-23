@@ -39,10 +39,10 @@ public sealed class StateContext
         _stateId = 0;
         _groupId = 0;
         TailState = null;
-        
+
         Scopes.Clear();
         Scopes.Add( new Scope( 0, null, null, _initialCapacity ) );
-        
+
         _joinStates.Clear();
         _scopeIndexes.Clear();
         _scopeIndexes.Push( 0 );
