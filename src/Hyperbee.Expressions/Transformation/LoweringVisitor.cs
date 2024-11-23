@@ -16,14 +16,13 @@ public class LoweringVisitor : ExpressionVisitor
 
     private readonly StateContext _states = new( InitialCapacity );
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
+    private readonly ExpressionDependencyCounter _dependencyCounter = new(expr => expr is AwaitExpression || expr is AsyncBlockExpression);
 
     private VariableResolver _variableResolver;
-    private ExpressionCounter _expressionCounter;
-
+    
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
     {
         _variableResolver = new VariableResolver( variables, _states );
-        _expressionCounter = new( expr => expr is AwaitExpression || expr is AsyncBlockExpression );
 
         VisitExpressions( expressions );
 
