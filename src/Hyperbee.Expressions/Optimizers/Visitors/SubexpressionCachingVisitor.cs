@@ -44,7 +44,7 @@ public class SubexpressionCachingVisitor : ExpressionVisitor, IExpressionTransfo
     private readonly Dictionary<byte[], ParameterExpression> _cacheVariables = new( new ByteArrayComparer() );
     private readonly Queue<(Expression Original, ParameterExpression Variable)> _deferredReplacements = new();
 
-    private readonly ExpressionFingerprintVisitor _fingerprinter = new();
+    private readonly ExpressionFingerprinter _fingerprinter = new();
 
     public int Priority => PriorityGroup.ExpressionReductionAndCaching + 70;
 

@@ -27,7 +27,7 @@ internal class ExpressionCounter : ExpressionVisitor
         return _countDictionary[expression];
     }
 
-    public void Reset()
+    public void Clear()
     {
         _countDictionary.Clear();
         _counter = 0;

@@ -9,17 +9,20 @@ namespace Hyperbee.Expressions.Visitors;
 
 public delegate byte[] GetHashBytes( ConstantExpression node );
 
-// ExpressionFingerprintVisitor: Expression Fingerprinting
+// ExpressionFingerprinter: Expression Fingerprinting
+//
+// `ExpressionFingerprinter` is a general-purpose utility for any system that needs to uniquely
+// identify expressions.
 //
 // This visitor generates unique fingerprints for expression trees, providing a consistent and 
 // reusable hash-based identifier for each node in the tree. It captures both structure and values, 
 // ensuring that each subexpression can be uniquely identified and compared. Fingerprinting enables 
 // the recognition of repeated patterns or identical subexpressions across expression trees.
 //
-// Designed to operate in a bottom-up manner, the `ExpressionFingerprintVisitor` works by traversing 
-// from the leaves of the tree to the root, ensuring that each subexpression's fingerprint is fully 
-// computed before it's included in the hash of a larger expression. This approach makes it ideal for 
-// identifying and reusing identical subexpressions at any depth of the tree.
+// `ExpressionFingerprinter` works by traversing from the leaves of the tree to the root, ensuring
+// that each subexpression's fingerprint is fully computed before it's included in the hash of a
+// larger expression. This approach makes it ideal for identifying and reusing identical subexpressions
+// at any depth of the tree.
 //
 // Key Features and Constraints:
 //
@@ -39,38 +42,8 @@ public delegate byte[] GetHashBytes( ConstantExpression node );
 //   hashing for specific constants, offering fine-grained control over fingerprint generation. 
 //   This flexibility is useful for optimizing performance or handling domain-specific requirements.
 //
-// Use Cases:
-//
-// The `ExpressionFingerprintVisitor` is an essential utility for applications that rely on consistent 
-// identification of subexpressions, such as expression caching, optimization, or comparison. By 
-// creating repeatable and unique identifiers, it supports scenarios where recognizing identical 
-// expressions across complex trees is beneficial.
-//
-// Example Scenario: Expression Caching Optimization
-//
-// Original Expression:
-//
-// .Lambda #Lambda1<System.Func<int>>() {
-//     5 * (3 + 2) + 5 * (3 + 2)
-// }
-//
-// Fingerprinting enables caching or deduplication as follows:
-//
-// .Lambda #Lambda1<System.Func<int>>() {
-//     .Block(System.Int32 $cacheVar) {
-//         $cacheVar = 5 * (3 + 2);
-//         $cacheVar + $cacheVar
-//     }
-// }
-//
-// This transformation, achieved with the help of consistent fingerprinting. The expression caching
-// optimizer is able to eliminate redundant computations by recognizing repeated patterns by using
-// expression fingerprinting.
-//
-// The `ExpressionFingerprintVisitor` is a general-purpose utility for any system that requires
-// structured and reusable hashing of expression trees.
 
-public class ExpressionFingerprintVisitor : ExpressionVisitor
+public class ExpressionFingerprinter : ExpressionVisitor
 {
     private readonly MD5 _md5 = MD5.Create();
     private readonly Stack<byte[]> _hashStack = new();
