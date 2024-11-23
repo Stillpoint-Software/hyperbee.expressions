@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Buffers;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -7,19 +8,17 @@ using System.Text;
 
 namespace Hyperbee.Expressions.Visitors;
 
-public delegate byte[] GetHashBytes( ConstantExpression node );
-
 // ExpressionFingerprinter: Expression Fingerprinting
 //
-// `ExpressionFingerprinter` is a general-purpose utility for any system that needs to uniquely
+// ExpressionFingerprinter is a general-purpose visitor for any system that needs to uniquely
 // identify expressions.
 //
 // This visitor generates unique fingerprints for expression trees, providing a consistent and 
-// reusable hash-based identifier for each node in the tree. It captures both structure and values, 
-// ensuring that each subexpression can be uniquely identified and compared. Fingerprinting enables 
-// the recognition of repeated patterns or identical subexpressions across expression trees.
+// reusable hash-based identifier for each node in the tree. It captures both structure and constant
+// values, ensuring that each subexpression can be uniquely identified and compared. Fingerprinting
+// enables the recognition of repeated patterns or identical subexpressions across expression trees.
 //
-// `ExpressionFingerprinter` works by traversing from the leaves of the tree to the root, ensuring
+// ExpressionFingerprinter works by traversing from the leaves of the tree to the root, ensuring
 // that each subexpression's fingerprint is fully computed before it's included in the hash of a
 // larger expression. This approach makes it ideal for identifying and reusing identical subexpressions
 // at any depth of the tree.
@@ -34,24 +33,30 @@ public delegate byte[] GetHashBytes( ConstantExpression node );
 //   a unique fingerprint. This allows for the comparison of nodes based solely on their fingerprints, 
 //   regardless of their original position in the expression tree.
 //
-// - Complexity-Based Heuristics: Through `IsComplexEnoughToCache` (or equivalent logic), this class 
-//   supports the selective fingerprinting of complex nodes, filtering out nodes where fingerprinting 
-//   may not add value.
-//
 // - Custom Hashing Support: The optional `GetHashBytes` delegate allows developers to define custom 
 //   hashing for specific constants, offering fine-grained control over fingerprint generation. 
 //   This flexibility is useful for optimizing performance or handling domain-specific requirements.
-//
 
-public class ExpressionFingerprinter : ExpressionVisitor
+public delegate byte[] GetHashBytes( ConstantExpression node );
+
+public class ExpressionFingerprinter : ExpressionVisitor, IDisposable
 {
     private readonly MD5 _md5 = MD5.Create();
     private readonly Stack<byte[]> _hashStack = new();
     private readonly Dictionary<Expression, byte[]> _fingerprintCache = new();
+    private readonly BufferWriter _bufferWriter = new();
 
     private static readonly byte[] NullBytes = BitConverter.GetBytes( 0 );
 
     public GetHashBytes CustomHashProvider { get; set; }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize( this );
+
+        _bufferWriter.Dispose();
+        _md5.Dispose();
+    }
 
     public byte[] ComputeFingerprint( Expression expression )
     {
@@ -60,7 +65,7 @@ public class ExpressionFingerprinter : ExpressionVisitor
         return _hashStack.Pop();
     }
 
-    private void AddNodeHash( Expression node, byte[] hashValue, Action<MD5> hashAction = null )
+    private void AddNodeHash( Expression node, Action<BufferWriter> writeAction )
     {
         if ( _fingerprintCache.TryGetValue( node, out var cachedHash ) )
         {
@@ -68,39 +73,32 @@ public class ExpressionFingerprinter : ExpressionVisitor
             return;
         }
 
-        var combinedHash = CombineHashes( _hashStack, hashValue, hashAction );
+        _bufferWriter.Clear();
+        writeAction( _bufferWriter );
 
-        _fingerprintCache[node] = combinedHash;
+        var hash = CombineHashes( _hashStack, _bufferWriter.GetBuffer(), _bufferWriter.Length );
+
+        _fingerprintCache[node] = hash;
         _hashStack.Clear();
-        _hashStack.Push( combinedHash );
+        _hashStack.Push( hash );
     }
 
-    private void AddNodeHash( Expression node, StringBuilder signature )
-    {
-        AddNodeHash( node, Encoding.UTF8.GetBytes( signature.ToString() ) );
-    }
-
-    private byte[] CombineHashes( Stack<byte[]> hashStack, byte[] hashValue, Action<MD5> hashAction = null )
+    private byte[] CombineHashes( Stack<byte[]> hashStack, byte[] hashBuffer, int hashBufferLength )
     {
         _md5.Initialize();
 
-        if ( hashValue == null && hashAction == null )
-            throw new InvalidOperationException( "Must provide a hash action or a hash value." );
-
-        if ( hashValue != null && hashAction != null )
-            throw new InvalidOperationException( "Cannot write both a hash action and a hash value." );
-
-        if ( hashAction != null )
-            hashAction( _md5 );
-        else
-            _md5.TransformBlock( hashValue, 0, hashValue.Length, null, 0 );
+        if ( hashBufferLength > 0 )
+        {
+            _md5.TransformBlock( hashBuffer, 0, hashBufferLength, null, 0 );
+        }
 
         foreach ( var stackHash in hashStack )
+        {
             _md5.TransformBlock( stackHash, 0, stackHash.Length, null, 0 );
+        }
 
         _md5.TransformFinalBlock( [], 0, 0 );
-
-        return _md5.Hash;
+        return _md5.Hash!;
     }
 
     public override Expression Visit( Expression node )
@@ -110,7 +108,7 @@ public class ExpressionFingerprinter : ExpressionVisitor
 
         if ( !HasOverride( node ) )
         {
-            AddNodeHash( node, Encoding.UTF8.GetBytes( $"{node.NodeType}" ) );
+            AddNodeHash( node, writer => writer.Write( node.NodeType ) );
         }
 
         return base.Visit( node );
@@ -123,16 +121,18 @@ public class ExpressionFingerprinter : ExpressionVisitor
         if ( !ReferenceEquals( visitedNode, node ) )
             return visitedNode;
 
-        var signature = SignatureBuilder( node )
-            .Append( node.IsLifted ? "Lifted" : "NotLifted" );
-
-        if ( node.Method != null )
+        AddNodeHash( node, writer =>
         {
-            signature.Append( ":Method=" ).Append( node.Method.Name )
-                .Append( ":DeclaringType=" ).Append( node.Method.DeclaringType?.FullName ?? "null" );
-        }
+            writer.Write( node.NodeType );
+            writer.Write( node.IsLifted ? 1 : 0 );
 
-        AddNodeHash( node, signature );
+            if ( node.Method == null )
+                return;
+
+            writer.Write( node.Method.Name );
+            writer.Write( node.Method.DeclaringType );
+        } );
+
         return node;
     }
 
@@ -143,7 +143,13 @@ public class ExpressionFingerprinter : ExpressionVisitor
         if ( !ReferenceEquals( visitedNode, node ) )
             return visitedNode;
 
-        AddNodeHash( node, Encoding.UTF8.GetBytes( node.Member.Name ) );
+        AddNodeHash( node, writer =>
+        {
+            writer.Write( node.NodeType );
+            writer.Write( node.Member.MemberType );
+            writer.Write( node.Member.Name );
+        } );
+
         return node;
     }
 
@@ -154,46 +160,31 @@ public class ExpressionFingerprinter : ExpressionVisitor
         if ( !ReferenceEquals( visitedNode, node ) )
             return visitedNode;
 
-        var signature = SignatureBuilder( node )
-            .Append( node.Method.Name );
-
-        // method generic arguments
-
-        if ( node.Method.IsGenericMethod )
+        AddNodeHash( node, writer =>
         {
-            signature.Append( '<' );
+            writer.Write( node.NodeType );
+            writer.Write( node.Method.Name );
+            writer.Write( ':' );
 
-            var genericArgs = node.Method.GetGenericArguments();
-
-            for ( var index = 0; index < genericArgs.Length; index++ )
+            if ( node.Method.IsGenericMethod )
             {
-                var argType = genericArgs[index];
-                signature.Append( argType.FullName );
+                var genericArgs = node.Method.GetGenericArguments();
 
-                if ( index < genericArgs.Length - 1 )
-                    signature.Append( ", " );
+                for ( var index = 0; index < genericArgs.Length; index++ )
+                {
+                    var arg = genericArgs[index];
+                    writer.Write( arg );
+                }
+
+                writer.Write( ':' );
             }
 
-            signature.Append( '>' );
-        }
+            foreach ( var param in node.Method.GetParameters() )
+            {
+                writer.Write( param.ParameterType );
+            }
+        } );
 
-        // method parameters
-
-        signature.Append( '(' );
-        var parameters = node.Method.GetParameters();
-
-        for ( var index = 0; index < parameters.Length; index++ )
-        {
-            var parameter = parameters[index];
-            signature.Append( parameter.ParameterType.FullName );
-
-            if ( index < parameters.Length - 1 )
-                signature.Append( ", " );
-        }
-
-        signature.Append( ')' );
-
-        AddNodeHash( node, signature );
         return node;
     }
 
@@ -204,23 +195,19 @@ public class ExpressionFingerprinter : ExpressionVisitor
         if ( !ReferenceEquals( visitedNode, node ) )
             return visitedNode;
 
-        var signature = SignatureBuilder( node )
-            .Append( ".Lambda(" );
-
-        for ( var index = 0; index < node.Parameters.Count; index++ )
+        AddNodeHash( node, writer =>
         {
-            var parameter = node.Parameters[index];
-            signature.Append( parameter.Type.FullName );
+            writer.Write( node.NodeType );
+            for ( var index = 0; index < node.Parameters.Count; index++ )
+            {
+                var param = node.Parameters[index];
+                writer.Write( param.Type );
+            }
 
-            if ( index < node.Parameters.Count - 1 )
-                signature.Append( ", " );
-        }
+            writer.Write( ':' );
+            writer.Write( node.ReturnType );
+        } );
 
-        signature
-            .Append( ") => " )
-            .Append( node.ReturnType.FullName );
-
-        AddNodeHash( node, signature );
         return node;
     }
 
@@ -231,24 +218,21 @@ public class ExpressionFingerprinter : ExpressionVisitor
         if ( !ReferenceEquals( visitedNode, node ) )
             return visitedNode;
 
-        var signature = SignatureBuilder( node )
-            .Append( ".Invocation(" );
-
-        for ( var index = 0; index < node.Arguments.Count; index++ )
+        AddNodeHash( node, writer =>
         {
-            var arg = node.Arguments[index];
-            signature.Append( arg.Type.FullName );
+            writer.Write( node.NodeType );
 
-            if ( index < node.Arguments.Count - 1 )
-                signature.Append( ", " );
-        }
+            foreach ( var arg in node.Arguments )
+            {
+                writer.Write( arg.Type );
+            }
+            
+            writer.Write( ":" );
+            writer.Write( node.Type );
+        } );
 
-        signature.Append( ')' );
-
-        AddNodeHash( node, signature );
         return node;
     }
-
 
     protected override Expression VisitBlock( BlockExpression node )
     {
@@ -257,59 +241,55 @@ public class ExpressionFingerprinter : ExpressionVisitor
         if ( !ReferenceEquals( visitedNode, node ) )
             return visitedNode;
 
-        var signature = SignatureBuilder( node )
-            .Append( ".Block(" );
-
-        for ( var index = 0; index < node.Variables.Count; index++ )
+        AddNodeHash( node, writer =>
         {
-            var variable = node.Variables[index];
-            signature.Append( $"{variable}:{variable.Type.FullName!}" );
+            writer.Write( node.NodeType );
 
-            if ( index < node.Variables.Count - 1 )
-                signature.Append( ", " );
-        }
+            foreach ( var variable in node.Variables )
+            {
+                writer.Write( variable.Name );
+                writer.Write( variable.Type );
+            }
 
-        signature.Append( ')' );
+            writer.Write( ':' );
+            writer.Write( node.Type );
+        } );
 
-        AddNodeHash( node, signature );
         return node;
     }
 
     protected override Expression VisitConstant( ConstantExpression node )
     {
-        byte[] hashValue;
-        Action<MD5> hashAction = null;
-
-        switch ( node.Value )
+        AddNodeHash( node, writer =>
         {
-            case null:
-                hashValue = NullBytes;
-                break;
-            case string str:
-                hashValue = Encoding.UTF8.GetBytes( str );
-                break;
-            case Guid guid:
-                hashValue = guid.ToByteArray();
-                break;
-            case DateTime dateTime:
-                hashValue = BitConverter.GetBytes( dateTime.ToBinary() );
-                break;
-            case IConvertible convertible:
-                hashValue = Encoding.UTF8.GetBytes( convertible.ToString( CultureInfo.InvariantCulture ) );
-                break;
-            default:
-                hashValue = CustomHashProvider?.Invoke( node );
+            switch ( node.Value )
+            {
+                case null:
+                    writer.Write( NullBytes );
+                    return;
+                case Guid guid:
+                    writer.Write( guid );
+                    return;
+                case IConvertible convertible:
+                    writer.Write( convertible );
+                    return;
+                default:
+                    if ( CustomHashProvider != null )
+                    {
+                        var hashBytes = CustomHashProvider( node );
+                        writer.Write( hashBytes );
+                    }
+                    else
+                    {
+                        ConstantHasher.AddToHash( _md5, node.Value );
+                    }
 
-                if ( hashValue == null )
-                    hashAction = md5 => ConstantHasher.AddToHash( md5, node.Value );
-                break;
-        }
+                    break;
+            }
+        } );
 
-        AddNodeHash( node, hashValue, hashAction );
         return node;
     }
-
-    private static StringBuilder SignatureBuilder( Expression node ) => new( $"{node.NodeType}: " );
 
     private static bool HasOverride( Expression node )
     {
@@ -351,37 +331,27 @@ public class ExpressionFingerprinter : ExpressionVisitor
             switch ( value )
             {
                 case DateTime dateTime:
-                    {
-                        var dateBytes = BitConverter.GetBytes( dateTime.ToBinary() );
-                        md5.TransformBlock( dateBytes, 0, dateBytes.Length, null, 0 );
-                        return;
-                    }
+                {
+                    var dateBytes = BitConverter.GetBytes( dateTime.ToBinary() );
+                    md5.TransformBlock( dateBytes, 0, dateBytes.Length, null, 0 );
+                    return;
+                }
                 case IConvertible convertible:
-                    {
-                        var bytes = Encoding.UTF8.GetBytes( convertible.ToString( CultureInfo.InvariantCulture ) );
-                        md5.TransformBlock( bytes, 0, bytes.Length, null, 0 );
-                        return;
-                    }
+                {
+                    var bytes = Encoding.UTF8.GetBytes( convertible.ToString( CultureInfo.InvariantCulture ) );
+                    md5.TransformBlock( bytes, 0, bytes.Length, null, 0 );
+                    return;
+                }
                 case Guid guid:
-                    {
-                        var guidBytes = guid.ToByteArray();
-                        md5.TransformBlock( guidBytes, 0, guidBytes.Length, null, 0 );
-                        return;
-                    }
-                case nint:
-                case nuint:
-                    {
-                        var typeBytes = Encoding.UTF8.GetBytes( value.GetType().FullName! );
-                        md5.TransformBlock( typeBytes, 0, typeBytes.Length, null, 0 );
-                        return;
-                    }
+                {
+                    var guidBytes = guid.ToByteArray();
+                    md5.TransformBlock( guidBytes, 0, guidBytes.Length, null, 0 );
+                    return;
+                }
             }
-
-            // complex object
 
             var type = value.GetType();
             var typeBytesHeader = Encoding.UTF8.GetBytes( type.FullName! );
-
             md5.TransformBlock( typeBytesHeader, 0, typeBytesHeader.Length, null, 0 );
 
             var tuples = GetPropertyAccessors( type );
@@ -389,11 +359,8 @@ public class ExpressionFingerprinter : ExpressionVisitor
             for ( var index = 0; index < tuples.Length; index++ )
             {
                 var (propName, accessor) = tuples[index];
-
                 md5.TransformBlock( propName, 0, propName.Length, null, 0 );
-
-                var propValue = accessor( value );
-                AddToHash( propValue, md5, visited );
+                AddToHash( accessor( value ), md5, visited );
             }
 
             visited.Remove( value );
@@ -416,12 +383,175 @@ public class ExpressionFingerprinter : ExpressionVisitor
 
         private static Func<object, object> CreatePropertyAccessor( PropertyInfo propertyInfo )
         {
-            var instance = Expression.Parameter( typeof( object ), "instance" );
+            var instance = Expression.Parameter( typeof(object), "instance" );
             var castInstance = Expression.Convert( instance, propertyInfo.DeclaringType! );
             var propertyAccess = Expression.Property( castInstance, propertyInfo );
-            var castResult = Expression.Convert( propertyAccess, typeof( object ) );
+            var castResult = Expression.Convert( propertyAccess, typeof(object) );
 
             return Expression.Lambda<Func<object, object>>( castResult, instance ).Compile();
         }
     }
+
+    private class BufferWriter
+    {
+        private byte[] _buffer;
+
+        private readonly Dictionary<Type, int> _typeId = new();
+        private int _nextTypeId;
+
+        public byte[] GetBuffer() => _buffer;
+        public int Length => Position;
+
+        private int Position { get; set; }
+
+        public BufferWriter( int initialSize = 512 )
+        {
+            _buffer = ArrayPool<byte>.Shared.Rent( initialSize );
+        }
+
+        public void Clear()
+        {
+            Position = 0;
+        }
+
+        public void Dispose()
+        {
+            ArrayPool<byte>.Shared.Return( _buffer );
+            _buffer = null!;
+        }
+
+        public void Write( Type type )
+        {
+            if ( type == null )
+            {
+                Write( NullBytes );
+                return;
+            }
+
+            if ( !_typeId.TryGetValue( type, out var typeId ) )
+            {
+                typeId = _nextTypeId++;
+                _typeId[type] = typeId;
+            }
+
+            Write( typeId );
+        }
+
+        public void Write( Guid value )
+        {
+            EnsureCapacity( 16 ); // Guid is 16 bytes
+            value.TryWriteBytes( _buffer.AsSpan( Position ) );
+            Position += 16;
+        }
+
+        public void Write( ReadOnlySpan<byte> data )
+        {
+            EnsureCapacity( data.Length );
+            data.CopyTo( _buffer.AsSpan( Position ) );
+            Position += data.Length;
+        }
+
+        public void Write( string value )
+        {
+            if ( value == null )
+            {
+                Write( NullBytes );
+                return;
+            }
+
+            var byteCount = Encoding.UTF8.GetByteCount( value );
+            EnsureCapacity( byteCount );
+            Encoding.UTF8.GetBytes( value, _buffer.AsSpan( Position ) );
+            Position += byteCount;
+        }
+
+        public void Write( ExpressionType type )
+        {
+            Write( (int) type );
+        }
+
+        public void Write( IConvertible convertible )
+        {
+            switch ( Type.GetTypeCode( convertible.GetType() ) )
+            {
+                case TypeCode.Boolean:
+                    EnsureCapacity( 1 );
+                    _buffer[Position++] = convertible.ToBoolean( CultureInfo.InvariantCulture ) ? (byte) 1 : (byte) 0;
+                    break;
+
+                case TypeCode.Char:
+                    EnsureCapacity( 2 );
+                    BitConverter.TryWriteBytes( _buffer.AsSpan( Position ), convertible.ToChar( CultureInfo.InvariantCulture ) );
+                    Position += 2;
+                    break;
+
+                case TypeCode.Byte:
+                case TypeCode.SByte:
+                    EnsureCapacity( 1 );
+                    _buffer[Position++] = convertible.ToByte( CultureInfo.InvariantCulture );
+                    break;
+
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                    EnsureCapacity( 2 );
+                    BitConverter.TryWriteBytes( _buffer.AsSpan( Position ), convertible.ToInt16( CultureInfo.InvariantCulture ) );
+                    Position += 2;
+                    break;
+
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                    EnsureCapacity( 4 );
+                    BitConverter.TryWriteBytes( _buffer.AsSpan( Position ), convertible.ToInt32( CultureInfo.InvariantCulture ) );
+                    Position += 4;
+                    break;
+
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                    EnsureCapacity( 8 );
+                    BitConverter.TryWriteBytes( _buffer.AsSpan( Position ), convertible.ToInt64( CultureInfo.InvariantCulture ) );
+                    Position += 8;
+                    break;
+
+                case TypeCode.Single:
+                    EnsureCapacity( 4 );
+                    BitConverter.TryWriteBytes( _buffer.AsSpan( Position ), convertible.ToSingle( CultureInfo.InvariantCulture ) );
+                    Position += 4;
+                    break;
+
+                case TypeCode.Double:
+                    EnsureCapacity( 8 );
+                    BitConverter.TryWriteBytes( _buffer.AsSpan( Position ), convertible.ToDouble( CultureInfo.InvariantCulture ) );
+                    Position += 8;
+                    break;
+
+                case TypeCode.DateTime:
+                    EnsureCapacity( 8 );
+                    BitConverter.TryWriteBytes( _buffer.AsSpan( Position ), convertible.ToDateTime( CultureInfo.InvariantCulture ).ToBinary() );
+                    Position += 8;
+                    break;
+
+                case TypeCode.String:
+                case TypeCode.Decimal:
+                default:
+                    var strValue = convertible.ToString( CultureInfo.InvariantCulture );
+                    var utf8Length = Encoding.UTF8.GetByteCount( strValue );
+                    EnsureCapacity( utf8Length );
+                    Encoding.UTF8.GetBytes( strValue, _buffer.AsSpan( Position ) );
+                    Position += utf8Length;
+                    break;
+            }
+        }
+
+        private void EnsureCapacity( int requiredBytes )
+        {
+            if ( Position + requiredBytes <= _buffer.Length )
+                return;
+
+            var buffer = ArrayPool<byte>.Shared.Rent( Position + requiredBytes );
+            _buffer.AsSpan( 0, Position ).CopyTo( buffer );
+            ArrayPool<byte>.Shared.Return( _buffer );
+            _buffer = buffer;
+        }
+    }
 }
+
