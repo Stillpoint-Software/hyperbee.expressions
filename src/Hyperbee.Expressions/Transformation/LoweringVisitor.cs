@@ -16,7 +16,7 @@ public class LoweringVisitor : ExpressionVisitor
 
     private readonly StateContext _states = new( InitialCapacity );
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
-    private readonly ExpressionDependencyCounter _dependencyCounter = new( expr => expr is AwaitExpression || expr is AsyncBlockExpression );
+    private readonly ExpressionDependencyMatcher _dependencyMatcher = new( expr => expr is AwaitExpression || expr is AsyncBlockExpression );
 
     private VariableResolver _variableResolver;
 

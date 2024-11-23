@@ -621,13 +621,13 @@ public class LoweringVisitorTests
         );
 
         var rootExpr = Block( blockAsyncExpr );
-        var counter = new ExpressionDependencyCounter( expr => expr is AsyncBlockExpression || expr is AwaitExpression );
+        var counter = new ExpressionDependencyMatcher( expr => expr is AsyncBlockExpression || expr is AwaitExpression );
 
         // Act
-        var rootExprCount = counter.GetDependencyCount( rootExpr );
-        var blockAsyncExprCount = counter.GetDependencyCount( blockAsyncExpr );
-        var awaitExpr1Count = counter.GetDependencyCount( awaitExpr1 );
-        var awaitExpr2Count = counter.GetDependencyCount( awaitExpr2 );
+        var rootExprCount = counter.MatchCount( rootExpr );
+        var blockAsyncExprCount = counter.MatchCount( blockAsyncExpr );
+        var awaitExpr1Count = counter.MatchCount( awaitExpr1 );
+        var awaitExpr2Count = counter.MatchCount( awaitExpr2 );
 
         // Assert
         Assert.AreEqual( 3, rootExprCount );

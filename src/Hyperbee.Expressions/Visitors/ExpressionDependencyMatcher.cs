@@ -2,18 +2,18 @@
 
 namespace Hyperbee.Expressions.Visitors;
 
-internal class ExpressionDependencyCounter : ExpressionVisitor
+internal class ExpressionDependencyMatcher : ExpressionVisitor
 {
     private readonly Dictionary<Expression, int> _countDictionary = new();
     private readonly Func<Expression, bool> _matchPredicate;
     private int _counter;
 
-    public ExpressionDependencyCounter( Func<Expression, bool> matchPredicate )
+    public ExpressionDependencyMatcher( Func<Expression, bool> matchPredicate )
     {
         _matchPredicate = matchPredicate ?? throw new ArgumentNullException( nameof( matchPredicate ) );
     }
 
-    public int GetDependencyCount( Expression expression )
+    public int MatchCount( Expression expression )
     {
         if ( expression == null )
             throw new ArgumentNullException( nameof( expression ) );
@@ -24,7 +24,12 @@ internal class ExpressionDependencyCounter : ExpressionVisitor
         _counter = 0;
         Visit( expression );
 
-        return _countDictionary[expression];
+        return _counter;
+    }
+
+    public bool HasMatch( Expression expression )
+    {
+        return MatchCount( expression ) > 0;
     }
 
     public void Clear()
