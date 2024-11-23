@@ -226,7 +226,7 @@ public class ExpressionFingerprinter : ExpressionVisitor, IDisposable
             {
                 writer.Write( arg.Type );
             }
-            
+
             writer.Write( ":" );
             writer.Write( node.Type );
         } );
@@ -331,23 +331,23 @@ public class ExpressionFingerprinter : ExpressionVisitor, IDisposable
             switch ( value )
             {
                 case DateTime dateTime:
-                {
-                    var dateBytes = BitConverter.GetBytes( dateTime.ToBinary() );
-                    md5.TransformBlock( dateBytes, 0, dateBytes.Length, null, 0 );
-                    return;
-                }
+                    {
+                        var dateBytes = BitConverter.GetBytes( dateTime.ToBinary() );
+                        md5.TransformBlock( dateBytes, 0, dateBytes.Length, null, 0 );
+                        return;
+                    }
                 case IConvertible convertible:
-                {
-                    var bytes = Encoding.UTF8.GetBytes( convertible.ToString( CultureInfo.InvariantCulture ) );
-                    md5.TransformBlock( bytes, 0, bytes.Length, null, 0 );
-                    return;
-                }
+                    {
+                        var bytes = Encoding.UTF8.GetBytes( convertible.ToString( CultureInfo.InvariantCulture ) );
+                        md5.TransformBlock( bytes, 0, bytes.Length, null, 0 );
+                        return;
+                    }
                 case Guid guid:
-                {
-                    var guidBytes = guid.ToByteArray();
-                    md5.TransformBlock( guidBytes, 0, guidBytes.Length, null, 0 );
-                    return;
-                }
+                    {
+                        var guidBytes = guid.ToByteArray();
+                        md5.TransformBlock( guidBytes, 0, guidBytes.Length, null, 0 );
+                        return;
+                    }
             }
 
             var type = value.GetType();
@@ -383,10 +383,10 @@ public class ExpressionFingerprinter : ExpressionVisitor, IDisposable
 
         private static Func<object, object> CreatePropertyAccessor( PropertyInfo propertyInfo )
         {
-            var instance = Expression.Parameter( typeof(object), "instance" );
+            var instance = Expression.Parameter( typeof( object ), "instance" );
             var castInstance = Expression.Convert( instance, propertyInfo.DeclaringType! );
             var propertyAccess = Expression.Property( castInstance, propertyInfo );
-            var castResult = Expression.Convert( propertyAccess, typeof(object) );
+            var castResult = Expression.Convert( propertyAccess, typeof( object ) );
 
             return Expression.Lambda<Func<object, object>>( castResult, instance ).Compile();
         }
