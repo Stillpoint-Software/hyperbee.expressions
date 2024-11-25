@@ -13,15 +13,15 @@ public class DebugExpressionTests
         var called = false;
         void DebugAction( string message ) => called = message == "Test Message";
 
-        var message = Constant("Test Message");
-        var debugExpr = Debug( DebugAction, message);
+        var message = Constant( "Test Message" );
+        var debugExpr = Debug( DebugAction, message );
 
         // Act
-        var lambda = Lambda<Action>(debugExpr).Compile();
+        var lambda = Lambda<Action>( debugExpr ).Compile();
         lambda();
 
         // Assert
-        Assert.IsTrue(called, "Debug delegate should have been invoked.");
+        Assert.IsTrue( called, "Debug delegate should have been invoked." );
     }
 
     [TestMethod]
@@ -31,16 +31,16 @@ public class DebugExpressionTests
         var called = false;
         void DebugAction( int value ) => called = value == 42;
 
-        var value = Constant(42);
-        var condition = Constant(true);
-        var debugExpr = DebugCondition( DebugAction, condition, value);
+        var value = Constant( 42 );
+        var condition = Constant( true );
+        var debugExpr = DebugCondition( DebugAction, condition, value );
 
         // Act
-        var lambda = Lambda<Action>(debugExpr).Compile();
+        var lambda = Lambda<Action>( debugExpr ).Compile();
         lambda();
 
         // Assert
-        Assert.IsTrue(called, "Debug delegate should have been invoked when condition is true.");
+        Assert.IsTrue( called, "Debug delegate should have been invoked when condition is true." );
     }
 
     [TestMethod]
@@ -50,20 +50,20 @@ public class DebugExpressionTests
         var called = false;
         void DebugAction( int value ) => called = value == 42;
 
-        var value = Constant(42);
-        var condition = Constant(false);
-        var debugExpr = DebugCondition( DebugAction, condition, value);
+        var value = Constant( 42 );
+        var condition = Constant( false );
+        var debugExpr = DebugCondition( DebugAction, condition, value );
 
         // Act
-        var lambda = Lambda<Action>(debugExpr).Compile();
+        var lambda = Lambda<Action>( debugExpr ).Compile();
         lambda();
 
         // Assert
-        Assert.IsFalse(called, "Debug delegate should not have been invoked when condition is false.");
+        Assert.IsFalse( called, "Debug delegate should not have been invoked when condition is false." );
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentException))]
+    [ExpectedException( typeof( ArgumentException ) )]
     public void DebugExpression_Should_Throw_If_Condition_Is_Not_Boolean()
     {
         // Arrange
@@ -71,10 +71,10 @@ public class DebugExpressionTests
         {
         }
 
-        var invalidCondition = Constant(42);
+        var invalidCondition = Constant( 42 );
 
         // Act
-        _ = DebugCondition( DebugAction, invalidCondition, Constant(10));
+        _ = DebugCondition( DebugAction, invalidCondition, Constant( 10 ) );
 
         // Assert: Exception is expected
     }
@@ -86,20 +86,20 @@ public class DebugExpressionTests
         var called = false;
         void DebugAction( int value ) => called = value == 15;
 
-        var x = Parameter(typeof(int), "x");
-        var y = Parameter(typeof(int), "y");
-        var sum = Add(x, y);
+        var x = Parameter( typeof( int ), "x" );
+        var y = Parameter( typeof( int ), "y" );
+        var sum = Add( x, y );
 
-        var debugExpr = Debug( DebugAction, sum);
+        var debugExpr = Debug( DebugAction, sum );
 
-        var block = Block(debugExpr, sum);
+        var block = Block( debugExpr, sum );
 
         // Act
-        var lambda = Lambda<Func<int, int, int>>(block, x, y).Compile();
-        var result = lambda(10, 5);
+        var lambda = Lambda<Func<int, int, int>>( block, x, y ).Compile();
+        var result = lambda( 10, 5 );
 
         // Assert
-        Assert.IsTrue(called, "Debug delegate should have been invoked within the block.");
-        Assert.AreEqual(15, result, "Block should correctly compute the sum.");
+        Assert.IsTrue( called, "Debug delegate should have been invoked within the block." );
+        Assert.AreEqual( 15, result, "Block should correctly compute the sum." );
     }
 }

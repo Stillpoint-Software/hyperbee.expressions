@@ -10,35 +10,35 @@ public class StringFormatExpression : Expression
 
     internal StringFormatExpression( Expression format, params Expression[] arguments )
     {
-        ArgumentNullException.ThrowIfNull( format, nameof(format) );
-        ArgumentNullException.ThrowIfNull( arguments, nameof(arguments) );
+        ArgumentNullException.ThrowIfNull( format, nameof( format ) );
+        ArgumentNullException.ThrowIfNull( arguments, nameof( arguments ) );
 
-        if ( format.Type != typeof(string) )
-            throw new ArgumentException( "Format expression must be of type string.", nameof(format) );
+        if ( format.Type != typeof( string ) )
+            throw new ArgumentException( "Format expression must be of type string.", nameof( format ) );
 
         Format = format;
         Arguments = arguments.ToList();
     }
 
-    public override Type Type => typeof(string);
+    public override Type Type => typeof( string );
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override bool CanReduce => true;
 
     public override Expression Reduce()
     {
         if ( !Arguments.Any() )
-            return Format; 
+            return Format;
 
         var argsArrayExpression = NewArrayInit(
-            typeof(object),
-            Arguments.Select( arg => Convert( arg, typeof(object) ) )
+            typeof( object ),
+            Arguments.Select( arg => Convert( arg, typeof( object ) ) )
         );
 
-        var formatMethod = typeof(string).GetMethod( "Format", [typeof(string), typeof(object[])] );
+        var formatMethod = typeof( string ).GetMethod( "Format", [typeof( string ), typeof( object[] )] );
 
         if ( formatMethod == null )
             throw new InvalidOperationException( "string.Format(string, object[]) not found." );
- 
+
         return Call( formatMethod, Format, argsArrayExpression );
     }
 }

@@ -10,18 +10,18 @@ public class DebugExpression : Expression
 
     public DebugExpression( Delegate debugDelegate, Expression condition, params Expression[] arguments )
     {
-        ArgumentNullException.ThrowIfNull( debugDelegate, nameof(debugDelegate) );
-        ArgumentNullException.ThrowIfNull( arguments, nameof(arguments) );
+        ArgumentNullException.ThrowIfNull( debugDelegate, nameof( debugDelegate ) );
+        ArgumentNullException.ThrowIfNull( arguments, nameof( arguments ) );
 
-        if ( condition != null && condition.Type != typeof(bool) )
-            throw new ArgumentException( "Condition must be a boolean expression.", nameof(condition) );
+        if ( condition != null && condition.Type != typeof( bool ) )
+            throw new ArgumentException( "Condition must be a boolean expression.", nameof( condition ) );
 
         DebugDelegate = debugDelegate;
         DebugCondition = condition;
         Arguments = arguments.ToList();
     }
 
-    public override Type Type => typeof(void);
+    public override Type Type => typeof( void );
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override bool CanReduce => true;
 

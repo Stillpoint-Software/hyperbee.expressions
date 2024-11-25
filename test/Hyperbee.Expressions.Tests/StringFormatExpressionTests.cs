@@ -40,7 +40,7 @@ public class StringFormatExpressionTests
     }
 
     [TestMethod]
-    [ExpectedException( typeof(ArgumentException) )]
+    [ExpectedException( typeof( ArgumentException ) )]
     public void StringFormatExpression_Should_Throw_If_Format_Is_Not_String()
     {
         // Arrange
@@ -55,20 +55,20 @@ public class StringFormatExpressionTests
     public void StringFormatExpression_Should_Work_Within_Complex_Block()
     {
         // Arrange
-        var format = Expression.Constant("The sum of {0} and {1} is {2}");
-        var x = Expression.Parameter(typeof(int), "x");
-        var y = Expression.Parameter(typeof(int), "y");
-        var sum = Expression.Add(x, y);
+        var format = Expression.Constant( "The sum of {0} and {1} is {2}" );
+        var x = Expression.Parameter( typeof( int ), "x" );
+        var y = Expression.Parameter( typeof( int ), "y" );
+        var sum = Expression.Add( x, y );
 
-        var formatExpr = ExpressionExtensions.StringFormat(format, x, y, sum);
+        var formatExpr = ExpressionExtensions.StringFormat( format, x, y, sum );
 
-        var block = Expression.Block(formatExpr);
+        var block = Expression.Block( formatExpr );
 
         // Act
-        var lambda = Expression.Lambda<Func<int, int, string>>(block, x, y).Compile();
-        var result = lambda(10, 20);
+        var lambda = Expression.Lambda<Func<int, int, string>>( block, x, y ).Compile();
+        var result = lambda( 10, 20 );
 
         // Assert
-        Assert.AreEqual("The sum of 10 and 20 is 30", result, "StringFormatExpression should correctly format the string within a block.");
+        Assert.AreEqual( "The sum of 10 and 20 is 30", result, "StringFormatExpression should correctly format the string within a block." );
     }
 }
