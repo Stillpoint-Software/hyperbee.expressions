@@ -86,7 +86,6 @@ public class TryCatchTransition : Transition
             ),
             Switch( // Handle error
                 TryStateVariable,
-                Empty(),
                 switchCases
             )
         );
