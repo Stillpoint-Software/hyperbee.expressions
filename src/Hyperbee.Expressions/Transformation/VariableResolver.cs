@@ -210,7 +210,7 @@ internal sealed class VariableResolver : ExpressionVisitor
             return true;
         }
 
-        if( _localMappedVariables.TryGetValue( parameter, out var localMappedVariable ) )
+        if ( _localMappedVariables.TryGetValue( parameter, out var localMappedVariable ) )
         {
             updatedParameterExpression = localMappedVariable;
             return true;
