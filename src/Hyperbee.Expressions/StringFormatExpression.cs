@@ -1,4 +1,4 @@
-﻿
+
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -6,10 +6,9 @@ namespace Hyperbee.Expressions;
 
 public class StringFormatExpression : Expression
 {
+    public Expression FormatProvider { get; }
     public Expression Format { get; }
     public IReadOnlyList<Expression> Arguments { get; }
-
-    public Expression FormatProvider { get; }
 
     private static readonly MethodInfo StringFormatMethod;
 
@@ -18,7 +17,7 @@ public class StringFormatExpression : Expression
         StringFormatMethod = typeof( string ).GetMethod( "Format", [typeof( IFormatProvider ), typeof( string ), typeof( object[] )] );
     }
 
-    internal StringFormatExpression( Expression format, Expression formatProvider, Expression[] arguments )
+    internal StringFormatExpression( Expression formatProvider, Expression format, Expression[] arguments )
     {
         ArgumentNullException.ThrowIfNull( format, nameof( format ) );
         ArgumentNullException.ThrowIfNull( arguments, nameof( arguments ) );
@@ -29,8 +28,8 @@ public class StringFormatExpression : Expression
         if ( formatProvider != null && !typeof( IFormatProvider ).IsAssignableFrom( formatProvider.Type ) )
             throw new ArgumentException( "Format provider must implement IFormatProvider.", nameof( formatProvider ) );
 
+        FormatProvider = formatProvider ?? Constant( null, typeof(IFormatProvider) );
         Format = format;
-        FormatProvider = formatProvider ?? Constant( null, typeof( IFormatProvider ) );
         Arguments = arguments.ToList();
     }
 
@@ -59,17 +58,17 @@ public static partial class ExpressionExtensions
 {
     public static StringFormatExpression StringFormat( Expression format, Expression argument )
     {
-        return new StringFormatExpression( format, null, [argument] );
+        return new StringFormatExpression( null, format, [argument] );
     }
 
     public static StringFormatExpression StringFormat( Expression format, Expression[] arguments )
     {
-        return new StringFormatExpression( format, null, arguments );
+        return new StringFormatExpression( null, format, arguments );
     }
 
-    public static StringFormatExpression StringFormat( Expression format, Expression formatProvider, Expression[] arguments )
+    public static StringFormatExpression StringFormat( Expression formatProvider, Expression format, Expression[] arguments )
     {
-        return new StringFormatExpression( format, formatProvider, arguments );
+        return new StringFormatExpression( formatProvider, format, arguments );
     }
 }
 
