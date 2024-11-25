@@ -123,12 +123,12 @@ internal sealed class VariableResolver : ExpressionVisitor
                 if ( v.Name.StartsWith( "__local." ) )
                 {
                     newVars.Add( v );
-                    _localMappedVariables.Add( v, v );
+                    _localMappedVariables.TryAdd( v, v );
                     continue;
                 }
 
                 var newVar = Expression.Parameter( v.Type, VariableName.LocalVariable( v.Name, _states.TailState.StateId, ref _variableId ) );
-                _localMappedVariables.Add( v, newVar );
+                _localMappedVariables.TryAdd( v, newVar );
                 newVars.Add( newVar );
             }
 
