@@ -40,14 +40,14 @@ public class AsyncBenchmarks
     }
 
     [Benchmark]
-    public async Task Hyperbee_AsyncBlock_CompileAndExecute()
+    public async Task Hyperbee_AsyncBlock_First_CompileAndExecute()
     {
         var compiled = _lambda.Compile();
         await compiled();
     }
 
     [Benchmark]
-    public async Task Hyperbee_AsyncBlock_FastCompileAndExecute()
+    public async Task Hyperbee_AsyncBlock_First_FastCompileAndExecute()
     {
         var compiled = _lambda.CompileFast();
         await compiled();
