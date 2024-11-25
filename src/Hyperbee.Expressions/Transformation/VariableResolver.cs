@@ -25,12 +25,16 @@ internal sealed class VariableResolver : ExpressionVisitor
         [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
 
-        public const string Return = "return<>";
+        [MethodImpl( MethodImplOptions.AggressiveInlining )]
+        public static string LocalVariable( string name, int stateId, ref int variableId ) => $"__local.{name}<{stateId}_{variableId++}>";
+
+        public const string Return = "__return<>";
     }
 
     private const int InitialCapacity = 8;
 
     private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new( InitialCapacity );
+    private readonly Dictionary<ParameterExpression, ParameterExpression> _localMappedVariables = new( InitialCapacity );
     private readonly HashSet<ParameterExpression> _variables;
     private readonly Stack<ICollection<ParameterExpression>> _localScopedVariables = new( InitialCapacity );
     private readonly StateContext _states;
@@ -101,27 +105,35 @@ internal sealed class VariableResolver : ExpressionVisitor
 
     protected override Expression VisitBlock( BlockExpression node )
     {
-        //var newVars = new List<ParameterExpression>();
-        //foreach( var v in node.Variables )
-        //{
-        //    if( _mappedVariables.ContainsValue( v ) ) 
-        //    {
-        //        newVars.Add( v );
-        //        continue;
-        //    }
+        var newVars = CreateLocalVariables( node );
 
-        //    var newVar = CreateParameter( v );
-        //    _mappedVariables.TryAdd( v, newVar );
-        //}
+        _localScopedVariables.Push( newVars );
 
-        //_localScopedVariables.Push( newVars );
-        _localScopedVariables.Push( node.Variables );
-
-        var returnNode = base.VisitBlock( node );
+        var returnNode = base.VisitBlock( node.Update( newVars, node.Expressions ) );
 
         _localScopedVariables.Pop();
 
         return returnNode;
+
+        List<ParameterExpression> CreateLocalVariables( BlockExpression node )
+        {
+            var newVars = new List<ParameterExpression>();
+            foreach ( var v in node.Variables )
+            {
+                if ( v.Name.StartsWith( "__local." ) )
+                {
+                    newVars.Add( v );
+                    _localMappedVariables.Add( v, v );
+                    continue;
+                }
+
+                var newVar = Expression.Parameter( v.Type, VariableName.LocalVariable( v.Name, _states.TailState.StateId, ref _variableId ) );
+                _localMappedVariables.Add( v, newVar );
+                newVars.Add( newVar );
+            }
+
+            return newVars;
+        }
     }
 
     protected override Expression VisitParameter( ParameterExpression node )
@@ -198,19 +210,11 @@ internal sealed class VariableResolver : ExpressionVisitor
             return true;
         }
 
-        //if( _localScopedVariables.Count > 0 )
-        //{
-        //    foreach ( var localVariable in _localScopedVariables.Peek() )
-        //    {
-        //        if ( localVariable == parameter )
-        //        {
-        //            updatedParameterExpression = createParameter( parameter );
-        //            _mappedVariables[parameter] = updatedParameterExpression;
-        //            return true;
-        //        }
-        //    }
-        //}
-
+        if( _localMappedVariables.TryGetValue( parameter, out var localMappedVariable ) )
+        {
+            updatedParameterExpression = localMappedVariable;
+            return true;
+        }
 
         if ( _variables == null || !_variables.Contains( parameter ) )
         {

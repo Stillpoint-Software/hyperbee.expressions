@@ -29,6 +29,30 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 1, result );
     }
 
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task BlockAsync_ShouldAwaitMultipleSuccessfully_WithCompletedTask( bool immediateFlag )
+    {
+        // Arrange
+        var block = BlockAsync( Await( AsyncHelper.Completable(
+                        Constant( immediateFlag ),
+                        Constant( 1 )
+                    ) ),
+                    Await( AsyncHelper.Completable(
+                        Constant( immediateFlag ),
+                        Constant( 2 )
+                    ) ) );
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        //Assert
+        Assert.AreEqual( 2, result );
+    }
+
     [TestMethod]
     public async Task BlockAsync_ShouldAwaitSuccessfully_WithDelayedTask()
     {
