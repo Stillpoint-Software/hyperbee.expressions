@@ -15,15 +15,14 @@ public class LoweringVisitor : ExpressionVisitor
     private int _awaitCount;
 
     private readonly StateContext _states = new( InitialCapacity );
-    private readonly Dictionary<LabelTarget, Expression> _labels = [];
     private readonly ExpressionDependencyMatcher _dependencyMatcher = new( expr => expr is AwaitExpression || expr is AsyncBlockExpression );
 
     private VariableResolver _variableResolver;
 
-    public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions )
+    public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] scopedVariables )
     {
         _variableResolver = new VariableResolver( variables, _states );
-
+        
         VisitExpressions( expressions );
 
         return new LoweringResult
@@ -31,18 +30,19 @@ public class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes,
             ReturnValue = _returnValue,
             AwaitCount = _awaitCount,
-            Variables = _variableResolver.GetLocalVariables()
+            Variables = _variableResolver.GetMappedVariables(),
+            ScopedVariables = scopedVariables
         };
     }
 
     internal LoweringResult Transform( ReadOnlyCollection<ParameterExpression> variables, IReadOnlyCollection<Expression> expressions )
     {
-        return Transform( [.. variables], [.. expressions] );
+        return Transform( [.. variables], [.. expressions], [] );
     }
 
     public LoweringResult Transform( params Expression[] expressions )
     {
-        return Transform( [], expressions );
+        return Transform( [], expressions, [] );
     }
 
     // Visit methods
@@ -95,7 +95,9 @@ public class LoweringVisitor : ExpressionVisitor
                     tailState.Transition = new GotoTransition { TargetNode = targetNode };
                 }
             }
-            else if ( visited is not NodeExpression ) // TODO: Not adding NodeExpression seems like a hack
+
+            // TODO: Not adding NodeExpression seems like a hack
+            else if ( visited is not NodeExpression && visited.NodeType != ExpressionType.Extension ) 
             {
                 tailState.Expressions.Add( visited );
             }
@@ -123,6 +125,20 @@ public class LoweringVisitor : ExpressionVisitor
             or LoopExpression;
     }
 
+    private bool TryAddDirect( Expression node )
+    {
+        if ( !_dependencyMatcher.HasMatch( node ) )
+        {
+            _states.TailState.Expressions.Add(
+                _variableResolver.Resolve( node )
+            );
+
+            return true;
+        }
+
+        return false;
+    }
+
     // Override methods for specific expression types
 
     protected override Expression VisitLambda<T>( Expression<T> node )
@@ -134,19 +150,13 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitBlock( BlockExpression node )
     {
-        if ( node.Variables.Any( v => v.Name.StartsWith( "_nh_" ) ) )
-        {
-            _states.TailState.Expressions.Add( node );
-            return _variableResolver.Resolve( node );
-        }
+        if( TryAddDirect( node ) )
+            return node;
 
         var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
 
-        // TODO: Temporary fix for handling variables in blocks
-        //sourceState.Variables.AddRange( node.Variables.Where( v => v.Name.StartsWith( "_nh_" ) ) );
-        //_variableResolver.AddLocalVariables( node.Variables.Where( v => !v.Name.StartsWith( "_nh_" ) ) );
         _variableResolver.AddLocalVariables( node.Variables );
 
         var currentSource = sourceState;
@@ -194,6 +204,9 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
+        if ( TryAddDirect( node ) )
+            return node;
+
         var updatedTest = base.Visit( node.Test );
 
         var joinState = _states.EnterGroup( out var sourceState );
@@ -219,10 +232,8 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitGoto( GotoExpression node )
     {
-        if ( _labels.TryGetValue( node.Target, out var labelExpression ) )
-        {
-            return labelExpression;
-        }
+        if( _variableResolver.TryResolveLabel( node, out var label ) )
+            return label;
 
         var updateNode = base.VisitGoto( node );
 
@@ -236,6 +247,9 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitLoop( LoopExpression node )
     {
+        if ( TryAddDirect( node ) )
+            return node;
+
         var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
@@ -259,11 +273,8 @@ public class LoweringVisitor : ExpressionVisitor
         // Helper function for assigning loop labels
         void InitializeLabels( NodeExpression branchState )
         {
-            if ( node.ContinueLabel != null )
-                _labels[node.ContinueLabel] = Expression.Goto( branchState.NodeLabel );
-
-            if ( node.BreakLabel != null )
-                _labels[node.BreakLabel] = Expression.Goto( joinState.NodeLabel );
+            _variableResolver.ResolveLabel( node.ContinueLabel, branchState.NodeLabel );
+            _variableResolver.ResolveLabel( node.BreakLabel, joinState.NodeLabel );
         }
     }
 
@@ -274,6 +285,9 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitSwitch( SwitchExpression node )
     {
+        if ( TryAddDirect( node ) )
+            return node;
+
         var updatedSwitchValue = base.Visit( node.SwitchValue );
 
         var joinState = _states.EnterGroup( out var sourceState );
@@ -305,6 +319,9 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitTry( TryExpression node )
     {
+        if ( TryAddDirect( node ) )
+            return node;
+
         var joinState = _states.EnterGroup( out var sourceState );
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
@@ -458,7 +475,6 @@ public class LoweringVisitor : ExpressionVisitor
         var updatedExpression = Visit( resolved );
 
         // TODO: not sure if this is always valid, might help with clean up of NodeExpression's ReduceFinalBlock()
-
         if ( updatedExpression is NodeExpression nodeExpression )
             return nodeExpression.ResultVariable ?? nodeExpression;
 

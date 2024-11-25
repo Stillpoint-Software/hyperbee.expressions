@@ -9,6 +9,7 @@ public record LoweringResult
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
     public IReadOnlyCollection<Expression> Variables { get; init; }
+    public ParameterExpression[] ScopedVariables { get; internal set; }
 
     internal string DebugView
     {

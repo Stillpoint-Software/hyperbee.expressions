@@ -1,24 +1,11 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.ObjectModel;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public interface IVariableResolver
-{
-    Expression Resolve( Expression node );
-
-    Expression GetResultVariable( Expression node, int stateId );
-    Expression GetAwaiterVariable( Type type, int stateId );
-    Expression GetTryVariable( int stateId );
-    Expression GetExceptionVariable( int stateId );
-    ParameterExpression GetReturnVariable( Type type );
-
-    IReadOnlyCollection<Expression> GetLocalVariables();
-
-    void AddLocalVariables( IEnumerable<ParameterExpression> variables );
-}
-
-internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
+internal sealed class VariableResolver : ExpressionVisitor
 {
     internal static class VariableName
     {
@@ -45,7 +32,11 @@ internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
 
     private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new( InitialCapacity );
     private readonly HashSet<ParameterExpression> _variables;
+    private readonly Stack<ICollection<ParameterExpression>> _localScopedVariables = new( InitialCapacity );
     private readonly StateContext _states;
+
+
+    private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private int _variableId = 0;
 
@@ -97,21 +88,77 @@ internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
         return Visit( node );
     }
 
+    internal void ResolveLabel( LabelTarget targetLabel, LabelTarget nodeLabel )
+    {
+        if ( targetLabel != null )
+            _labels[targetLabel] = Expression.Goto( nodeLabel );
+    }
+
+    internal bool TryResolveLabel( GotoExpression node, out Expression label )
+    {
+        return _labels.TryGetValue( node.Target, out label );
+    }
+
+    protected override Expression VisitBlock( BlockExpression node )
+    {
+        //var newVars = new List<ParameterExpression>();
+        //foreach( var v in node.Variables )
+        //{
+        //    if( _mappedVariables.ContainsValue( v ) ) 
+        //    {
+        //        newVars.Add( v );
+        //        continue;
+        //    }
+
+        //    var newVar = CreateParameter( v );
+        //    _mappedVariables.TryAdd( v, newVar );
+        //}
+
+        //_localScopedVariables.Push( newVars );
+        _localScopedVariables.Push( node.Variables );
+
+        var returnNode = base.VisitBlock( node );
+
+        _localScopedVariables.Pop();
+
+        return returnNode;
+    }
+
     protected override Expression VisitParameter( ParameterExpression node )
     {
         return TryAddVariable( node, CreateParameter, out var updatedVariable )
             ? updatedVariable
             : base.VisitParameter( node );
-
-        ParameterExpression CreateParameter( ParameterExpression n )
-        {
-            return Expression.Parameter( n.Type, VariableName.Variable( n.Name, _states.TailState.StateId, ref _variableId ) );
-        }
     }
 
+    protected override Expression VisitExtension( Expression node )
+    {
+        if ( node is AsyncBlockExpression asyncBlockExpression )
+        {
+            asyncBlockExpression.SetSharedScopeVariables( _localScopedVariables.SelectMany( x => x ).ToList() );
+        }
+
+        return base.VisitExtension( node );
+    }
+
+    protected override Expression VisitLabel( LabelExpression node )
+    {
+        if ( _labels.TryGetValue( node.Target, out var label ) )
+            return label;
+
+        return base.VisitLabel( node );
+    }
+
+    protected override Expression VisitGoto( GotoExpression node )
+    {
+        if ( _labels.TryGetValue( node.Target, out var label ) )
+            return label;
+
+        return base.VisitGoto( node );
+    }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public IReadOnlyCollection<Expression> GetLocalVariables()
+    public IReadOnlyCollection<Expression> GetMappedVariables()
     {
         return _mappedVariables.Values;
     }
@@ -126,6 +173,12 @@ internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
     }
 
     // helpers
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    private ParameterExpression CreateParameter( ParameterExpression n )
+    {
+        return Expression.Parameter( n.Type, VariableName.Variable( n.Name, _states.TailState.StateId, ref _variableId ) );
+    }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private ParameterExpression AddVariable( ParameterExpression variable )
@@ -144,6 +197,20 @@ internal sealed class VariableResolver : ExpressionVisitor, IVariableResolver
             updatedParameterExpression = mappedVariable;
             return true;
         }
+
+        //if( _localScopedVariables.Count > 0 )
+        //{
+        //    foreach ( var localVariable in _localScopedVariables.Peek() )
+        //    {
+        //        if ( localVariable == parameter )
+        //        {
+        //            updatedParameterExpression = createParameter( parameter );
+        //            _mappedVariables[parameter] = updatedParameterExpression;
+        //            return true;
+        //        }
+        //    }
+        //}
+
 
         if ( _variables == null || !_variables.Contains( parameter ) )
         {

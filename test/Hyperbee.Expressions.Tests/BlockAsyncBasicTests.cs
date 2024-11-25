@@ -389,6 +389,7 @@ public class BlockAsyncBasicTests
             var temp = i;
             tasks.Add( Task.Run( async () =>
                 {
+                    await Task.Delay( 5 / i * 1000 );
                     counter += temp;
                     await Task.Completable...
                 } )
@@ -398,7 +399,7 @@ public class BlockAsyncBasicTests
         return counter;
         */
 
-        var counter = Variable( typeof( int ), "counter" );
+        var tracker = Variable( typeof( int[] ), "tracker" );
         var temp = Variable( typeof( int ), "temp" );
 
         var tasks = Variable( typeof( List<Task> ), "tasks" );
@@ -410,10 +411,8 @@ public class BlockAsyncBasicTests
             typeof( Task ).GetMethod( nameof( Task.Run ), [typeof( Func<Task> )] )!,
             Lambda<Func<Task>>(
                 BlockAsync(
-                    Await( AsyncHelper.Completable( Constant( immediateFlag ) ) ),
-                    Await( Call( delayMethod, Multiply( Divide( Constant( 5 ), i ), Constant( 1000 ) ) ) ),
-                    Assign( counter, temp ), // Add( counter, temp ) ),
-                    Await( AsyncHelper.Completable( Constant( immediateFlag ) ), false )
+                    Await( Call( delayMethod, Constant( 10 ) ) ),
+                    Assign( ArrayAccess( tracker, temp ), temp )
                 )
             )
         );
@@ -423,30 +422,43 @@ public class BlockAsyncBasicTests
         var iteration = PostIncrementAssign( i ); // i++;
 
         var block = BlockAsync(
-            [counter, tasks, i],
-            Assign( counter, Constant( 0 ) ),
+            [tracker, tasks, i],
+            Assign( tracker, NewArrayBounds( typeof(int), Constant(5) ) ),
             Assign( tasks, New( typeof( List<Task> ).GetConstructors()[0] ) ),
             For( initIncrement, condition, iteration,
                 Block(
                     [temp],
-                    //Await( Constant( Task.Delay( Random.Shared.Next( 10, 1000 ) ) ) ),
                     Assign( temp, i ),
                     Call( tasks, typeof( List<Task> ).GetMethod( nameof( List<Task>.Add ) ), taskRun )
                 )
             ),
             Await( Call( typeof( Task ).GetMethod( nameof( Task.WhenAll ), [typeof( IEnumerable<Task> )] ), tasks ), false ),
-            counter
+            tracker
         );
 
-        var lambda = Lambda<Func<Task<int>>>( block );
+        var lambda = Lambda<Func<Task<int[]>>>( block );
         var compiledLambda = lambda.Compile();
 
         // Act
         var result = await compiledLambda();
 
         // Assert
-        // ( 0 + 0) + (0 + 1) + (1 + 2) + (3 + 3) + (6 + 4) = 20
-        Assert.AreEqual( 20, result );
+        Assert.AreEqual( 5, result.Length );
+        Assert.AreEqual( 0, result[0] );
+        Assert.AreEqual( 1, result[1] );
+        Assert.AreEqual( 2, result[2] );
+        Assert.AreEqual( 3, result[3] );
+        Assert.AreEqual( 4, result[4] );
+    }
+
+    public static class LoggerExpression
+    {
+        public static Expression<Action<object>> Log( string message ) => arg1 => Log( message, arg1 );
+
+        public static void Log( string message, object arg1 )
+        {
+            Console.WriteLine( $"{message} value: {arg1}" );
+        }
     }
 
     [DataTestMethod]

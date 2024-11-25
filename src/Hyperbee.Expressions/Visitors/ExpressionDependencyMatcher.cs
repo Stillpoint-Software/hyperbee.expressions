@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 
 namespace Hyperbee.Expressions.Visitors;
 
@@ -36,6 +36,11 @@ internal class ExpressionDependencyMatcher : ExpressionVisitor
     {
         _countDictionary.Clear();
         _counter = 0;
+    }
+
+    protected override Expression VisitLambda<T>( Expression<T> node )
+    {
+        return node;
     }
 
     public override Expression Visit( Expression node )

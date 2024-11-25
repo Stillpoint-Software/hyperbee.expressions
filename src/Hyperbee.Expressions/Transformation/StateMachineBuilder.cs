@@ -64,6 +64,8 @@ public class StateMachineBuilder<TResult>
 
         // Initialize the state machine
 
+        var bodyExpression = new List<Expression>();
+
         var stateMachineVariable = Variable(
             stateMachineType,
             $"stateMachine<{id}>"
@@ -73,6 +75,7 @@ public class StateMachineBuilder<TResult>
             stateMachineVariable,
             New( stateMachineType )
         );
+        bodyExpression.Add( assignNew );
 
         var assignStateField = Assign(
             Field(
@@ -81,6 +84,19 @@ public class StateMachineBuilder<TResult>
             ),
             Constant( -1 )
         );
+        bodyExpression.Add( assignStateField );
+
+        // create local copy of shared variables on statemachine
+        foreach ( var scopedVariable in source.ScopedVariables )
+        {
+            var field = fields.First( field => field.Name == scopedVariable.Name );
+            var fieldExpression = Field( stateMachineVariable, field );
+            var assignField = Assign(
+                fieldExpression,
+                scopedVariable
+            );
+            bodyExpression.Add( assignField );
+        }
 
         var assignMoveNextDelegate = Assign(
             Field(
@@ -89,6 +105,7 @@ public class StateMachineBuilder<TResult>
             ),
             moveNextLambda
         );
+        bodyExpression.Add( assignMoveNextDelegate );
 
         // Run the state-machine
         //
@@ -109,17 +126,15 @@ public class StateMachineBuilder<TResult>
             startMethod,
             stateMachineVariable
         );
+        bodyExpression.Add( callBuilderStart );
 
         var taskProperty = builderFieldInfo.FieldType.GetProperty( "Task" );
         var taskExpression = Property( builderField, taskProperty! );
+        bodyExpression.Add( taskExpression );
 
         return Block(
             [stateMachineVariable],
-            assignNew,
-            assignStateField,
-            assignMoveNextDelegate,
-            callBuilderStart,
-            taskExpression
+            bodyExpression
         );
     }
 
@@ -168,6 +183,15 @@ public class StateMachineBuilder<TResult>
         );
 
         foreach ( var parameterExpression in source.Variables.OfType<ParameterExpression>() )
+        {
+            typeBuilder.DefineField(
+                parameterExpression.Name ?? parameterExpression.ToString(),
+                parameterExpression.Type,
+                FieldAttributes.Public
+            );
+        }
+
+        foreach ( var parameterExpression in source.ScopedVariables.OfType<ParameterExpression>() )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),

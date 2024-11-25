@@ -29,7 +29,7 @@ public class LoweringVisitorTests
         var visitor = new LoweringVisitor();
         var result = visitor.Transform(
             variables: [varExpr],
-            expressions: [assignExpr] );
+            expressions: [assignExpr], [] );
 
         // Assert
         AssertTransition.AssertResult( result, nodes: 1, variables: 1 );
