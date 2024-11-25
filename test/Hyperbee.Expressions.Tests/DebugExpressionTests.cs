@@ -25,6 +25,25 @@ public class DebugExpressionTests
     }
 
     [TestMethod]
+    public void DebugExpression_Should_Invoke_DebugDelegate_Unconditionally1()
+    {
+        // Arrange
+        var called = false;
+        void DebugAction( string message1, string message2 ) => called = message1 == "Test Message 1" && message2 == "Test Message 2";
+
+        var message1 = Constant( "Test Message 1" );
+        var message2 = Constant( "Test Message 2" );
+        var debugExpr = Debug( DebugAction, message1, message2 );
+
+        // Act
+        var lambda = Lambda<Action>( debugExpr ).Compile();
+        lambda();
+
+        // Assert
+        Assert.IsTrue( called, "Debug delegate should have been invoked." );
+    }
+
+    [TestMethod]
     public void DebugExpression_Should_Invoke_DebugDelegate_When_Condition_Is_True()
     {
         // Arrange
