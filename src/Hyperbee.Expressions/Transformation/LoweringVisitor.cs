@@ -22,7 +22,7 @@ public class LoweringVisitor : ExpressionVisitor
     public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] scopedVariables )
     {
         _variableResolver = new VariableResolver( variables, _states );
-        
+
         VisitExpressions( expressions );
 
         return new LoweringResult
@@ -97,7 +97,7 @@ public class LoweringVisitor : ExpressionVisitor
             }
 
             // TODO: Not adding NodeExpression seems like a hack
-            else if ( visited is not NodeExpression && visited.NodeType != ExpressionType.Extension ) 
+            else if ( visited is not NodeExpression && visited.NodeType != ExpressionType.Extension )
             {
                 tailState.Expressions.Add( visited );
             }
@@ -150,7 +150,7 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitBlock( BlockExpression node )
     {
-        if( TryAddDirect( node ) )
+        if ( TryAddDirect( node ) )
             return node;
 
         var joinState = _states.EnterGroup( out var sourceState );
@@ -232,7 +232,7 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitGoto( GotoExpression node )
     {
-        if( _variableResolver.TryResolveLabel( node, out var label ) )
+        if ( _variableResolver.TryResolveLabel( node, out var label ) )
             return label;
 
         var updateNode = base.VisitGoto( node );

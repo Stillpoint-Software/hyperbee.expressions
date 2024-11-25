@@ -423,7 +423,7 @@ public class BlockAsyncBasicTests
 
         var block = BlockAsync(
             [tracker, tasks, i],
-            Assign( tracker, NewArrayBounds( typeof(int), Constant(5) ) ),
+            Assign( tracker, NewArrayBounds( typeof( int ), Constant( 5 ) ) ),
             Assign( tasks, New( typeof( List<Task> ).GetConstructors()[0] ) ),
             For( initIncrement, condition, iteration,
                 Block(
