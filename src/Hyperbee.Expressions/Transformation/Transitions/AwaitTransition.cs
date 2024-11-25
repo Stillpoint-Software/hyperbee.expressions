@@ -39,13 +39,11 @@ public class AwaitTransition : Transition
 
     internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
     {
-        var awaitable = Variable( Target.Type, "awaitable" );
-
         var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
 
         var getAwaiterCall = getAwaiterMethod.IsStatic
-            ? Call( getAwaiterMethod, awaitable, Constant( ConfigureAwait ) )
-            : Call( Constant( AwaitBinder ), getAwaiterMethod, awaitable, Constant( ConfigureAwait ) );
+            ? Call( getAwaiterMethod, Target, Constant( ConfigureAwait ) )
+            : Call( Constant( AwaitBinder ), getAwaiterMethod, Target, Constant( ConfigureAwait ) );
 
         // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
         var awaitUnsafeOnCompleted = resolverSource.BuilderField.Type
@@ -55,10 +53,6 @@ public class AwaitTransition : Transition
 
         var expressions = new List<Expression>
         {
-            Assign(
-                awaitable,
-                Target
-            ),
             Assign(
                 AwaiterVariable,
                 getAwaiterCall
@@ -83,7 +77,7 @@ public class AwaitTransition : Transition
         if ( fallThrough != null )
             expressions.Add( fallThrough );
 
-        return Block( [awaitable], expressions );
+        return Block( expressions );
     }
 
     internal override NodeExpression FallThroughNode => CompletionNode;
