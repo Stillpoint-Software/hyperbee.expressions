@@ -11,9 +11,10 @@ public class LoopTransition : Transition
         return Empty();
     }
 
-    internal override NodeExpression FallThroughNode => BodyNode; // We won't reduce, but we need to provide a value for ordering
     public LabelTarget BreakLabel { get; set; }
     public LabelTarget ContinueLabel { get; set; }
+
+    internal override NodeExpression FallThroughNode => BodyNode; 
 
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {
