@@ -15,22 +15,22 @@ public class StringFormatExpression : Expression
 
     static StringFormatExpression()
     {
-        StringFormatMethod = typeof(string).GetMethod( "Format", [typeof(IFormatProvider), typeof(string), typeof(object[])] );
+        StringFormatMethod = typeof( string ).GetMethod( "Format", [typeof( IFormatProvider ), typeof( string ), typeof( object[] )] );
     }
 
     internal StringFormatExpression( Expression format, Expression formatProvider, Expression[] arguments )
     {
-        ArgumentNullException.ThrowIfNull( format, nameof(format) );
-        ArgumentNullException.ThrowIfNull( arguments, nameof(arguments) );
+        ArgumentNullException.ThrowIfNull( format, nameof( format ) );
+        ArgumentNullException.ThrowIfNull( arguments, nameof( arguments ) );
 
-        if ( format.Type != typeof(string) )
-            throw new ArgumentException( "Format expression must be of type string.", nameof(format) );
+        if ( format.Type != typeof( string ) )
+            throw new ArgumentException( "Format expression must be of type string.", nameof( format ) );
 
-        if ( formatProvider != null && !typeof(IFormatProvider).IsAssignableFrom( formatProvider.Type ) )
-            throw new ArgumentException( "Format provider must implement IFormatProvider.", nameof(formatProvider) );
+        if ( formatProvider != null && !typeof( IFormatProvider ).IsAssignableFrom( formatProvider.Type ) )
+            throw new ArgumentException( "Format provider must implement IFormatProvider.", nameof( formatProvider ) );
 
         Format = format;
-        FormatProvider = formatProvider ?? Constant( null, typeof(IFormatProvider) );
+        FormatProvider = formatProvider ?? Constant( null, typeof( IFormatProvider ) );
         Arguments = arguments.ToList();
     }
 
