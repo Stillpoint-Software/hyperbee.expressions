@@ -35,15 +35,6 @@ public class LoweringVisitor : ExpressionVisitor
         };
     }
 
-    internal LoweringResult Transform( ReadOnlyCollection<ParameterExpression> variables, IReadOnlyCollection<Expression> expressions )
-    {
-        return Transform( [.. variables], [.. expressions], [] );
-    }
-
-    public LoweringResult Transform( params Expression[] expressions )
-    {
-        return Transform( [], expressions, [] );
-    }
 
     // Visit methods
 

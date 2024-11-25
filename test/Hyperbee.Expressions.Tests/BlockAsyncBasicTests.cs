@@ -405,24 +405,6 @@ public class BlockAsyncBasicTests
     public async Task BlockAsync_ShouldAllowParallelBlocks_WithTaskWhenAll( bool immediateFlag )
     {
         // Arrange
-        /*
-        var counter = 0;
-        var tasks = new List<Task>();
-        for( int i = 0; i < 5; i++ ) 
-        {
-            var temp = i;
-            tasks.Add( Task.Run( async () =>
-                {
-                    await Task.Delay( 5 / i * 1000 );
-                    counter += temp;
-                    await Task.Completable...
-                } )
-             );
-        }
-        await Task.WhenAll( tasks );
-        return counter;
-        */
-
         var tracker = Variable( typeof( int[] ), "tracker" );
         var temp = Variable( typeof( int ), "temp" );
 
@@ -441,9 +423,9 @@ public class BlockAsyncBasicTests
             )
         );
 
-        var initIncrement = Assign( i, Constant( 0 ) ); // i = 0;
-        var condition = LessThan( i, Constant( 5 ) ); // i < 5;
-        var iteration = PostIncrementAssign( i ); // i++;
+        var initIncrement = Assign( i, Constant( 0 ) );
+        var condition = LessThan( i, Constant( 5 ) );
+        var iteration = PostIncrementAssign( i );
 
         var block = BlockAsync(
             [tracker, tasks, i],
@@ -473,16 +455,6 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result[2] );
         Assert.AreEqual( 3, result[3] );
         Assert.AreEqual( 4, result[4] );
-    }
-
-    public static class LoggerExpression
-    {
-        public static Expression<Action<object>> Log( string message ) => arg1 => Log( message, arg1 );
-
-        public static void Log( string message, object arg1 )
-        {
-            Console.WriteLine( $"{message} value: {arg1}" );
-        }
     }
 
     [DataTestMethod]

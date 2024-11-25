@@ -39,7 +39,6 @@ internal sealed class VariableResolver : ExpressionVisitor
     private readonly Stack<ICollection<ParameterExpression>> _localScopedVariables = new( InitialCapacity );
     private readonly StateContext _states;
 
-
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
     private int _variableId = 0;
@@ -105,6 +104,7 @@ internal sealed class VariableResolver : ExpressionVisitor
 
     protected override Expression VisitBlock( BlockExpression node )
     {
+        // TODO: feels like a downstream hack, see if there is a way to detect this earlier
         var newVars = CreateLocalVariables( node );
 
         _localScopedVariables.Push( newVars );
