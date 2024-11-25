@@ -14,7 +14,7 @@ public class LoopTransition : Transition
     public LabelTarget BreakLabel { get; set; }
     public LabelTarget ContinueLabel { get; set; }
 
-    internal override NodeExpression FallThroughNode => BodyNode; 
+    internal override NodeExpression FallThroughNode => BodyNode;
 
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {

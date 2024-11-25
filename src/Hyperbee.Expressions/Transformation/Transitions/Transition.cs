@@ -10,8 +10,8 @@ public abstract class Transition : Expression
     public override bool CanReduce => true;
 
     internal abstract Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource );
-    internal abstract NodeExpression FallThroughNode { get; } 
-    internal abstract void OptimizeTransition( HashSet<LabelTarget> references ); 
+    internal abstract NodeExpression FallThroughNode { get; }
+    internal abstract void OptimizeTransition( HashSet<LabelTarget> references );
 
     protected override Expression VisitChildren( ExpressionVisitor visitor ) => this;
 
