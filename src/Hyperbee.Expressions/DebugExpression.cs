@@ -8,7 +8,7 @@ public class DebugExpression : Expression
     public IReadOnlyList<Expression> Arguments { get; }
     public Expression DebugCondition { get; }
 
-    public DebugExpression( Delegate debugDelegate, Expression condition, params Expression[] arguments )
+    public DebugExpression( Delegate debugDelegate, Expression condition, Expression[] arguments )
     {
         ArgumentNullException.ThrowIfNull( debugDelegate, nameof( debugDelegate ) );
         ArgumentNullException.ThrowIfNull( arguments, nameof( arguments ) );
@@ -40,12 +40,22 @@ public class DebugExpression : Expression
 
 public static partial class ExpressionExtensions
 {
-    public static DebugExpression Debug( Delegate debugDelegate, params Expression[] arguments )
+    public static DebugExpression Debug( Delegate debugDelegate, Expression argument )
+    {
+        return new DebugExpression( debugDelegate, null, [argument] );
+    }
+
+    public static DebugExpression Debug( Delegate debugDelegate, Expression[] arguments )
     {
         return new DebugExpression( debugDelegate, null, arguments );
     }
 
-    public static DebugExpression DebugCondition( Delegate debugDelegate, Expression condition, params Expression[] arguments )
+    public static DebugExpression Debug( Delegate debugDelegate, Expression condition, Expression argument )
+    {
+        return new DebugExpression( debugDelegate, condition, [argument] );
+    }
+
+    public static DebugExpression Debug( Delegate debugDelegate, Expression condition, Expression[] arguments )
     {
         return new DebugExpression( debugDelegate, condition, arguments );
     }

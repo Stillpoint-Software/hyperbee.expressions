@@ -22,6 +22,10 @@ trees to handle asynchronous workflows and other language constructs.
     * `ForExpression`: An expression that represents a for loop.
     * `ForEachExpression`: An expression that represents a foreach loop.
 
+* **Other Expressions**
+    * `StringFormatExpression`: An expression that creates a string using a supplied format string and parameters.
+    * `DebugExpression`: An expression that helps when debugging expression trees.
+
 * **Expression Optimizers**
     * `OptimizerBuilder`: An composite optimizer builder.
     * `ConstantFoldingOptimizer`: An optimizer that precomputes constant expressions.

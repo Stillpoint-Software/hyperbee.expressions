@@ -14,7 +14,7 @@ public class DebugExpressionTests
         void DebugAction( string message ) => called = message == "Test Message";
 
         var message = Constant( "Test Message" );
-        var debugExpr = Debug( DebugAction, message );
+        var debugExpr = Debug( DebugAction, [message] );
 
         // Act
         var lambda = Lambda<Action>( debugExpr ).Compile();
@@ -33,7 +33,7 @@ public class DebugExpressionTests
 
         var message1 = Constant( "Test Message 1" );
         var message2 = Constant( "Test Message 2" );
-        var debugExpr = Debug( DebugAction, message1, message2 );
+        var debugExpr = Debug( DebugAction, [message1, message2] );
 
         // Act
         var lambda = Lambda<Action>( debugExpr ).Compile();
@@ -52,7 +52,7 @@ public class DebugExpressionTests
 
         var value = Constant( 42 );
         var condition = Constant( true );
-        var debugExpr = DebugCondition( DebugAction, condition, value );
+        var debugExpr = Debug( DebugAction, condition, value );
 
         // Act
         var lambda = Lambda<Action>( debugExpr ).Compile();
@@ -71,7 +71,7 @@ public class DebugExpressionTests
 
         var value = Constant( 42 );
         var condition = Constant( false );
-        var debugExpr = DebugCondition( DebugAction, condition, value );
+        var debugExpr = Debug( DebugAction, condition, value );
 
         // Act
         var lambda = Lambda<Action>( debugExpr ).Compile();
@@ -93,7 +93,7 @@ public class DebugExpressionTests
         var invalidCondition = Constant( 42 );
 
         // Act
-        _ = DebugCondition( DebugAction, invalidCondition, Constant( 10 ) );
+        _ = Debug( DebugAction, invalidCondition, Constant( 10 ) );
 
         // Assert: Exception is expected
     }

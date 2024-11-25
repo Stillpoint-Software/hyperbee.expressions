@@ -11,14 +11,14 @@ public class StringFormatExpressionTests
         // Arrange
         var format = Expression.Constant( "Hello, world!" );
 
-        var formatExpr = ExpressionExtensions.StringFormat( format );
+        var formatExpr = ExpressionExtensions.StringFormat( format, [] );
 
         // Act
         var lambda = Expression.Lambda<Func<string>>( formatExpr ).Compile();
         var result = lambda();
 
         // Assert
-        Assert.AreEqual( "Hello, world!", result, "StringFormatExpression should return the format string when no arguments are provided." );
+        Assert.AreEqual( "Hello, world!", result, "Should return the format string when no arguments are provided." );
     }
 
     [TestMethod]
@@ -29,14 +29,14 @@ public class StringFormatExpressionTests
         var arg1 = Expression.Constant( "Alice" );
         var arg2 = Expression.Constant( 5 );
 
-        var formatExpr = ExpressionExtensions.StringFormat( format, arg1, arg2 );
+        var formatExpr = ExpressionExtensions.StringFormat( format, [arg1, arg2] );
 
         // Act
         var lambda = Expression.Lambda<Func<string>>( formatExpr ).Compile();
         var result = lambda();
 
         // Assert
-        Assert.AreEqual( "Hello, Alice! You have 5 new messages.", result, "StringFormatExpression should correctly format the string." );
+        Assert.AreEqual( "Hello, Alice! You have 5 new messages.", result, "Should correctly format the string." );
     }
 
     [TestMethod]
@@ -60,7 +60,7 @@ public class StringFormatExpressionTests
         var y = Expression.Parameter( typeof( int ), "y" );
         var sum = Expression.Add( x, y );
 
-        var formatExpr = ExpressionExtensions.StringFormat( format, x, y, sum );
+        var formatExpr = ExpressionExtensions.StringFormat( format, [x, y, sum] );
 
         var block = Expression.Block( formatExpr );
 
@@ -69,6 +69,6 @@ public class StringFormatExpressionTests
         var result = lambda( 10, 20 );
 
         // Assert
-        Assert.AreEqual( "The sum of 10 and 20 is 30", result, "StringFormatExpression should correctly format the string within a block." );
+        Assert.AreEqual( "The sum of 10 and 20 is 30", result, "Should correctly format the string within a block." );
     }
 }
