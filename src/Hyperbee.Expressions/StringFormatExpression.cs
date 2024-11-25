@@ -1,4 +1,4 @@
-
+﻿
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -28,7 +28,7 @@ public class StringFormatExpression : Expression
         if ( formatProvider != null && !typeof( IFormatProvider ).IsAssignableFrom( formatProvider.Type ) )
             throw new ArgumentException( "Format provider must implement IFormatProvider.", nameof( formatProvider ) );
 
-        FormatProvider = formatProvider ?? Constant( null, typeof(IFormatProvider) );
+        FormatProvider = formatProvider ?? Constant( null, typeof( IFormatProvider ) );
         Format = format;
         Arguments = arguments.ToList();
     }
