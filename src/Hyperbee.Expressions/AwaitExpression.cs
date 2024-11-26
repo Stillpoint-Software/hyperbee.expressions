@@ -10,10 +10,10 @@ public class AwaitExpression : Expression
 {
     private Type _resultType;
 
-    internal AwaitExpression( Expression asyncExpression, bool configureAwait, bool shouldReduce )
+    internal AwaitExpression( Expression asyncExpression, bool configureAwait, bool isAsync )
     {
         Target = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
-        ShouldReduce = shouldReduce;
+        IsAsync = isAsync;
         ConfigureAwait = configureAwait;
     }
 
@@ -24,19 +24,18 @@ public class AwaitExpression : Expression
     public Expression Target { get; }
 
     public bool ConfigureAwait { get; }
-    public bool ShouldReduce { get; }
+    public bool IsAsync { get; }
 
-    public AwaitBinder GetAwaitBinder() => AwaitBinderFactory.GetOrCreate( Target.Type );
+    internal AwaitBinder GetAwaitBinder() => AwaitBinderFactory.GetOrCreate( Target.Type );
 
     public override Expression Reduce()
     {
-        if ( !ShouldReduce )
+        if ( IsAsync )
             return this;
 
-        var awaitableType = Target.Type;
-        var awaitableInfo = AwaitBinderFactory.GetOrCreate( awaitableType );
+        var awaitableInfo = AwaitBinderFactory.GetOrCreate( Target.Type );
 
-        return Call( Constant( awaitableInfo ), awaitableInfo.AwaitMethod, Target, Constant( ConfigureAwait ) );
+        return Call( Constant( awaitableInfo ), awaitableInfo.WaitMethod, Target, Constant( ConfigureAwait ) );
     }
 
     private static Type ResultType( Type awaitableType )
@@ -68,7 +67,7 @@ public class AwaitExpression : Expression
 
         return newTarget == Target
             ? this
-            : new AwaitExpression( newTarget, ConfigureAwait, ShouldReduce );
+            : new AwaitExpression( newTarget, ConfigureAwait, IsAsync );
     }
 
     internal static bool IsAwaitable( Type type )
@@ -90,7 +89,7 @@ public static partial class ExpressionExtensions
         if ( !AwaitExpression.IsAwaitable( expression.Type ) )
             throw new ArgumentException( "Expression must be awaitable.", nameof( expression ) );
 
-        return new AwaitExpression( expression, configureAwait, shouldReduce: true );
+        return new AwaitExpression( expression, configureAwait, isAsync: false );
     }
 
     public static AwaitExpression Await( Expression expression, bool configureAwait = false )
@@ -98,6 +97,6 @@ public static partial class ExpressionExtensions
         if ( !AwaitExpression.IsAwaitable( expression.Type ) )
             throw new ArgumentException( "Expression must be awaitable.", nameof( expression ) );
 
-        return new AwaitExpression( expression, configureAwait, shouldReduce: false );
+        return new AwaitExpression( expression, configureAwait, isAsync: true );
     }
 }

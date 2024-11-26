@@ -15,8 +15,8 @@ internal static class AwaitBinderFactory
 
     // Cached reflection members
 
-    private static MethodInfo AwaitMethod;
-    private static MethodInfo AwaitResultMethod;
+    private static MethodInfo WaitMethod;
+    private static MethodInfo WaitResultMethod;
 
     private static MethodInfo GetAwaiterTaskMethod;
     private static MethodInfo GetAwaiterTaskResultMethod;
@@ -97,7 +97,7 @@ internal static class AwaitBinderFactory
         var awaiterType = typeof( ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter ).MakeGenericType( awaiterResultType );
 
         return new AwaitBinder(
-            AwaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType ),
+            WaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType ),
             GetAwaiterTaskResultMethod.MakeGenericMethod( awaiterResultType ),
             GetResultTaskResultMethod.MakeGenericMethod( awaiterResultType ) );
     }
@@ -108,7 +108,7 @@ internal static class AwaitBinderFactory
         var awaiterType = typeof( ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter ).MakeGenericType( awaiterResultType );
 
         return new AwaitBinder(
-            AwaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType ),
+            WaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType ),
             GetAwaiterValueTaskResultMethod.MakeGenericMethod( awaiterResultType ),
             GetResultValueTaskResultMethod.MakeGenericMethod( awaiterResultType ) );
     }
@@ -118,7 +118,7 @@ internal static class AwaitBinderFactory
         var awaiterType = typeof( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter );
 
         return new AwaitBinder(
-            AwaitMethod.MakeGenericMethod( awaitableType, awaiterType ),
+            WaitMethod.MakeGenericMethod( awaitableType, awaiterType ),
             GetAwaiterTaskMethod,
             GetResultTaskMethod );
     }
@@ -128,7 +128,7 @@ internal static class AwaitBinderFactory
         var awaiterType = typeof( ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter );
 
         return new AwaitBinder(
-            AwaitMethod.MakeGenericMethod( awaitableType, awaiterType ),
+            WaitMethod.MakeGenericMethod( awaitableType, awaiterType ),
             GetAwaiterValueTaskMethod,
             GetResultValueTaskMethod );
     }
@@ -158,7 +158,7 @@ internal static class AwaitBinderFactory
 
         // Get the AwaitBinder methods
 
-        MethodInfo awaitMethod;
+        MethodInfo waitMethod;
         MethodInfo getAwaiterMethod;
         MethodInfo getResultMethod;
 
@@ -166,13 +166,13 @@ internal static class AwaitBinderFactory
         {
             var awaiterResultType = awaiterType.GetGenericArguments()[0];
 
-            awaitMethod = AwaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType );
+            waitMethod = WaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType );
             getAwaiterMethod = GetAwaiterCustomMethod.MakeGenericMethod( awaitableType, awaiterType );
             getResultMethod = GetResultCustomResultMethod.MakeGenericMethod( awaiterType, awaiterResultType );
         }
         else
         {
-            awaitMethod = AwaitMethod.MakeGenericMethod( awaitableType, awaiterType );
+            waitMethod = WaitMethod.MakeGenericMethod( awaitableType, awaiterType );
             getAwaiterMethod = GetAwaiterCustomMethod.MakeGenericMethod( awaitableType, awaiterType );
             getResultMethod = GetResultCustomMethod.MakeGenericMethod( awaiterType );
         }
@@ -180,7 +180,7 @@ internal static class AwaitBinderFactory
         // Return the AwaitBinder
 
         return new AwaitBinder(
-            awaitMethod,
+            waitMethod,
             getAwaiterMethod,
             getResultMethod,
             getAwaiterImplDelegate,
@@ -317,14 +317,14 @@ internal static class AwaitBinderFactory
             {
                 switch ( name )
                 {
-                    case nameof( AwaitBinder.Await )
+                    case nameof( AwaitBinder.Wait )
                         when matches( [null, typeof( bool )], argCount: 2 ):
-                        AwaitMethod = method;
+                        WaitMethod = method;
                         break;
 
-                    case nameof( AwaitBinder.AwaitResult )
+                    case nameof( AwaitBinder.WaitResult )
                         when matches( [null, typeof( bool )], argCount: 3 ):
-                        AwaitResultMethod = method;
+                        WaitResultMethod = method;
                         break;
 
                     case nameof( AwaitBinder.GetAwaiter )
