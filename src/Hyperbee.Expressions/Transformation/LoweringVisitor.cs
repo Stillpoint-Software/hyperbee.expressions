@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 using Hyperbee.Expressions.Visitors;
@@ -34,7 +33,6 @@ public class LoweringVisitor : ExpressionVisitor
             ScopedVariables = scopedVariables
         };
     }
-
 
     // Visit methods
 
@@ -81,17 +79,19 @@ public class LoweringVisitor : ExpressionVisitor
 
         // transition handling
 
-        if ( tailState.Transition == null )
+        if ( tailState.Transition != null )
         {
-            if ( visited is GotoExpression gotoExpression && _states.TryGetLabelTarget( gotoExpression.Target, out var targetNode ) )
-            {
-                tailState.Transition = new GotoTransition { TargetNode = targetNode };
-            }
+            return;
+        }
 
-            if ( defaultTransitionTarget != null )
-            {
-                tailState.Transition = new GotoTransition { TargetNode = defaultTransitionTarget };
-            }
+        if ( visited is GotoExpression gotoExpression && _states.TryGetLabelTarget( gotoExpression.Target, out var targetNode ) )
+        {
+            tailState.Transition = new GotoTransition { TargetNode = targetNode };
+        }
+
+        if ( defaultTransitionTarget != null )
+        {
+            tailState.Transition = new GotoTransition { TargetNode = defaultTransitionTarget };
         }
     }
 
@@ -141,7 +141,7 @@ public class LoweringVisitor : ExpressionVisitor
                     previousTail.Transition = new GotoTransition { TargetNode = updated };
 
                 firstGoto ??= updated;
-                currentSource = _states.TailState; // updated;
+                currentSource = _states.TailState;
                 previousTail = _states.TailState;
             }
             else
@@ -354,23 +354,16 @@ public class LoweringVisitor : ExpressionVisitor
             case AwaitExpression awaitExpression:
                 return VisitAwaitExtension( awaitExpression );
 
-            case AsyncBlockExpression asyncBlockExpression:
-                return VisitAsyncBlockExtension( asyncBlockExpression );
+            case AsyncBlockExpression:
+                // Nested blocks should be visited by their own visitor,
+                // but nested variables need to be replaced
+                return _variableResolver.Resolve( node );
 
             default:
                 // Lowering visitor shouldn't be used by extensions directly
                 // since it changes the shape of the code
                 return Visit( node.Reduce() );
         }
-    }
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    protected Expression VisitAsyncBlockExtension( AsyncBlockExpression node )
-    {
-        // Nested blocks should be visited by their own visitor,
-        // but nested variables need to be replaced
-
-        return _variableResolver.Resolve( node );
     }
 
     protected Expression VisitAwaitExtension( AwaitExpression node )
@@ -403,7 +396,7 @@ public class LoweringVisitor : ExpressionVisitor
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
         // If we already visited a branching node we only want to use the result variable
-        // else it is most likely direct awaitable (e.g. Task)
+        // else it is most likely directly awaitable (e.g. Task)
         var targetNode = updatedNode is NodeExpression nodeExpression
             ? nodeExpression.ResultVariable
             : updatedNode;
@@ -425,5 +418,4 @@ public class LoweringVisitor : ExpressionVisitor
 
         return resultVariable ?? Expression.Empty();
     }
-
 }
