@@ -35,6 +35,38 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalAssignment( bool immediateFlag )
+    {
+        // Arrange: IfTrue branch contains an awaited task
+        var var = Variable( typeof( int ), "var" );
+        var condition = Constant( true );
+
+        var block = BlockAsync(
+            [var],
+            Assign( var, 
+                Condition( condition,
+                    Await( AsyncHelper.Completable(
+                        Constant( immediateFlag ),
+                        Constant( 1 )
+                    ) ),
+                    Constant( 0 )
+                )
+            ),
+            var
+        );
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 1, result );
+    }
+
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenElseTrueBranch( bool immediateFlag )
     {
         // Arrange: IfTrue branch contains an awaited task

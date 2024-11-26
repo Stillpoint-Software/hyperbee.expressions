@@ -358,7 +358,9 @@ public class LoweringVisitor : ExpressionVisitor
                 return VisitAsyncBlockExtension( asyncBlockExpression );
 
             default:
-                return VisitDefaultExtension( node );
+                // Lowering visitor shouldn't be used by extensions directly
+                // since it changes the shape of the code
+                return Visit( node.Reduce() );
         }
     }
 
@@ -422,18 +424,6 @@ public class LoweringVisitor : ExpressionVisitor
         _states.ExitGroup( sourceState, awaitTransition );
 
         return resultVariable ?? Expression.Empty();
-    }
-
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    protected Expression VisitDefaultExtension( Expression node )
-    {
-        // Lowering visitor shouldn't be used by extensions directly
-        // since it changes the shape of the code
-
-        var resolved = _variableResolver.Resolve( node.Reduce() );
-
-        return Visit( resolved );
     }
 
 }

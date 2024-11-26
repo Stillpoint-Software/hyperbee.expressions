@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 
 namespace Hyperbee.Expressions.Visitors;
 

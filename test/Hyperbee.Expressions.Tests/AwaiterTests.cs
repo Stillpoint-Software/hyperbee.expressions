@@ -12,7 +12,7 @@ public enum ExpressionKind
 }
 
 [TestClass]
-public class AwaitTests
+public class AwaiterTests
 {
     private static async Task Delay()
     {
@@ -56,7 +56,7 @@ public class AwaitTests
 
     private static MethodInfo GetMethodInfo( string name )
     {
-        return typeof( AwaitTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
+        return typeof( AwaiterTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
     }
 
     private static Expression GetAsyncExpression( ExpressionKind kind, MethodInfo methodInfo, params Expression[] arguments )
@@ -94,12 +94,12 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestAsyncExpression_NoParameters( ExpressionKind kind )
+    public void GetAwaiterResult_NoParameters( ExpressionKind kind )
     {
         var methodInfo = GetMethodInfo( nameof( GetNumberAsync ) );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo! );
-        var awaitExpression = Await( asyncExpression, configureAwait: false );
+        var awaitExpression = GetAwaiterResult( asyncExpression, configureAwait: false );
 
         var lambda = Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();
@@ -111,12 +111,12 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestAsyncExpression_NoResults( ExpressionKind kind )
+    public void GetAwaiterResult_NoResults( ExpressionKind kind )
     {
         var methodInfo = GetMethodInfo( nameof( Delay ) );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo! );
-        var awaitExpression = Await( asyncExpression, configureAwait: false );
+        var awaitExpression = GetAwaiterResult( asyncExpression, configureAwait: false );
 
         var lambda = Lambda<Action>( awaitExpression );
         var compiledLambda = lambda.Compile();
@@ -127,7 +127,7 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestAsyncExpression_WithParameters( ExpressionKind kind )
+    public void GetAwaiterResult_WithParameters( ExpressionKind kind )
     {
         var methodInfo = GetMethodInfo( nameof( AddThreeNumbersAsync ) );
 
@@ -136,7 +136,7 @@ public class AwaitTests
         var paramExpr3 = Parameter( typeof( int ), "c" );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo!, paramExpr1, paramExpr2, paramExpr3 );
-        var awaitExpression = Await( asyncExpression, configureAwait: false );
+        var awaitExpression = GetAwaiterResult( asyncExpression, configureAwait: false );
 
         var lambda = Lambda<Func<int, int, int, int>>( awaitExpression, paramExpr1, paramExpr2, paramExpr3 );
         var compiledLambda = lambda.Compile();
@@ -148,7 +148,7 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestAsyncExpression_WithConstants( ExpressionKind kind )
+    public void GetAwaiterResult_WithConstants( ExpressionKind kind )
     {
         var methodInfo = GetMethodInfo( nameof( AddThreeNumbersAsync ) );
 
@@ -157,7 +157,7 @@ public class AwaitTests
         var paramExpr3 = Constant( 12 );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo!, paramExpr1, paramExpr2, paramExpr3 );
-        var awaitExpression = Await( asyncExpression, configureAwait: false );
+        var awaitExpression = GetAwaiterResult( asyncExpression, configureAwait: false );
 
         var lambda = Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();
@@ -169,7 +169,7 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestAsyncExpression_WithAsyncParameter( ExpressionKind kind )
+    public void GetAwaiterResult_WithAsyncParameter( ExpressionKind kind )
     {
         // var result = await SayHelloAsync( await AddTwoNumbersAsync( 10, 32 ) );
 
@@ -180,10 +180,10 @@ public class AwaitTests
         var paramB = Parameter( typeof( int ), "b" );
 
         var asyncExpressionAdd = GetAsyncExpression( kind, addTwoNumbersMethod, paramA, paramB );
-        var awaitExpressionAdd = Await( asyncExpressionAdd, configureAwait: false );
+        var awaitExpressionAdd = GetAwaiterResult( asyncExpressionAdd, configureAwait: false );
 
         var asyncExpressionSayHello = GetAsyncExpression( kind, sayHelloMethod, awaitExpressionAdd );
-        var awaitExpressionSayHello = Await( asyncExpressionSayHello, configureAwait: false );
+        var awaitExpressionSayHello = GetAwaiterResult( asyncExpressionSayHello, configureAwait: false );
 
         var lambda = Lambda<Func<int, int, string>>( awaitExpressionSayHello, paramA, paramB );
         var compiledLambda = lambda.Compile();
@@ -196,7 +196,7 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestAsyncExpression_WithMethodCallParameters( ExpressionKind kind )
+    public void GetAwaiterResult_WithMethodCallParameters( ExpressionKind kind )
     {
         // var result0 = IncrementValue( 11 );  
         // var result1 = await AddThreeNumbersAsync( 10, 20, result0 );
@@ -211,7 +211,7 @@ public class AwaitTests
         var incrementValueCall = Call( incrementMethodInfo!, paramExpr3 );
 
         var asyncExpression = GetAsyncExpression( kind, methodInfo!, paramExpr1, paramExpr2, incrementValueCall );
-        var awaitExpression = Await( asyncExpression, configureAwait: false );
+        var awaitExpression = GetAwaiterResult( asyncExpression, configureAwait: false );
 
         var lambda = Lambda<Func<int, int, int, int>>( awaitExpression, paramExpr1, paramExpr2, paramExpr3 );
         var compiledLambda = lambda.Compile();
@@ -223,7 +223,7 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestMultipleAsyncExpressions_SeparateAwaits( ExpressionKind kind )
+    public void GetAwaiterResult_MultipleAsyncExpressions_SeparateAwaits( ExpressionKind kind )
     {
         var methodInfo1 = GetMethodInfo( nameof( GetNumberAsync ) );
         var methodInfo2 = GetMethodInfo( nameof( AddThreeNumbersAsync ) );
@@ -235,8 +235,8 @@ public class AwaitTests
         var asyncExpression1 = GetAsyncExpression( kind, methodInfo1! );
         var asyncExpression2 = GetAsyncExpression( kind, methodInfo2!, paramExpr1, paramExpr2, paramExpr3 );
 
-        var awaitExpression1 = Await( asyncExpression1, configureAwait: false );
-        var awaitExpression2 = Await( asyncExpression2, configureAwait: false );
+        var awaitExpression1 = GetAwaiterResult( asyncExpression1, configureAwait: false );
+        var awaitExpression2 = GetAwaiterResult( asyncExpression2, configureAwait: false );
 
         var lambda1 = Lambda<Func<int>>( awaitExpression1 );
         var lambda2 = Lambda<Func<int, int, int, int>>( awaitExpression2, paramExpr1, paramExpr2, paramExpr3 );
@@ -254,7 +254,7 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public async Task TestScopedAwaitExpressions( ExpressionKind kind )
+    public async Task GetAwaiterResult_ScopedAwaitExpressions( ExpressionKind kind )
     {
         var addTwoNumbersMethod = GetMethodInfo( nameof( AddTwoNumbersAsync ) );
 
@@ -263,7 +263,7 @@ public class AwaitTests
         var paramB = Parameter( typeof( int ), "b" );
 
         var asyncAddTwoNumbers = GetAsyncExpression( kind, addTwoNumbersMethod!, paramA, paramB );
-        var awaitAddTwoNumbers = Await( asyncAddTwoNumbers, configureAwait: false );
+        var awaitAddTwoNumbers = GetAwaiterResult( asyncAddTwoNumbers, configureAwait: false );
 
         var resultFromAdd = Variable( typeof( int ), "resultFromAdd" );
 
@@ -300,7 +300,7 @@ public class AwaitTests
     }
 
     [TestMethod]
-    public async Task TestMultipleAsyncExpressions_WithDeepNestingAsync()
+    public async Task GetAwaiterResult_MultipleAsyncExpressions_WithDeepNestingAsync()
     {
         var incrementExpression = ToExpression( Increment );
 
@@ -329,14 +329,14 @@ public class AwaitTests
     }
 
     [TestMethod]
-    public async Task TestMultipleAsyncExpressions_WithDeepNestingAsyncAwait()
+    public async Task GetAwaiterResult_MultipleAsyncExpressions_WithDeepNestingAsyncAwait()
     {
         var incrementExpression = ToExpression( Increment );
 
         var paramA = Parameter( typeof( int ), "a" );
 
-        var l1 = Await( Invoke( incrementExpression, paramA ), configureAwait: false );
-        var l2 = Await( Invoke( incrementExpression, l1 ), configureAwait: false );
+        var l1 = GetAwaiterResult( Invoke( incrementExpression, paramA ), configureAwait: false );
+        var l2 = GetAwaiterResult( Invoke( incrementExpression, l1 ), configureAwait: false );
         var l3 = Invoke( incrementExpression, l2 );
 
         var compiled = Lambda<Func<int, Task<int>>>( l3, paramA ).Compile();
@@ -360,7 +360,7 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestChainedAwaitExpressions( ExpressionKind kind )
+    public void GetAwaiterResult_ChainedAwaitExpressions( ExpressionKind kind )
     {
         var addTwoNumbersMethod = GetMethodInfo( nameof( AddTwoNumbersAsync ) );
         var sayHelloMethod = GetMethodInfo( nameof( SayHelloAsync ) );
@@ -370,13 +370,13 @@ public class AwaitTests
         var paramB = Parameter( typeof( int ), "b" );
 
         var asyncAddTwoNumbers = GetAsyncExpression( kind, addTwoNumbersMethod!, paramA, paramB );
-        var awaitAddTwoNumbers = Await( asyncAddTwoNumbers, configureAwait: false );
+        var awaitAddTwoNumbers = GetAwaiterResult( asyncAddTwoNumbers, configureAwait: false );
 
         var resultAddTwoNumbers = Variable( typeof( int ), "resultAddTwoNumbers" );
 
         // Create AsyncExpression and AwaitExpression for SayHello
         var asyncSayHello = GetAsyncExpression( kind, sayHelloMethod!, resultAddTwoNumbers );
-        var awaitSayHello = Await( asyncSayHello, configureAwait: false );
+        var awaitSayHello = GetAwaiterResult( asyncSayHello, configureAwait: false );
 
         // Combine both expressions in a block
         var combinedExpression = Block(
@@ -397,12 +397,12 @@ public class AwaitTests
     [DataTestMethod]
     [DataRow( ExpressionKind.Lambda )]
     [DataRow( ExpressionKind.Method )]
-    public void TestAsyncExpression_ExceptionHandling( ExpressionKind kind )
+    public void GetAwaiterResult_ExceptionHandling( ExpressionKind kind )
     {
         var methodInfo = GetMethodInfo( nameof( ThrowExceptionAsync ) );
 
         var asyncThrowException = GetAsyncExpression( kind, methodInfo! );
-        var awaitThrowException = Await( asyncThrowException, configureAwait: false );
+        var awaitThrowException = GetAwaiterResult( asyncThrowException, configureAwait: false );
 
         var lambda = Lambda<Func<int>>( awaitThrowException );
         var compiledLambda = lambda.Compile();
