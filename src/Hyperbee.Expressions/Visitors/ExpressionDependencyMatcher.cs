@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace Hyperbee.Expressions.Visitors;
 
@@ -53,10 +54,10 @@ internal class ExpressionDependencyMatcher : ExpressionVisitor
 
         var result = base.Visit( node );
 
-        var childCount = _counter;
+        var dependencyCount = _counter;
         _counter += parentCount;
 
-        _countDictionary[node] = childCount;
+        _countDictionary[node] = dependencyCount;
 
         return result;
     }

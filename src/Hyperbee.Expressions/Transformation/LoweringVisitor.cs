@@ -52,7 +52,7 @@ public class LoweringVisitor : ExpressionVisitor
 
         var updateNode = Visit( expression ); // Warning: visitation mutates the tail state.
 
-        UpdateTailState( expression, updateNode, joinState ?? branchState ); // if no join-state, join to the branch-state (e.g. loops)
+        UpdateTailState( updateNode, joinState ?? branchState ); // if no join-state, join to the branch-state (e.g. loops)
 
         _states.TailState.ResultVariable = resultVariable;
 
@@ -64,70 +64,41 @@ public class LoweringVisitor : ExpressionVisitor
         foreach ( var expression in expressions )
         {
             var updateNode = Visit( expression ); // Warning: visitation mutates the tail state.
-            UpdateTailState( expression, updateNode );
+            UpdateTailState( updateNode );
         }
     }
 
-    private void UpdateTailState( Expression expression, Expression visited, NodeExpression defaultTransitionTarget = null )
+    private void UpdateTailState( Expression visited, NodeExpression defaultTransitionTarget = null )
     {
         var tailState = _states.TailState;
 
-        if ( !IsExplicitlyHandledType( expression ) )
+        // add unhandled the expressions to the tail state
+
+        if ( visited is not NodeExpression )
         {
-            // goto expressions should _never_ be added to the expressions list.
-            // instead, they should always be represented as a transition.
-            //
-            // goto expressions should set the transition - the first goto should win
-
-            if ( tailState.Transition == null && visited is GotoExpression gotoExpression )
-            {
-                if ( _states.TryGetLabelTarget( gotoExpression.Target, out var targetNode ) )
-                {
-                    tailState.Transition = new GotoTransition { TargetNode = targetNode };
-                }
-            }
-
-            // TODO: Not adding NodeExpression seems like a hack
-            else if ( visited is not NodeExpression && visited.NodeType != ExpressionType.Extension )
-            {
-                tailState.Expressions.Add( visited );
-            }
+            tailState.Expressions.Add( visited );
         }
 
-        // default transition handling
+        // transition handling
 
-        if ( tailState.Transition == null && defaultTransitionTarget != null )
+        if ( tailState.Transition == null )
         {
-            tailState.Transition = new GotoTransition { TargetNode = defaultTransitionTarget };
+            if ( visited is GotoExpression gotoExpression && _states.TryGetLabelTarget( gotoExpression.Target, out var targetNode ) )
+            {
+                tailState.Transition = new GotoTransition { TargetNode = targetNode };
+            }
+
+            if ( defaultTransitionTarget != null )
+            {
+                tailState.Transition = new GotoTransition { TargetNode = defaultTransitionTarget };
+            }
         }
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    private static bool IsExplicitlyHandledType( Expression expr )
+    private bool RequiresLowering( Expression node )
     {
-        // These expression types are explicitly handled by the visitor.
-
-        return expr
-            is BlockExpression
-            or ConditionalExpression
-            or SwitchExpression
-            or TryExpression
-            or AwaitExpression
-            or LoopExpression;
-    }
-
-    private bool TryAddDirect( Expression node )
-    {
-        if ( !_dependencyMatcher.HasMatch( node ) )
-        {
-            _states.TailState.Expressions.Add(
-                _variableResolver.Resolve( node )
-            );
-
-            return true;
-        }
-
-        return false;
+        return _dependencyMatcher.HasMatch( node );
     }
 
     // Override methods for specific expression types
@@ -141,8 +112,8 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitBlock( BlockExpression node )
     {
-        if ( TryAddDirect( node ) )
-            return node;
+        if ( !RequiresLowering( node ) )
+            return _variableResolver.Resolve( node );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
@@ -158,10 +129,7 @@ public class LoweringVisitor : ExpressionVisitor
 
         foreach ( var expression in node.Expressions )
         {
-            var handlingVisitor = new HandlingVisitor();
-            handlingVisitor.Visit( expression );
-
-            if ( handlingVisitor.Handled )
+            if ( RequiresLowering( expression ) )
             {
                 var updated = VisitBranch( expression, joinState, resultVariable ); // Warning: visitation mutates the tail state.
 
@@ -195,8 +163,8 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitConditional( ConditionalExpression node )
     {
-        if ( TryAddDirect( node ) )
-            return node;
+        if ( !RequiresLowering( node ) )
+            return _variableResolver.Resolve( node );
 
         var updatedTest = base.Visit( node.Test );
 
@@ -238,8 +206,8 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitLoop( LoopExpression node )
     {
-        if ( TryAddDirect( node ) )
-            return node;
+        if ( !RequiresLowering( node ) )
+            return _variableResolver.Resolve( node );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
@@ -276,8 +244,8 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitSwitch( SwitchExpression node )
     {
-        if ( TryAddDirect( node ) )
-            return node;
+        if ( !RequiresLowering( node ) )
+            return _variableResolver.Resolve( node );
 
         var updatedSwitchValue = base.Visit( node.SwitchValue );
 
@@ -310,8 +278,8 @@ public class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitTry( TryExpression node )
     {
-        if ( TryAddDirect( node ) )
-            return node;
+        if ( !RequiresLowering( node ) )
+            return _variableResolver.Resolve( node );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
@@ -394,6 +362,7 @@ public class LoweringVisitor : ExpressionVisitor
         }
     }
 
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     protected Expression VisitAsyncBlockExtension( AsyncBlockExpression node )
     {
         // Nested blocks should be visited by their own visitor,
@@ -455,36 +424,16 @@ public class LoweringVisitor : ExpressionVisitor
         return resultVariable ?? Expression.Empty();
     }
 
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     protected Expression VisitDefaultExtension( Expression node )
     {
         // Lowering visitor shouldn't be used by extensions directly
         // since it changes the shape of the code
 
-        var reduced = node.Reduce();
-        var resolved = _variableResolver.Resolve( reduced );
+        var resolved = _variableResolver.Resolve( node.Reduce() );
 
-        var updatedExpression = Visit( resolved );
-
-        // TODO: not sure if this is always valid, might help with clean up of NodeExpression's ReduceFinalBlock()
-        if ( updatedExpression is NodeExpression nodeExpression )
-            return nodeExpression.ResultVariable ?? nodeExpression;
-
-        return node;
+        return Visit( resolved );
     }
 
-    // Helpers
-
-    internal class HandlingVisitor : ExpressionVisitor
-    {
-        public bool Handled { get; set; }
-
-        public override Expression Visit( Expression node )
-        {
-            if ( !IsExplicitlyHandledType( node ) )
-                return base.Visit( node );
-
-            Handled = true;
-            return node;
-        }
-    }
 }
