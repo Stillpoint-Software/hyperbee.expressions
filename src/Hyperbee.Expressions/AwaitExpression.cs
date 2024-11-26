@@ -30,7 +30,7 @@ public class AwaitExpression : Expression
 
     public override Expression Reduce()
     {
-        if( !EnableReduce )
+        if ( !EnableReduce )
             return this;
 
         var awaitableType = Target.Type;

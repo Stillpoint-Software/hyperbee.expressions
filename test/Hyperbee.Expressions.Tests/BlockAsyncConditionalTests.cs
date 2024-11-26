@@ -43,7 +43,7 @@ public class BlockAsyncConditionalTests
 
         var block = BlockAsync(
             [var],
-            Assign( var, 
+            Assign( var,
                 Condition( condition,
                     Await( AsyncHelper.Completable(
                         Constant( immediateFlag ),
