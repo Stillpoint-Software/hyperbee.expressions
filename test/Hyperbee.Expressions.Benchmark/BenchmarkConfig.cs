@@ -16,6 +16,7 @@ public class BenchmarkConfig
         public Config()
         {
             AddJob( Job.ShortRun );
+
             AddExporter( MarkdownExporter.GitHub );
             AddValidator( JitOptimizationsValidator.DontFailOnError );
             AddLogger( ConsoleLogger.Default );
