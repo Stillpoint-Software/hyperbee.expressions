@@ -13,8 +13,6 @@ public sealed class NodeExpression : Expression
 
     internal int StateOrder { get; set; }
 
-    public List<ParameterExpression> Variables { get; set; } = [];
-
     public Expression ResultVariable { get; set; } // Left-hand side of the result assignment
     public Expression ResultValue { get; set; } // Right-hand side of the result assignment
 
@@ -77,7 +75,6 @@ public sealed class NodeExpression : Expression
             : ReduceFinal();
 
         return Block(
-            Variables,
             expressions
         );
     }
