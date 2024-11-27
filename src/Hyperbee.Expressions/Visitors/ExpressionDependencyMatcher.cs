@@ -45,8 +45,14 @@ internal class ExpressionDependencyMatcher : ExpressionVisitor
 
     public override Expression Visit( Expression node )
     {
-        if ( node == null || _countDictionary.ContainsKey( node ) )
+        if ( node == null)
+            return null;
+
+        if( _countDictionary.ContainsKey( node ) ) 
+        { 
+            _counter += _countDictionary[node];
             return node;
+        }
 
         var parentCount = _counter;
         _counter = 0;

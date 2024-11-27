@@ -10,10 +10,9 @@ public class AwaitExpression : Expression
 {
     private Type _resultType;
 
-    internal AwaitExpression( Expression asyncExpression, bool configureAwait, bool isAsync )
+    internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
         Target = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
-        IsAsync = isAsync;
         ConfigureAwait = configureAwait;
     }
 
@@ -24,15 +23,11 @@ public class AwaitExpression : Expression
     public Expression Target { get; }
 
     public bool ConfigureAwait { get; }
-    public bool IsAsync { get; }
 
     internal AwaitBinder GetAwaitBinder() => AwaitBinderFactory.GetOrCreate( Target.Type );
 
     public override Expression Reduce()
     {
-        if ( IsAsync )
-            return this;
-
         var awaitableInfo = AwaitBinderFactory.GetOrCreate( Target.Type );
 
         return Call( Constant( awaitableInfo ), awaitableInfo.WaitMethod, Target, Constant( ConfigureAwait ) );
@@ -67,7 +62,7 @@ public class AwaitExpression : Expression
 
         return newTarget == Target
             ? this
-            : new AwaitExpression( newTarget, ConfigureAwait, IsAsync );
+            : new AwaitExpression( newTarget, ConfigureAwait );
     }
 
     internal static bool IsAwaitable( Type type )
@@ -84,19 +79,11 @@ public class AwaitExpression : Expression
 
 public static partial class ExpressionExtensions
 {
-    public static AwaitExpression GetAwaiterResult( Expression expression, bool configureAwait = false )
-    {
-        if ( !AwaitExpression.IsAwaitable( expression.Type ) )
-            throw new ArgumentException( "Expression must be awaitable.", nameof( expression ) );
-
-        return new AwaitExpression( expression, configureAwait, isAsync: false );
-    }
-
     public static AwaitExpression Await( Expression expression, bool configureAwait = false )
     {
         if ( !AwaitExpression.IsAwaitable( expression.Type ) )
             throw new ArgumentException( "Expression must be awaitable.", nameof( expression ) );
 
-        return new AwaitExpression( expression, configureAwait, isAsync: true );
+        return new AwaitExpression( expression, configureAwait );
     }
 }
