@@ -48,32 +48,22 @@ internal class ExpressionDependencyMatcher : ExpressionVisitor
         if ( node == null )
             return null;
 
-        if ( _countDictionary.ContainsKey( node ) )
+        if ( _countDictionary.TryGetValue( node, out var dependencyCount ) )
         {
-            _counter += _countDictionary[node];
+            _counter += dependencyCount;
             return node;
         }
 
-        var parentCount = _counter;
+        var previousCounter = _counter;
         _counter = 0;
 
-        var result = base.Visit( node );
+        base.Visit( node );
 
-        var dependencyCount = _counter;
-        _counter += parentCount;
+        dependencyCount = _matchPredicate( node ) ? _counter + 1 : _counter;
 
+        _counter = previousCounter + dependencyCount;
         _countDictionary[node] = dependencyCount;
 
-        return result;
-    }
-
-    protected override Expression VisitExtension( Expression node )
-    {
-        if ( _matchPredicate( node ) )
-        {
-            _counter++;
-        }
-
-        return base.VisitExtension( node );
+        return node;
     }
 }
