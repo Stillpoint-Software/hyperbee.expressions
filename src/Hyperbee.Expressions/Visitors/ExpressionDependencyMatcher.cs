@@ -45,11 +45,11 @@ internal class ExpressionDependencyMatcher : ExpressionVisitor
 
     public override Expression Visit( Expression node )
     {
-        if ( node == null)
+        if ( node == null )
             return null;
 
-        if( _countDictionary.ContainsKey( node ) ) 
-        { 
+        if ( _countDictionary.ContainsKey( node ) )
+        {
             _counter += _countDictionary[node];
             return node;
         }

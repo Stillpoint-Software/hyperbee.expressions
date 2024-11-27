@@ -70,9 +70,9 @@ public sealed class NodeExpression : Expression
     public override Expression Reduce()
     {
         if ( _stateMachineSource == null )
-            throw new InvalidOperationException( $"Reduce requires an {nameof(StateMachineSource)} instance." );
+            throw new InvalidOperationException( $"Reduce requires an {nameof( StateMachineSource )} instance." );
 
-        var expressions = !IsFinal 
+        var expressions = !IsFinal
             ? ReduceTransition()
             : ReduceFinal();
 
@@ -142,10 +142,10 @@ public sealed class NodeExpression : Expression
             {
                 var lastExpression = expressions[^1];
 
-                if ( lastExpression.Type == typeof(void) )
+                if ( lastExpression.Type == typeof( void ) )
                 {
                     expressions[^1] = Block(
-                        Assign( resultField, Constant( null, typeof(IVoidResult) ) ),
+                        Assign( resultField, Constant( null, typeof( IVoidResult ) ) ),
                         lastExpression
                     );
                 }
@@ -157,8 +157,8 @@ public sealed class NodeExpression : Expression
                 return;
             }
 
-            expressions.Add( 
-                Assign( resultField, resultValue ?? Constant( null, typeof(IVoidResult) ) ) 
+            expressions.Add(
+                Assign( resultField, resultValue ?? Constant( null, typeof( IVoidResult ) ) )
             );
         }
 
@@ -170,7 +170,7 @@ public sealed class NodeExpression : Expression
                 builderField,
                 "SetResult",
                 null,
-                resultField.Type != typeof(IVoidResult)
+                resultField.Type != typeof( IVoidResult )
                     ? resultField
                     : Constant( null, resultField.Type ) // No result for IVoidResult
             ) );
