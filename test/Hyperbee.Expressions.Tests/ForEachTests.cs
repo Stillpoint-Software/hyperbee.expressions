@@ -99,16 +99,23 @@ public class ForEachExpressionTests
         var result = Variable( typeof( int ), "result" );
 
         var body = Block(
-            Assign( result, Add( result, Await( AsyncHelper.Completable(
-                Constant( immediateFlag ),
-                Constant( 1 )
-            ) ) ) ) );
+                        Assign( result,
+                            Add( result, Await( AsyncHelper.Completable(
+                                Constant( immediateFlag ),
+                                Constant( 1 )
+                            )
+                        ) ) )
+                    );
 
         var forEachExpr = BlockAsync(
             [result],
-            ForEach( list, element, body ),
+            Block(
+                Assign( result, Constant( 2 ) ),
+                ForEach( list, element, body )
+            ),
             result
         );
+
         // Act
         var lambda = Lambda<Func<Task<int>>>( forEachExpr );
         var compiledLambda = lambda.Compile();
@@ -116,6 +123,6 @@ public class ForEachExpressionTests
         var total = await compiledLambda();
 
         // Assert:
-        Assert.AreEqual( 5, total );
+        Assert.AreEqual( 7, total );
     }
 }
