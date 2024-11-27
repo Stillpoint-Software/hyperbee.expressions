@@ -13,7 +13,7 @@ public sealed class NodeExpression : Expression
 
     internal int StateOrder { get; set; }
 
-    public List<ParameterExpression> Variables { get; set; } = new();
+    public List<ParameterExpression> Variables { get; set; } = [];
 
     public Expression ResultVariable { get; set; } // Left-hand side of the result assignment
     public Expression ResultValue { get; set; } // Right-hand side of the result assignment
@@ -22,7 +22,8 @@ public sealed class NodeExpression : Expression
     public List<Expression> Expressions { get; set; } = new( 8 );
     public Transition Transition { get; set; }
 
-    private Expression _expression;
+    public bool IsFinal => Transition == null;
+
     private StateMachineSource _stateMachineSource;
 
     internal NodeExpression() { }
@@ -69,75 +70,110 @@ public sealed class NodeExpression : Expression
     public override Expression Reduce()
     {
         if ( _stateMachineSource == null )
-            throw new InvalidOperationException( $"Reduce requires an {nameof( StateMachineSource )} instance." );
+            throw new InvalidOperationException( $"Reduce requires an {nameof(StateMachineSource)} instance." );
 
-        return _expression ??= Transition != null
-            ? ReduceBlock()
-            : ReduceFinalBlock();
-    }
-
-    private BlockExpression ReduceBlock()
-    {
-        if ( ResultValue != null && ResultVariable != null && ResultValue.Type == ResultVariable.Type )
-        {
-            Expressions.Add( Assign( ResultVariable, ResultValue ) );
-        }
-        else if ( ResultVariable != null && Expressions.Count > 0 && ResultVariable.Type == Expressions[^1].Type )
-        {
-            Expressions[^1] = Assign( ResultVariable, Expressions[^1] );
-        }
-
-        var transitionExpression = Transition.Reduce( StateOrder, this, _stateMachineSource );
-        Expressions.Add( transitionExpression );
-
-        // Add the label to the beginning of the block
-        Expressions.Insert( 0, Label( NodeLabel ) );
+        var expressions = !IsFinal 
+            ? ReduceTransition()
+            : ReduceFinal();
 
         return Block(
-            Variables, // TODO: Temporary fix for handling variables in blocks
-            Expressions
+            Variables,
+            expressions
         );
     }
 
-    private BlockExpression ReduceFinalBlock()
+    private List<Expression> ReduceTransition()
+    {
+        var expressions = new List<Expression> { Label( NodeLabel ) };
+        expressions.AddRange( Expressions );
+
+        AssignResult( expressions, ResultValue, ResultVariable );
+        AddTransition( expressions, StateOrder, this );
+
+        return expressions;
+
+        // Helpers
+
+        static void AssignResult( List<Expression> expressions, Expression resultValue, Expression resultVariable )
+        {
+            if ( resultValue != null && resultVariable != null && resultValue.Type == resultVariable.Type )
+            {
+                expressions.Add( Assign( resultVariable, resultValue ) );
+            }
+            else if ( resultVariable != null && expressions.Count > 0 && resultVariable.Type == expressions[^1].Type )
+            {
+                expressions[^1] = Assign( resultVariable, expressions[^1] );
+            }
+        }
+
+        static void AddTransition( List<Expression> expressions, int stateOrder, NodeExpression node )
+        {
+            var resolverSource = node._stateMachineSource;
+            var transition = node.Transition;
+
+            var transitionExpression = transition.Reduce( stateOrder, node, resolverSource );
+            expressions.Add( transitionExpression );
+        }
+    }
+
+    private List<Expression> ReduceFinal()
     {
         var (_, _, stateIdField, builderField, resultField, returnValue) = _stateMachineSource;
 
-        return Block(
-            Variables, // TODO: Temporary fix for handling variables in blocks
-            Label( NodeLabel ),
-            GetFinalResultExpression( returnValue, resultField, ResultValue, Expressions ),
-            Assign( stateIdField, Constant( -2 ) ),
-            Call(
+        var expressions = new List<Expression> { Label( NodeLabel ) };
+        expressions.AddRange( Expressions );
+
+        AssignFinalResult( expressions, returnValue, resultField, ResultValue );
+        AssignBuilderResult( expressions, stateIdField, builderField, resultField );
+
+        return expressions;
+
+        // Helpers
+
+        static void AssignFinalResult( List<Expression> expressions, ParameterExpression returnValue, MemberExpression resultField, Expression resultValue )
+        {
+            if ( returnValue != null )
+            {
+                expressions.Add( Assign( resultField, returnValue ) );
+                return;
+            }
+
+            if ( expressions.Count > 1 ) // Check if expressions (besides the label) exist
+            {
+                var lastExpression = expressions[^1];
+
+                if ( lastExpression.Type == typeof(void) )
+                {
+                    expressions[^1] = Block(
+                        Assign( resultField, Constant( null, typeof(IVoidResult) ) ),
+                        lastExpression
+                    );
+                }
+                else
+                {
+                    expressions[^1] = Assign( resultField, lastExpression );
+                }
+
+                return;
+            }
+
+            expressions.Add( 
+                Assign( resultField, resultValue ?? Constant( null, typeof(IVoidResult) ) ) 
+            );
+        }
+
+        static void AssignBuilderResult( List<Expression> expressions, MemberExpression stateIdField, MemberExpression builderField, MemberExpression resultField )
+        {
+            expressions.Add( Assign( stateIdField, Constant( -2 ) ) );
+
+            expressions.Add( Call(
                 builderField,
                 "SetResult",
                 null,
-                resultField.Type != typeof( IVoidResult )
+                resultField.Type != typeof(IVoidResult)
                     ? resultField
                     : Constant( null, resultField.Type ) // No result for IVoidResult
-            )
-        );
-
-        static Expression GetFinalResultExpression( ParameterExpression returnValue, MemberExpression resultField, Expression resultValue, List<Expression> expressions )
-        {
-            var blockBody = expressions.Count > 0
-                ? Block( expressions )
-                : resultValue ?? Empty();
-
-            if ( returnValue != null )
-            {
-                return Assign( resultField, returnValue );
-            }
-
-            if ( blockBody.Type == typeof( void ) )
-            {
-                return Block(
-                    Assign( resultField, Constant( null, typeof( IVoidResult ) ) ),
-                    blockBody
-                );
-            }
-
-            return Assign( resultField, blockBody );
+            ) );
         }
     }
 }
