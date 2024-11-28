@@ -30,7 +30,7 @@ internal static class Reflection
 
     // find open-generic and non-generic methods
 
-    public static void GetMethods( Type target, BindingFlags bindingFlags, Action<string, MethodInfo, MethodMatchDelegate> matchCallback )
+    internal static void GetMethods( Type target, BindingFlags bindingFlags, Action<string, MethodInfo, MethodMatchDelegate> matchCallback )
     {
         var methods = target.GetMethods( bindingFlags );
 

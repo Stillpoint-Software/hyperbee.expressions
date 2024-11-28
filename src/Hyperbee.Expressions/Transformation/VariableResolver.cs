@@ -103,7 +103,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     protected override Expression VisitBlock( BlockExpression node )
     {
         // TODO: feels like a downstream hack, see if there is a way to detect this earlier
-        var newVars = CreateLocalVariables( node );
+        var newVars = CreateLocalVariables();
 
         _localScopedVariables.Push( newVars );
 
@@ -113,24 +113,25 @@ internal sealed class VariableResolver : ExpressionVisitor
 
         return returnNode;
 
-        List<ParameterExpression> CreateLocalVariables( BlockExpression node )
+        List<ParameterExpression> CreateLocalVariables()
         {
-            var newVars = new List<ParameterExpression>();
+            var vars = new List<ParameterExpression>();
+
             foreach ( var v in node.Variables )
             {
-                if ( v.Name.StartsWith( "__local." ) )
+                if ( v.Name!.StartsWith( "__local." ) )
                 {
-                    newVars.Add( v );
+                    vars.Add( v );
                     _localMappedVariables.TryAdd( v, v );
                     continue;
                 }
 
                 var newVar = Expression.Parameter( v.Type, VariableName.LocalVariable( v.Name, _states.TailState.StateId, ref _variableId ) );
                 _localMappedVariables.TryAdd( v, newVar );
-                newVars.Add( newVar );
+                vars.Add( newVar );
             }
 
-            return newVars;
+            return vars;
         }
     }
 
@@ -225,5 +226,4 @@ internal sealed class VariableResolver : ExpressionVisitor
 
         return true;
     }
-
 }

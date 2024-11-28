@@ -345,6 +345,7 @@ public class StateMachineBuilder<TResult>
         // Create the jump table
 
         var firstScope = source.Scopes[0];
+
         var jumpTable = JumpTableBuilder.Build(
             firstScope,
             source.Scopes,
@@ -373,14 +374,12 @@ public class StateMachineBuilder<TResult>
 
         // Add the state-nodes
 
-        var nodes = firstScope.Nodes;
-
-        var expressions = new List<Expression>( nodes.Count + 1 ) { jumpTable };
-        expressions.AddRange( nodes );
+        var bodyExpressions = new List<Expression>( firstScope.Nodes.Count + 3 ) { jumpTable };
+        bodyExpressions.AddRange( firstScope.Nodes );
 
         // Add the final builder result assignment
 
-        expressions.AddRange(
+        bodyExpressions.AddRange(
         [
             Assign( stateField, Constant( -2 ) ),
             Call(
@@ -403,7 +402,7 @@ public class StateMachineBuilder<TResult>
                 source.ReturnValue != null
                     ? [source.ReturnValue]
                     : [],
-                expressions
+                bodyExpressions
             ),
             Catch(
                 exceptionParam,
@@ -447,6 +446,19 @@ public class StateMachineBuilder<TResult>
         foreach ( var node in source.Scopes.SelectMany( x => x.Nodes ) )
         {
             hoistingVisitor.Visit( node );
+        }
+    }
+
+    private sealed class HoistingVisitor( IDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter( ParameterExpression node )
+        {
+            var name = node.Name ?? node.ToString();
+
+            if ( memberExpressions.TryGetValue( name, out var fieldAccess ) )
+                return fieldAccess;
+
+            return node;
         }
     }
 }
