@@ -8,30 +8,13 @@ public class TryCatchTransition : Transition
     public NodeExpression TryNode { get; set; }
     public NodeExpression FinallyNode { get; set; }
 
-    internal override NodeExpression FallThroughNode => TryNode;
-
-    internal override void OptimizeTransition( HashSet<LabelTarget> references )
-    {
-        references.Add( TryNode.NodeLabel );
-
-        if ( FinallyNode != null )
-            references.Add( FinallyNode.NodeLabel );
-
-        for ( var index = 0; index < CatchBlocks.Count; index++ )
-        {
-            if ( CatchBlocks[index].UpdateBody is not NodeExpression nodeExpression )
-                continue;
-
-            CatchBlocks[index].UpdateBody = OptimizeTransition( nodeExpression );
-            references.Add( nodeExpression.NodeLabel );
-        }
-    }
-
     public Expression TryStateVariable { get; set; }
     public Expression ExceptionVariable { get; set; }
 
     public StateContext.Scope StateScope { get; init; }
     public List<StateContext.Scope> Scopes { get; init; }
+
+    internal override NodeExpression FallThroughNode => TryNode;
 
     protected override Transition VisitChildren( ExpressionVisitor visitor )
     {
@@ -62,33 +45,55 @@ public class TryCatchTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    protected override List<Expression> ReduceTransition( NodeExpression node )
     {
-        var expressions = new List<Expression>
+        return [GetExpression()];
+
+        Expression GetExpression()
         {
-            JumpTableBuilder.Build(
-                StateScope,
-                Scopes,
-                resolverSource.StateIdField
-            )
-        };
+            var body = new List<Expression>
+            {
+                JumpTableBuilder.Build(
+                    StateScope,
+                    Scopes,
+                    node.StateMachineSource.StateIdField
+                )
+            };
 
-        expressions.AddRange( StateScope.Nodes );
+            body.AddRange( StateScope.Nodes );
 
-        MapCatchBlock( order, out var catches, out var switchCases );
+            MapCatchBlock( node.StateOrder, out var catches, out var switchCases );
 
-        return Block(
-            TryCatch(
-                expressions.Count == 1
-                    ? expressions[0]
-                    : Block( expressions ),
-                catches
-            ),
-            Switch( // Handle error
-                TryStateVariable,
-                switchCases
-            )
-        );
+            return Block(
+                TryCatch(
+                    body.Count == 1
+                        ? body[0]
+                        : Block( body ),
+                    catches
+                ),
+                Switch( // Handle error
+                    TryStateVariable,
+                    switchCases
+                )
+            );
+        }
+    }
+
+    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    {
+        references.Add( TryNode.NodeLabel );
+
+        if ( FinallyNode != null )
+            references.Add( FinallyNode.NodeLabel );
+
+        for ( var index = 0; index < CatchBlocks.Count; index++ )
+        {
+            if ( CatchBlocks[index].UpdateBody is not NodeExpression nodeExpression )
+                continue;
+
+            CatchBlocks[index].UpdateBody = OptimizeGotos( nodeExpression );
+            references.Add( nodeExpression.NodeLabel );
+        }
     }
 
     private void MapCatchBlock( int order, out CatchBlock[] catches, out SwitchCase[] switchCases )

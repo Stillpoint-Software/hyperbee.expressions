@@ -4,9 +4,11 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public class SwitchTransition : Transition
 {
-    internal List<SwitchCaseDefinition> CaseNodes = [];
     public NodeExpression DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
+    internal List<SwitchCaseDefinition> CaseNodes = [];
+
+    internal override NodeExpression FallThroughNode => DefaultNode;
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
@@ -29,41 +31,44 @@ public class SwitchTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    protected override List<Expression> ReduceTransition( NodeExpression node )
     {
-        Expression defaultBody;
+        return [GetExpression()];
 
-        if ( DefaultNode != null )
+        Expression GetExpression()
         {
-            defaultBody = GotoOrFallThrough(
-                order,
-                DefaultNode,
-                allowNull: true
-            );
-        }
-        else
-        {
-            defaultBody = null;
-        }
+            Expression defaultBody;
 
-        var cases = CaseNodes
-            .Select( switchCase => switchCase.Reduce( order ) )
-            .ToArray();
+            if ( DefaultNode != null )
+            {
+                defaultBody = GotoOrFallThrough(
+                    node.StateOrder,
+                    DefaultNode,
+                    allowNull: true
+                );
+            }
+            else
+            {
+                defaultBody = null;
+            }
 
-        return Switch( SwitchValue, defaultBody, cases );
+            var cases = CaseNodes
+                .Select( switchCase => switchCase.Reduce( node.StateOrder ) )
+                .ToArray();
+
+            return Switch( SwitchValue, defaultBody, cases );
+        }
     }
-
-    internal override NodeExpression FallThroughNode => DefaultNode;
 
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {
-        DefaultNode = OptimizeTransition( DefaultNode );
+        DefaultNode = OptimizeGotos( DefaultNode );
         references.Add( DefaultNode.NodeLabel );
 
         for ( var index = 0; index < CaseNodes.Count; index++ )
         {
             var caseNode = CaseNodes[index];
-            caseNode.Body = OptimizeTransition( caseNode.Body );
+            caseNode.Body = OptimizeGotos( caseNode.Body );
 
             references.Add( caseNode.Body.NodeLabel );
         }

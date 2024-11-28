@@ -1,5 +1,4 @@
-﻿//#define BUILD_STRUCT
-
+﻿
 using System.Linq.Expressions;
 
 namespace Hyperbee.Expressions.Transformation;

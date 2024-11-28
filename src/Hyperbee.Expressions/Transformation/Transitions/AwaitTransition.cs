@@ -12,6 +12,7 @@ public class AwaitTransition : Transition
     public AwaitBinder AwaitBinder { get; set; }
     public bool ConfigureAwait { get; set; }
 
+    internal override NodeExpression FallThroughNode => CompletionNode;
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
@@ -37,54 +38,58 @@ public class AwaitTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    protected override List<Expression> ReduceTransition( NodeExpression node )
     {
-        var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
+        return [GetExpression()];
 
-        var getAwaiterCall = getAwaiterMethod.IsStatic
-            ? Call( getAwaiterMethod, Target, Constant( ConfigureAwait ) )
-            : Call( Constant( AwaitBinder ), getAwaiterMethod, Target, Constant( ConfigureAwait ) );
-
-        // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
-        var awaitUnsafeOnCompleted = resolverSource.BuilderField.Type
-            .GetMethods()
-            .Single( m => m.Name == "AwaitUnsafeOnCompleted" && m.IsGenericMethodDefinition )
-            .MakeGenericMethod( AwaiterVariable.Type, resolverSource.StateMachine.Type );
-
-        var expressions = new List<Expression>
+        Expression GetExpression()
         {
-            Assign(
-                AwaiterVariable,
-                getAwaiterCall
-            ),
-            IfThen(
-                IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
-                Block(
-                    Assign( resolverSource.StateIdField, Constant( StateId ) ),
-                    Call(
-                        resolverSource.BuilderField,
-                        awaitUnsafeOnCompleted,
-                        AwaiterVariable,
-                        resolverSource.StateMachine
-                    ),
-                    Return( resolverSource.ExitLabel )
+            var resolverSource = node.StateMachineSource;
+            var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
+
+            var getAwaiterCall = getAwaiterMethod.IsStatic
+                ? Call( getAwaiterMethod, Target, Constant( ConfigureAwait ) )
+                : Call( Constant( AwaitBinder ), getAwaiterMethod, Target, Constant( ConfigureAwait ) );
+
+            // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
+            var awaitUnsafeOnCompleted = resolverSource.BuilderField.Type
+                .GetMethods()
+                .Single( m => m.Name == "AwaitUnsafeOnCompleted" && m.IsGenericMethodDefinition )
+                .MakeGenericMethod( AwaiterVariable.Type, resolverSource.StateMachine.Type );
+
+            var body = new List<Expression>
+            {
+                Assign(
+                    AwaiterVariable,
+                    getAwaiterCall
+                ),
+                IfThen(
+                    IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
+                    Block(
+                        Assign( resolverSource.StateIdField, Constant( StateId ) ),
+                        Call(
+                            resolverSource.BuilderField,
+                            awaitUnsafeOnCompleted,
+                            AwaiterVariable,
+                            resolverSource.StateMachine
+                        ),
+                        Return( resolverSource.ExitLabel )
+                    )
                 )
-            )
-        };
+            };
 
-        var fallThrough = GotoOrFallThrough( order, CompletionNode, true );
+            var fallThrough = GotoOrFallThrough( node.StateOrder, CompletionNode, true );
 
-        if ( fallThrough != null )
-            expressions.Add( fallThrough );
+            if ( fallThrough != null )
+                body.Add( fallThrough );
 
-        return Block( expressions );
+            return Block( body );
+        }
     }
-
-    internal override NodeExpression FallThroughNode => CompletionNode;
 
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {
-        CompletionNode = OptimizeTransition( CompletionNode );
+        CompletionNode = OptimizeGotos( CompletionNode );
         references.Add( CompletionNode.NodeLabel );
     }
 }

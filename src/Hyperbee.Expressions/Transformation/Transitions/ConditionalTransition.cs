@@ -7,6 +7,8 @@ public class ConditionalTransition : Transition
     public Expression Test { get; set; }
     public NodeExpression IfTrue { get; set; }
     public NodeExpression IfFalse { get; set; }
+    
+    internal override NodeExpression FallThroughNode => IfFalse;
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
@@ -26,26 +28,29 @@ public class ConditionalTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    protected override List<Expression> ReduceTransition( NodeExpression node )
     {
-        var fallThrough = GotoOrFallThrough( order, IfFalse, true );
+        return [GetExpression()];
 
-        if ( fallThrough == null )
-            return IfThen( Test, Goto( IfTrue.NodeLabel ) );
+        Expression GetExpression()
+        {
+            var fallThrough = GotoOrFallThrough( node.StateOrder, IfFalse, true );
 
-        return IfThenElse(
-            Test,
-            Goto( IfTrue.NodeLabel ),
-            fallThrough
-        );
+            if ( fallThrough == null )
+                return IfThen( Test, Goto( IfTrue.NodeLabel ) );
+
+            return IfThenElse(
+                Test,
+                Goto( IfTrue.NodeLabel ),
+                fallThrough
+            );
+        }
     }
-
-    internal override NodeExpression FallThroughNode => IfFalse;
 
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {
-        IfTrue = OptimizeTransition( IfTrue );
-        IfFalse = OptimizeTransition( IfFalse );
+        IfTrue = OptimizeGotos( IfTrue );
+        IfFalse = OptimizeGotos( IfFalse );
 
         references.Add( IfTrue.NodeLabel );
         references.Add( IfFalse.NodeLabel );

@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 using Hyperbee.Expressions.Visitors;
@@ -36,9 +37,18 @@ public class LoweringVisitor : ExpressionVisitor
 
     // Visit methods
 
-    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState,
-        Expression resultVariable = null,
-        Action<NodeExpression> init = null )
+    private void VisitExpressions( IEnumerable<Expression> expressions )
+    {
+        foreach ( var expression in expressions )
+        {
+            var updateNode = Visit( expression ); // Warning: visitation mutates the tail state.
+            UpdateTailState( updateNode );
+        }
+
+        _states.TailState.Transition = new FinalTransition();
+    }
+
+    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState, Expression resultVariable = null, Action<NodeExpression> init = null )
     {
         // Create a new state for the branch
 
@@ -57,16 +67,7 @@ public class LoweringVisitor : ExpressionVisitor
         return branchState;
     }
 
-    private void VisitExpressions( IEnumerable<Expression> expressions )
-    {
-        foreach ( var expression in expressions )
-        {
-            var updateNode = Visit( expression ); // Warning: visitation mutates the tail state.
-            UpdateTailState( updateNode );
-        }
-    }
-
-    private void UpdateTailState( Expression visited, NodeExpression defaultTransitionTarget = null )
+    private void UpdateTailState( Expression visited, NodeExpression defaultTarget = null )
     {
         var tailState = _states.TailState;
 
@@ -89,9 +90,9 @@ public class LoweringVisitor : ExpressionVisitor
             tailState.Transition = new GotoTransition { TargetNode = targetNode };
         }
 
-        if ( defaultTransitionTarget != null )
+        if ( defaultTarget != null )
         {
-            tailState.Transition = new GotoTransition { TargetNode = defaultTransitionTarget };
+            tailState.Transition = new GotoTransition { TargetNode = defaultTarget };
         }
     }
 

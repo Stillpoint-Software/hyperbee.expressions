@@ -5,20 +5,16 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 public class GotoTransition : Transition
 {
     public NodeExpression TargetNode { get; set; }
-
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
-    {
-        return GotoOrFallThrough(
-            order,
-            TargetNode
-        );
-    }
-
     internal override NodeExpression FallThroughNode => TargetNode;
+
+    protected override List<Expression> ReduceTransition( NodeExpression node )
+    {
+        return [GotoOrFallThrough( node.StateOrder, TargetNode )];
+    }
 
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {
-        TargetNode = OptimizeTransition( TargetNode );
+        TargetNode = OptimizeGotos( TargetNode );
         references.Add( TargetNode.NodeLabel );
     }
 }

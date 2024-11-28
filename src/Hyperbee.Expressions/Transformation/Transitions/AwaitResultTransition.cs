@@ -9,6 +9,8 @@ public class AwaitResultTransition : Transition
     public NodeExpression TargetNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
 
+    internal override NodeExpression FallThroughNode => TargetNode;
+
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
         return Update(
@@ -31,36 +33,39 @@ public class AwaitResultTransition : Transition
         };
     }
 
-    internal override Expression Reduce( int order, NodeExpression expression, StateMachineSource resolverSource )
+    protected override List<Expression> ReduceTransition( NodeExpression node )
     {
-        var getResultMethod = AwaitBinder.GetResultMethod;
+        return [GetExpression()];
 
-        var getResultCall = getResultMethod.IsStatic
-            ? Call( getResultMethod, AwaiterVariable )
-            : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
-
-        if ( ResultVariable == null )
+        Expression GetExpression()
         {
-            var transition = GotoOrFallThrough( order, TargetNode );
+            var getResultMethod = AwaitBinder.GetResultMethod;
 
-            return transition == Empty()
-                ? getResultCall
-                : Block( getResultCall, transition );
+            var getResultCall = getResultMethod.IsStatic
+                ? Call( getResultMethod, AwaiterVariable )
+                : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
+
+            if ( ResultVariable == null )
+            {
+                var transition = GotoOrFallThrough( node.StateOrder, TargetNode );
+
+                return transition == Empty()
+                    ? getResultCall
+                    : Block( getResultCall, transition );
+            }
+
+            var getResult = Assign( ResultVariable, getResultCall );
+
+            return Block(
+                getResult,
+                GotoOrFallThrough( node.StateOrder, TargetNode )
+            );
         }
-
-        var getResult = Assign( ResultVariable, getResultCall );
-
-        return Block(
-            getResult,
-            GotoOrFallThrough( order, TargetNode )
-        );
     }
-
-    internal override NodeExpression FallThroughNode => TargetNode;
 
     internal override void OptimizeTransition( HashSet<LabelTarget> references )
     {
-        TargetNode = OptimizeTransition( TargetNode );
+        TargetNode = OptimizeGotos( TargetNode );
         references.Add( TargetNode.NodeLabel );
     }
 }

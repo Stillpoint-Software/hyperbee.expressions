@@ -1,6 +1,4 @@
-﻿//#define BUILD_STRUCT
-
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -9,12 +7,7 @@ using static System.Linq.Expressions.Expression;
 namespace Hyperbee.Expressions.Transformation;
 
 public interface IVoidResult; // Marker interface for void Task results
-
-#if BUILD_STRUCT
-public delegate void MoveNextDelegate<T>( ref T stateMachine ) where T : IAsyncStateMachine;
-#else
 public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
-#endif
 
 public class StateMachineBuilder<TResult>
 {
@@ -86,7 +79,7 @@ public class StateMachineBuilder<TResult>
         );
         bodyExpression.Add( assignStateField );
 
-        // create local copy of shared variables on statemachine
+        // create local copy of shared variables on state-machine
         foreach ( var scopedVariable in source.ScopedVariables )
         {
             var field = fields.First( field => field.Name == scopedVariable.Name );
@@ -140,19 +133,12 @@ public class StateMachineBuilder<TResult>
 
     private Type CreateStateMachineType( LoweringResult source, out FieldInfo[] fields )
     {
-#if BUILD_STRUCT
-        var typeBuilder = _moduleBuilder.DefineType(
-            _typeName,
-            TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed,
-            typeof( ValueType ) // struct
-        );
-#else
         var typeBuilder = _moduleBuilder.DefineType(
             _typeName,
             TypeAttributes.Public | TypeAttributes.Class,
             typeof( object ),
             [typeof( IAsyncStateMachine )] );
-#endif
+
         typeBuilder.AddInterfaceImplementation( typeof( IAsyncStateMachine ) );
 
         // Define: fields
@@ -191,7 +177,7 @@ public class StateMachineBuilder<TResult>
             );
         }
 
-        foreach ( var parameterExpression in source.ScopedVariables.OfType<ParameterExpression>() )
+        foreach ( var parameterExpression in source.ScopedVariables )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -242,12 +228,7 @@ public class StateMachineBuilder<TResult>
             .GetMethod( "SetStateMachine", [typeof( IAsyncStateMachine )]
         );
 
-#if BUILD_STRUCT
-        ilGenerator.Emit( OpCodes.Call, setStateMachineOnBuilder! );
-#else
         ilGenerator.Emit( OpCodes.Callvirt, setStateMachineOnBuilder! );
-#endif
-
         ilGenerator.Emit( OpCodes.Ret );
 
         typeBuilder.DefineMethodOverride( setStateMachineMethod,
@@ -304,15 +285,15 @@ public class StateMachineBuilder<TResult>
                         case 0:
                             var<1>.__state<> = -1;
                             goto ST_0002;
-            
+
                         case 1:
                             var<1>.__state<> = -1;
                             goto ST_0004;
                     }
-            
+
                     var awaitable = Task<int>;
                     var<1>.__awaiter<0> = AwaitBinder.GetAwaiter(ref awaitable, false);
-            
+
                     if (!var<1>.__awaiter<0>.IsCompleted)
                     {
                         var<1>.__state<> = 0;
@@ -326,7 +307,7 @@ public class StateMachineBuilder<TResult>
                     Task<int> awaitable;
                     awaitable = Task<int>;
                     var<1>.__awaiter<1> = AwaitBinder.GetAwaiter(ref awaitable, false);
-            
+
                     if (!var<1>.__awaiter<1>.IsCompleted)
                     {
                         var<1>.__state<> = 1;
@@ -346,14 +327,10 @@ public class StateMachineBuilder<TResult>
                     var<1>.__builder<>.SetException(ex);
                 }
             }
-           
+
         */
 
-#if BUILD_STRUCT
-        var stateMachine = Parameter( stateMachineType.MakeByRefType(), $"sm<{id}>" );
-#else
         var stateMachine = Parameter( stateMachineType, $"sm<{id}>" );
-#endif
 
         var stateField = Field( stateMachine, FieldName.State );
         var builderField = Field( stateMachine, FieldName.Builder );
@@ -381,8 +358,23 @@ public class StateMachineBuilder<TResult>
         // Create a try-catch block to handle exceptions
 
         var nodes = firstScope.Nodes;
+        
         var blockBody = new List<Expression>( nodes.Count + 1 ) { jumpTable };
         blockBody.AddRange( nodes );
+
+        blockBody.Add( // Add the final builder result assignment
+            Block(
+                Assign( stateField, Constant( -2 ) ),
+                Call(
+                    builderField,
+                    "SetResult",
+                    null,
+                    finalResultField.Type != typeof( IVoidResult )
+                        ? finalResultField
+                        : Constant( null, finalResultField.Type ) // No result for IVoidResult
+                )
+            )
+        );
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 

@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -50,7 +51,7 @@ internal sealed class NodeExpressionOptimizer : INodeExpressionOptimizer
                 // Optimize transition, which may mutate node.Transition
                 node.Transition?.OptimizeTransition( references );
 
-                if ( node.Transition == null )
+                if ( node.Transition is FinalTransition )
                 {
                     finalNode = node;
                     break;
