@@ -21,7 +21,7 @@ public abstract class Transition : Expression
     public override Expression Reduce()
     {
         if ( Parent == null )
-            throw new InvalidOperationException( $"Transition Reduce requires a {nameof(Parent)} instance." );
+            throw new InvalidOperationException( $"Transition Reduce requires a {nameof( Parent )} instance." );
 
         return Block(
             Reduce( Parent )
