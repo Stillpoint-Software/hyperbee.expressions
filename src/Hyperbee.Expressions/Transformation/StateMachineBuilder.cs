@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+using System.Collections.ObjectModel;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -353,28 +354,47 @@ public class StateMachineBuilder<TResult>
 
         // Variable Hoisting 
 
-        HoistVariables( source, fields, stateMachine, exitLabel, stateField, builderField, finalResultField );
+        HoistVariables( source, fields, stateMachine );
 
-        // Create a try-catch block to handle exceptions
+        // Assign state-machine source to nodes
+
+        var stateMachineSource = new StateMachineSource(
+            stateMachine,
+            exitLabel,
+            stateField,
+            builderField,
+            finalResultField,
+            source.ReturnValue
+        );
+
+        foreach ( var node in source.Scopes.SelectMany( x => x.Nodes ) )
+        {
+            node.SetStateMachineSource( stateMachineSource ); // required for node reducers
+        }
+
+        // Add the state-nodes
 
         var nodes = firstScope.Nodes;
+        
+        var expressions = new List<Expression>( nodes.Count + 1 ) { jumpTable };
+        expressions.AddRange( nodes );
 
-        var blockBody = new List<Expression>( nodes.Count + 1 ) { jumpTable };
-        blockBody.AddRange( nodes );
+        // Add the final builder result assignment
 
-        blockBody.Add( // Add the final builder result assignment
-            Block(
-                Assign( stateField, Constant( -2 ) ),
-                Call(
-                    builderField,
-                    "SetResult",
-                    null,
-                    finalResultField.Type != typeof( IVoidResult )
-                        ? finalResultField
-                        : Constant( null, finalResultField.Type ) // No result for IVoidResult
-                )
+        expressions.AddRange( 
+        [
+            Assign( stateField, Constant( -2 ) ),
+            Call(
+                builderField,
+                "SetResult",
+                null,
+                finalResultField.Type != typeof(IVoidResult)
+                    ? finalResultField
+                    : Constant( null, finalResultField.Type ) // No result for IVoidResult
             )
-        );
+        ] );
+
+        // Create a try-catch block to handle exceptions
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
@@ -384,7 +404,7 @@ public class StateMachineBuilder<TResult>
                 source.ReturnValue != null
                     ? [source.ReturnValue]
                     : [],
-                blockBody
+                expressions
             ),
             Catch(
                 exceptionParam,
@@ -416,11 +436,7 @@ public class StateMachineBuilder<TResult>
     private static void HoistVariables(
         LoweringResult source,
         FieldInfo[] fields,
-        ParameterExpression stateMachine,
-        LabelTarget exitLabel,
-        MemberExpression stateField,
-        MemberExpression builderField,
-        MemberExpression finalResultField
+        ParameterExpression stateMachine
     )
     {
         var fieldMembers = fields
@@ -429,18 +445,8 @@ public class StateMachineBuilder<TResult>
 
         var hoistingVisitor = new HoistingVisitor( fieldMembers );
 
-        var stateMachineSource = new StateMachineSource(
-            stateMachine,
-            exitLabel,
-            stateField,
-            builderField,
-            finalResultField,
-            source.ReturnValue
-        );
-
         foreach ( var node in source.Scopes.SelectMany( x => x.Nodes ) )
         {
-            node.SetStateMachineSource( stateMachineSource );
             hoistingVisitor.Visit( node );
         }
     }
