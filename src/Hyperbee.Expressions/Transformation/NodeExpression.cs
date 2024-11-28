@@ -19,7 +19,7 @@ public sealed class NodeExpression : Expression
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
 
-    internal StateMachineSource StateMachineSource { get; private set; }
+    internal StateMachineSource StateMachineSource { get; set; }
 
     private Transition _transition;
 
@@ -48,11 +48,6 @@ public sealed class NodeExpression : Expression
     public override bool CanReduce => true;
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
-
-    internal void SetStateMachineSource( StateMachineSource stateMachineSource )
-    {
-        StateMachineSource = stateMachineSource;
-    }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {

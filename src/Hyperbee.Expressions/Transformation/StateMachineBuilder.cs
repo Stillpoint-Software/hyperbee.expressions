@@ -368,7 +368,7 @@ public class StateMachineBuilder<TResult>
 
         foreach ( var node in source.Scopes.SelectMany( x => x.Nodes ) )
         {
-            node.SetStateMachineSource( stateMachineSource ); // required for node reducers
+            node.StateMachineSource = stateMachineSource; // required for node reducers
         }
 
         // Add the state-nodes
