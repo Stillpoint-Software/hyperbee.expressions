@@ -18,9 +18,20 @@ public sealed class NodeExpression : Expression
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
-    public Transition Transition { get; set; }
 
     internal StateMachineSource StateMachineSource { get; private set; }
+
+    private Transition _transition;
+
+    public Transition Transition
+    {
+        get => _transition;
+        set
+        {
+            _transition = value;
+            _transition.Parent = this;
+        }
+    }
 
     internal NodeExpression() { }
 
@@ -68,8 +79,6 @@ public sealed class NodeExpression : Expression
         if ( StateMachineSource == null )
             throw new InvalidOperationException( $"Reduce requires an {nameof( Transformation.StateMachineSource )} instance." );
 
-        return Block(
-            Transition.Reduce( this )
-        );
+        return Transition.Reduce();
     }
 }

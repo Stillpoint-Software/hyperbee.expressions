@@ -16,7 +16,19 @@ public abstract class Transition : Expression
 
     internal abstract void OptimizeTransition( HashSet<LabelTarget> references );
 
-    public virtual List<Expression> Reduce( NodeExpression node )
+    internal NodeExpression Parent { get; set; }
+
+    public override Expression Reduce()
+    {
+        if ( Parent == null )
+            throw new InvalidOperationException( $"Transition Reduce requires a {nameof(Parent)} instance." );
+
+        return Block(
+            Reduce( Parent )
+        );
+    }
+
+    private List<Expression> Reduce( NodeExpression node )
     {
         var expressions = new List<Expression>
         {
@@ -27,26 +39,29 @@ public abstract class Transition : Expression
 
         // add result assignment
 
-        AssignResult( node, expressions );
+        AssignResult( expressions );
 
         // add transition
 
-        expressions.AddRange( ReduceTransition( node ) );
+        expressions.AddRange( ReduceTransition() );
 
         return expressions;
     }
 
-    protected abstract List<Expression> ReduceTransition( NodeExpression node );
+    protected abstract List<Expression> ReduceTransition();
 
-    protected virtual void AssignResult( NodeExpression node, List<Expression> expressions )
+    protected virtual void AssignResult( List<Expression> expressions )
     {
-        if ( node.ResultValue != null && node.ResultVariable != null && node.ResultValue.Type == node.ResultVariable.Type )
+        var resultValue = Parent.ResultValue;
+        var resultVariable = Parent.ResultVariable;
+
+        if ( resultValue != null && resultVariable != null && resultValue.Type == resultVariable.Type )
         {
-            expressions.Add( Assign( node.ResultVariable, node.ResultValue ) );
+            expressions.Add( Assign( resultVariable, resultValue ) );
         }
-        else if ( node.ResultVariable != null && expressions.Count > 1 && node.ResultVariable.Type == expressions[^1].Type )
+        else if ( resultVariable != null && expressions.Count > 1 && resultVariable.Type == expressions[^1].Type )
         {
-            expressions[^1] = Assign( node.ResultVariable, expressions[^1] );
+            expressions[^1] = Assign( resultVariable, expressions[^1] );
         }
     }
 

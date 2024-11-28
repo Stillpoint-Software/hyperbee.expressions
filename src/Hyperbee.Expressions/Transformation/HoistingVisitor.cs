@@ -7,6 +7,7 @@ internal sealed class HoistingVisitor( IDictionary<string, MemberExpression> mem
     protected override Expression VisitParameter( ParameterExpression node )
     {
         var name = node.Name ?? node.ToString();
+
         if ( memberExpressions.TryGetValue( name, out var fieldAccess ) )
             return fieldAccess;
 

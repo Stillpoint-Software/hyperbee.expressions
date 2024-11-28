@@ -10,15 +10,15 @@ public class FinalTransition : Transition
     {
     }
 
-    protected override List<Expression> ReduceTransition( NodeExpression node )
+    protected override List<Expression> ReduceTransition()
     {
         return [Empty()];
     }
 
-    protected override void AssignResult( NodeExpression node, List<Expression> expressions )
+    protected override void AssignResult( List<Expression> expressions )
     {
-        var resultField = node.StateMachineSource.ResultField;
-        var returnValue = node.StateMachineSource.ReturnValue;
+        var resultField = Parent.StateMachineSource.ResultField;
+        var returnValue = Parent.StateMachineSource.ReturnValue;
 
         if ( returnValue != null )
         {
@@ -46,7 +46,7 @@ public class FinalTransition : Transition
         }
 
         expressions.Add(
-            Assign( resultField, node.ResultValue ?? Constant( null, typeof( IVoidResult ) ) )
+            Assign( resultField, Parent.ResultValue ?? Constant( null, typeof( IVoidResult ) ) )
         );
     }
 }

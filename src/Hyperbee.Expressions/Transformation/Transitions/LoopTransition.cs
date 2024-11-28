@@ -10,7 +10,7 @@ public class LoopTransition : Transition
 
     internal override NodeExpression FallThroughNode => BodyNode;
 
-    protected override List<Expression> ReduceTransition( NodeExpression node )
+    protected override List<Expression> ReduceTransition()
     {
         return [Empty()];
     }

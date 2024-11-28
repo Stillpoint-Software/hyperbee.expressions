@@ -45,7 +45,7 @@ public class TryCatchTransition : Transition
         };
     }
 
-    protected override List<Expression> ReduceTransition( NodeExpression node )
+    protected override List<Expression> ReduceTransition()
     {
         return [GetExpression()];
 
@@ -56,13 +56,13 @@ public class TryCatchTransition : Transition
                 JumpTableBuilder.Build(
                     StateScope,
                     Scopes,
-                    node.StateMachineSource.StateIdField
+                    Parent.StateMachineSource.StateIdField
                 )
             };
 
             body.AddRange( StateScope.Nodes );
 
-            MapCatchBlock( node.StateOrder, out var catches, out var switchCases );
+            MapCatchBlock( Parent.StateOrder, out var catches, out var switchCases );
 
             return Block(
                 TryCatch(

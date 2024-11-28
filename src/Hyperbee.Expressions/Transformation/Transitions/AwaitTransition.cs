@@ -38,13 +38,13 @@ public class AwaitTransition : Transition
         };
     }
 
-    protected override List<Expression> ReduceTransition( NodeExpression node )
+    protected override List<Expression> ReduceTransition()
     {
         return [GetExpression()];
 
         Expression GetExpression()
         {
-            var resolverSource = node.StateMachineSource;
+            var resolverSource = Parent.StateMachineSource;
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
 
             var getAwaiterCall = getAwaiterMethod.IsStatic
@@ -78,7 +78,7 @@ public class AwaitTransition : Transition
                 )
             };
 
-            var fallThrough = GotoOrFallThrough( node.StateOrder, CompletionNode, true );
+            var fallThrough = GotoOrFallThrough( Parent.StateOrder, CompletionNode, true );
 
             if ( fallThrough != null )
                 body.Add( fallThrough );

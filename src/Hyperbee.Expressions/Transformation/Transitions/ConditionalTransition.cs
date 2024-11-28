@@ -28,13 +28,13 @@ public class ConditionalTransition : Transition
         };
     }
 
-    protected override List<Expression> ReduceTransition( NodeExpression node )
+    protected override List<Expression> ReduceTransition()
     {
         return [GetExpression()];
 
         Expression GetExpression()
         {
-            var fallThrough = GotoOrFallThrough( node.StateOrder, IfFalse, true );
+            var fallThrough = GotoOrFallThrough( Parent.StateOrder, IfFalse, true );
 
             if ( fallThrough == null )
                 return IfThen( Test, Goto( IfTrue.NodeLabel ) );

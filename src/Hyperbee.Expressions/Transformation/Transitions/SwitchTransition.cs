@@ -31,7 +31,7 @@ public class SwitchTransition : Transition
         };
     }
 
-    protected override List<Expression> ReduceTransition( NodeExpression node )
+    protected override List<Expression> ReduceTransition()
     {
         return [GetExpression()];
 
@@ -42,7 +42,7 @@ public class SwitchTransition : Transition
             if ( DefaultNode != null )
             {
                 defaultBody = GotoOrFallThrough(
-                    node.StateOrder,
+                    Parent.StateOrder,
                     DefaultNode,
                     allowNull: true
                 );
@@ -53,7 +53,7 @@ public class SwitchTransition : Transition
             }
 
             var cases = CaseNodes
-                .Select( switchCase => switchCase.Reduce( node.StateOrder ) )
+                .Select( switchCase => switchCase.Reduce( Parent.StateOrder ) )
                 .ToArray();
 
             return Switch( SwitchValue, defaultBody, cases );

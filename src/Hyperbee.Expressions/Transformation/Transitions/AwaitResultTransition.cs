@@ -33,7 +33,7 @@ public class AwaitResultTransition : Transition
         };
     }
 
-    protected override List<Expression> ReduceTransition( NodeExpression node )
+    protected override List<Expression> ReduceTransition()
     {
         return [GetExpression()];
 
@@ -47,7 +47,7 @@ public class AwaitResultTransition : Transition
 
             if ( ResultVariable == null )
             {
-                var transition = GotoOrFallThrough( node.StateOrder, TargetNode );
+                var transition = GotoOrFallThrough( Parent.StateOrder, TargetNode );
 
                 return transition == Empty()
                     ? getResultCall
@@ -58,7 +58,7 @@ public class AwaitResultTransition : Transition
 
             return Block(
                 getResult,
-                GotoOrFallThrough( node.StateOrder, TargetNode )
+                GotoOrFallThrough( Parent.StateOrder, TargetNode )
             );
         }
     }
