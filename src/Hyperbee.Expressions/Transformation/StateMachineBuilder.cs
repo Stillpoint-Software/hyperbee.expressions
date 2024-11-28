@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -374,13 +374,13 @@ public class StateMachineBuilder<TResult>
         // Add the state-nodes
 
         var nodes = firstScope.Nodes;
-        
+
         var expressions = new List<Expression>( nodes.Count + 1 ) { jumpTable };
         expressions.AddRange( nodes );
 
         // Add the final builder result assignment
 
-        expressions.AddRange( 
+        expressions.AddRange(
         [
             Assign( stateField, Constant( -2 ) ),
             Call(
