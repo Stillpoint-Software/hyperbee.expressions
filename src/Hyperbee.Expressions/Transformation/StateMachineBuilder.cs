@@ -358,7 +358,7 @@ public class StateMachineBuilder<TResult>
         // Create a try-catch block to handle exceptions
 
         var nodes = firstScope.Nodes;
-        
+
         var blockBody = new List<Expression>( nodes.Count + 1 ) { jumpTable };
         blockBody.AddRange( nodes );
 

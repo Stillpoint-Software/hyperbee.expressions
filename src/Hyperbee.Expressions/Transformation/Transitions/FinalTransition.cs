@@ -30,10 +30,10 @@ public class FinalTransition : Transition
         {
             var lastExpression = expressions[^1];
 
-            if ( lastExpression.Type == typeof(void) )
+            if ( lastExpression.Type == typeof( void ) )
             {
                 expressions[^1] = Block(
-                    Assign( resultField, Constant( null, typeof(IVoidResult) ) ),
+                    Assign( resultField, Constant( null, typeof( IVoidResult ) ) ),
                     lastExpression
                 );
             }
@@ -46,7 +46,7 @@ public class FinalTransition : Transition
         }
 
         expressions.Add(
-            Assign( resultField, node.ResultValue ?? Constant( null, typeof(IVoidResult) ) )
+            Assign( resultField, node.ResultValue ?? Constant( null, typeof( IVoidResult ) ) )
         );
     }
 }

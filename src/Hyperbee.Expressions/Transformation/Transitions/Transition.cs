@@ -7,20 +7,20 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 public abstract class Transition : Expression
 {
     public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof(void);
+    public override Type Type => typeof( void );
     public override bool CanReduce => true;
 
     protected override Expression VisitChildren( ExpressionVisitor visitor ) => this;
 
     internal abstract NodeExpression FallThroughNode { get; }
-    
+
     internal abstract void OptimizeTransition( HashSet<LabelTarget> references );
 
     public virtual List<Expression> Reduce( NodeExpression node )
     {
-        var expressions = new List<Expression> 
-        { 
-            Label( node.NodeLabel ) 
+        var expressions = new List<Expression>
+        {
+            Label( node.NodeLabel )
         };
 
         expressions.AddRange( node.Expressions );
@@ -35,7 +35,7 @@ public abstract class Transition : Expression
 
         return expressions;
     }
-    
+
     protected abstract List<Expression> ReduceTransition( NodeExpression node );
 
     protected virtual void AssignResult( NodeExpression node, List<Expression> expressions )

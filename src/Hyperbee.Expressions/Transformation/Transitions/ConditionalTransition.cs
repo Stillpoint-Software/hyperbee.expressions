@@ -7,7 +7,7 @@ public class ConditionalTransition : Transition
     public Expression Test { get; set; }
     public NodeExpression IfTrue { get; set; }
     public NodeExpression IfFalse { get; set; }
-    
+
     internal override NodeExpression FallThroughNode => IfFalse;
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
