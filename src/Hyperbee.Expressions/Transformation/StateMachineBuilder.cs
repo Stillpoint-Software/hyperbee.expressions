@@ -385,7 +385,7 @@ public class StateMachineBuilder<TResult>
             Assign( stateField, Constant( -2 ) ),
             Call(
                 builderField,
-                "SetResult",
+                nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
                 null,
                 finalResultField.Type != typeof(IVoidResult)
                     ? finalResultField
@@ -467,7 +467,7 @@ public static class StateMachineBuilder
         // Create the state machine module
         var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
-        ModuleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
+        ModuleBuilder = assemblyBuilder.DefineDynamicModule( "RuntimeStateMachineModule" );
 
         NodeExpressionOptimizer = new NodeExpressionOptimizer();
     }
