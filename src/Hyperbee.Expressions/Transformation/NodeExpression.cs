@@ -21,17 +21,7 @@ public sealed class NodeExpression : Expression
 
     internal StateMachineSource StateMachineSource { get; set; }
 
-    private Transition _transition;
-
-    public Transition Transition
-    {
-        get => _transition;
-        set
-        {
-            _transition = value;
-            _transition.Parent = this;
-        }
-    }
+    public Transition Transition { get; set; }
 
     internal NodeExpression() { }
 
@@ -74,6 +64,7 @@ public sealed class NodeExpression : Expression
         if ( StateMachineSource == null )
             throw new InvalidOperationException( $"Reduce requires an {nameof( Transformation.StateMachineSource )} instance." );
 
+        Transition.Parent = this;
         return Transition.Reduce();
     }
 }

@@ -28,7 +28,7 @@ public class ConditionalTransition : Transition
         };
     }
 
-    protected override List<Expression> GetExpressions()
+    protected override List<Expression> GetBody()
     {
         return [GetExpression()];
 

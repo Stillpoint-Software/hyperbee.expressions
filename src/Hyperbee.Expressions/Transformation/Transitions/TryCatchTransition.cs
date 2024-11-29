@@ -45,11 +45,11 @@ public class TryCatchTransition : Transition
         };
     }
 
-    protected override List<Expression> GetExpressions()
+    protected override List<Expression> GetBody()
     {
-        return [GetExpression()];
+        return GetExpressions();
 
-        Expression GetExpression()
+        List<Expression> GetExpressions()
         {
             var body = new List<Expression>
             {
@@ -64,7 +64,7 @@ public class TryCatchTransition : Transition
 
             MapCatchBlock( Parent.StateOrder, out var catches, out var switchCases );
 
-            return Block(
+            return [
                 TryCatch(
                     body.Count == 1
                         ? body[0]
@@ -75,7 +75,7 @@ public class TryCatchTransition : Transition
                     TryStateVariable,
                     switchCases
                 )
-            );
+            ];
         }
     }
 

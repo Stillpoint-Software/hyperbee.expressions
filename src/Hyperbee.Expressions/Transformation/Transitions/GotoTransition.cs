@@ -7,7 +7,7 @@ public class GotoTransition : Transition
     public NodeExpression TargetNode { get; set; }
     internal override NodeExpression FallThroughNode => TargetNode;
 
-    protected override List<Expression> GetExpressions()
+    protected override List<Expression> GetBody()
     {
         return [GotoOrFallThrough( Parent.StateOrder, TargetNode )];
     }

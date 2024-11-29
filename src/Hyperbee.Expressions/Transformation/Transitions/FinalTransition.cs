@@ -10,9 +10,9 @@ public class FinalTransition : Transition
     {
     }
 
-    protected override List<Expression> GetExpressions()
+    protected override List<Expression> GetBody()
     {
-        return [Empty()];
+        return EmptyBody;
     }
 
     protected override void AssignResult( List<Expression> expressions )

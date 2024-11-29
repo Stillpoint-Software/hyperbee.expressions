@@ -38,11 +38,11 @@ public class AwaitTransition : Transition
         };
     }
 
-    protected override List<Expression> GetExpressions()
+    protected override List<Expression> GetBody()
     {
-        return [GetExpression()];
+        return GetExpressions();
 
-        Expression GetExpression()
+        List<Expression> GetExpressions()
         {
             var resolverSource = Parent.StateMachineSource;
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
@@ -54,7 +54,7 @@ public class AwaitTransition : Transition
             // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
             var awaitUnsafeOnCompleted = resolverSource.BuilderField.Type
                 .GetMethods()
-                .Single( m => m.Name == "AwaitUnsafeOnCompleted" && m.IsGenericMethodDefinition )
+                .Single( methodInfo => methodInfo.Name == "AwaitUnsafeOnCompleted" && methodInfo.IsGenericMethodDefinition )
                 .MakeGenericMethod( AwaiterVariable.Type, resolverSource.StateMachine.Type );
 
             var body = new List<Expression>
@@ -83,7 +83,7 @@ public class AwaitTransition : Transition
             if ( fallThrough != null )
                 body.Add( fallThrough );
 
-            return Block( body );
+            return body;
         }
     }
 

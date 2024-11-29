@@ -227,7 +227,7 @@ public class ExpressionFingerprinter : ExpressionVisitor, IDisposable
                 writer.Write( arg.Type );
             }
 
-            writer.Write( ":" );
+            writer.Write( ':' );
             writer.Write( node.Type );
         } );
 

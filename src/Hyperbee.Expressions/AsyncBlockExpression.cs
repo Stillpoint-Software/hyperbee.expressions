@@ -10,25 +10,26 @@ public class AsyncBlockExpression : Expression
 {
     private readonly Type _taskType;
     private Expression _stateMachine;
-    private List<ParameterExpression> _sharedScopeVariables;
 
     public ReadOnlyCollection<Expression> Expressions { get; }
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
     public Expression Result => Expressions[^1];
+
+    internal ReadOnlyCollection<ParameterExpression> SharedScopeVariables { get; set; }
 
     internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
         : this( variables, expressions, null )
     {
     }
 
-    internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, List<ParameterExpression> sharedScopeVariables )
+    internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, ReadOnlyCollection<ParameterExpression> sharedScopeVariables )
     {
         if ( expressions == null || expressions.Count == 0 )
             throw new ArgumentException( $"{nameof( AsyncBlockExpression )} must contain at least one expression.", nameof( expressions ) );
 
         Variables = variables;
         Expressions = expressions;
-        _sharedScopeVariables = sharedScopeVariables;
+        SharedScopeVariables = sharedScopeVariables;
 
         _taskType = GetTaskType( Result.Type );
     }
@@ -48,7 +49,7 @@ public class AsyncBlockExpression : Expression
 
         var visitor = new LoweringVisitor();
 
-        var source = visitor.Transform( [.. Variables], [.. Expressions], _sharedScopeVariables != null ? [.. _sharedScopeVariables] : [] );
+        var source = visitor.Transform( [.. Variables], [.. Expressions], SharedScopeVariables != null ? [.. SharedScopeVariables] : [] );
 
         if ( source.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
@@ -66,7 +67,7 @@ public class AsyncBlockExpression : Expression
         if ( Compare( newVariables, Variables ) && Compare( newExpressions, Expressions ) )
             return this;
 
-        return new AsyncBlockExpression( newVariables, newExpressions, _sharedScopeVariables );
+        return new AsyncBlockExpression( newVariables, newExpressions, SharedScopeVariables );
     }
 
     internal static bool Compare<T>( ICollection<T> compare, IReadOnlyList<T> current )
@@ -93,12 +94,6 @@ public class AsyncBlockExpression : Expression
 
         return true;
     }
-
-    internal void SetSharedScopeVariables( List<ParameterExpression> shared )
-    {
-        _sharedScopeVariables = shared;
-    }
-
 
     private static Type GetTaskType( Type resultType )
     {

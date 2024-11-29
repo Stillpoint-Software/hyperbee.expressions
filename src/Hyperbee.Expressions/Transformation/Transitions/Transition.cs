@@ -6,6 +6,8 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 public abstract class Transition : Expression
 {
+    protected static readonly List<Expression> EmptyBody = [Empty()];
+
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override Type Type => typeof( void );
     public override bool CanReduce => true;
@@ -23,14 +25,16 @@ public abstract class Transition : Expression
         if ( Parent == null )
             throw new InvalidOperationException( $"Transition Reduce requires a {nameof( Parent )} instance." );
 
-        return Block(
-            Reduce( Parent )
-        );
+        var reduced = Reduce( Parent );
+
+        return ( reduced.Count == 1 )
+            ? reduced[0]
+            : Block( reduced );
     }
 
     private List<Expression> Reduce( NodeExpression node )
     {
-        var expressions = new List<Expression>
+        var expressions = new List<Expression>( 8 ) // Label, Expressions, AssignResult, Transition
         {
             Label( node.NodeLabel )
         };
@@ -41,14 +45,14 @@ public abstract class Transition : Expression
 
         AssignResult( expressions );
 
-        // add transition
+        // add transition body
 
-        expressions.AddRange( GetExpressions() );
+        expressions.AddRange( GetBody() );
 
         return expressions;
     }
 
-    protected abstract List<Expression> GetExpressions();
+    protected abstract List<Expression> GetBody();
 
     protected virtual void AssignResult( List<Expression> expressions )
     {

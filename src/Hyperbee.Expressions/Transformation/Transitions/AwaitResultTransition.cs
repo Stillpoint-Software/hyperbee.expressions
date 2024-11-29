@@ -33,11 +33,11 @@ public class AwaitResultTransition : Transition
         };
     }
 
-    protected override List<Expression> GetExpressions()
+    protected override List<Expression> GetBody()
     {
-        return [GetExpression()];
+        return GetExpressions();
 
-        Expression GetExpression()
+        List<Expression> GetExpressions()
         {
             var getResultMethod = AwaitBinder.GetResultMethod;
 
@@ -50,16 +50,14 @@ public class AwaitResultTransition : Transition
                 var transition = GotoOrFallThrough( Parent.StateOrder, TargetNode );
 
                 return transition == Empty()
-                    ? getResultCall
-                    : Block( getResultCall, transition );
+                    ? [getResultCall]
+                    : [getResultCall, transition];
             }
 
-            var getResult = Assign( ResultVariable, getResultCall );
-
-            return Block(
-                getResult,
+            return [
+                Assign( ResultVariable, getResultCall ),
                 GotoOrFallThrough( Parent.StateOrder, TargetNode )
-            );
+            ];
         }
     }
 

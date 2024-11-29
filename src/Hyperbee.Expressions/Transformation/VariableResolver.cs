@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using Microsoft.CodeAnalysis;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -146,7 +147,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     {
         if ( node is AsyncBlockExpression asyncBlockExpression )
         {
-            asyncBlockExpression.SetSharedScopeVariables( _localScopedVariables.SelectMany( x => x ).ToList() );
+            asyncBlockExpression.SharedScopeVariables = _localScopedVariables.SelectMany( x => x ).ToList().AsReadOnly();
         }
 
         return base.VisitExtension( node );

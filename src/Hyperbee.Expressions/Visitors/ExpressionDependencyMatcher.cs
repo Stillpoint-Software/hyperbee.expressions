@@ -4,7 +4,7 @@ namespace Hyperbee.Expressions.Visitors;
 
 internal class ExpressionDependencyMatcher : ExpressionVisitor
 {
-    private readonly Dictionary<Expression, int> _countDictionary = new();
+    private readonly Dictionary<Expression, int> _countDictionary = [];
     private readonly Func<Expression, bool> _matchPredicate;
     private int _counter;
 

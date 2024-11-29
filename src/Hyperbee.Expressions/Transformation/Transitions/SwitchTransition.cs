@@ -31,7 +31,7 @@ public class SwitchTransition : Transition
         };
     }
 
-    protected override List<Expression> GetExpressions()
+    protected override List<Expression> GetBody()
     {
         return [GetExpression()];
 
