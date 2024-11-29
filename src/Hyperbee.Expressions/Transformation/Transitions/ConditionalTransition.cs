@@ -28,7 +28,7 @@ public class ConditionalTransition : Transition
         };
     }
 
-    protected override List<Expression> ReduceTransition()
+    protected override List<Expression> GetExpressions()
     {
         return [GetExpression()];
 
@@ -47,7 +47,7 @@ public class ConditionalTransition : Transition
         }
     }
 
-    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    internal override void Optimize( HashSet<LabelTarget> references )
     {
         IfTrue = OptimizeGotos( IfTrue );
         IfFalse = OptimizeGotos( IfFalse );

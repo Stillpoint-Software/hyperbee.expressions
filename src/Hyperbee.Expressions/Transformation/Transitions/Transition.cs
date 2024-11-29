@@ -14,7 +14,7 @@ public abstract class Transition : Expression
 
     internal abstract NodeExpression FallThroughNode { get; }
 
-    internal abstract void OptimizeTransition( HashSet<LabelTarget> references );
+    internal abstract void Optimize( HashSet<LabelTarget> references );
 
     internal NodeExpression Parent { get; set; }
 
@@ -43,12 +43,12 @@ public abstract class Transition : Expression
 
         // add transition
 
-        expressions.AddRange( ReduceTransition() );
+        expressions.AddRange( GetExpressions() );
 
         return expressions;
     }
 
-    protected abstract List<Expression> ReduceTransition();
+    protected abstract List<Expression> GetExpressions();
 
     protected virtual void AssignResult( List<Expression> expressions )
     {

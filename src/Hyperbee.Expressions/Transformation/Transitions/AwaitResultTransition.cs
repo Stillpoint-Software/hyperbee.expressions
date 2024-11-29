@@ -33,7 +33,7 @@ public class AwaitResultTransition : Transition
         };
     }
 
-    protected override List<Expression> ReduceTransition()
+    protected override List<Expression> GetExpressions()
     {
         return [GetExpression()];
 
@@ -63,7 +63,7 @@ public class AwaitResultTransition : Transition
         }
     }
 
-    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    internal override void Optimize( HashSet<LabelTarget> references )
     {
         TargetNode = OptimizeGotos( TargetNode );
         references.Add( TargetNode.NodeLabel );

@@ -6,11 +6,11 @@ public class FinalTransition : Transition
 {
     internal override NodeExpression FallThroughNode => null;
 
-    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    internal override void Optimize( HashSet<LabelTarget> references )
     {
     }
 
-    protected override List<Expression> ReduceTransition()
+    protected override List<Expression> GetExpressions()
     {
         return [Empty()];
     }

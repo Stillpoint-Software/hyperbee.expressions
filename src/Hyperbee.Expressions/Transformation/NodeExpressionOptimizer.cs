@@ -49,7 +49,7 @@ internal sealed class NodeExpressionOptimizer : INodeExpressionOptimizer
             while ( node != null && visited.Add( node ) )
             {
                 // Optimize transition, which may mutate node.Transition
-                node.Transition?.OptimizeTransition( references );
+                node.Transition?.Optimize( references );
 
                 if ( node.Transition is FinalTransition )
                 {

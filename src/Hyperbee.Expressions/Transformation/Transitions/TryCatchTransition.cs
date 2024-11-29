@@ -45,7 +45,7 @@ public class TryCatchTransition : Transition
         };
     }
 
-    protected override List<Expression> ReduceTransition()
+    protected override List<Expression> GetExpressions()
     {
         return [GetExpression()];
 
@@ -79,7 +79,7 @@ public class TryCatchTransition : Transition
         }
     }
 
-    internal override void OptimizeTransition( HashSet<LabelTarget> references )
+    internal override void Optimize( HashSet<LabelTarget> references )
     {
         references.Add( TryNode.NodeLabel );
 
