@@ -39,7 +39,7 @@ internal sealed class VariableResolver : ExpressionVisitor
 
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
-    private int _variableId = 0;
+    private int _variableId;
 
     public VariableResolver( ParameterExpression[] variables, StateContext states )
     {
