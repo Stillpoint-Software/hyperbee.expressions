@@ -27,7 +27,7 @@ public abstract class Transition : Expression
 
         var reduced = Reduce( Parent );
 
-        return ( reduced.Count == 1 )
+        return (reduced.Count == 1)
             ? reduced[0]
             : Block( reduced );
     }
