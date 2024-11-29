@@ -374,8 +374,7 @@ public class StateMachineBuilder<TResult>
 
         // Add the state-nodes
 
-        var bodyExpressions = new List<Expression>( firstScope.Nodes.Count + 3 ) { jumpTable };
-        bodyExpressions.AddRange( firstScope.Nodes );
+        var bodyExpressions = GetBodyExpressions( firstScope, jumpTable );
 
         // Add the final builder result assignment
 
@@ -428,6 +427,46 @@ public class StateMachineBuilder<TResult>
             ),
             stateMachine
         );
+    }
+
+    //private static List<Expression> GetBodyExpressions( StateContext.Scope firstScope, Expression jumpTable )
+    //{
+    //    var bodyExpressions = new List<Expression> 
+    //    { 
+    //        jumpTable 
+    //    };
+
+    //    bodyExpressions.AddRange( firstScope.Nodes );
+    //    return bodyExpressions;
+    //}
+
+    private static List<Expression> GetBodyExpressions( StateContext.Scope firstScope, Expression jumpTable )
+    {
+        return [jumpTable, MergeNodeExpressions( firstScope.Nodes )];
+
+        // Merge all node expressions into a single block //BF ME Where does this operation belong?
+        static BlockExpression MergeNodeExpressions( List<NodeExpression> nodes )
+        {
+            var mergedExpressions = new List<Expression>( 32 );
+
+            foreach ( var node in nodes )
+            {
+                var expression = node.Reduce();
+
+                if ( expression is BlockExpression innerBlock )
+                    mergedExpressions.AddRange( innerBlock.Expressions.Where( e => !IsDefaultVoid( e ) ) );
+                else
+                    mergedExpressions.Add( expression );
+            }
+
+            return Block( mergedExpressions );
+
+            static bool IsDefaultVoid( Expression expression )
+            {
+                return expression is DefaultExpression defaultExpression &&
+                       defaultExpression.Type == typeof(void);
+            }
+        }
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
