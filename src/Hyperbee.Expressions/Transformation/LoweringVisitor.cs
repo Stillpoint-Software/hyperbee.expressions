@@ -149,7 +149,6 @@ public class LoweringVisitor : ExpressionVisitor
             {
                 currentSource.Expressions.Add( _variableResolver.Resolve( Visit( expression ) ) );
             }
-
         }
 
         var blockTransition = new GotoTransition { TargetNode = firstGoto ?? joinState };

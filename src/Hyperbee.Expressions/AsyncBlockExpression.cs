@@ -17,7 +17,9 @@ public class AsyncBlockExpression : Expression
     public Expression Result => Expressions[^1];
 
     internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
-        : this( variables, expressions, null ) { }
+        : this( variables, expressions, null ) 
+    { 
+    }
 
     internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, List<ParameterExpression> sharedScopeVariables )
     {
