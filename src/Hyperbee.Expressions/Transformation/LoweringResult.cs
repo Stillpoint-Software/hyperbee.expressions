@@ -11,6 +11,8 @@ public record LoweringResult
     public IReadOnlyCollection<Expression> Variables { get; init; }
     public ParameterExpression[] ScopedVariables { get; internal set; }
 
+    public IEnumerable<NodeExpression> Nodes => Scopes.SelectMany( scope => scope.Nodes );
+
     internal string DebugView
     {
         get

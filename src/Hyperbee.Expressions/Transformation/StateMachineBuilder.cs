@@ -367,14 +367,14 @@ public class StateMachineBuilder<TResult>
             source.ReturnValue
         );
 
-        foreach ( var node in source.Scopes.SelectMany( x => x.Nodes ) )
+        foreach ( var node in source.Nodes )
         {
             node.StateMachineSource = stateMachineSource; // required for node reducers
         }
 
         // Add the state-nodes
 
-        var bodyExpressions = GetBodyExpressions( firstScope, jumpTable );
+        var bodyExpressions = GetBodyExpressions( jumpTable, firstScope );
 
         // Add the final builder result assignment
 
@@ -429,22 +429,22 @@ public class StateMachineBuilder<TResult>
         );
     }
 
-    //private static List<Expression> GetBodyExpressions( StateContext.Scope firstScope, Expression jumpTable )
+    //private static List<Expression> GetBodyExpressions( Expression jumpTable, StateContext.Scope firstScope )
     //{
     //    var bodyExpressions = new List<Expression> 
     //    { 
     //        jumpTable 
     //    };
-
+    //
     //    bodyExpressions.AddRange( firstScope.Nodes );
     //    return bodyExpressions;
     //}
 
-    private static List<Expression> GetBodyExpressions( StateContext.Scope firstScope, Expression jumpTable )
+    private static List<Expression> GetBodyExpressions( Expression jumpTable, StateContext.Scope firstScope ) //BF ME Where does this operation belong? Should we do this for each scope?
     {
         return [jumpTable, MergeNodeExpressions( firstScope.Nodes )];
 
-        // Merge all node expressions into a single block //BF ME Where does this operation belong?
+        // Merge all node expressions into a single block
         static BlockExpression MergeNodeExpressions( List<NodeExpression> nodes )
         {
             var mergedExpressions = new List<Expression>( 32 );
@@ -454,7 +454,7 @@ public class StateMachineBuilder<TResult>
                 var expression = node.Reduce();
 
                 if ( expression is BlockExpression innerBlock )
-                    mergedExpressions.AddRange( innerBlock.Expressions.Where( e => !IsDefaultVoid( e ) ) );
+                    mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
                 else
                     mergedExpressions.Add( expression );
             }
@@ -470,11 +470,7 @@ public class StateMachineBuilder<TResult>
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    private static void HoistVariables(
-        LoweringResult source,
-        FieldInfo[] fields,
-        ParameterExpression stateMachine
-    )
+    private static void HoistVariables( LoweringResult source, FieldInfo[] fields, ParameterExpression stateMachine )
     {
         var fieldMembers = fields
             .Select( field => Field( stateMachine, field ) )
@@ -482,7 +478,7 @@ public class StateMachineBuilder<TResult>
 
         var hoistingVisitor = new HoistingVisitor( fieldMembers );
 
-        foreach ( var node in source.Scopes.SelectMany( x => x.Nodes ) )
+        foreach ( var node in source.Nodes )
         {
             hoistingVisitor.Visit( node );
         }
