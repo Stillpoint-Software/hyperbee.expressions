@@ -335,16 +335,6 @@ internal class StateMachineBuilder<TResult>
 
         StateMachineOptimizer.Optimize( source );
 
-        //// Create the jump table
-
-        //var firstScope = source.Scopes[0]; 
-
-        //var jumpTable = JumpTableBuilder.Build(
-        //    firstScope,
-        //    source.Scopes,
-        //    stateField
-        //);
-
         // Variable Hoisting 
 
         HoistVariables( source, fields, stateMachine );
@@ -365,7 +355,7 @@ internal class StateMachineBuilder<TResult>
             node.StateMachineSource = stateMachineSource; // required for node reducers
         }
 
-        //// Create the jump table
+        // Create the jump table
 
         var firstScope = source.Scopes[0];
 
