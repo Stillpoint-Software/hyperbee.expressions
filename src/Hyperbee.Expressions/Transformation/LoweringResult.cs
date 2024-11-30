@@ -13,7 +13,7 @@ internal record LoweringResult
 
     public IEnumerable<NodeExpression> Nodes => Scopes.SelectMany( scope => scope.Nodes );
 
-    internal string DebugView
+    internal string DebugView //BF ME - does this still have value?
     {
         get
         {

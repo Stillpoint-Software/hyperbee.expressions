@@ -29,7 +29,7 @@ public class ExpressionDependencyMatcherTests
         );
 
         var rootExpr = Block( blockAsyncExpr );
-        var counter = new ExpressionDependencyMatcher( expr => expr is AsyncBlockExpression || expr is AwaitExpression );
+        var counter = new ExpressionMatcher( expr => expr is AsyncBlockExpression || expr is AwaitExpression );
 
         // Act
         var rootExprCount = counter.MatchCount( rootExpr );

@@ -2,13 +2,13 @@
 
 namespace Hyperbee.Expressions.Visitors;
 
-internal class ExpressionDependencyMatcher : ExpressionVisitor
+internal class ExpressionMatcher : ExpressionVisitor
 {
     private readonly Dictionary<Expression, int> _countDictionary = [];
     private readonly Func<Expression, bool> _matchPredicate;
     private int _counter;
 
-    public ExpressionDependencyMatcher( Func<Expression, bool> matchPredicate )
+    public ExpressionMatcher( Func<Expression, bool> matchPredicate )
     {
         _matchPredicate = matchPredicate ?? throw new ArgumentNullException( nameof( matchPredicate ) );
     }

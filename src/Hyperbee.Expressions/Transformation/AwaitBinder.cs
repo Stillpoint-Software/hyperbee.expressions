@@ -6,7 +6,7 @@ namespace Hyperbee.Expressions.Transformation;
 internal delegate TAwaiter AwaitBinderGetAwaiterDelegate<TAwaitable, out TAwaiter>( ref TAwaitable awaitable, bool configureAwait );
 internal delegate TResult AwaitBinderGetResultDelegate<TAwaiter, out TResult>( ref TAwaiter awaiter );
 
-public class AwaitBinder
+internal class AwaitBinder
 {
     public MethodInfo WaitMethod { get; }
     public MethodInfo GetAwaiterMethod { get; }

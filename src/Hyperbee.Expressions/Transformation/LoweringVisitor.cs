@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 using Hyperbee.Expressions.Visitors;
@@ -15,7 +14,7 @@ internal class LoweringVisitor : ExpressionVisitor
     private int _awaitCount;
 
     private readonly StateContext _states = new( InitialCapacity );
-    private readonly ExpressionDependencyMatcher _dependencyMatcher = new( expr => expr is AwaitExpression || expr is AsyncBlockExpression );
+    private readonly ExpressionMatcher _expressionMatcher = new( expr => expr is AwaitExpression || expr is AsyncBlockExpression );
 
     private VariableResolver _variableResolver;
 
@@ -99,7 +98,7 @@ internal class LoweringVisitor : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private bool RequiresLowering( Expression node )
     {
-        return _dependencyMatcher.HasMatch( node );
+        return _expressionMatcher.HasMatch( node );
     }
 
     // Override methods for specific expression types
