@@ -67,4 +67,28 @@ public sealed class NodeExpression : Expression
         Transition.Parent = this;
         return Transition.Reduce();
     }
+
+    internal static List<Expression> Merge( List<NodeExpression> nodes ) //BF ME - not sure if this is the right place or not
+    {
+        var mergedExpressions = new List<Expression>( 32 );
+
+        for ( var index = 0; index < nodes.Count; index++ )
+        {
+            var node = nodes[index];
+            var expression = node.Reduce();
+
+            if ( expression is BlockExpression innerBlock )
+                mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
+            else
+                mergedExpressions.Add( expression );
+        }
+
+        return mergedExpressions;
+
+        static bool IsDefaultVoid( Expression expression )
+        {
+            return expression is DefaultExpression defaultExpression &&
+                   defaultExpression.Type == typeof(void);
+        }
+    }
 }

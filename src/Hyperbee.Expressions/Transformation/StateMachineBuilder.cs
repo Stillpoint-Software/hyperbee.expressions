@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -355,19 +355,9 @@ internal class StateMachineBuilder<TResult>
             node.StateMachineSource = stateMachineSource; // required for node reducers
         }
 
-        // Create the jump table
-
-        var firstScope = source.Scopes[0];
-
-        var jumpTable = JumpTableBuilder.Build(
-            firstScope,
-            source.Scopes,
-            stateField
-        );
-
         // Add the state-nodes
 
-        var bodyExpressions = GetBodyExpressions( jumpTable, firstScope );
+        var bodyExpressions = CreateBody( stateField, source );
 
         // Add the final builder result assignment
 
@@ -422,8 +412,16 @@ internal class StateMachineBuilder<TResult>
         );
     }
 
-    //private static List<Expression> GetBodyExpressions( Expression jumpTable, StateContext.Scope firstScope )
+    //private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source )
     //{
+    //    var firstScope = source.Scopes.First();
+    //
+    //    var jumpTable = JumpTableBuilder.Build(
+    //        firstScope,
+    //        source.Scopes,
+    //        stateField
+    //    );
+    //
     //    var bodyExpressions = new List<Expression> 
     //    { 
     //        jumpTable 
@@ -433,46 +431,17 @@ internal class StateMachineBuilder<TResult>
     //    return bodyExpressions;
     //}
 
-    //BF ME
-    //
-    // This proof-of-concept only merges the top-level scope.
-    //
-    // The final implementation
-    //
-    //  - should merge all scopes
-    //  - should probably be moved to the state-machine (node) optimizer
-    //  - needs to latch in to try-catch transitions
-    //  - should we consider a `BlockNodeExpression` that contains mergeable nodes?
-
-    private static List<Expression> GetBodyExpressions( Expression jumpTable, StateContext.Scope firstScope )
+    private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source ) 
     {
-        return [jumpTable, MergeNodeExpressions( firstScope.Nodes )];
+        var firstScope = source.Scopes.First();
 
-        // Merge all node expressions into a single block
-        // This reduces the number of blocks in the final state-machine
+        var jumpTable = JumpTableBuilder.Build(
+            firstScope,
+            source.Scopes,
+            stateField
+        );
 
-        static BlockExpression MergeNodeExpressions( List<NodeExpression> nodes )
-        {
-            var mergedExpressions = new List<Expression>( 32 );
-
-            foreach ( var node in nodes )
-            {
-                var expression = node.Reduce();
-
-                if ( expression is BlockExpression innerBlock )
-                    mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
-                else
-                    mergedExpressions.Add( expression );
-            }
-
-            return Block( mergedExpressions );
-
-            static bool IsDefaultVoid( Expression expression )
-            {
-                return expression is DefaultExpression defaultExpression &&
-                       defaultExpression.Type == typeof( void );
-            }
-        }
+        return [jumpTable, Block( NodeExpression.Merge( firstScope.Nodes ) )]; //BF ME
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
