@@ -35,9 +35,7 @@ internal static class JumpTableBuilder
                 continue;
 
             var nestedJumpExpression = SwitchCase(
-                Block(
-                    Goto( childScope.InitialLabel )
-                ),
+                Goto( childScope.InitialLabel ),
                 testValues
             );
 
