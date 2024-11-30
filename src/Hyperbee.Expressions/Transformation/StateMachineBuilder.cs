@@ -433,7 +433,18 @@ internal class StateMachineBuilder<TResult>
     //    return bodyExpressions;
     //}
 
-    private static List<Expression> GetBodyExpressions( Expression jumpTable, StateContext.Scope firstScope ) //BF ME Where does this operation belong? Should we do this for each scope?
+    //BF ME
+    //
+    // This proof-of-concept only merges the top-level scope.
+    //
+    // The final implementation
+    //
+    //  - should merge all scopes
+    //  - should probably be moved to the state-machine (node) optimizer
+    //  - needs to latch in to try-catch transitions
+    //  - should we consider a `BlockNodeExpression` that contains mergeable nodes?
+
+    private static List<Expression> GetBodyExpressions( Expression jumpTable, StateContext.Scope firstScope ) 
     {
         return [jumpTable, MergeNodeExpressions( firstScope.Nodes )];
 

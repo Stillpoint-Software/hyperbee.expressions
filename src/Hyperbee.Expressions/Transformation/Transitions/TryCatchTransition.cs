@@ -60,7 +60,7 @@ internal class TryCatchTransition : Transition
                 )
             };
 
-            body.AddRange( StateScope.Nodes );
+            body.AddRange( StateScope.Nodes ); //BF ME - merge nodes here or add a single `NodeBlockExpression` node that contains the merge reduce
 
             MapCatchBlock( Parent.StateOrder, out var catches, out var switchCases );
 
