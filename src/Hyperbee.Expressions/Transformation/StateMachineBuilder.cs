@@ -12,7 +12,6 @@ public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncSt
 internal class StateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
-    private readonly NodeExpressionOptimizer _optimizer;
     private readonly string _typeName;
 
     protected static class FieldName
@@ -28,14 +27,8 @@ internal class StateMachineBuilder<TResult>
     }
 
     public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
-        : this( moduleBuilder, null, typeName )
-    {
-    }
-
-    public StateMachineBuilder( ModuleBuilder moduleBuilder, NodeExpressionOptimizer optimizer, string typeName )
     {
         _moduleBuilder = moduleBuilder;
-        _optimizer = optimizer ?? new NodeExpressionOptimizer();
         _typeName = typeName;
     }
 
@@ -338,9 +331,9 @@ internal class StateMachineBuilder<TResult>
 
         var exitLabel = Label( "ST_EXIT" );
 
-        // Optimize node ordering to reduce goto calls
+        // Optimize source
 
-        _optimizer.Optimize( source.Scopes );
+        StateMachineOptimizer.Optimize( source );
 
         // Create the jump table
 
@@ -502,7 +495,6 @@ public static class StateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
     private static readonly ModuleBuilder ModuleBuilder;
-    private static readonly NodeExpressionOptimizer NodeExpressionOptimizer;
     private static int __id;
 
     static StateMachineBuilder()
@@ -515,8 +507,6 @@ public static class StateMachineBuilder
         var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
         ModuleBuilder = assemblyBuilder.DefineDynamicModule( "RuntimeStateMachineModule" );
-
-        NodeExpressionOptimizer = new NodeExpressionOptimizer();
     }
 
     internal static Expression Create( Type resultType, LoweringResult source )
@@ -534,7 +524,7 @@ public static class StateMachineBuilder
     {
         var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
 
-        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, NodeExpressionOptimizer, typeName );
+        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever
