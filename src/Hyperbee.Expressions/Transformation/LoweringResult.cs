@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 
 namespace Hyperbee.Expressions.Transformation;
 
@@ -12,14 +11,4 @@ internal record LoweringResult
     public ParameterExpression[] ScopedVariables { get; internal set; }
 
     public IEnumerable<NodeExpression> Nodes => Scopes.SelectMany( scope => scope.Nodes );
-
-    internal string DebugView //BF ME - does this still have value?
-    {
-        get
-        {
-            using StringWriter writer = new StringWriter( CultureInfo.CurrentCulture );
-            DebugViewWriter.WriteTo( writer, Scopes, Variables );
-            return writer.ToString();
-        }
-    }
 }
