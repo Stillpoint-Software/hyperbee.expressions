@@ -444,7 +444,7 @@ internal class StateMachineBuilder<TResult>
     //  - needs to latch in to try-catch transitions
     //  - should we consider a `BlockNodeExpression` that contains mergeable nodes?
 
-    private static List<Expression> GetBodyExpressions( Expression jumpTable, StateContext.Scope firstScope ) 
+    private static List<Expression> GetBodyExpressions( Expression jumpTable, StateContext.Scope firstScope )
     {
         return [jumpTable, MergeNodeExpressions( firstScope.Nodes )];
 
