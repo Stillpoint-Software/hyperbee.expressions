@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class FinalTransition : Transition
+internal class FinalTransition : Transition
 {
     internal override NodeExpression FallThroughNode => null;
 

@@ -21,7 +21,7 @@ public sealed class NodeExpression : Expression
 
     internal StateMachineSource StateMachineSource { get; set; }
 
-    public Transition Transition { get; set; }
+    internal Transition Transition { get; set; }
 
     internal NodeExpression() { }
 
@@ -49,7 +49,7 @@ public sealed class NodeExpression : Expression
         );
     }
 
-    public Expression Update( List<Expression> expressions, Expression resultValue, Expression resultVariable, Transition transition )
+    private Expression Update( List<Expression> expressions, Expression resultValue, Expression resultVariable, Transition transition )
     {
         Expressions = expressions;
         ResultValue = resultValue;

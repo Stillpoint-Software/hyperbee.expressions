@@ -3,7 +3,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public interface INodeExpressionOptimizer
+internal interface INodeExpressionOptimizer
 {
     public void Optimize( IReadOnlyList<StateContext.Scope> scopes );
 }

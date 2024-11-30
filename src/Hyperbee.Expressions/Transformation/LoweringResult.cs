@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public record LoweringResult
+internal record LoweringResult
 {
     public List<StateContext.Scope> Scopes { get; init; }
     public ParameterExpression ReturnValue { get; init; }

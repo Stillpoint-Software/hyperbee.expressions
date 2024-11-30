@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class TryCatchTransition : Transition
+internal class TryCatchTransition : Transition
 {
     internal List<CatchBlockDefinition> CatchBlocks = [];
     public NodeExpression TryNode { get; set; }

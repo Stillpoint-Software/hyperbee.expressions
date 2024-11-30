@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class ConditionalTransition : Transition
+internal class ConditionalTransition : Transition
 {
     public Expression Test { get; set; }
     public NodeExpression IfTrue { get; set; }

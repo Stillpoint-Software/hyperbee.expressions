@@ -6,7 +6,7 @@ using Hyperbee.Expressions.Visitors;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public class LoweringVisitor : ExpressionVisitor
+internal class LoweringVisitor : ExpressionVisitor
 {
     private const int InitialCapacity = 4;
 

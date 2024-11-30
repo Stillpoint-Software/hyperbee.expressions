@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class LoopTransition : Transition
+internal class LoopTransition : Transition
 {
     public NodeExpression BodyNode { get; set; }
     public LabelTarget BreakLabel { get; set; }

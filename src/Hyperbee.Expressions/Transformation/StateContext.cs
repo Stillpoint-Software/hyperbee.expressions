@@ -4,7 +4,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-public sealed class StateContext
+internal sealed class StateContext
 {
     private int _stateId;
     private int _groupId;

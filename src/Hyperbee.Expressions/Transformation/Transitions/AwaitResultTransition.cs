@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class AwaitResultTransition : Transition
+internal class AwaitResultTransition : Transition
 {
     public Expression AwaiterVariable { get; set; }
     public Expression ResultVariable { get; set; }

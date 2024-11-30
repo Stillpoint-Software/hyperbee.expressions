@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class GotoTransition : Transition
+internal class GotoTransition : Transition
 {
     public NodeExpression TargetNode { get; set; }
     internal override NodeExpression FallThroughNode => TargetNode;

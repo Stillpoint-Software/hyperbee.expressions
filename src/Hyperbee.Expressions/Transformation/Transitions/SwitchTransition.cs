@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class SwitchTransition : Transition
+internal class SwitchTransition : Transition
 {
     public NodeExpression DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }

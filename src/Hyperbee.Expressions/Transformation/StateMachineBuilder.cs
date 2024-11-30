@@ -9,7 +9,7 @@ namespace Hyperbee.Expressions.Transformation;
 public interface IVoidResult; // Marker interface for void Task results
 public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
 
-public class StateMachineBuilder<TResult>
+internal class StateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly INodeExpressionOptimizer _optimizer;
@@ -519,7 +519,7 @@ public static class StateMachineBuilder
         NodeExpressionOptimizer = new NodeExpressionOptimizer();
     }
 
-    public static Expression Create( Type resultType, LoweringResult source )
+    internal static Expression Create( Type resultType, LoweringResult source )
     {
         // If the result type is void, use the internal IVoidResult type
         if ( resultType == typeof( void ) )

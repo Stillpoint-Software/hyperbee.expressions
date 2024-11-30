@@ -4,7 +4,7 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 [DebuggerDisplay( "Transition = {GetType().Name,nq}" )]
 
-public abstract class Transition : Expression
+internal abstract class Transition : Expression
 {
     protected static readonly List<Expression> EmptyBody = [Empty()];
 
