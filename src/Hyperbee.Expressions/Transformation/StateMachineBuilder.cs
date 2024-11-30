@@ -331,7 +331,7 @@ internal class StateMachineBuilder<TResult>
 
         var exitLabel = Label( "ST_EXIT" );
 
-        // Optimize source
+        // Optimize source nodes
 
         StateMachineOptimizer.Optimize( source );
 
