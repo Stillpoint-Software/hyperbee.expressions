@@ -259,7 +259,7 @@ internal class StateMachineBuilder<TResult>
         typeBuilder.DefineMethodOverride( moveNextMethod, typeof( IAsyncStateMachine ).GetMethod( "MoveNext" )! );
     }
 
-    private LambdaExpression CreateMoveNextBody(
+    private static LambdaExpression CreateMoveNextBody(
         int id,
         LoweringResult source,
         Type stateMachineType,
