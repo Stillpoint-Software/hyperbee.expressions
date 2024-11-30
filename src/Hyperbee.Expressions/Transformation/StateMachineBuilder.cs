@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -431,7 +431,7 @@ internal class StateMachineBuilder<TResult>
     //    return bodyExpressions;
     //}
 
-    private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source ) 
+    private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source )
     {
         var firstScope = source.Scopes.First();
 
