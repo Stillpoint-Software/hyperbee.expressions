@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -411,25 +411,6 @@ internal class StateMachineBuilder<TResult>
             stateMachine
         );
     }
-
-    //private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source )
-    //{
-    //    var firstScope = source.Scopes.First();
-    //
-    //    var jumpTable = JumpTableBuilder.Build(
-    //        firstScope,
-    //        source.Scopes,
-    //        stateField
-    //    );
-    //
-    //    var bodyExpressions = new List<Expression> 
-    //    { 
-    //        jumpTable 
-    //    };
-    //
-    //    bodyExpressions.AddRange( firstScope.Nodes );
-    //    return bodyExpressions;
-    //}
 
     private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source ) 
     {
