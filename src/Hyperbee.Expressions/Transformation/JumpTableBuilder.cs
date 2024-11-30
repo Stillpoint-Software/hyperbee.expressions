@@ -26,6 +26,7 @@ internal static class JumpTableBuilder
         }
 
         // Loop over scopes and flatten; nested by parent
+
         foreach ( var childScope in scopes.Where( x => x.Parent == current ) )
         {
             var testValues = GetNestedTestValues( childScope, scopes );
@@ -68,7 +69,7 @@ internal static class JumpTableBuilder
             {
                 testCases.Add( Constant( childJumpCase.StateId ) );
             }
-        };
+        }
 
         return testCases;
     }
