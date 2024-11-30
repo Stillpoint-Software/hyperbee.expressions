@@ -438,6 +438,8 @@ internal class StateMachineBuilder<TResult>
         return [jumpTable, MergeNodeExpressions( firstScope.Nodes )];
 
         // Merge all node expressions into a single block
+        // This reduces the number of blocks in the final state-machine
+
         static BlockExpression MergeNodeExpressions( List<NodeExpression> nodes )
         {
             var mergedExpressions = new List<Expression>( 32 );
@@ -497,6 +499,10 @@ public static class StateMachineBuilder
     private static readonly ModuleBuilder ModuleBuilder;
     private static int __id;
 
+    const string RuntimeAssemblyName = "RuntimeStateMachineAssembly";
+    const string RuntimeModuleName = "RuntimeStateMachineModule";
+    const string StateMachineTypeName = "StateMachine";
+
     static StateMachineBuilder()
     {
         BuildStateMachineMethod = typeof( StateMachineBuilder )
@@ -504,14 +510,13 @@ public static class StateMachineBuilder
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
 
         // Create the state machine module
-        var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
+        var assemblyName = new AssemblyName( RuntimeAssemblyName );
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
-        ModuleBuilder = assemblyBuilder.DefineDynamicModule( "RuntimeStateMachineModule" );
+        ModuleBuilder = assemblyBuilder.DefineDynamicModule( RuntimeModuleName );
     }
 
     internal static Expression Create( Type resultType, LoweringResult source )
     {
-        // If the result type is void, use the internal IVoidResult type
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
 
@@ -522,7 +527,8 @@ public static class StateMachineBuilder
 
     internal static Expression Create<TResult>( LoweringResult source )
     {
-        var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
+        var typeId = Interlocked.Increment( ref __id );
+        var typeName = $"{StateMachineTypeName}{typeId}";
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id );
