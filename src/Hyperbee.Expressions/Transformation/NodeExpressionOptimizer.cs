@@ -3,12 +3,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal interface INodeExpressionOptimizer
-{
-    public void Optimize( IReadOnlyList<StateContext.Scope> scopes );
-}
-
-internal sealed class NodeExpressionOptimizer : INodeExpressionOptimizer
+internal sealed class NodeExpressionOptimizer
 {
     public void Optimize( IReadOnlyList<StateContext.Scope> scopes )
     {

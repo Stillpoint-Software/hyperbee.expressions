@@ -12,7 +12,7 @@ public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncSt
 internal class StateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
-    private readonly INodeExpressionOptimizer _optimizer;
+    private readonly NodeExpressionOptimizer _optimizer;
     private readonly string _typeName;
 
     protected static class FieldName
@@ -32,7 +32,7 @@ internal class StateMachineBuilder<TResult>
     {
     }
 
-    public StateMachineBuilder( ModuleBuilder moduleBuilder, INodeExpressionOptimizer optimizer, string typeName )
+    public StateMachineBuilder( ModuleBuilder moduleBuilder, NodeExpressionOptimizer optimizer, string typeName )
     {
         _moduleBuilder = moduleBuilder;
         _optimizer = optimizer ?? new NodeExpressionOptimizer();
@@ -502,7 +502,7 @@ public static class StateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
     private static readonly ModuleBuilder ModuleBuilder;
-    private static readonly INodeExpressionOptimizer NodeExpressionOptimizer;
+    private static readonly NodeExpressionOptimizer NodeExpressionOptimizer;
     private static int __id;
 
     static StateMachineBuilder()
