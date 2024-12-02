@@ -14,10 +14,10 @@ internal abstract class Transition
 
     internal abstract void Optimize( HashSet<LabelTarget> references );
 
-    public void GetExpressions( NodeExpression parent, List<Expression> expressions )
+    public void AddExpressions( NodeExpression parent, List<Expression> expressions )
     {
         if ( parent == null )
-            throw new InvalidOperationException( $"Transition {nameof( GetExpressions )} requires a {nameof( parent )} instance." );
+            throw new InvalidOperationException( $"Transition {nameof( AddExpressions )} requires a {nameof( parent )} instance." );
 
         SetResult( expressions, parent );
         SetBody( expressions, parent );

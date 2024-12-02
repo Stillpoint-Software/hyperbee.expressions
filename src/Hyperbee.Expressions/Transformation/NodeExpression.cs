@@ -47,7 +47,7 @@ public sealed class NodeExpression : Expression
         var expressions = new List<Expression>( 8 ) { Label( NodeLabel ) };
         expressions.AddRange( Expressions );
 
-        Transition.GetExpressions( this, expressions );
+        Transition.AddExpressions( this, expressions );
 
         return expressions.Count == 1
             ? expressions[0]
