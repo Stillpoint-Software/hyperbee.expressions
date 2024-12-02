@@ -14,41 +14,16 @@ internal abstract class Transition
 
     internal abstract void Optimize( HashSet<LabelTarget> references );
 
-    public Expression Reduce( NodeExpression parent )
+    public void GetExpressions( NodeExpression parent, List<Expression> expressions )
     {
         if ( parent == null )
-            throw new InvalidOperationException( $"Transition Reduce requires a {nameof( parent )} instance." );
+            throw new InvalidOperationException( $"Transition {nameof(GetExpressions)} requires a {nameof(parent)} instance." );
 
-        var reduced = ReduceInternal( parent );
-
-        return (reduced.Count == 1)
-            ? reduced[0]
-            : Block( reduced );
+        SetResult( expressions, parent );
+        SetBody( expressions, parent );
     }
 
-    private List<Expression> ReduceInternal( NodeExpression parent )
-    {
-        var expressions = new List<Expression>( 8 ) // Label, Expressions, AssignResult, Transition
-        {
-            Label( parent.NodeLabel )
-        };
-
-        expressions.AddRange( parent.Expressions );
-
-        // add result assignment
-
-        AssignResult( parent, expressions );
-
-        // add transition body
-
-        expressions.AddRange( GetBody( parent ) );
-
-        return expressions;
-    }
-
-    protected abstract List<Expression> GetBody( NodeExpression parent );
-
-    protected virtual void AssignResult( NodeExpression parent, List<Expression> expressions )
+    protected virtual void SetResult( List<Expression> expressions, NodeExpression parent )
     {
         var resultValue = parent.ResultValue;
         var resultVariable = parent.ResultVariable;
@@ -62,6 +37,8 @@ internal abstract class Transition
             expressions[^1] = Assign( resultVariable, expressions[^1] );
         }
     }
+
+    protected abstract void SetBody( List<Expression> expressions, NodeExpression parent );
 
     protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )
     {

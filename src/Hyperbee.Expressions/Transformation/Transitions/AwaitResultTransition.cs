@@ -12,11 +12,12 @@ internal class AwaitResultTransition : Transition
 
     internal override NodeExpression FallThroughNode => TargetNode;
 
-    protected override List<Expression> GetBody(NodeExpression parent )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return GetExpressions();
+        expressions.AddRange( Expressions() );
+        return;
 
-        List<Expression> GetExpressions()
+        List<Expression> Expressions()
         {
             var getResultMethod = AwaitBinder.GetResultMethod;
 
@@ -33,12 +34,41 @@ internal class AwaitResultTransition : Transition
                     : [getResultCall, transition];
             }
 
-            return [
+            return
+            [
                 Assign( ResultVariable, getResultCall ),
                 GotoOrFallThrough( parent.StateOrder, TargetNode )
             ];
         }
     }
+
+    //protected override List<Expression> GetBody(NodeExpression parent )
+    //{
+    //    return GetExpressions();
+
+    //    List<Expression> GetExpressions()
+    //    {
+    //        var getResultMethod = AwaitBinder.GetResultMethod;
+
+    //        var getResultCall = getResultMethod.IsStatic
+    //            ? Call( getResultMethod, AwaiterVariable )
+    //            : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
+
+    //        if ( ResultVariable == null )
+    //        {
+    //            var transition = GotoOrFallThrough( parent.StateOrder, TargetNode );
+
+    //            return transition == Empty()
+    //                ? [getResultCall]
+    //                : [getResultCall, transition];
+    //        }
+
+    //        return [
+    //            Assign( ResultVariable, getResultCall ),
+    //            GotoOrFallThrough( parent.StateOrder, TargetNode )
+    //        ];
+    //    }
+    //}
 
     internal override void Optimize( HashSet<LabelTarget> references )
     {

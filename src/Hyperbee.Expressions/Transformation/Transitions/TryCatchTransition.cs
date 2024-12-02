@@ -17,11 +17,12 @@ internal class TryCatchTransition : Transition
 
     internal override NodeExpression FallThroughNode => TryNode;
 
-    protected override List<Expression> GetBody(NodeExpression parent )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return GetExpressions();
+        expressions.AddRange( Expressions() );
+        return;
 
-        List<Expression> GetExpressions()
+        List<Expression> Expressions()
         {
             var body = new List<Expression>
             {

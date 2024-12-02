@@ -44,7 +44,14 @@ public sealed class NodeExpression : Expression
         if ( StateMachineSource == null )
             throw new InvalidOperationException( $"Reduce requires an {nameof( Transformation.StateMachineSource )} instance." );
 
-        return Transition.Reduce( this );
+        var expressions = new List<Expression>( 8 ) { Label( NodeLabel ) };
+        expressions.AddRange( Expressions );
+
+        Transition.GetExpressions( this, expressions );
+
+        return expressions.Count == 1
+            ? expressions[0]
+            : Block( expressions );
     }
 
     internal static List<Expression> Merge( List<NodeExpression> nodes ) //BF ME - not sure if this is the right place or not

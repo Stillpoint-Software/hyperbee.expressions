@@ -7,9 +7,9 @@ internal class GotoTransition : Transition
     public NodeExpression TargetNode { get; set; }
     internal override NodeExpression FallThroughNode => TargetNode;
 
-    protected override List<Expression> GetBody(NodeExpression parent )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return [GotoOrFallThrough( parent.StateOrder, TargetNode )];
+        expressions.Add( GotoOrFallThrough( parent.StateOrder, TargetNode ) );
     }
 
     internal override void Optimize( HashSet<LabelTarget> references )

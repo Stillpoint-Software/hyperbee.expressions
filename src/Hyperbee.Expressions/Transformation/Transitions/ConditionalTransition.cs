@@ -11,11 +11,12 @@ internal class ConditionalTransition : Transition
 
     internal override NodeExpression FallThroughNode => IfFalse;
 
-    protected override List<Expression> GetBody(NodeExpression parent )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return [GetExpression()];
+        expressions.Add( Expression() );
+        return;
 
-        Expression GetExpression()
+        Expression Expression()
         {
             var fallThrough = GotoOrFallThrough( parent.StateOrder, IfFalse, true );
 

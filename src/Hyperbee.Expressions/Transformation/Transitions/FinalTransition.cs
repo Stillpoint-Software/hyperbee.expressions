@@ -11,12 +11,11 @@ internal class FinalTransition : Transition
     {
     }
 
-    protected override List<Expression> GetBody(NodeExpression parent )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return EmptyBody;
     }
 
-    protected override void AssignResult( NodeExpression parent, List<Expression> expressions )
+    protected override void SetResult( List<Expression> expressions, NodeExpression parent )
     {
         var resultField = parent.StateMachineSource.ResultField;
         var returnValue = parent.StateMachineSource.ReturnValue;

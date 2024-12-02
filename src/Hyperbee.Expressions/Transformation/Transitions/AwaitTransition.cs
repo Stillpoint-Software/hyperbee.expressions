@@ -15,11 +15,12 @@ internal class AwaitTransition : Transition
 
     internal override NodeExpression FallThroughNode => CompletionNode;
 
-    protected override List<Expression> GetBody(NodeExpression parent )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return GetExpressions();
+        expressions.AddRange( Expressions() );
+        return;
 
-        List<Expression> GetExpressions()
+        List<Expression> Expressions()
         {
             var resolverSource = parent.StateMachineSource;
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
