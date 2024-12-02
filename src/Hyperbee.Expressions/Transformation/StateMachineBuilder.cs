@@ -368,7 +368,7 @@ internal class StateMachineBuilder<TResult>
             Block(
                 TryCatch(
                     Block(
-                        typeof(void),
+                        typeof( void ),
                         source.ReturnValue != null
                             ? [source.ReturnValue]
                             : [],
@@ -380,7 +380,7 @@ internal class StateMachineBuilder<TResult>
                             Assign( stateField, Constant( -2 ) ),
                             Call(
                                 builderField,
-                                nameof(AsyncTaskMethodBuilder<TResult>.SetException),
+                                nameof( AsyncTaskMethodBuilder<TResult>.SetException ),
                                 null,
                                 exceptionParam
                             )
@@ -403,7 +403,7 @@ internal class StateMachineBuilder<TResult>
 
         foreach ( var node in source.Nodes )
         {
-            node.StateMachineSource = stateMachineSource; 
+            node.StateMachineSource = stateMachineSource;
         }
 
         // Create the body expressions
