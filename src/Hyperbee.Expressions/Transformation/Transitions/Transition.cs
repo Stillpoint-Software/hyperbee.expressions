@@ -17,7 +17,7 @@ internal abstract class Transition
     public void GetExpressions( NodeExpression parent, List<Expression> expressions )
     {
         if ( parent == null )
-            throw new InvalidOperationException( $"Transition {nameof(GetExpressions)} requires a {nameof(parent)} instance." );
+            throw new InvalidOperationException( $"Transition {nameof( GetExpressions )} requires a {nameof( parent )} instance." );
 
         SetResult( expressions, parent );
         SetBody( expressions, parent );
