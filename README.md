@@ -21,14 +21,6 @@ workflows and other language constructs.
     * `StringFormatExpression`: An expression that creates a string using a supplied format string and parameters.
     * `DebugExpression`: An expression that helps when debugging expression trees.
 
-* **Expression Optimizers**
-    * `OptimizerBuilder`: An composite optimizer builder.
-    * `ConstantFoldingOptimizer`: An optimizer that precomputes constant expressions.
-    * `OperatorReductionOptimizer`: An optimizer that simplifies arithmetic and logical expressions.
-    * `StructuralReductionOptimizer`: An optimizer that removes unreachable code and consolidates nested or redundant constructs.
-    * `ValueBindingOptimizer`: An optimizer that simplifies and inlines, variable, constant, and member access operations.
-    * `SubExpressionCachingOptimizer`: An optimizer that identifies and caches repeated subexpressions within a tree.
- 
 * Supports Fast Expression Compiler (FEC) for improved performance.
 
 ## Examples

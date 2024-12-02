@@ -39,33 +39,19 @@ public sealed class NodeExpression : Expression
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
 
-    protected override Expression VisitChildren( ExpressionVisitor visitor )
-    {
-        return Update(
-            Expressions.Select( visitor.Visit ).ToList(),
-            visitor.Visit( ResultValue ),
-            visitor.Visit( ResultVariable ),
-            (Transition) visitor.Visit( Transition )
-        );
-    }
-
-    private Expression Update( List<Expression> expressions, Expression resultValue, Expression resultVariable, Transition transition )
-    {
-        Expressions = expressions;
-        ResultValue = resultValue;
-        ResultVariable = resultVariable;
-        Transition = transition;
-
-        return this;
-    }
-
     public override Expression Reduce()
     {
         if ( StateMachineSource == null )
             throw new InvalidOperationException( $"Reduce requires an {nameof( Transformation.StateMachineSource )} instance." );
 
-        Transition.Parent = this;
-        return Transition.Reduce();
+        var expressions = new List<Expression>( 8 ) { Label( NodeLabel ) };
+        expressions.AddRange( Expressions );
+
+        Transition.GetExpressions( this, expressions );
+
+        return expressions.Count == 1
+            ? expressions[0]
+            : Block( expressions );
     }
 
     internal static List<Expression> Merge( List<NodeExpression> nodes ) //BF ME - not sure if this is the right place or not

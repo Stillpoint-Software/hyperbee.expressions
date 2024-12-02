@@ -9,14 +9,6 @@
     <Import_RootNamespace>docs</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)optimizers\constant-folding-optimizer.md" />
-    <None Include="$(MSBuildThisFileDirectory)optimizers\optimizer-builder.md" />
-    <None Include="$(MSBuildThisFileDirectory)optimizers\value-binding-optimizer.md" />
-    <None Include="$(MSBuildThisFileDirectory)optimizers\subexpression-caching-optimizer.md" />
-    <None Include="$(MSBuildThisFileDirectory)optimizers\structural-reduction-optimizer.md" />
-    <None Include="$(MSBuildThisFileDirectory)optimizers\operator-reduction-optimizer.md" />
-    <None Include="$(MSBuildThisFileDirectory)optimizers\overview.md" />
-    <None Include="$(MSBuildThisFileDirectory)optimizers\optimizers.md" />
     <None Include="$(MSBuildThisFileDirectory)state-machine\overview.md" />
     <None Include="$(MSBuildThisFileDirectory)state-machine\state-machine-builder.md" />
     <None Include="$(MSBuildThisFileDirectory)state-machine\lowering-visitor.md" />

@@ -1,63 +1,32 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
+
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
 [DebuggerDisplay( "Transition = {GetType().Name,nq}" )]
 
-internal abstract class Transition : Expression
+internal abstract class Transition
 {
     protected static readonly List<Expression> EmptyBody = [Empty()];
-
-    public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof( void );
-    public override bool CanReduce => true;
-
-    protected override Expression VisitChildren( ExpressionVisitor visitor ) => this;
 
     internal abstract NodeExpression FallThroughNode { get; }
 
     internal abstract void Optimize( HashSet<LabelTarget> references );
 
-    internal NodeExpression Parent { get; set; }
-
-    public override Expression Reduce()
+    public void GetExpressions( NodeExpression parent, List<Expression> expressions )
     {
-        if ( Parent == null )
-            throw new InvalidOperationException( $"Transition Reduce requires a {nameof( Parent )} instance." );
+        if ( parent == null )
+            throw new InvalidOperationException( $"Transition {nameof(GetExpressions)} requires a {nameof(parent)} instance." );
 
-        var reduced = Reduce( Parent );
-
-        return (reduced.Count == 1)
-            ? reduced[0]
-            : Block( reduced );
+        SetResult( expressions, parent );
+        SetBody( expressions, parent );
     }
 
-    private List<Expression> Reduce( NodeExpression node )
+    protected virtual void SetResult( List<Expression> expressions, NodeExpression parent )
     {
-        var expressions = new List<Expression>( 8 ) // Label, Expressions, AssignResult, Transition
-        {
-            Label( node.NodeLabel )
-        };
-
-        expressions.AddRange( node.Expressions );
-
-        // add result assignment
-
-        AssignResult( expressions );
-
-        // add transition body
-
-        expressions.AddRange( GetBody() );
-
-        return expressions;
-    }
-
-    protected abstract List<Expression> GetBody();
-
-    protected virtual void AssignResult( List<Expression> expressions )
-    {
-        var resultValue = Parent.ResultValue;
-        var resultVariable = Parent.ResultVariable;
+        var resultValue = parent.ResultValue;
+        var resultVariable = parent.ResultVariable;
 
         if ( resultValue != null && resultVariable != null && resultValue.Type == resultVariable.Type )
         {
@@ -68,6 +37,8 @@ internal abstract class Transition : Expression
             expressions[^1] = Assign( resultVariable, expressions[^1] );
         }
     }
+
+    protected abstract void SetBody( List<Expression> expressions, NodeExpression parent );
 
     protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )
     {
