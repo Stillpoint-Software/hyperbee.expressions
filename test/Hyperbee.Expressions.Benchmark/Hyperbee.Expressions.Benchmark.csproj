@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
-    <PackageReference Include="FastExpressionCompiler" Version="4.2.2" />
+    <PackageReference Include="FastExpressionCompiler" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
