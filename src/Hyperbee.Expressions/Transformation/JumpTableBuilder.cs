@@ -44,6 +44,7 @@ internal static class JumpTableBuilder
 
         return Switch(
             stateField,
+            Empty(),
             [.. jumpTable]
         );
     }
