@@ -7,6 +7,58 @@ namespace Hyperbee.Expressions.Tests.Optimizers;
 public class StructuralReductionOptimizerTests
 {
     [TestMethod]
+    public void StructuralReduction_ShouldCompile()
+    {
+        // Arrange
+
+        var labelTarget = Expression.Label( typeof(int) );
+        var paramX = Expression.Parameter( typeof(int), "x" );
+        var counter = Expression.Parameter( typeof(int), "counter" );
+
+        var targetBlock = Expression.Block(
+            [paramX, counter], // Declare 'counter' here to ensure it is scoped correctly
+            Expression.Block(
+                Expression.Block(
+                    Expression.IfThen(
+                        Expression.Constant( true ),
+                        Expression.Assign(
+                            counter,
+                            Expression.Add( counter, Expression.Constant( 30 + 12 ) )
+                        )
+                    ),
+                    Expression.Goto( labelTarget, Expression.Constant( 0 ) ) // Redundant Goto
+                )
+            ),
+            Expression.TryCatch(
+                Expression.Empty(),
+                Expression.Catch( Expression.Parameter( typeof(Exception), "ex" ), Expression.Empty() )
+            )
+        );
+
+        var block = Expression.Block(
+            [paramX, counter], // Declare variables in the outer block
+            Expression.Assign( paramX, Expression.Constant( 10 ) ),
+            Expression.Assign( counter, Expression.Constant( 0 ) ),
+            Expression.Loop(
+                Expression.IfThenElse(
+                    Expression.LessThan( counter, Expression.Constant( 1000 ) ),
+                    targetBlock,
+                    Expression.Break( labelTarget, Expression.Constant( 0 ) )
+                ),
+                labelTarget
+            )
+        );
+
+        var optimizer = new StructuralReductionOptimizer();
+
+        // Act
+        var optimized = optimizer.Optimize( block );
+
+        // Assert
+        var compiled = Expression.Lambda<Func<int>>( optimized ).Compile();
+    }
+
+    [TestMethod]
     public void StructuralReduction_ShouldRemoveUnreachableCode()
     {
         // Before: .Block(.Constant(1), .Constant(2))

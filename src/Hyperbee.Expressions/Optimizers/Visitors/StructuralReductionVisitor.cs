@@ -14,7 +14,7 @@ public class StructuralReductionVisitor : ExpressionVisitor, IExpressionTransfor
     // Visit BlockExpression, handling block flattening and reduction
     protected override Expression VisitBlock( BlockExpression node )
     {
-        var variables = new List<ParameterExpression>();
+        var variables = new List<ParameterExpression>( node.Variables );
         var expressions = new List<Expression>();
 
         foreach ( var expr in node.Expressions )
@@ -37,9 +37,16 @@ public class StructuralReductionVisitor : ExpressionVisitor, IExpressionTransfor
             }
         }
 
-        // Remove single-use blocks
-        return expressions.Count == 1 ? expressions[0] : Expression.Block( variables, expressions );
+        // Return the single expression directly if there are no variables
+        if ( variables.Count == 0 && expressions.Count == 1 )
+        {
+            return expressions[0];
+        }
+
+        // Construct a new block only if there are variables or multiple expressions
+        return Expression.Block( variables, expressions );
     }
+
 
     // Visit GotoExpression, eliminating redundant Goto expressions
     protected override Expression VisitGoto( GotoExpression node )

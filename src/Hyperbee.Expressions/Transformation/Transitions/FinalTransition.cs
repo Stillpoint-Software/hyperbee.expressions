@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
@@ -10,15 +11,15 @@ internal class FinalTransition : Transition
     {
     }
 
-    protected override List<Expression> GetBody()
+    protected override List<Expression> GetBody(NodeExpression parent )
     {
         return EmptyBody;
     }
 
-    protected override void AssignResult( List<Expression> expressions )
+    protected override void AssignResult( NodeExpression parent, List<Expression> expressions )
     {
-        var resultField = Parent.StateMachineSource.ResultField;
-        var returnValue = Parent.StateMachineSource.ReturnValue;
+        var resultField = parent.StateMachineSource.ResultField;
+        var returnValue = parent.StateMachineSource.ReturnValue;
 
         if ( returnValue != null )
         {
@@ -46,7 +47,7 @@ internal class FinalTransition : Transition
         }
 
         expressions.Add(
-            Assign( resultField, Parent.ResultValue ?? Constant( null, typeof( IVoidResult ) ) )
+            Assign( resultField, parent.ResultValue ?? Constant( null, typeof( IVoidResult ) ) )
         );
     }
 }

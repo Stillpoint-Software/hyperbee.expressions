@@ -7,6 +7,48 @@ namespace Hyperbee.Expressions.Tests.Optimizers;
 public class InliningOptimizerTests
 {
     [TestMethod]
+    public void Inlining_ShouldCompile()
+    {
+        // Arrange
+
+        var labelTarget = Expression.Label( typeof( int ) );
+        var paramX = Expression.Parameter( typeof( int ), "x" );
+        var counter = Expression.Parameter( typeof( int ), "counter" );
+
+        var lambda = Expression.Lambda(
+            Expression.Add( paramX, Expression.Constant( 5 ) ),
+            paramX
+        );
+
+        var targetExpr = Expression.Invoke( lambda, paramX );
+
+        var block = Expression.Block(
+            [paramX, counter],
+            Expression.Assign( paramX, Expression.Constant( 10 ) ),
+            Expression.Assign( counter, Expression.Constant( 0 ) ),
+            Expression.Loop(
+                Expression.Block(
+                    targetExpr,
+                    Expression.IfThenElse(
+                        Expression.LessThan( counter, Expression.Constant( 10 ) ),
+                        Expression.Assign( counter, Expression.Add( counter, Expression.Constant( 1 ) ) ),
+                        Expression.Break( labelTarget, targetExpr )
+                    )
+                ),
+                labelTarget
+            )
+        );
+
+        var optimizer = new InliningOptimizer();
+
+        // Act
+        var optimized = optimizer.Optimize( block );
+
+        // Assert
+        var compiled = Expression.Lambda<Func<int>>( optimized ).Compile();
+    }
+
+    [TestMethod]
     public void Inlining_ShouldInlineSimpleConstant()
     {
         // Before: .Add(.Constant(10), .Constant(5))

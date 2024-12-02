@@ -337,7 +337,7 @@ internal class StateMachineBuilder<TResult>
 
         // Variable Hoisting 
 
-        HoistVariables( source, fields, stateMachine );
+        //HoistVariables( source, fields, stateMachine );
 
         // Assign state-machine source to nodes
 
@@ -358,6 +358,22 @@ internal class StateMachineBuilder<TResult>
         // Add the state-nodes
 
         var bodyExpressions = CreateBody( stateField, source );
+
+        //
+        var fieldMembers = fields
+            .Select( field => Field( stateMachine, field ) )
+            .ToDictionary( x => x.Member.Name );
+
+        var hoistingVisitor = new HoistingVisitor( fieldMembers );
+
+        var rbe = new List<Expression>();
+
+        foreach ( var node in bodyExpressions )
+        {
+            rbe.Add( hoistingVisitor.Visit( node ) );
+        }
+
+        bodyExpressions = rbe;
 
         // Add the final builder result assignment
 

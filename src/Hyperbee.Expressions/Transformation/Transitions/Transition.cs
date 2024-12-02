@@ -1,63 +1,57 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
+
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
 [DebuggerDisplay( "Transition = {GetType().Name,nq}" )]
 
-internal abstract class Transition : Expression
+internal abstract class Transition
 {
     protected static readonly List<Expression> EmptyBody = [Empty()];
-
-    public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof( void );
-    public override bool CanReduce => true;
-
-    protected override Expression VisitChildren( ExpressionVisitor visitor ) => this;
 
     internal abstract NodeExpression FallThroughNode { get; }
 
     internal abstract void Optimize( HashSet<LabelTarget> references );
 
-    internal NodeExpression Parent { get; set; }
-
-    public override Expression Reduce()
+    public Expression Reduce( NodeExpression parent )
     {
-        if ( Parent == null )
-            throw new InvalidOperationException( $"Transition Reduce requires a {nameof( Parent )} instance." );
+        if ( parent == null )
+            throw new InvalidOperationException( $"Transition Reduce requires a {nameof( parent )} instance." );
 
-        var reduced = Reduce( Parent );
+        var reduced = ReduceInternal( parent );
 
         return (reduced.Count == 1)
             ? reduced[0]
             : Block( reduced );
     }
 
-    private List<Expression> Reduce( NodeExpression node )
+    private List<Expression> ReduceInternal( NodeExpression parent )
     {
         var expressions = new List<Expression>( 8 ) // Label, Expressions, AssignResult, Transition
         {
-            Label( node.NodeLabel )
+            Label( parent.NodeLabel )
         };
 
-        expressions.AddRange( node.Expressions );
+        expressions.AddRange( parent.Expressions );
 
         // add result assignment
 
-        AssignResult( expressions );
+        AssignResult( parent, expressions );
 
         // add transition body
 
-        expressions.AddRange( GetBody() );
+        expressions.AddRange( GetBody( parent ) );
 
         return expressions;
     }
 
-    protected abstract List<Expression> GetBody();
+    protected abstract List<Expression> GetBody( NodeExpression parent );
 
-    protected virtual void AssignResult( List<Expression> expressions )
+    protected virtual void AssignResult( NodeExpression parent, List<Expression> expressions )
     {
-        var resultValue = Parent.ResultValue;
-        var resultVariable = Parent.ResultVariable;
+        var resultValue = parent.ResultValue;
+        var resultVariable = parent.ResultVariable;
 
         if ( resultValue != null && resultVariable != null && resultValue.Type == resultVariable.Type )
         {

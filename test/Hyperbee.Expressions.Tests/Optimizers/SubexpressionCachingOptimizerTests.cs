@@ -13,6 +13,55 @@ public class SubexpressionCachingOptimizerTests
     }
 
     [TestMethod]
+    public void SubexpressionCaching_ShouldCompile()
+    {
+        var labelTarget = Expression.Label( typeof(int) );
+        var counter = Expression.Parameter( typeof(int), "counter" );
+
+        var repeatedExpr = Expression.Add(
+            Expression.Multiply(
+                Expression.Add( Expression.Constant( 3 ), Expression.Constant( 5 ) ),
+                Expression.Add( Expression.Constant( 3 ), Expression.Constant( 5 ) )
+            ),
+            Expression.Add( Expression.Constant( 3 ), Expression.Constant( 5 ) )
+        );
+
+        var targetBlock = Expression.Block(
+            repeatedExpr,
+            Expression.TryCatch(
+                Expression.Empty(),
+                Expression.Catch( Expression.Parameter( typeof(Exception), "ex" ), Expression.Empty() )
+            )
+        );
+
+        var block = Expression.Block(
+            [counter],
+            Expression.Assign( counter, Expression.Constant( 0 ) ),
+            Expression.Loop(
+                Expression.IfThenElse(
+                    Expression.LessThan( counter, Expression.Constant( 10 ) ),
+                    Expression.Block(
+                        Expression.Assign( counter, Expression.Add( counter, Expression.Constant( 1 ) ) ),
+                        targetBlock
+                    ),
+                    Expression.Break( labelTarget, Expression.Constant( 0 ) ) // Provide default value
+                ),
+                labelTarget
+            )
+        );
+
+        // Arrange
+        var optimizer = new SubexpressionCachingOptimizer();
+
+        // Act
+        var optimized = optimizer.Optimize( block );
+
+        // Assert
+        var compiled = Expression.Lambda<Func<int>>( optimized ).Compile();
+        compiled();
+    }
+
+    [TestMethod]
     public void SubexpressionCaching_ShouldNotCacheSimpleExpressions()
     {
         // Before: .Add(.Constant(2), .Constant(3)) + .Add(.Constant(2), .Constant(3))

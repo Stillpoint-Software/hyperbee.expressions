@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
@@ -11,29 +12,7 @@ internal class AwaitResultTransition : Transition
 
     internal override NodeExpression FallThroughNode => TargetNode;
 
-    protected override Expression VisitChildren( ExpressionVisitor visitor )
-    {
-        return Update(
-            visitor.Visit( AwaiterVariable ),
-            visitor.Visit( ResultVariable )
-        );
-    }
-
-    internal AwaitResultTransition Update( Expression awaiterVariable, Expression resultVariable )
-    {
-        if ( awaiterVariable == AwaiterVariable && resultVariable == ResultVariable )
-            return this;
-
-        return new AwaitResultTransition
-        {
-            AwaiterVariable = awaiterVariable,
-            ResultVariable = resultVariable,
-            TargetNode = TargetNode,
-            AwaitBinder = AwaitBinder
-        };
-    }
-
-    protected override List<Expression> GetBody()
+    protected override List<Expression> GetBody(NodeExpression parent )
     {
         return GetExpressions();
 
@@ -47,7 +26,7 @@ internal class AwaitResultTransition : Transition
 
             if ( ResultVariable == null )
             {
-                var transition = GotoOrFallThrough( Parent.StateOrder, TargetNode );
+                var transition = GotoOrFallThrough( parent.StateOrder, TargetNode );
 
                 return transition == Empty()
                     ? [getResultCall]
@@ -56,7 +35,7 @@ internal class AwaitResultTransition : Transition
 
             return [
                 Assign( ResultVariable, getResultCall ),
-                GotoOrFallThrough( Parent.StateOrder, TargetNode )
+                GotoOrFallThrough( parent.StateOrder, TargetNode )
             ];
         }
     }
