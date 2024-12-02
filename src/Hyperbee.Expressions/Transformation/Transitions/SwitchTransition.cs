@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
@@ -10,39 +11,19 @@ internal class SwitchTransition : Transition
 
     internal override NodeExpression FallThroughNode => DefaultNode;
 
-    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return Update(
-            visitor.Visit( SwitchValue ),
-            CaseNodes.Select( x => x.Update( x.TestValues.Select( visitor.Visit ).ToList() ) ).ToList()
-        );
-    }
+        expressions.Add( Expression() );
+        return;
 
-    internal SwitchTransition Update( Expression switchValue, List<SwitchCaseDefinition> caseNodes )
-    {
-        if ( switchValue == SwitchValue )
-            return this;
-
-        return new SwitchTransition
-        {
-            DefaultNode = DefaultNode,
-            SwitchValue = switchValue,
-            CaseNodes = caseNodes
-        };
-    }
-
-    protected override List<Expression> GetBody()
-    {
-        return [GetExpression()];
-
-        Expression GetExpression()
+        Expression Expression()
         {
             Expression defaultBody;
 
             if ( DefaultNode != null )
             {
                 defaultBody = GotoOrFallThrough(
-                    Parent.StateOrder,
+                    parent.StateOrder,
                     DefaultNode,
                     allowNull: true
                 );
@@ -53,7 +34,7 @@ internal class SwitchTransition : Transition
             }
 
             var cases = CaseNodes
-                .Select( switchCase => switchCase.Reduce( Parent.StateOrder ) )
+                .Select( switchCase => switchCase.Reduce( parent.StateOrder ) )
                 .ToArray();
 
             return Switch( SwitchValue, defaultBody, cases );

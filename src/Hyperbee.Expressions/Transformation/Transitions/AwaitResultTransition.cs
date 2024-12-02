@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
@@ -11,33 +12,12 @@ internal class AwaitResultTransition : Transition
 
     internal override NodeExpression FallThroughNode => TargetNode;
 
-    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return Update(
-            visitor.Visit( AwaiterVariable ),
-            visitor.Visit( ResultVariable )
-        );
-    }
+        expressions.AddRange( Expressions() );
+        return;
 
-    internal AwaitResultTransition Update( Expression awaiterVariable, Expression resultVariable )
-    {
-        if ( awaiterVariable == AwaiterVariable && resultVariable == ResultVariable )
-            return this;
-
-        return new AwaitResultTransition
-        {
-            AwaiterVariable = awaiterVariable,
-            ResultVariable = resultVariable,
-            TargetNode = TargetNode,
-            AwaitBinder = AwaitBinder
-        };
-    }
-
-    protected override List<Expression> GetBody()
-    {
-        return GetExpressions();
-
-        List<Expression> GetExpressions()
+        List<Expression> Expressions()
         {
             var getResultMethod = AwaitBinder.GetResultMethod;
 
@@ -47,19 +27,48 @@ internal class AwaitResultTransition : Transition
 
             if ( ResultVariable == null )
             {
-                var transition = GotoOrFallThrough( Parent.StateOrder, TargetNode );
+                var transition = GotoOrFallThrough( parent.StateOrder, TargetNode );
 
                 return transition == Empty()
                     ? [getResultCall]
                     : [getResultCall, transition];
             }
 
-            return [
+            return
+            [
                 Assign( ResultVariable, getResultCall ),
-                GotoOrFallThrough( Parent.StateOrder, TargetNode )
+                GotoOrFallThrough( parent.StateOrder, TargetNode )
             ];
         }
     }
+
+    //protected override List<Expression> GetBody(NodeExpression parent )
+    //{
+    //    return GetExpressions();
+
+    //    List<Expression> GetExpressions()
+    //    {
+    //        var getResultMethod = AwaitBinder.GetResultMethod;
+
+    //        var getResultCall = getResultMethod.IsStatic
+    //            ? Call( getResultMethod, AwaiterVariable )
+    //            : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
+
+    //        if ( ResultVariable == null )
+    //        {
+    //            var transition = GotoOrFallThrough( parent.StateOrder, TargetNode );
+
+    //            return transition == Empty()
+    //                ? [getResultCall]
+    //                : [getResultCall, transition];
+    //        }
+
+    //        return [
+    //            Assign( ResultVariable, getResultCall ),
+    //            GotoOrFallThrough( parent.StateOrder, TargetNode )
+    //        ];
+    //    }
+    //}
 
     internal override void Optimize( HashSet<LabelTarget> references )
     {

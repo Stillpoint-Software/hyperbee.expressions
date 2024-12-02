@@ -331,16 +331,6 @@ internal class StateMachineBuilder<TResult>
 
         var exitLabel = Label( "ST_EXIT" );
 
-        // Optimize source nodes
-
-        StateMachineOptimizer.Optimize( source );
-
-        // Variable Hoisting 
-
-        HoistVariables( source, fields, stateMachine );
-
-        // Assign state-machine source to nodes
-
         var stateMachineSource = new StateMachineSource(
             stateMachine,
             exitLabel,
@@ -350,14 +340,9 @@ internal class StateMachineBuilder<TResult>
             source.ReturnValue
         );
 
-        foreach ( var node in source.Nodes )
-        {
-            node.StateMachineSource = stateMachineSource; // required for node reducers
-        }
+        // Create the body expressions
 
-        // Add the state-nodes
-
-        var bodyExpressions = CreateBody( stateField, source );
+        var bodyExpressions = CreateBody( fields, source, stateMachineSource );
 
         // Add the final builder result assignment
 
@@ -374,70 +359,86 @@ internal class StateMachineBuilder<TResult>
             )
         ] );
 
-        // Create a try-catch block to handle exceptions
+        // Create final lambda with try-catch block
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
-
-        var tryCatchBlock = TryCatch(
-            Block(
-                typeof( void ),
-                source.ReturnValue != null
-                    ? [source.ReturnValue]
-                    : [],
-                bodyExpressions
-            ),
-            Catch(
-                exceptionParam,
-                Block(
-                    Assign( stateField, Constant( -2 ) ),
-                    Call(
-                        builderField,
-                        nameof( AsyncTaskMethodBuilder<TResult>.SetException ),
-                        null,
-                        exceptionParam
-                    )
-                )
-            )
-        );
-
-        // Create the final lambda expression
 
         return Lambda(
             typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType ),
             Block(
-                tryCatchBlock,
+                TryCatch(
+                    Block(
+                        typeof( void ),
+                        source.ReturnValue != null
+                            ? [source.ReturnValue]
+                            : [],
+                        bodyExpressions
+                    ),
+                    Catch(
+                        exceptionParam,
+                        Block(
+                            Assign( stateField, Constant( -2 ) ),
+                            Call(
+                                builderField,
+                                nameof( AsyncTaskMethodBuilder<TResult>.SetException ),
+                                null,
+                                exceptionParam
+                            )
+                        )
+                    )
+                ),
                 Label( exitLabel )
             ),
             stateMachine
         );
     }
 
-    private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source )
+    private static List<Expression> CreateBody( FieldInfo[] fields, LoweringResult source, StateMachineSource stateMachineSource )
     {
+        // Optimize source nodes
+
+        StateMachineOptimizer.Optimize( source );
+
+        // Assign state-machine source to nodes (required for node reducers)
+
+        foreach ( var node in source.Nodes )
+        {
+            node.StateMachineSource = stateMachineSource;
+        }
+
+        // Create the body expressions
+
         var firstScope = source.Scopes.First();
 
         var jumpTable = JumpTableBuilder.Build(
             firstScope,
             source.Scopes,
-            stateField
+            stateMachineSource.StateIdField
         );
 
-        return [jumpTable, Block( NodeExpression.Merge( firstScope.Nodes ) )]; //BF ME
+        var bodyBlock = Block( NodeExpression.Merge( firstScope.Nodes ) );
+
+        // hoist variables
+
+        var bodyExpressions = HoistVariables(
+            [jumpTable, bodyBlock],
+            fields,
+            stateMachineSource.StateMachine
+        );
+
+        return bodyExpressions;
     }
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    private static void HoistVariables( LoweringResult source, FieldInfo[] fields, ParameterExpression stateMachine )
+    private static List<Expression> HoistVariables( List<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
     {
         var fieldMembers = fields
             .Select( field => Field( stateMachine, field ) )
             .ToDictionary( x => x.Member.Name );
 
         var hoistingVisitor = new HoistingVisitor( fieldMembers );
+        var hoisted = expressions.Select( hoistingVisitor.Visit ).ToList();
 
-        foreach ( var node in source.Nodes )
-        {
-            hoistingVisitor.Visit( node );
-        }
+        return hoisted;
     }
 
     private sealed class HoistingVisitor( IDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor

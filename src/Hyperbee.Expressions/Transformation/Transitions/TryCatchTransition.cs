@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
@@ -16,54 +17,26 @@ internal class TryCatchTransition : Transition
 
     internal override NodeExpression FallThroughNode => TryNode;
 
-    protected override Transition VisitChildren( ExpressionVisitor visitor )
+    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
     {
-        return Update(
-            CatchBlocks.Select( c => new CatchBlockDefinition( c.Handler, visitor.Visit( c.UpdateBody ), c.CatchState ) ).ToList(),
-            visitor.Visit( TryStateVariable ),
-            visitor.Visit( ExceptionVariable )
-        );
-    }
+        expressions.AddRange( Expressions() );
+        return;
 
-    internal TryCatchTransition Update(
-        List<CatchBlockDefinition> catchBlocks,
-        Expression tryStateVariable,
-        Expression exceptionVariable )
-    {
-        if ( catchBlocks == CatchBlocks && tryStateVariable == TryStateVariable && exceptionVariable == ExceptionVariable )
-            return this;
-
-        return new TryCatchTransition
-        {
-            TryNode = TryNode,
-            FinallyNode = FinallyNode,
-            CatchBlocks = catchBlocks,
-            TryStateVariable = tryStateVariable,
-            ExceptionVariable = exceptionVariable,
-            StateScope = StateScope,
-            Scopes = Scopes
-        };
-    }
-
-    protected override List<Expression> GetBody()
-    {
-        return GetExpressions();
-
-        List<Expression> GetExpressions()
+        List<Expression> Expressions()
         {
             var body = new List<Expression>
             {
                 JumpTableBuilder.Build(
                     StateScope,
                     Scopes,
-                    Parent.StateMachineSource.StateIdField
+                    parent.StateMachineSource.StateIdField
                 )
             };
 
             //body.AddRange( StateScope.Nodes ); //BF ME - merge nodes here
             body.AddRange( NodeExpression.Merge( StateScope.Nodes ) );
 
-            MapCatchBlock( Parent.StateOrder, out var catches, out var switchCases );
+            MapCatchBlock( parent.StateOrder, out var catches, out var switchCases );
 
             return [
                 TryCatch(
