@@ -331,13 +331,9 @@ internal class StateMachineBuilder<TResult>
 
         var exitLabel = Label( "ST_EXIT" );
 
-        // Optimize source nodes
+        //// Optimize source nodes
 
-        StateMachineOptimizer.Optimize( source );
-
-        // Variable Hoisting 
-
-        //HoistVariables( source, fields, stateMachine );
+        //StateMachineOptimizer.Optimize( source );
 
         // Assign state-machine source to nodes
 
@@ -350,30 +346,20 @@ internal class StateMachineBuilder<TResult>
             source.ReturnValue
         );
 
-        foreach ( var node in source.Nodes )
-        {
-            node.StateMachineSource = stateMachineSource; // required for node reducers
-        }
+        var bodyExpressions = CreateBody( fields, source, stateMachineSource );
 
-        // Add the state-nodes
+        //foreach ( var node in source.Nodes )
+        //{
+        //    node.StateMachineSource = stateMachineSource; // required for node reducers
+        //}
 
-        var bodyExpressions = CreateBody( stateField, source );
+        //// Add the state-nodes and hoist variables
 
-        //
-        var fieldMembers = fields
-            .Select( field => Field( stateMachine, field ) )
-            .ToDictionary( x => x.Member.Name );
-
-        var hoistingVisitor = new HoistingVisitor( fieldMembers );
-
-        var rbe = new List<Expression>();
-
-        foreach ( var node in bodyExpressions )
-        {
-            rbe.Add( hoistingVisitor.Visit( node ) );
-        }
-
-        bodyExpressions = rbe;
+        //var bodyExpressions = HoistVariables(
+        //    CreateBody( stateField, source ), 
+        //    fields, 
+        //    stateMachine 
+        //);
 
         // Add the final builder result assignment
 
@@ -428,32 +414,65 @@ internal class StateMachineBuilder<TResult>
         );
     }
 
-    private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source )
+    private static List<Expression> CreateBody( FieldInfo[] fields, LoweringResult source, StateMachineSource stateMachineSource )
     {
+        // Optimize source nodes
+
+        StateMachineOptimizer.Optimize( source );
+
+        // Assign state-machine source to nodes
+
+        foreach ( var node in source.Nodes )
+        {
+            node.StateMachineSource = stateMachineSource; // required for node reducers
+        }
+
+        // Create the body expressions
+
         var firstScope = source.Scopes.First();
 
         var jumpTable = JumpTableBuilder.Build(
             firstScope,
             source.Scopes,
-            stateField
+            stateMachineSource.StateIdField
         );
 
-        return [jumpTable, Block( NodeExpression.Merge( firstScope.Nodes ) )]; //BF ME
+        List<Expression> bodyExpressions = [jumpTable, Block( NodeExpression.Merge( firstScope.Nodes ) )]; //BF ME
+
+        // Add the state-nodes and hoist variables
+
+        bodyExpressions = HoistVariables(
+            bodyExpressions,
+            fields,
+            stateMachineSource.StateMachine
+        );
+
+        return bodyExpressions;
     }
 
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    private static void HoistVariables( LoweringResult source, FieldInfo[] fields, ParameterExpression stateMachine )
+    //private static List<Expression> CreateBody( MemberExpression stateField, LoweringResult source )
+    //{
+    //    var firstScope = source.Scopes.First();
+
+    //    var jumpTable = JumpTableBuilder.Build(
+    //        firstScope,
+    //        source.Scopes,
+    //        stateField
+    //    );
+
+    //    return [jumpTable, Block( NodeExpression.Merge( firstScope.Nodes ) )]; //BF ME
+    //}
+
+    private static List<Expression> HoistVariables( List<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
     {
         var fieldMembers = fields
             .Select( field => Field( stateMachine, field ) )
             .ToDictionary( x => x.Member.Name );
 
         var hoistingVisitor = new HoistingVisitor( fieldMembers );
+        var hoisted = expressions.Select( hoistingVisitor.Visit ).ToList();
 
-        foreach ( var node in source.Nodes )
-        {
-            hoistingVisitor.Visit( node );
-        }
+        return hoisted;
     }
 
     private sealed class HoistingVisitor( IDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor

@@ -8,11 +8,7 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal abstract class Transition
 {
-    protected static readonly List<Expression> EmptyBody = [Empty()];
-
     internal abstract NodeExpression FallThroughNode { get; }
-
-    internal abstract void Optimize( HashSet<LabelTarget> references );
 
     public void AddExpressions( NodeExpression parent, List<Expression> expressions )
     {
@@ -40,12 +36,7 @@ internal abstract class Transition
 
     protected abstract void SetBody( List<Expression> expressions, NodeExpression parent );
 
-    protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )
-    {
-        return order + 1 == node.StateOrder
-            ? allowNull ? null : Empty()
-            : Goto( node.NodeLabel );
-    }
+    internal abstract void Optimize( HashSet<LabelTarget> references );
 
     protected static NodeExpression OptimizeGotos( NodeExpression node )
     {
@@ -55,6 +46,16 @@ internal abstract class Transition
         }
 
         return node;
+    }
+
+    protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )
+    {
+        if ( order + 1 == node.StateOrder )
+        {
+            return allowNull ? null : Empty();
+        }
+
+        return Goto( node.NodeLabel );
     }
 }
 
