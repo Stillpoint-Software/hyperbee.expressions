@@ -11,42 +11,39 @@ internal class FinalTransition : Transition
     {
     }
 
-    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-    }
-
-    protected override void SetResult( List<Expression> expressions, NodeExpression parent )
-    {
-        var resultField = parent.StateMachineSource.ResultField;
-        var returnValue = parent.StateMachineSource.ReturnValue;
-
-        if ( returnValue != null )
-        {
-            expressions.Add( Assign( resultField, returnValue ) );
-            return;
-        }
+        var finalResultField = context.StateMachineInfo.FinalResultField;
+        
+        //var returnValue = context.LoweringInfo.ReturnValue;
+        //
+        //if ( returnValue != null )
+        //{
+        //    expressions.Add( Assign( finalResultField, returnValue ) ); //BF ME - never hit
+        //    return;
+        //}
 
         if ( expressions.Count > 1 )
         {
             var lastExpression = expressions[^1];
 
-            if ( lastExpression.Type == typeof( void ) )
+            if ( lastExpression.Type == typeof(void) )
             {
                 expressions[^1] = Block(
-                    Assign( resultField, Constant( null, typeof( IVoidResult ) ) ),
+                    Assign( finalResultField, Constant( null, typeof(IVoidResult) ) ),
                     lastExpression
                 );
             }
             else
             {
-                expressions[^1] = Assign( resultField, lastExpression );
+                expressions[^1] = Assign( finalResultField, lastExpression );
             }
 
             return;
         }
 
         expressions.Add(
-            Assign( resultField, parent.ResultValue ?? Constant( null, typeof( IVoidResult ) ) )
+            Assign( finalResultField, context.NodeInfo.ResultValue ?? Constant( null, typeof(IVoidResult) ) )
         );
     }
 }

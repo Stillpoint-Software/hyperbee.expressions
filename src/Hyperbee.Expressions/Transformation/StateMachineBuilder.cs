@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -8,6 +8,8 @@ namespace Hyperbee.Expressions.Transformation;
 
 public interface IVoidResult; // Marker interface for void Task results
 public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
+
+internal delegate LoweringInfo LoweringTransformer();
 
 internal class StateMachineBuilder<TResult>
 {
@@ -32,10 +34,21 @@ internal class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( LoweringResult source, int id )
+    public Expression CreateStateMachine( LoweringTransformer loweringTransformer, int id )
     {
-        if ( source.Scopes[0].Nodes == null )
+        // Lower the async expression
+        //
+        var loweringInfo = loweringTransformer();
+
+        if ( loweringInfo.AwaitCount == 0 )
+            throw new InvalidOperationException( "The target of a lowering operation must contain at least one await." );
+
+        if ( loweringInfo.Scopes[0].Nodes == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
+
+        // Create the state-machine builder context
+        //
+        var context = new StateMachineContext { LoweringInfo = loweringInfo };
 
         // Create the state-machine
         //
@@ -45,8 +58,8 @@ internal class StateMachineBuilder<TResult>
         // stateMachine.__state<> = -1;
         // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
 
-        var stateMachineType = CreateStateMachineType( source, out var fields );
-        var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, fields );
+        var stateMachineType = CreateStateMachineType( context, out var fields );
+        var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
 
         // Initialize the state machine
 
@@ -73,7 +86,7 @@ internal class StateMachineBuilder<TResult>
         bodyExpression.Add( assignStateField );
 
         // create local copy of shared variables on state-machine
-        foreach ( var scopedVariable in source.ScopedVariables )
+        foreach ( var scopedVariable in loweringInfo.ScopedVariables )
         {
             var field = fields.First( field => field.Name == scopedVariable.Name );
             var fieldExpression = Field( stateMachineVariable, field );
@@ -124,7 +137,7 @@ internal class StateMachineBuilder<TResult>
         );
     }
 
-    private Type CreateStateMachineType( LoweringResult source, out FieldInfo[] fields )
+    private Type CreateStateMachineType( StateMachineContext context, out FieldInfo[] fields )
     {
         var typeBuilder = _moduleBuilder.DefineType(
             _typeName,
@@ -161,7 +174,7 @@ internal class StateMachineBuilder<TResult>
             FieldAttributes.Public
         );
 
-        foreach ( var parameterExpression in source.Variables.OfType<ParameterExpression>() )
+        foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>() )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -170,7 +183,7 @@ internal class StateMachineBuilder<TResult>
             );
         }
 
-        foreach ( var parameterExpression in source.ScopedVariables )
+        foreach ( var parameterExpression in context.LoweringInfo.ScopedVariables )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -261,7 +274,7 @@ internal class StateMachineBuilder<TResult>
 
     private static LambdaExpression CreateMoveNextBody(
         int id,
-        LoweringResult source,
+        StateMachineContext context,
         Type stateMachineType,
         FieldInfo[] fields
     )
@@ -331,18 +344,17 @@ internal class StateMachineBuilder<TResult>
 
         var exitLabel = Label( "ST_EXIT" );
 
-        var stateMachineSource = new StateMachineSource(
+        context.StateMachineInfo = new StateMachineInfo(
             stateMachine,
             exitLabel,
             stateField,
             builderField,
-            finalResultField,
-            source.ReturnValue
+            finalResultField
         );
 
         // Create the body expressions
 
-        var bodyExpressions = CreateBody( fields, source, stateMachineSource );
+        var bodyExpressions = CreateBody( fields, context );
 
         // Add the final builder result assignment
 
@@ -368,10 +380,11 @@ internal class StateMachineBuilder<TResult>
             Block(
                 TryCatch(
                     Block(
-                        typeof( void ),
-                        source.ReturnValue != null
-                            ? [source.ReturnValue]
-                            : [],
+                        typeof(void),
+                        //context.LoweringInfo.ReturnValue != null //BF ME - always null
+                        //    ? [context.LoweringInfo.ReturnValue]
+                        //    : [],
+                        null,
                         bodyExpressions
                     ),
                     Catch(
@@ -393,37 +406,35 @@ internal class StateMachineBuilder<TResult>
         );
     }
 
-    private static List<Expression> CreateBody( FieldInfo[] fields, LoweringResult source, StateMachineSource stateMachineSource )
+    private static List<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context )
     {
+        var stateMachineInfo = context.StateMachineInfo;
+        var loweringInfo = context.LoweringInfo;
+
+        var scopes = loweringInfo.Scopes;
+
         // Optimize source nodes
 
-        StateMachineOptimizer.Optimize( source );
-
-        // Assign state-machine source to nodes (required for node reducers)
-
-        foreach ( var node in source.Nodes )
-        {
-            node.StateMachineSource = stateMachineSource;
-        }
+        StateMachineOptimizer.Optimize( loweringInfo );
 
         // Create the body expressions
 
-        var firstScope = source.Scopes.First();
+        var firstScope = scopes.First();
 
         var jumpTable = JumpTableBuilder.Build(
             firstScope,
-            source.Scopes,
-            stateMachineSource.StateIdField
+            scopes,
+            stateMachineInfo.StateField
         );
 
-        var bodyBlock = Block( NodeExpression.Merge( firstScope.Nodes ) );
+        var bodyBlock = Block( NodeExpression.Merge( firstScope.Nodes, context ) );
 
         // hoist variables
 
         var bodyExpressions = HoistVariables(
             [jumpTable, bodyBlock],
             fields,
-            stateMachineSource.StateMachine
+            stateMachineInfo.StateMachine
         );
 
         return bodyExpressions;
@@ -477,23 +488,23 @@ public static class StateMachineBuilder
         ModuleBuilder = assemblyBuilder.DefineDynamicModule( RuntimeModuleName );
     }
 
-    internal static Expression Create( Type resultType, LoweringResult source )
+    internal static Expression Create( Type resultType, LoweringTransformer loweringTransformer )
     {
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
 
-        return (Expression) buildStateMachine.Invoke( null, [source] );
+        return (Expression) buildStateMachine.Invoke( null, [loweringTransformer] );
     }
 
-    internal static Expression Create<TResult>( LoweringResult source )
+    internal static Expression Create<TResult>( LoweringTransformer loweringTransformer )
     {
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }

@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Transformation.Transitions;
 using Hyperbee.Expressions.Visitors;
@@ -9,7 +10,7 @@ internal class LoweringVisitor : ExpressionVisitor
 {
     private const int InitialCapacity = 4;
 
-    private ParameterExpression _returnValue;
+    private ParameterExpression _returnValue; //BF ME - does not seem to be used anymore
 
     private int _awaitCount;
 
@@ -18,16 +19,16 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private VariableResolver _variableResolver;
 
-    public LoweringResult Transform( ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] scopedVariables )
+    public LoweringInfo Transform( ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] scopedVariables )
     {
         _variableResolver = new VariableResolver( variables, _states );
 
         VisitExpressions( expressions );
 
-        return new LoweringResult
+        return new LoweringInfo
         {
             Scopes = _states.Scopes,
-            ReturnValue = _returnValue,
+            //ReturnValue = _returnValue, //BF ME - not used
             AwaitCount = _awaitCount,
             Variables = _variableResolver.GetMappedVariables(),
             ScopedVariables = scopedVariables
@@ -198,7 +199,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
             return updateNode;
 
-        _returnValue ??= _variableResolver.GetReturnVariable( gotoExpression.Value!.Type );
+        _returnValue ??= _variableResolver.GetReturnVariable( gotoExpression.Value!.Type ); //BF ME - not hit
 
         return Expression.Assign( _returnValue, gotoExpression.Value! );
     }
@@ -262,7 +263,7 @@ internal class LoweringVisitor : ExpressionVisitor
         foreach ( var switchCase in node.Cases )
         {
             switchTransition.AddSwitchCase(
-                [.. switchCase.TestValues], // TODO: Visit these because they could be async
+                [.. switchCase.TestValues], 
                 VisitBranch( switchCase.Body, joinState, resultVariable )
             );
         }
@@ -355,7 +356,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
             case AsyncBlockExpression:
                 // Nested blocks should be visited by their own visitor,
-                // but nested variables need to be replaced
+                // but nested variables must be replaced
                 return _variableResolver.Resolve( node );
 
             default:
@@ -396,6 +397,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         // If we already visited a branching node we only want to use the result variable
         // else it is most likely directly awaitable (e.g. Task)
+
         var targetNode = updatedNode is NodeExpression nodeExpression
             ? nodeExpression.ResultVariable
             : updatedNode;

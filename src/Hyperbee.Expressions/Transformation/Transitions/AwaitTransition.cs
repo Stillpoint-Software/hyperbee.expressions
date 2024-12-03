@@ -15,25 +15,26 @@ internal class AwaitTransition : Transition
 
     internal override NodeExpression FallThroughNode => CompletionNode;
 
-    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
+        base.AddExpressions( expressions, context );
         expressions.AddRange( Expressions() );
         return;
 
         List<Expression> Expressions()
         {
-            var resolverSource = parent.StateMachineSource;
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
+            var source = context.StateMachineInfo;
 
             var getAwaiterCall = getAwaiterMethod.IsStatic
                 ? Call( getAwaiterMethod, Target, Constant( ConfigureAwait ) )
                 : Call( Constant( AwaitBinder ), getAwaiterMethod, Target, Constant( ConfigureAwait ) );
 
             // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
-            var awaitUnsafeOnCompleted = resolverSource.BuilderField.Type
+            var awaitUnsafeOnCompleted = source.BuilderField.Type
                 .GetMethods()
                 .Single( methodInfo => methodInfo.Name == "AwaitUnsafeOnCompleted" && methodInfo.IsGenericMethodDefinition )
-                .MakeGenericMethod( AwaiterVariable.Type, resolverSource.StateMachine.Type );
+                .MakeGenericMethod( AwaiterVariable.Type, source.StateMachine.Type );
 
             var body = new List<Expression>
             {
@@ -44,19 +45,19 @@ internal class AwaitTransition : Transition
                 IfThen(
                     IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
                     Block(
-                        Assign( resolverSource.StateIdField, Constant( StateId ) ),
+                        Assign( source.StateField, Constant( StateId ) ),
                         Call(
-                            resolverSource.BuilderField,
+                            source.BuilderField,
                             awaitUnsafeOnCompleted,
                             AwaiterVariable,
-                            resolverSource.StateMachine
+                            source.StateMachine
                         ),
-                        Return( resolverSource.ExitLabel )
+                        Return( source.ExitLabel )
                     )
                 )
             };
 
-            var fallThrough = GotoOrFallThrough( parent.StateOrder, CompletionNode, true );
+            var fallThrough = GotoOrFallThrough( context.NodeInfo.StateOrder, CompletionNode, true );
 
             if ( fallThrough != null )
                 body.Add( fallThrough );

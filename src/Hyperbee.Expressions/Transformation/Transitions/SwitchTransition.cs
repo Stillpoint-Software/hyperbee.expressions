@@ -11,19 +11,22 @@ internal class SwitchTransition : Transition
 
     internal override NodeExpression FallThroughNode => DefaultNode;
 
-    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
+        base.AddExpressions( expressions, context );
         expressions.Add( Expression() );
         return;
 
         Expression Expression()
         {
+            var stateOrder = context.NodeInfo.StateOrder;
+
             Expression defaultBody;
 
             if ( DefaultNode != null )
             {
                 defaultBody = GotoOrFallThrough(
-                    parent.StateOrder,
+                    stateOrder,
                     DefaultNode,
                     allowNull: true
                 );
@@ -34,7 +37,7 @@ internal class SwitchTransition : Transition
             }
 
             var cases = CaseNodes
-                .Select( switchCase => switchCase.Reduce( parent.StateOrder ) )
+                .Select( switchCase => switchCase.Reduce( stateOrder ) )
                 .ToArray();
 
             return Switch( SwitchValue, defaultBody, cases );

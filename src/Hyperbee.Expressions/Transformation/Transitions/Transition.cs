@@ -10,19 +10,15 @@ internal abstract class Transition
 {
     internal abstract NodeExpression FallThroughNode { get; }
 
-    public void AddExpressions( NodeExpression parent, List<Expression> expressions )
+    public virtual void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        if ( parent == null )
-            throw new InvalidOperationException( $"Transition {nameof( AddExpressions )} requires a {nameof( parent )} instance." );
-
-        SetResult( expressions, parent );
-        SetBody( expressions, parent );
+        SetResult( expressions, context );
     }
 
-    protected virtual void SetResult( List<Expression> expressions, NodeExpression parent )
+    private static void SetResult( List<Expression> expressions, StateMachineContext context )
     {
-        var resultValue = parent.ResultValue;
-        var resultVariable = parent.ResultVariable;
+        var resultValue = context.NodeInfo.ResultValue;
+        var resultVariable = context.NodeInfo.ResultVariable;
 
         if ( resultValue != null && resultVariable != null && resultValue.Type == resultVariable.Type )
         {
@@ -33,8 +29,6 @@ internal abstract class Transition
             expressions[^1] = Assign( resultVariable, expressions[^1] );
         }
     }
-
-    protected abstract void SetBody( List<Expression> expressions, NodeExpression parent );
 
     internal abstract void Optimize( HashSet<LabelTarget> references );
 

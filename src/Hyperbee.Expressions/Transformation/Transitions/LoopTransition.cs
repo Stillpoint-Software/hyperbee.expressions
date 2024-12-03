@@ -10,10 +10,6 @@ internal class LoopTransition : Transition
 
     internal override NodeExpression FallThroughNode => BodyNode;
 
-    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
-    {
-    }
-
     internal override void Optimize( HashSet<LabelTarget> references )
     {
         references.Add( BodyNode.NodeLabel );

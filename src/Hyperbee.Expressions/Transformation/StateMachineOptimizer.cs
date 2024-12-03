@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal sealed class StateMachineOptimizer
 {
-    internal static void Optimize( LoweringResult source )
+    internal static void Optimize( LoweringInfo source )
     {
         var references = new HashSet<LabelTarget>();
         int stateOrder = 0;

@@ -17,8 +17,9 @@ internal class TryCatchTransition : Transition
 
     internal override NodeExpression FallThroughNode => TryNode;
 
-    protected override void SetBody( List<Expression> expressions, NodeExpression parent )
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
+        base.AddExpressions( expressions, context );
         expressions.AddRange( Expressions() );
         return;
 
@@ -29,14 +30,13 @@ internal class TryCatchTransition : Transition
                 JumpTableBuilder.Build(
                     StateScope,
                     Scopes,
-                    parent.StateMachineSource.StateIdField
+                    context.StateMachineInfo.StateField
                 )
             };
 
-            //body.AddRange( StateScope.Nodes ); //BF ME - merge nodes here
-            body.AddRange( NodeExpression.Merge( StateScope.Nodes ) );
+            body.AddRange( NodeExpression.Merge( StateScope.Nodes, context ) );
 
-            MapCatchBlock( parent.StateOrder, out var catches, out var switchCases );
+            MapCatchBlock( context.NodeInfo.StateOrder, out var catches, out var switchCases );
 
             return [
                 TryCatch(

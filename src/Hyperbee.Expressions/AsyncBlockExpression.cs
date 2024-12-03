@@ -42,21 +42,18 @@ public class AsyncBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        if ( _stateMachine != null )
-            return _stateMachine;
+        return _stateMachine ??= StateMachineBuilder.Create( Result.Type, LoweringTransformer );
+    }
 
-        // create state-machine
-
+    private LoweringInfo LoweringTransformer()
+    {
         var visitor = new LoweringVisitor();
+        var loweringInfo = visitor.Transform( [.. Variables], [.. Expressions], SharedScopeVariables != null ? [.. SharedScopeVariables] : [] );
 
-        var source = visitor.Transform( [.. Variables], [.. Expressions], SharedScopeVariables != null ? [.. SharedScopeVariables] : [] );
-
-        if ( source.AwaitCount == 0 )
+        if ( loweringInfo.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
 
-        _stateMachine = StateMachineBuilder.Create( Result.Type, source );
-
-        return _stateMachine;
+        return loweringInfo;
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )

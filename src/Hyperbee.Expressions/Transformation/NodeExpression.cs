@@ -19,8 +19,6 @@ public sealed class NodeExpression : Expression
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
 
-    internal StateMachineSource StateMachineSource { get; set; }
-
     internal Transition Transition { get; set; }
 
     internal NodeExpression() { }
@@ -35,33 +33,37 @@ public sealed class NodeExpression : Expression
 
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override Type Type => typeof( void );
-    public override bool CanReduce => true;
+    public override bool CanReduce => false; // This should NEVER be reduced
 
     public bool IsNoOp => Expressions.Count == 0 && ResultVariable == null;
 
-    public override Expression Reduce()
+    internal Expression GetExpression( StateMachineContext context )
     {
-        if ( StateMachineSource == null )
-            throw new InvalidOperationException( $"Reduce requires an {nameof( Transformation.StateMachineSource )} instance." );
+        ArgumentNullException.ThrowIfNull( context, nameof(context) );
 
         var expressions = new List<Expression>( 8 ) { Label( NodeLabel ) };
         expressions.AddRange( Expressions );
 
-        Transition.AddExpressions( this, expressions );
+        var prevNodeInfo = context.NodeInfo;
+        context.NodeInfo = new NodeInfo( StateOrder, ResultVariable, ResultValue );
+        
+        Transition.AddExpressions( expressions, context );
+
+        context.NodeInfo = prevNodeInfo;
 
         return expressions.Count == 1
             ? expressions[0]
             : Block( expressions );
     }
 
-    internal static List<Expression> Merge( List<NodeExpression> nodes ) //BF ME - not sure if this is the right place or not
+    internal static List<Expression> Merge( List<NodeExpression> nodes, StateMachineContext context )
     {
         var mergedExpressions = new List<Expression>( 32 );
 
         for ( var index = 0; index < nodes.Count; index++ )
         {
             var node = nodes[index];
-            var expression = node.Reduce();
+            var expression = node.GetExpression( context );
 
             if ( expression is BlockExpression innerBlock )
                 mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
