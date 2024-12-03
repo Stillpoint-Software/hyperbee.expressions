@@ -26,11 +26,9 @@ internal record StateMachineInfo(
 
 internal record LoweringInfo
 {
-    public List<StateContext.Scope> Scopes { get; init; }
+    public IReadOnlyList<StateContext.Scope> Scopes { get; init; }
+    public IReadOnlyCollection<Expression> Variables { get; init; }
+    public IReadOnlyCollection<ParameterExpression> ExternVariables { get; init; }
     public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
-    public IReadOnlyCollection<Expression> Variables { get; init; }
-    public ParameterExpression[] ExternVariables { get; internal set; }
-
-    public IEnumerable<NodeExpression> Nodes => Scopes.SelectMany( scope => scope.Nodes );
 }

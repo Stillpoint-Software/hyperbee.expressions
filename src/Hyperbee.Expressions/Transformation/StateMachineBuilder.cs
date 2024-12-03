@@ -175,6 +175,7 @@ internal class StateMachineBuilder<TResult>
         );
 
         // variables from this state-machine
+
         foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>() )
         {
             typeBuilder.DefineField(
@@ -282,62 +283,7 @@ internal class StateMachineBuilder<TResult>
         FieldInfo[] fields
     )
     {
-        /* Example state-machine:
-
-            (ref StateMachine1 sm<1>) =>
-            {
-                var var<1> = sm<1>.__stateMachineData<>;
-                try
-                {
-                    switch (var<1>.__state<>)
-                    {
-                        case 0:
-                            var<1>.__state<> = -1;
-                            goto ST_0002;
-
-                        case 1:
-                            var<1>.__state<> = -1;
-                            goto ST_0004;
-                    }
-
-                    var awaitable = Task<int>;
-                    var<1>.__awaiter<0> = AwaitBinder.GetAwaiter(ref awaitable, false);
-
-                    if (!var<1>.__awaiter<0>.IsCompleted)
-                    {
-                        var<1>.__state<> = 0;
-                        var<1>.__builder<>.AwaitUnsafeOnCompleted(ref var<1>.__awaiter<0>, ref sm<1>);
-                        return;
-                    }
-
-                ST_0002:
-                    var<1>.__result<0> = AwaitBinder.GetResult(ref var<1>.__awaiter<0>);
-                    var<1>.__result<1> = var<1>.__result<0>;
-                    Task<int> awaitable;
-                    awaitable = Task<int>;
-                    var<1>.__awaiter<1> = AwaitBinder.GetAwaiter(ref awaitable, false);
-
-                    if (!var<1>.__awaiter<1>.IsCompleted)
-                    {
-                        var<1>.__state<> = 1;
-                        var<1>.__builder<>.AwaitUnsafeOnCompleted(ref var<1>.__awaiter<1>, ref sm<1>);
-                        return;
-                    }
-
-                ST_0004:
-                    var<1>.__result<1> = AwaitBinder.GetResult(ref var<1>.__awaiter<1>);
-                    var<1>.__finalResult<> = var<1>.__result<1>;
-                    var<1>.__state<> = -2;
-                    var<1>.__builder<>.SetResult(var<1>.__finalResult<>);
-                }
-                catch (Exception ex)
-                {
-                    var<1>.__state<> = -2;
-                    var<1>.__builder<>.SetException(ex);
-                }
-            }
-
-        */
+        // Set context state-machine-info
 
         var stateMachine = Parameter( stateMachineType, $"sm<{id}>" );
 
@@ -386,7 +332,7 @@ internal class StateMachineBuilder<TResult>
                         typeof( void ),
                         context.LoweringInfo.ReturnValue != null
                             ? [context.LoweringInfo.ReturnValue]
-                            : [],
+                            : null,
                         bodyExpressions
                     ),
                     Catch(
