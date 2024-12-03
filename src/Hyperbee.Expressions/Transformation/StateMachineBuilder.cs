@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -380,7 +380,7 @@ internal class StateMachineBuilder<TResult>
             Block(
                 TryCatch(
                     Block(
-                        typeof(void),
+                        typeof( void ),
                         //context.LoweringInfo.ReturnValue != null //BF ME - always null
                         //    ? [context.LoweringInfo.ReturnValue]
                         //    : [],

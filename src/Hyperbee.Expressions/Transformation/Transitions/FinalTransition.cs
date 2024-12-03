@@ -14,7 +14,7 @@ internal class FinalTransition : Transition
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
         var finalResultField = context.StateMachineInfo.FinalResultField;
-        
+
         //var returnValue = context.LoweringInfo.ReturnValue;
         //
         //if ( returnValue != null )
@@ -27,10 +27,10 @@ internal class FinalTransition : Transition
         {
             var lastExpression = expressions[^1];
 
-            if ( lastExpression.Type == typeof(void) )
+            if ( lastExpression.Type == typeof( void ) )
             {
                 expressions[^1] = Block(
-                    Assign( finalResultField, Constant( null, typeof(IVoidResult) ) ),
+                    Assign( finalResultField, Constant( null, typeof( IVoidResult ) ) ),
                     lastExpression
                 );
             }
@@ -43,7 +43,7 @@ internal class FinalTransition : Transition
         }
 
         expressions.Add(
-            Assign( finalResultField, context.NodeInfo.ResultValue ?? Constant( null, typeof(IVoidResult) ) )
+            Assign( finalResultField, context.NodeInfo.ResultValue ?? Constant( null, typeof( IVoidResult ) ) )
         );
     }
 }

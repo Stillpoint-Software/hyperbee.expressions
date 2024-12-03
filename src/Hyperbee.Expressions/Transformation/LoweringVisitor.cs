@@ -263,7 +263,7 @@ internal class LoweringVisitor : ExpressionVisitor
         foreach ( var switchCase in node.Cases )
         {
             switchTransition.AddSwitchCase(
-                [.. switchCase.TestValues], 
+                [.. switchCase.TestValues],
                 VisitBranch( switchCase.Body, joinState, resultVariable )
             );
         }

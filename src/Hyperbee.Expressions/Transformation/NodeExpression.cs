@@ -39,14 +39,14 @@ public sealed class NodeExpression : Expression
 
     internal Expression GetExpression( StateMachineContext context )
     {
-        ArgumentNullException.ThrowIfNull( context, nameof(context) );
+        ArgumentNullException.ThrowIfNull( context, nameof( context ) );
 
         var expressions = new List<Expression>( 8 ) { Label( NodeLabel ) };
         expressions.AddRange( Expressions );
 
         var prevNodeInfo = context.NodeInfo;
         context.NodeInfo = new NodeInfo( StateOrder, ResultVariable, ResultValue );
-        
+
         Transition.AddExpressions( expressions, context );
 
         context.NodeInfo = prevNodeInfo;

@@ -21,7 +21,7 @@ internal record StateMachineInfo(
     LabelTarget ExitLabel,
     MemberExpression StateField,
     MemberExpression BuilderField,
-    MemberExpression FinalResultField 
+    MemberExpression FinalResultField
 );
 
 internal record LoweringInfo
