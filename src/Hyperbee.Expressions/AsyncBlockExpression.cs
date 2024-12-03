@@ -49,10 +49,10 @@ public class AsyncBlockExpression : Expression
     {
         var visitor = new LoweringVisitor();
 
-        var loweringInfo = visitor.Transform( 
-            [.. Variables], 
-            [.. Expressions], 
-            ExternVariables != null ? [.. ExternVariables] : [] 
+        var loweringInfo = visitor.Transform(
+            [.. Variables],
+            [.. Expressions],
+            ExternVariables != null ? [.. ExternVariables] : []
         );
 
         if ( loweringInfo.AwaitCount == 0 )

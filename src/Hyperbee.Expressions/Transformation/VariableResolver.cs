@@ -105,7 +105,7 @@ internal sealed class VariableResolver : ExpressionVisitor
         // TODO: feels like a downstream hack, see if there is a way to detect this earlier
         var newVars = CreateLocalVariables();
 
-        _variableScope.Push( newVars ); 
+        _variableScope.Push( newVars );
 
         var returnNode = base.VisitBlock( node.Update( newVars, node.Expressions ) );
 

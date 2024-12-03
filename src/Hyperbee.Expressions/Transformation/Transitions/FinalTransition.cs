@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
@@ -19,7 +19,7 @@ internal class FinalTransition : Transition
 
         if ( returnValue != null )
         {
-            expressions.Add( Assign( finalResultField, returnValue ) ); 
+            expressions.Add( Assign( finalResultField, returnValue ) );
             return;
         }
 

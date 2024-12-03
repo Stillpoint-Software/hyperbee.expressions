@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal sealed class StateMachineContext
 {
-    public NodeInfo NodeInfo { get; set; } 
+    public NodeInfo NodeInfo { get; set; }
     public StateMachineInfo StateMachineInfo { get; set; }
     public LoweringInfo LoweringInfo { get; set; }
 }
