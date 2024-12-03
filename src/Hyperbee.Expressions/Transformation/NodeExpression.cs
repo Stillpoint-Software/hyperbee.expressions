@@ -1,22 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation.Transitions;
-using Microsoft.CodeAnalysis.CSharp;
 
 namespace Hyperbee.Expressions.Transformation;
-
-public sealed class NodeResult
-{
-    public Expression Variable { get; set; } // Left-hand side of the result assignment
-    public Expression Value { get; set; } // Right-hand side of the result assignment
-
-    public void Deconstruct( out Expression variable, out Expression value )
-    {
-        variable = Variable;
-        value = Value;
-    }
-}
-
 
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
 public sealed class NodeExpression : Expression
@@ -27,10 +13,7 @@ public sealed class NodeExpression : Expression
 
     internal int StateOrder { get; set; }
 
-    //public Expression ResultVariable { get; set; } // Left-hand side of the result assignment
-    //public Expression ResultValue { get; set; } // Right-hand side of the result assignment
-
-    public NodeResult Result { get; set; } = new NodeResult();
+    public NodeResult Result { get; set; } = new ();
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
