@@ -15,21 +15,21 @@ public class AsyncBlockExpression : Expression
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
     public Expression Result => Expressions[^1];
 
-    internal ReadOnlyCollection<ParameterExpression> SharedScopeVariables { get; set; }
+    internal ReadOnlyCollection<ParameterExpression> ExternVariables { get; set; }
 
     internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
         : this( variables, expressions, null )
     {
     }
 
-    internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, ReadOnlyCollection<ParameterExpression> sharedScopeVariables )
+    internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, ReadOnlyCollection<ParameterExpression> externVariables )
     {
         if ( expressions == null || expressions.Count == 0 )
             throw new ArgumentException( $"{nameof( AsyncBlockExpression )} must contain at least one expression.", nameof( expressions ) );
 
         Variables = variables;
         Expressions = expressions;
-        SharedScopeVariables = sharedScopeVariables;
+        ExternVariables = externVariables;
 
         _taskType = GetTaskType( Result.Type );
     }
@@ -48,7 +48,12 @@ public class AsyncBlockExpression : Expression
     private LoweringInfo LoweringTransformer()
     {
         var visitor = new LoweringVisitor();
-        var loweringInfo = visitor.Transform( [.. Variables], [.. Expressions], SharedScopeVariables != null ? [.. SharedScopeVariables] : [] );
+
+        var loweringInfo = visitor.Transform( 
+            [.. Variables], 
+            [.. Expressions], 
+            ExternVariables != null ? [.. ExternVariables] : [] 
+        );
 
         if ( loweringInfo.AwaitCount == 0 )
             throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one await." );
@@ -64,7 +69,7 @@ public class AsyncBlockExpression : Expression
         if ( Compare( newVariables, Variables ) && Compare( newExpressions, Expressions ) )
             return this;
 
-        return new AsyncBlockExpression( newVariables, newExpressions, SharedScopeVariables );
+        return new AsyncBlockExpression( newVariables, newExpressions, ExternVariables );
     }
 
     internal static bool Compare<T>( ICollection<T> compare, IReadOnlyList<T> current )

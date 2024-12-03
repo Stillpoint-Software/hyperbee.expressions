@@ -206,7 +206,7 @@ public class AwaiterTests
     }
 
     [TestMethod]
-    public async Task GetAwaiterResult_ScopedAwaitExpressions()
+    public async Task GetAwaiterResult_ExternAwaitExpressions()
     {
         var addTwoNumbersMethod = GetMethodInfo( nameof( AddTwoNumbersAsync ) );
 

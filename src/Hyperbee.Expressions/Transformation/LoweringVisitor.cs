@@ -10,7 +10,7 @@ internal class LoweringVisitor : ExpressionVisitor
 {
     private const int InitialCapacity = 4;
 
-    private ParameterExpression _returnValue; //BF ME - does not seem to be used anymore
+    private ParameterExpression _returnValue; 
 
     private int _awaitCount;
 
@@ -19,7 +19,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private VariableResolver _variableResolver;
 
-    public LoweringInfo Transform( ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] scopedVariables )
+    public LoweringInfo Transform( ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] externVariables )
     {
         _variableResolver = new VariableResolver( variables, _states );
 
@@ -28,10 +28,10 @@ internal class LoweringVisitor : ExpressionVisitor
         return new LoweringInfo
         {
             Scopes = _states.Scopes,
-            //ReturnValue = _returnValue, //BF ME - not used
+            ReturnValue = _returnValue,
             AwaitCount = _awaitCount,
             Variables = _variableResolver.GetMappedVariables(),
-            ScopedVariables = scopedVariables
+            ExternVariables = externVariables
         };
     }
 
@@ -199,7 +199,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
             return updateNode;
 
-        _returnValue ??= _variableResolver.GetReturnVariable( gotoExpression.Value!.Type ); //BF ME - not hit
+        _returnValue ??= _variableResolver.GetReturnVariable( gotoExpression.Value!.Type ); 
 
         return Expression.Assign( _returnValue, gotoExpression.Value! );
     }

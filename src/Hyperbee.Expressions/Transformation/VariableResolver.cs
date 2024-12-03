@@ -24,17 +24,17 @@ internal sealed class VariableResolver : ExpressionVisitor
         public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
 
         [MethodImpl( MethodImplOptions.AggressiveInlining )]
-        public static string LocalVariable( string name, int stateId, ref int variableId ) => $"__local.{name}<{stateId}_{variableId++}>";
+        public static string ExternVariable( string name, int stateId, ref int variableId ) => $"__extern.{name}<{stateId}_{variableId++}>";
 
         public const string Return = "__return<>";
     }
 
     private const int InitialCapacity = 8;
 
-    private readonly Dictionary<ParameterExpression, ParameterExpression> _mappedVariables = new( InitialCapacity );
-    private readonly Dictionary<ParameterExpression, ParameterExpression> _localMappedVariables = new( InitialCapacity );
+    private readonly Dictionary<ParameterExpression, ParameterExpression> _variableMap = new( InitialCapacity );
+    private readonly Dictionary<ParameterExpression, ParameterExpression> _externVariableMap = new( InitialCapacity );
     private readonly HashSet<ParameterExpression> _variables;
-    private readonly Stack<ICollection<ParameterExpression>> _localScopedVariables = new( InitialCapacity );
+    private readonly Stack<ICollection<ParameterExpression>> _variableScope = new( InitialCapacity );
     private readonly StateContext _states;
 
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
@@ -105,11 +105,11 @@ internal sealed class VariableResolver : ExpressionVisitor
         // TODO: feels like a downstream hack, see if there is a way to detect this earlier
         var newVars = CreateLocalVariables();
 
-        _localScopedVariables.Push( newVars );
+        _variableScope.Push( newVars ); 
 
         var returnNode = base.VisitBlock( node.Update( newVars, node.Expressions ) );
 
-        _localScopedVariables.Pop();
+        _variableScope.Pop();
 
         return returnNode;
 
@@ -119,15 +119,15 @@ internal sealed class VariableResolver : ExpressionVisitor
 
             foreach ( var v in node.Variables )
             {
-                if ( v.Name!.StartsWith( "__local." ) )
+                if ( v.Name!.StartsWith( "__extern." ) )
                 {
                     vars.Add( v );
-                    _localMappedVariables.TryAdd( v, v );
+                    _externVariableMap.TryAdd( v, v );
                     continue;
                 }
 
-                var newVar = Expression.Parameter( v.Type, VariableName.LocalVariable( v.Name, _states.TailState.StateId, ref _variableId ) );
-                _localMappedVariables.TryAdd( v, newVar );
+                var newVar = Expression.Parameter( v.Type, VariableName.ExternVariable( v.Name, _states.TailState.StateId, ref _variableId ) );
+                _externVariableMap.TryAdd( v, newVar );
                 vars.Add( newVar );
             }
 
@@ -146,7 +146,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     {
         if ( node is AsyncBlockExpression asyncBlockExpression )
         {
-            asyncBlockExpression.SharedScopeVariables = _localScopedVariables.SelectMany( x => x ).ToList().AsReadOnly();
+            asyncBlockExpression.ExternVariables = _variableScope.SelectMany( x => x ).ToList().AsReadOnly();
         }
 
         return base.VisitExtension( node );
@@ -171,7 +171,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public IReadOnlyCollection<Expression> GetMappedVariables()
     {
-        return _mappedVariables.Values;
+        return _variableMap.Values;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -186,43 +186,36 @@ internal sealed class VariableResolver : ExpressionVisitor
     // helpers
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    private ParameterExpression CreateParameter( ParameterExpression n )
+    private ParameterExpression CreateParameter( ParameterExpression parameter )
     {
-        return Expression.Parameter( n.Type, VariableName.Variable( n.Name, _states.TailState.StateId, ref _variableId ) );
+        return Expression.Parameter( parameter.Type, VariableName.Variable( parameter.Name, _states.TailState.StateId, ref _variableId ) );
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private ParameterExpression AddVariable( ParameterExpression variable )
     {
-        if ( _mappedVariables.TryGetValue( variable, out var existingVariable ) )
+        if ( _variableMap.TryGetValue( variable, out var existingVariable ) )
             return existingVariable;
 
-        _mappedVariables[variable] = variable;
+        _variableMap[variable] = variable;
         return variable;
     }
 
     private bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out ParameterExpression updatedParameterExpression )
     {
-        if ( _mappedVariables.TryGetValue( parameter, out var mappedVariable ) )
+        if ( _variableMap.TryGetValue( parameter, out updatedParameterExpression ) ||
+             _externVariableMap.TryGetValue( parameter, out updatedParameterExpression ) )
         {
-            updatedParameterExpression = mappedVariable;
-            return true;
-        }
-
-        if ( _localMappedVariables.TryGetValue( parameter, out var localMappedVariable ) )
-        {
-            updatedParameterExpression = localMappedVariable;
             return true;
         }
 
         if ( _variables == null || !_variables.Contains( parameter ) )
         {
-            updatedParameterExpression = null;
             return false;
         }
 
         updatedParameterExpression = createParameter( parameter );
-        _mappedVariables[parameter] = updatedParameterExpression;
+        _variableMap[parameter] = updatedParameterExpression;
 
         return true;
     }

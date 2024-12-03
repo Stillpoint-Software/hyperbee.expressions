@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal sealed class StateMachineContext
 {
-    public NodeInfo NodeInfo { get; set; } //BF ME - for discussion
+    public NodeInfo NodeInfo { get; set; } 
     public StateMachineInfo StateMachineInfo { get; set; }
     public LoweringInfo LoweringInfo { get; set; }
 }
@@ -27,10 +27,10 @@ internal record StateMachineInfo(
 internal record LoweringInfo
 {
     public List<StateContext.Scope> Scopes { get; init; }
-    //public ParameterExpression ReturnValue { get; init; } //BF ME - not used
+    public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
     public IReadOnlyCollection<Expression> Variables { get; init; }
-    public ParameterExpression[] ScopedVariables { get; internal set; }
+    public ParameterExpression[] ExternVariables { get; internal set; }
 
     public IEnumerable<NodeExpression> Nodes => Scopes.SelectMany( scope => scope.Nodes );
 }

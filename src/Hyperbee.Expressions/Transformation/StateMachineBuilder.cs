@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -85,14 +85,14 @@ internal class StateMachineBuilder<TResult>
         );
         bodyExpression.Add( assignStateField );
 
-        // create local copy of shared variables on state-machine
-        foreach ( var scopedVariable in loweringInfo.ScopedVariables )
+        // create local copy of extern variables on state-machine
+        foreach ( var externVariable in loweringInfo.ExternVariables )
         {
-            var field = fields.First( field => field.Name == scopedVariable.Name );
+            var field = fields.First( field => field.Name == externVariable.Name );
             var fieldExpression = Field( stateMachineVariable, field );
             var assignField = Assign(
                 fieldExpression,
-                scopedVariable
+                externVariable
             );
             bodyExpression.Add( assignField );
         }
@@ -174,6 +174,7 @@ internal class StateMachineBuilder<TResult>
             FieldAttributes.Public
         );
 
+        // variables from this state-machine
         foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>() )
         {
             typeBuilder.DefineField(
@@ -183,7 +184,9 @@ internal class StateMachineBuilder<TResult>
             );
         }
 
-        foreach ( var parameterExpression in context.LoweringInfo.ScopedVariables )
+        // variables from other state-machines
+
+        foreach ( var parameterExpression in context.LoweringInfo.ExternVariables )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -380,11 +383,10 @@ internal class StateMachineBuilder<TResult>
             Block(
                 TryCatch(
                     Block(
-                        typeof( void ),
-                        //context.LoweringInfo.ReturnValue != null //BF ME - always null
-                        //    ? [context.LoweringInfo.ReturnValue]
-                        //    : [],
-                        null,
+                        typeof(void),
+                        context.LoweringInfo.ReturnValue != null
+                            ? [context.LoweringInfo.ReturnValue]
+                            : [],
                         bodyExpressions
                     ),
                     Catch(
