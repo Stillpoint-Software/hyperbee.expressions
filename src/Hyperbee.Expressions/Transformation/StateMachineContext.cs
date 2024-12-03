@@ -12,8 +12,7 @@ internal sealed class StateMachineContext
 
 internal record NodeInfo(
     int StateOrder,
-    Expression ResultVariable,
-    Expression ResultValue
+    NodeResult Result
 );
 
 internal record StateMachineInfo(

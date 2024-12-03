@@ -17,16 +17,25 @@ internal abstract class Transition
 
     private static void SetResult( List<Expression> expressions, StateMachineContext context )
     {
-        var resultValue = context.NodeInfo.ResultValue;
-        var resultVariable = context.NodeInfo.ResultVariable;
+        var (variable, value) = context.NodeInfo.Result;
 
-        if ( resultValue != null && resultVariable != null && resultValue.Type == resultVariable.Type )
+        if ( variable == null )
         {
-            expressions.Add( Assign( resultVariable, resultValue ) );
+            return;
         }
-        else if ( resultVariable != null && expressions.Count > 1 && resultVariable.Type == expressions[^1].Type )
+
+        if ( value != null && variable.Type.IsAssignableFrom( value.Type ) )
         {
-            expressions[^1] = Assign( resultVariable, expressions[^1] );
+            expressions.Add( Assign( variable, value ) );
+        }
+        else if ( expressions.Count > 1 )
+        {
+            var lastExpression = expressions[^1];
+
+            if ( variable.Type.IsAssignableFrom( lastExpression.Type ) )
+            {
+                expressions[^1] = Assign( variable, lastExpression );
+            }
         }
     }
 

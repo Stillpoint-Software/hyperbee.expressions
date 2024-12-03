@@ -71,10 +71,10 @@ internal static class AwaitBinderFactory
         {
             var awaitableTypeDefinition = awaitableType.GetGenericTypeDefinition();
 
-            if ( Reflection.OpenGenericIsOrInherits( typeof( Task<> ), awaitableTypeDefinition ) )
+            if ( ReflectionHelper.OpenGenericIsOrInherits( typeof( Task<> ), awaitableTypeDefinition ) )
                 return CreateGenericTaskAwaitBinder( awaitableType );
 
-            if ( Reflection.OpenGenericIsOrInherits( typeof( ValueTask<> ), awaitableTypeDefinition ) )
+            if ( ReflectionHelper.OpenGenericIsOrInherits( typeof( ValueTask<> ), awaitableTypeDefinition ) )
                 return CreateGenericValueTaskAwaitBinder( awaitableType );
         }
         else
@@ -140,7 +140,7 @@ internal static class AwaitBinderFactory
         // Find GetAwaiter method
 
         var getAwaiterImplMethod = awaitableType.GetMethod( GetAwaiterName, bindingAttr )
-            ?? Reflection.FindExtensionMethod( awaitableType, GetAwaiterName )
+            ?? ReflectionHelper.FindExtensionMethod( awaitableType, GetAwaiterName )
             ?? throw new InvalidOperationException( $"The type {awaitableType} is not awaitable." );
 
         // Find GetResult method
@@ -310,7 +310,7 @@ internal static class AwaitBinderFactory
 
         // Await methods
 
-        Reflection.GetMethods(
+        ReflectionHelper.GetMethods(
             typeof( AwaitBinder ),
             BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic,
             ( name, method, matches ) =>
@@ -387,7 +387,7 @@ internal static class AwaitBinderFactory
 
         // Delegate creation methods
 
-        Reflection.GetMethods(
+        ReflectionHelper.GetMethods(
             typeof( AwaitBinderFactory ),
             BindingFlags.Static | BindingFlags.NonPublic,
             ( name, method, matches ) =>

@@ -43,7 +43,7 @@ internal class FinalTransition : Transition
         }
 
         expressions.Add(
-            Assign( finalResultField, context.NodeInfo.ResultValue ?? Constant( null, typeof( IVoidResult ) ) )
+            Assign( finalResultField, context.NodeInfo.Result.Value ?? Constant( null, typeof( IVoidResult ) ) )
         );
     }
 }

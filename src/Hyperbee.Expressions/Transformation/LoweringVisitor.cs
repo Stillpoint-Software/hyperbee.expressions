@@ -61,7 +61,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         UpdateTailState( updateNode, joinState ?? branchState ); // if no join-state, join to the branch-state (e.g. loops)
 
-        _states.TailState.ResultVariable = resultVariable;
+        _states.TailState.Result.Variable = resultVariable;
 
         return branchState;
     }
@@ -133,8 +133,8 @@ internal class LoweringVisitor : ExpressionVisitor
             {
                 var updated = VisitBranch( expression, joinState, resultVariable ); // Warning: visitation mutates the tail state.
 
-                previousVariable = updated.ResultVariable;
-                joinState.ResultVariable = previousVariable;
+                previousVariable = updated.Result.Variable;
+                joinState.Result.Variable = previousVariable;
 
                 // Fix tail link list of Transitions.
                 if ( previousTail != null )
@@ -152,8 +152,8 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var blockTransition = new GotoTransition { TargetNode = firstGoto ?? joinState };
 
-        sourceState.ResultVariable = previousVariable;
-        joinState.ResultValue = previousVariable;
+        sourceState.Result.Variable = previousVariable;
+        joinState.Result.Value = previousVariable;
 
         _states.ExitGroup( sourceState, blockTransition );
 
@@ -180,8 +180,8 @@ internal class LoweringVisitor : ExpressionVisitor
                 : joinState,
         };
 
-        sourceState.ResultVariable = resultVariable;
-        joinState.ResultValue = resultVariable;
+        sourceState.Result.Variable = resultVariable;
+        joinState.Result.Value = resultVariable;
 
         _states.ExitGroup( sourceState, conditionalTransition );
 
@@ -221,8 +221,8 @@ internal class LoweringVisitor : ExpressionVisitor
             BreakLabel = node.BreakLabel != null ? joinState.NodeLabel : null,
         };
 
-        sourceState.ResultVariable = resultVariable;
-        joinState.ResultValue = resultVariable;
+        sourceState.Result.Variable = resultVariable;
+        joinState.Result.Value = resultVariable;
 
         _states.ExitGroup( sourceState, loopTransition );
 
@@ -267,8 +267,8 @@ internal class LoweringVisitor : ExpressionVisitor
             );
         }
 
-        sourceState.ResultVariable = resultVariable;
-        joinState.ResultValue = resultVariable;
+        sourceState.Result.Variable = resultVariable;
+        joinState.Result.Value = resultVariable;
 
         _states.ExitGroup( sourceState, switchTransition );
 
@@ -323,8 +323,8 @@ internal class LoweringVisitor : ExpressionVisitor
                 catchState );
         }
 
-        sourceState.ResultVariable = resultVariable;
-        joinState.ResultValue = resultVariable;
+        sourceState.Result.Variable = resultVariable;
+        joinState.Result.Value = resultVariable;
 
         _states.ExitGroup( sourceState, tryCatchTransition );
 
@@ -338,7 +338,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         if ( updatedRight is NodeExpression nodeExpression )
         {
-            return node.Update( updatedLeft, node.Conversion, nodeExpression.ResultVariable );
+            return node.Update( updatedLeft, node.Conversion, nodeExpression.Result.Variable );
         }
 
         return node.Update( updatedLeft, node.Conversion, updatedRight );
@@ -373,7 +373,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
         var completionState = _states.AddState();
-        _states.TailState.ResultVariable = resultVariable;
+        _states.TailState.Result.Variable = resultVariable;
 
         _awaitCount++;
 
@@ -398,7 +398,7 @@ internal class LoweringVisitor : ExpressionVisitor
         // else it is most likely directly awaitable (e.g. Task)
 
         var targetNode = updatedNode is NodeExpression nodeExpression
-            ? nodeExpression.ResultVariable
+            ? nodeExpression.Result.Variable
             : updatedNode;
 
         var awaitTransition = new AwaitTransition
@@ -411,8 +411,8 @@ internal class LoweringVisitor : ExpressionVisitor
             ConfigureAwait = node.ConfigureAwait
         };
 
-        sourceState.ResultVariable = resultVariable;
-        joinState.ResultValue = resultVariable;
+        sourceState.Result.Variable = resultVariable;
+        joinState.Result.Value = resultVariable;
 
         _states.ExitGroup( sourceState, awaitTransition );
 
