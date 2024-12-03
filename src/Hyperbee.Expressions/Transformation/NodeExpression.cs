@@ -13,7 +13,7 @@ public sealed class NodeExpression : Expression
 
     internal int StateOrder { get; set; }
 
-    public NodeResult Result { get; set; } = new ();
+    public NodeResult Result { get; set; } = new();
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
