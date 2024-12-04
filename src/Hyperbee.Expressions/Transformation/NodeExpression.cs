@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation.Transitions;
 
@@ -12,10 +12,10 @@ internal interface IStateNode //BF ME
 
     public int StateOrder { get; set; }
 
-   public NodeResult Result { get; } //BF ME - NodeResult to StateResult ??
+    public NodeResult Result { get; } //BF ME - NodeResult to StateResult ??
 
     public LabelTarget NodeLabel { get; }
-   public List<Expression> Expressions { get; } 
+    public List<Expression> Expressions { get; }
 
     public Transition Transition { get; }
 
