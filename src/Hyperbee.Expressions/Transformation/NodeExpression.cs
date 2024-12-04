@@ -4,7 +4,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal interface IStateNode
+internal interface IStateNode //BF ME
 {
    public int StateId { get; }
    public int GroupId { get; }
@@ -12,9 +12,9 @@ internal interface IStateNode
 
    public int StateOrder { get; set; }
 
-   public NodeResult Result { get; }
+   public NodeResult Result { get; } //BF ME - NodeResult to StateResult ??
 
-   public LabelTarget NodeLabel { get; }
+    public LabelTarget NodeLabel { get; }
    public List<Expression> Expressions { get; } 
 
    public Transition Transition { get; }
@@ -25,7 +25,7 @@ internal interface IStateNode
 }
 
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
-internal sealed class NodeExpression : Expression, IStateNode
+internal sealed class NodeExpression : Expression, IStateNode //BF ME - NodeExpression to StateExpression ??
 {
     public int StateId { get; set; }
     public int GroupId { get; set; }
