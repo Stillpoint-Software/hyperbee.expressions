@@ -7,10 +7,10 @@ internal class AwaitResultTransition : Transition
 {
     public Expression AwaiterVariable { get; set; }
     public Expression ResultVariable { get; set; }
-    public NodeExpression TargetNode { get; set; }
+    public IStateNode TargetNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
 
-    internal override NodeExpression FallThroughNode => TargetNode;
+    internal override IStateNode FallThroughNode => TargetNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {

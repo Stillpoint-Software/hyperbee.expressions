@@ -4,11 +4,11 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal class LoopTransition : Transition
 {
-    public NodeExpression BodyNode { get; set; }
+    public IStateNode BodyNode { get; set; }
     public LabelTarget BreakLabel { get; set; }
     public LabelTarget ContinueLabel { get; set; }
 
-    internal override NodeExpression FallThroughNode => BodyNode;
+    internal override IStateNode FallThroughNode => BodyNode;
 
     internal override void Optimize( HashSet<LabelTarget> references )
     {

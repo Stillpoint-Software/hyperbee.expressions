@@ -375,7 +375,7 @@ internal class StateMachineBuilder<TResult>
             stateMachineInfo.StateField
         );
 
-        var bodyBlock = Block( NodeExpression.Merge( firstScope.Nodes, context ) );
+        var bodyBlock = Block( StateMachineBuilder.MergeStates( firstScope.Nodes, context ) );
 
         // hoist variables
 
@@ -455,5 +455,29 @@ public static class StateMachineBuilder
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever
+    }
+
+    internal static List<Expression> MergeStates( List<IStateNode> nodes, StateMachineContext context )
+    {
+        var mergedExpressions = new List<Expression>( 32 );
+
+        for ( var index = 0; index < nodes.Count; index++ )
+        {
+            var node = nodes[index];
+            var expression = node.GetExpression( context );
+
+            if ( expression is BlockExpression innerBlock )
+                mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
+            else
+                mergedExpressions.Add( expression );
+        }
+
+        return mergedExpressions;
+
+        static bool IsDefaultVoid( Expression expression )
+        {
+            return expression is DefaultExpression defaultExpression &&
+                   defaultExpression.Type == typeof(void);
+        }
     }
 }

@@ -4,23 +4,41 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
+internal interface IStateNode
+{
+   public int StateId { get; }
+   public int GroupId { get; }
+   public int ScopeId { get; }
+
+   public int StateOrder { get; set; }
+
+   public NodeResult Result { get; }
+
+   public LabelTarget NodeLabel { get; }
+   public List<Expression> Expressions { get; } 
+
+   public Transition Transition { get; }
+
+   public Expression GetExpression( StateMachineContext context );
+
+   public Expression AsExpression() => this as Expression;
+}
+
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
-public sealed class NodeExpression : Expression
+internal sealed class NodeExpression : Expression, IStateNode
 {
     public int StateId { get; set; }
     public int GroupId { get; set; }
     public int ScopeId { get; set; }
 
-    internal int StateOrder { get; set; }
+    public int StateOrder { get; set; }
 
     public NodeResult Result { get; set; } = new();
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
 
-    internal Transition Transition { get; set; }
-
-    internal NodeExpression() { }
+    public Transition Transition { get; set; }
 
     public NodeExpression( int stateId, int scopeId, int groupId )
     {
@@ -33,10 +51,9 @@ public sealed class NodeExpression : Expression
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override Type Type => typeof( void );
     public override bool CanReduce => false; // This should NEVER be reduced
-
-    public bool IsNoOp => Expressions.Count == 0 && Result.Variable == null;
-
-    internal Expression GetExpression( StateMachineContext context )
+    public override Expression Reduce() => throw new NotSupportedException();
+    
+    public Expression GetExpression( StateMachineContext context )
     {
         ArgumentNullException.ThrowIfNull( context, nameof( context ) );
 
@@ -53,29 +70,5 @@ public sealed class NodeExpression : Expression
         return expressions.Count == 1
             ? expressions[0]
             : Block( expressions );
-    }
-
-    internal static List<Expression> Merge( List<NodeExpression> nodes, StateMachineContext context )
-    {
-        var mergedExpressions = new List<Expression>( 32 );
-
-        for ( var index = 0; index < nodes.Count; index++ )
-        {
-            var node = nodes[index];
-            var expression = node.GetExpression( context );
-
-            if ( expression is BlockExpression innerBlock )
-                mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
-            else
-                mergedExpressions.Add( expression );
-        }
-
-        return mergedExpressions;
-
-        static bool IsDefaultVoid( Expression expression )
-        {
-            return expression is DefaultExpression defaultExpression &&
-                   defaultExpression.Type == typeof( void );
-        }
     }
 }

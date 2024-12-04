@@ -5,11 +5,11 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal class SwitchTransition : Transition
 {
-    public NodeExpression DefaultNode { get; set; }
+    public IStateNode DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
     internal List<SwitchCaseDefinition> CaseNodes = [];
 
-    internal override NodeExpression FallThroughNode => DefaultNode;
+    internal override IStateNode FallThroughNode => DefaultNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
@@ -58,24 +58,24 @@ internal class SwitchTransition : Transition
         }
     }
 
-    public void AddSwitchCase( List<Expression> testValues, NodeExpression body )
+    public void AddSwitchCase( List<Expression> testValues, IStateNode body )
     {
         CaseNodes.Add( new SwitchCaseDefinition( testValues, body ) );
     }
 
-    internal sealed class SwitchCaseDefinition( List<Expression> testValues, NodeExpression body )
+    internal sealed class SwitchCaseDefinition( List<Expression> testValues, IStateNode body )
     {
         public List<Expression> TestValues = testValues;
-        public NodeExpression Body { get; set; } = body;
+        public IStateNode Body { get; set; } = body;
         public SwitchCase Reduce( int order ) => SwitchCase( GotoOrFallThrough( order, Body ), TestValues );
 
-        internal SwitchCaseDefinition Update( List<Expression> testValues )
-        {
-            // Check if TestValues are the same
-            if ( testValues.SequenceEqual( TestValues ) )
-                return this;
+        //internal SwitchCaseDefinition Update( List<Expression> testValues )
+        //{
+        //    // Check if TestValues are the same
+        //    if ( testValues.SequenceEqual( TestValues ) )
+        //        return this;
 
-            return new SwitchCaseDefinition( testValues, Body );
-        }
+        //    return new SwitchCaseDefinition( testValues, Body );
+        //}
     }
 }

@@ -6,10 +6,10 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 internal class ConditionalTransition : Transition
 {
     public Expression Test { get; set; }
-    public NodeExpression IfTrue { get; set; }
-    public NodeExpression IfFalse { get; set; }
+    public IStateNode IfTrue { get; set; }
+    public IStateNode IfFalse { get; set; }
 
-    internal override NodeExpression FallThroughNode => IfFalse;
+    internal override IStateNode FallThroughNode => IfFalse;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {

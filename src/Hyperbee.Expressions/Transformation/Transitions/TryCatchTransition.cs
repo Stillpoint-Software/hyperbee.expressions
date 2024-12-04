@@ -6,8 +6,8 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 internal class TryCatchTransition : Transition
 {
     internal List<CatchBlockDefinition> CatchBlocks = [];
-    public NodeExpression TryNode { get; set; }
-    public NodeExpression FinallyNode { get; set; }
+    public IStateNode TryNode { get; set; }
+    public IStateNode FinallyNode { get; set; }
 
     public Expression TryStateVariable { get; set; }
     public Expression ExceptionVariable { get; set; }
@@ -15,7 +15,7 @@ internal class TryCatchTransition : Transition
     public StateContext.Scope StateScope { get; init; }
     public List<StateContext.Scope> Scopes { get; init; }
 
-    internal override NodeExpression FallThroughNode => TryNode;
+    internal override IStateNode FallThroughNode => TryNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
@@ -33,8 +33,8 @@ internal class TryCatchTransition : Transition
                     context.StateMachineInfo.StateField
                 )
             };
-
-            body.AddRange( NodeExpression.Merge( StateScope.Nodes, context ) );
+            
+            body.AddRange( StateMachineBuilder.MergeStates( StateScope.Nodes, context ) );
 
             MapCatchBlock( context.NodeInfo.StateOrder, out var catches, out var switchCases );
 
@@ -63,10 +63,10 @@ internal class TryCatchTransition : Transition
 
         for ( var index = 0; index < CatchBlocks.Count; index++ )
         {
-            if ( CatchBlocks[index].UpdateBody is not NodeExpression nodeExpression )
+            if ( CatchBlocks[index].UpdateBody is not IStateNode nodeExpression )
                 continue;
 
-            CatchBlocks[index].UpdateBody = OptimizeGotos( nodeExpression );
+            CatchBlocks[index].UpdateBody = OptimizeGotos( nodeExpression ).AsExpression();
             references.Add( nodeExpression.NodeLabel );
         }
     }

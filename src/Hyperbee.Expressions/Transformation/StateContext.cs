@@ -120,7 +120,7 @@ internal sealed class StateContext
             if ( check.NodeLabel != target )
                 continue;
 
-            node = check;
+            node = check as NodeExpression;
             break;
         }
 
@@ -132,7 +132,7 @@ internal sealed class StateContext
         public int ScopeId { get; }
         public LabelTarget InitialLabel { get; }
         public Scope Parent { get; }
-        public List<NodeExpression> Nodes { get; set; }
+        public List<IStateNode> Nodes { get; set; }
         public List<JumpCase> JumpCases { get; }
 
         public Scope( int scopeId, Scope parent, LabelTarget initialLabel, int initialCapacity )
@@ -140,7 +140,7 @@ internal sealed class StateContext
             Parent = parent;
             ScopeId = scopeId;
             InitialLabel = initialLabel;
-            Nodes = new List<NodeExpression>( initialCapacity );
+            Nodes = new List<IStateNode>( initialCapacity );
             JumpCases = [];
         }
     }

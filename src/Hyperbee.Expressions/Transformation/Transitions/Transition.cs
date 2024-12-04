@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal abstract class Transition
 {
-    internal abstract NodeExpression FallThroughNode { get; }
+    internal abstract IStateNode FallThroughNode { get; }
 
     public virtual void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
@@ -27,8 +27,10 @@ internal abstract class Transition
         if ( value != null && variable.Type.IsAssignableFrom( value.Type ) )
         {
             expressions.Add( Assign( variable, value ) );
+            return;
         }
-        else if ( expressions.Count > 1 )
+
+        if ( expressions.Count > 1 )
         {
             var lastExpression = expressions[^1];
 
@@ -41,17 +43,19 @@ internal abstract class Transition
 
     internal abstract void Optimize( HashSet<LabelTarget> references );
 
-    protected static NodeExpression OptimizeGotos( NodeExpression node )
+    protected static IStateNode OptimizeGotos( IStateNode node )
     {
-        while ( node.IsNoOp && node.Transition is GotoTransition gotoTransition )
+        while ( IsNoOp( node ) && node.Transition is GotoTransition gotoTransition )
         {
             node = gotoTransition.TargetNode;
         }
 
         return node;
+
+        static bool IsNoOp( IStateNode node ) => node.Expressions.Count == 0 && node.Result.Variable == null;
     }
 
-    protected static Expression GotoOrFallThrough( int order, NodeExpression node, bool allowNull = false )
+    protected static Expression GotoOrFallThrough( int order, IStateNode node, bool allowNull = false )
     {
         if ( order + 1 == node.StateOrder )
         {
