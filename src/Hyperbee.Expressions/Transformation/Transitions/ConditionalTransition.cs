@@ -19,7 +19,7 @@ internal class ConditionalTransition : Transition
 
         Expression Expression()
         {
-            var fallThrough = GotoOrFallThrough( context.StateInfo.StateOrder, IfFalse, true );
+            var fallThrough = GotoOrFallThrough( context.StateNode.StateOrder, IfFalse, true );
 
             if ( fallThrough == null )
                 return IfThen( Test, Goto( IfTrue.NodeLabel ) );

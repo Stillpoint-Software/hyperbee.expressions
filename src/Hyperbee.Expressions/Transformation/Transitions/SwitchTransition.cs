@@ -19,7 +19,7 @@ internal class SwitchTransition : Transition
 
         Expression Expression()
         {
-            var stateOrder = context.StateInfo.StateOrder;
+            var stateOrder = context.StateNode.StateOrder;
 
             Expression defaultBody;
 

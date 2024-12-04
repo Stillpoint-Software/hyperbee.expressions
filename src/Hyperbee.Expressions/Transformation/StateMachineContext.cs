@@ -5,15 +5,10 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal sealed class StateMachineContext
 {
-    public StateInfo StateInfo { get; set; } //BF ME - Should this just be: IStateNode CurrentState { get; set; } ?? Feels like _maybe_??
+    public IStateNode StateNode { get; set; }
     public StateMachineInfo StateMachineInfo { get; set; }
     public LoweringInfo LoweringInfo { get; set; }
 }
-
-internal record StateInfo(
-    int StateOrder,
-    StateResult Result
-);
 
 internal record StateMachineInfo(
     ParameterExpression StateMachine,

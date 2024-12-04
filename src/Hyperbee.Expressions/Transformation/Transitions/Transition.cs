@@ -17,7 +17,7 @@ internal abstract class Transition
 
     private static void SetResult( List<Expression> expressions, StateMachineContext context )
     {
-        var (variable, value) = context.StateInfo.Result;
+        var (variable, value) = context.StateNode.Result;
 
         if ( variable == null )
         {

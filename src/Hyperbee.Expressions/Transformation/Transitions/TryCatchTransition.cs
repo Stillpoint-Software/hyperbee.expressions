@@ -36,7 +36,7 @@ internal class TryCatchTransition : Transition
 
             body.AddRange( StateMachineBuilder.MergeStates( StateScope.States, context ) );
 
-            MapCatchBlock( context.StateInfo.StateOrder, out var catches, out var switchCases );
+            MapCatchBlock( context.StateNode.StateOrder, out var catches, out var switchCases );
 
             return [
                 TryCatch(

@@ -41,12 +41,12 @@ internal sealed class StateExpression : Expression, IStateNode //BF ME - NodeExp
         var expressions = new List<Expression>( 8 ) { Label( NodeLabel ) };
         expressions.AddRange( Expressions );
 
-        var prevNodeInfo = context.StateInfo;
-        context.StateInfo = new StateInfo( StateOrder, Result );
+        var prevState = context.StateNode; //BF ME - changed to IStateNode
+        context.StateNode = this;
 
         Transition.AddExpressions( expressions, context );
 
-        context.StateInfo = prevNodeInfo;
+        context.StateNode = prevState;
 
         return expressions.Count == 1
             ? expressions[0]
