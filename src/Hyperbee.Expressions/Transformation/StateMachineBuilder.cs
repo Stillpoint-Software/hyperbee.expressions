@@ -307,7 +307,7 @@ internal class StateMachineBuilder<TResult>
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
         var returnValue = context.LoweringInfo.ReturnValue;
 
-        Expression finalResult = finalResultField.Type != typeof(IVoidResult)
+        Expression finalResult = finalResultField.Type != typeof( IVoidResult )
             ? finalResultField
             : Constant( null, finalResultField.Type ); // No result for IVoidResult
 
@@ -326,7 +326,7 @@ internal class StateMachineBuilder<TResult>
                             Assign( stateField, Constant( -2 ) ),
                             Call(
                                 builderField,
-                                nameof(AsyncTaskMethodBuilder<TResult>.SetResult),
+                                nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
                                 null,
                                 finalResult
                             )

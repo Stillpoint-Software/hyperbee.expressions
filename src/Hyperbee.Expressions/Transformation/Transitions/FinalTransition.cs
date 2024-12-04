@@ -27,14 +27,14 @@ internal class FinalTransition : Transition
         {
             var lastExpression = expressions[^1];
 
-            if ( lastExpression.Type != typeof(void) )
+            if ( lastExpression.Type != typeof( void ) )
             {
                 expressions[^1] = Assign( finalResultField, lastExpression );
             }
             else
             {
                 expressions[^1] = Block(
-                    Assign( finalResultField, Constant( null, typeof(IVoidResult) ) ),
+                    Assign( finalResultField, Constant( null, typeof( IVoidResult ) ) ),
                     lastExpression
                 );
             }

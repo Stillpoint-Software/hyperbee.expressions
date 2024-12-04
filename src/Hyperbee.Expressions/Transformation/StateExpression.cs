@@ -5,7 +5,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 namespace Hyperbee.Expressions.Transformation;
 
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
-internal sealed class StateExpression : Expression, IStateNode 
+internal sealed class StateExpression : Expression, IStateNode
 {
     public int StateId { get; set; }
     public int GroupId { get; set; }

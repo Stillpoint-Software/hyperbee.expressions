@@ -121,7 +121,7 @@ internal sealed class StateContext
             if ( check.NodeLabel != target )
                 continue;
 
-            node = check; 
+            node = check;
             break;
         }
 
@@ -165,7 +165,7 @@ internal sealed class StateContext
             static bool IsDefaultVoid( Expression expression )
             {
                 return expression is DefaultExpression defaultExpression &&
-                       defaultExpression.Type == typeof(void);
+                       defaultExpression.Type == typeof( void );
             }
         }
     }
