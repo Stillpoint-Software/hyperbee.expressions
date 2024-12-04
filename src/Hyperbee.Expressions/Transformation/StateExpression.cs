@@ -5,7 +5,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 namespace Hyperbee.Expressions.Transformation;
 
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
-internal sealed class NodeExpression : Expression, IStateNode //BF ME - NodeExpression to StateExpression ??
+internal sealed class StateExpression : Expression, IStateNode //BF ME - NodeExpression to StateExpression ??
 {
     public int StateId { get; set; }
     public int GroupId { get; set; }
@@ -13,14 +13,14 @@ internal sealed class NodeExpression : Expression, IStateNode //BF ME - NodeExpr
 
     public int StateOrder { get; set; }
 
-    public NodeResult Result { get; set; } = new();
+    public StateResult Result { get; set; } = new();
 
     public LabelTarget NodeLabel { get; set; }
     public List<Expression> Expressions { get; set; } = new( 8 );
 
     public Transition Transition { get; set; }
 
-    public NodeExpression( int stateId, int scopeId, int groupId )
+    public StateExpression( int stateId, int scopeId, int groupId )
     {
         StateId = stateId;
         ScopeId = scopeId;
@@ -41,12 +41,12 @@ internal sealed class NodeExpression : Expression, IStateNode //BF ME - NodeExpr
         var expressions = new List<Expression>( 8 ) { Label( NodeLabel ) };
         expressions.AddRange( Expressions );
 
-        var prevNodeInfo = context.NodeInfo;
-        context.NodeInfo = new NodeInfo( StateOrder, Result );
+        var prevNodeInfo = context.StateInfo;
+        context.StateInfo = new StateInfo( StateOrder, Result );
 
         Transition.AddExpressions( expressions, context );
 
-        context.NodeInfo = prevNodeInfo;
+        context.StateInfo = prevNodeInfo;
 
         return expressions.Count == 1
             ? expressions[0]

@@ -57,7 +57,7 @@ internal class AwaitTransition : Transition
                 )
             };
 
-            var fallThrough = GotoOrFallThrough( context.NodeInfo.StateOrder, CompletionNode, true );
+            var fallThrough = GotoOrFallThrough( context.StateInfo.StateOrder, CompletionNode, true );
 
             if ( fallThrough != null )
                 body.Add( fallThrough );

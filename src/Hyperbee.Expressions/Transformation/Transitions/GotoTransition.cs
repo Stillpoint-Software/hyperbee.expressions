@@ -10,7 +10,7 @@ internal class GotoTransition : Transition
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
         base.AddExpressions( expressions, context );
-        expressions.Add( GotoOrFallThrough( context.NodeInfo.StateOrder, TargetNode ) );
+        expressions.Add( GotoOrFallThrough( context.StateInfo.StateOrder, TargetNode ) );
     }
 
     internal override void Optimize( HashSet<LabelTarget> references )

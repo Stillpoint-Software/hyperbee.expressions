@@ -11,7 +11,7 @@ internal interface IStateNode //BF ME
 
     public int StateOrder { get; set; }
 
-    public NodeResult Result { get; } //BF ME - NodeResult to StateResult ??
+    public StateResult Result { get; } //BF ME - NodeResult to StateResult ??
 
     public LabelTarget NodeLabel { get; }
     public List<Expression> Expressions { get; }

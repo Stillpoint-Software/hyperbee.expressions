@@ -43,7 +43,7 @@ internal class StateMachineBuilder<TResult>
         if ( loweringInfo.AwaitCount == 0 )
             throw new InvalidOperationException( "The target of a lowering operation must contain at least one await." );
 
-        if ( loweringInfo.Scopes[0].Nodes == null )
+        if ( loweringInfo.Scopes[0].States == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
 
         // Create the state-machine builder context
@@ -375,7 +375,7 @@ internal class StateMachineBuilder<TResult>
             stateMachineInfo.StateField
         );
 
-        var bodyBlock = Block( StateMachineBuilder.MergeStates( firstScope.Nodes, context ) );
+        var bodyBlock = Block( StateMachineBuilder.MergeStates( firstScope.States, context ) );
 
         // hoist variables
 

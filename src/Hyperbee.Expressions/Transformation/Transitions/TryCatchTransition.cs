@@ -34,9 +34,9 @@ internal class TryCatchTransition : Transition
                 )
             };
 
-            body.AddRange( StateMachineBuilder.MergeStates( StateScope.Nodes, context ) );
+            body.AddRange( StateMachineBuilder.MergeStates( StateScope.States, context ) );
 
-            MapCatchBlock( context.NodeInfo.StateOrder, out var catches, out var switchCases );
+            MapCatchBlock( context.StateInfo.StateOrder, out var catches, out var switchCases );
 
             return [
                 TryCatch(
@@ -86,7 +86,7 @@ internal class TryCatchTransition : Transition
             catches[index] = catchBlock.Reduce( ExceptionVariable, TryStateVariable );
 
             switchCases[index] = SwitchCase(
-                (catchBlock.UpdateBody is NodeExpression nodeExpression)
+                (catchBlock.UpdateBody is StateExpression nodeExpression)
                     ? GotoOrFallThrough( order, nodeExpression )
                     : Block( typeof( void ), catchBlock.UpdateBody ),
                 Constant( catchBlock.CatchState ) );

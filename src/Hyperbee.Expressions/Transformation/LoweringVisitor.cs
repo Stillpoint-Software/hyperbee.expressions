@@ -47,7 +47,7 @@ internal class LoweringVisitor : ExpressionVisitor
         _states.TailState.Transition = new FinalTransition();
     }
 
-    private NodeExpression VisitBranch( Expression expression, NodeExpression joinState, Expression resultVariable = null, Action<NodeExpression> init = null )
+    private StateExpression VisitBranch( Expression expression, StateExpression joinState, Expression resultVariable = null, Action<StateExpression> init = null )
     {
         // Create a new state for the branch
 
@@ -66,13 +66,13 @@ internal class LoweringVisitor : ExpressionVisitor
         return branchState;
     }
 
-    private void UpdateTailState( Expression visited, NodeExpression defaultTarget = null )
+    private void UpdateTailState( Expression visited, StateExpression defaultTarget = null )
     {
         var tailState = _states.TailState;
 
         // add unhandled the expressions to the tail state
 
-        if ( visited is not NodeExpression )
+        if ( visited is not StateExpression )
         {
             tailState.Expressions.Add( visited );
         }
@@ -122,9 +122,9 @@ internal class LoweringVisitor : ExpressionVisitor
         _variableResolver.AddLocalVariables( node.Variables );
 
         var currentSource = sourceState;
-        NodeExpression firstGoto = null;
+        StateExpression firstGoto = null;
 
-        NodeExpression previousTail = null;
+        StateExpression previousTail = null;
         Expression previousVariable = resultVariable;
 
         foreach ( var expression in node.Expressions )
@@ -229,7 +229,7 @@ internal class LoweringVisitor : ExpressionVisitor
         return sourceState;
 
         // Helper function for assigning loop labels
-        void InitializeLabels( NodeExpression branchState )
+        void InitializeLabels( StateExpression branchState )
         {
             _variableResolver.ResolveLabel( node.ContinueLabel, branchState.NodeLabel );
             _variableResolver.ResolveLabel( node.BreakLabel, joinState.NodeLabel );
@@ -287,7 +287,7 @@ internal class LoweringVisitor : ExpressionVisitor
         var exceptionVariable = _variableResolver.GetExceptionVariable( sourceState.StateId );
 
         // If there is a finally block then that is the join for a try/catch.
-        NodeExpression finalExpression = null;
+        StateExpression finalExpression = null;
 
         if ( node.Finally != null )
         {
@@ -336,7 +336,7 @@ internal class LoweringVisitor : ExpressionVisitor
         var updatedLeft = Visit( node.Left );
         var updatedRight = Visit( node.Right );
 
-        if ( updatedRight is NodeExpression nodeExpression )
+        if ( updatedRight is StateExpression nodeExpression )
         {
             return node.Update( updatedLeft, node.Conversion, nodeExpression.Result.Variable );
         }
@@ -397,7 +397,7 @@ internal class LoweringVisitor : ExpressionVisitor
         // If we already visited a branching node we only want to use the result variable
         // else it is most likely directly awaitable (e.g. Task)
 
-        var targetNode = updatedNode is NodeExpression nodeExpression
+        var targetNode = updatedNode is StateExpression nodeExpression
             ? nodeExpression.Result.Variable
             : updatedNode;
 

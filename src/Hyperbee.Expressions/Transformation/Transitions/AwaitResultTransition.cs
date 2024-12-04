@@ -28,7 +28,7 @@ internal class AwaitResultTransition : Transition
 
             if ( ResultVariable == null )
             {
-                var transition = GotoOrFallThrough( context.NodeInfo.StateOrder, TargetNode );
+                var transition = GotoOrFallThrough( context.StateInfo.StateOrder, TargetNode );
 
                 return transition == Empty()
                     ? [getResultCall]
@@ -38,7 +38,7 @@ internal class AwaitResultTransition : Transition
             return
             [
                 Assign( ResultVariable, getResultCall ),
-                GotoOrFallThrough( context.NodeInfo.StateOrder, TargetNode )
+                GotoOrFallThrough( context.StateInfo.StateOrder, TargetNode )
             ];
         }
     }

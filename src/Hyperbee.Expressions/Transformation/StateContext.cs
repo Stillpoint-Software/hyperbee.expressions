@@ -10,11 +10,11 @@ internal sealed class StateContext
     private int _groupId;
     private readonly int _initialCapacity;
 
-    private readonly Stack<NodeExpression> _joinStates;
+    private readonly Stack<StateExpression> _joinStates;
     private readonly Stack<int> _scopeIndexes;
     public List<Scope> Scopes { get; }
 
-    public NodeExpression TailState { get; private set; }
+    public StateExpression TailState { get; private set; }
 
     private Scope CurrentScope => Scopes[_scopeIndexes.Peek()];
 
@@ -27,7 +27,7 @@ internal sealed class StateContext
             new ( 0, null, null, _initialCapacity ) // root scope
         };
 
-        _joinStates = new Stack<NodeExpression>( _initialCapacity );
+        _joinStates = new Stack<StateExpression>( _initialCapacity );
         _scopeIndexes = new Stack<int>( _initialCapacity );
         _scopeIndexes.Push( 0 ); // root scope index
 
@@ -50,12 +50,12 @@ internal sealed class StateContext
         AddState();
     }
 
-    public Scope EnterScope( NodeExpression initialNode )
+    public Scope EnterScope( StateExpression initialState )
     {
         var parentScope = CurrentScope;
 
         var newScopeId = Scopes.Count;
-        var newScope = new Scope( newScopeId, parentScope, initialNode?.NodeLabel, _initialCapacity );
+        var newScope = new Scope( newScopeId, parentScope, initialState?.NodeLabel, _initialCapacity );
 
         Scopes.Add( newScope );
         _scopeIndexes.Push( newScopeId );
@@ -70,12 +70,12 @@ internal sealed class StateContext
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public NodeExpression EnterGroup( out NodeExpression sourceState )
+    public StateExpression EnterGroup( out StateExpression sourceState )
     {
         var scope = CurrentScope;
-        var joinState = new NodeExpression( _stateId++, scope.ScopeId, _groupId++ );
+        var joinState = new StateExpression( _stateId++, scope.ScopeId, _groupId++ );
 
-        scope.Nodes.Add( joinState );
+        scope.States.Add( joinState );
         _joinStates.Push( joinState );
 
         sourceState = TailState;
@@ -85,21 +85,21 @@ internal sealed class StateContext
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void ExitGroup( NodeExpression sourceState, Transition transition )
+    public void ExitGroup( StateExpression sourceState, Transition transition )
     {
         sourceState.Transition = transition;
         TailState = _joinStates.Pop();
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public NodeExpression AddState()
+    public StateExpression AddState()
     {
         var scope = CurrentScope;
-        var node = new NodeExpression( _stateId++, scope.ScopeId, _groupId );
-        scope.Nodes.Add( node );
-        TailState = node;
+        var state = new StateExpression( _stateId++, scope.ScopeId, _groupId );
+        scope.States.Add( state );
+        TailState = state;
 
-        return node;
+        return state;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -110,21 +110,21 @@ internal sealed class StateContext
         scope.JumpCases.Add( jumpCase );
     }
 
-    public bool TryGetLabelTarget( LabelTarget target, out NodeExpression node )
+    public bool TryGetLabelTarget( LabelTarget target, out StateExpression state )
     {
-        node = null;
+        state = null;
 
-        for ( var index = 0; index < CurrentScope.Nodes.Count; index++ )
+        for ( var index = 0; index < CurrentScope.States.Count; index++ )
         {
-            var check = CurrentScope.Nodes[index];
+            var check = CurrentScope.States[index];
             if ( check.NodeLabel != target )
                 continue;
 
-            node = check as NodeExpression;
+            state = check as StateExpression;
             break;
         }
 
-        return node != null;
+        return state != null;
     }
 
     public sealed class Scope
@@ -132,7 +132,7 @@ internal sealed class StateContext
         public int ScopeId { get; }
         public LabelTarget InitialLabel { get; }
         public Scope Parent { get; }
-        public List<IStateNode> Nodes { get; set; }
+        public List<IStateNode> States { get; set; }
         public List<JumpCase> JumpCases { get; }
 
         public Scope( int scopeId, Scope parent, LabelTarget initialLabel, int initialCapacity )
@@ -140,7 +140,7 @@ internal sealed class StateContext
             Parent = parent;
             ScopeId = scopeId;
             InitialLabel = initialLabel;
-            Nodes = new List<IStateNode>( initialCapacity );
+            States = new List<IStateNode>( initialCapacity );
             JumpCases = [];
         }
     }
