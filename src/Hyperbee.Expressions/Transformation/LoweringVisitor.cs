@@ -253,6 +253,7 @@ internal class LoweringVisitor : ExpressionVisitor
         return sourceState;
 
         // Helper function for assigning loop labels
+
         void InitializeLabels( StateExpression branchState )
         {
             _variableResolver.ResolveLabel( node.ContinueLabel, branchState.NodeLabel );
@@ -419,7 +420,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
-        // If we already visited a branching node we only want to use the result variable
+        // if we already visited a branching node we only want to use the result variable
         // else it is most likely directly awaitable (e.g. Task)
 
         var targetNode = updatedNode is StateExpression nodeExpression

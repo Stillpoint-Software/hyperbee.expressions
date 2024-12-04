@@ -9,6 +9,7 @@ internal class FinalTransition : Transition
 
     internal override void Optimize( HashSet<LabelTarget> references )
     {
+        // nop
     }
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )

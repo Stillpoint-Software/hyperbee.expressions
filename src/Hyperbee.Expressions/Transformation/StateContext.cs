@@ -95,11 +95,11 @@ internal sealed class StateContext
     public StateExpression AddState()
     {
         var scope = CurrentScope;
-        var state = new StateExpression( _stateId++, scope.ScopeId, _groupId );
-        scope.States.Add( state );
-        TailState = state;
+        var newState = new StateExpression( _stateId++, scope.ScopeId, _groupId );
+        scope.States.Add( newState );
+        TailState = newState;
 
-        return state;
+        return newState;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -147,20 +147,20 @@ internal sealed class StateContext
 
         internal List<Expression> GetExpressions( StateMachineContext context )
         {
-            var mergedExpressions = new List<Expression>( 32 );
+            var expressions = new List<Expression>( 32 );
 
             for ( var index = 0; index < States.Count; index++ )
             {
-                var state = States[index];
-                var expression = state.GetExpression( context );
+                var node = States[index];
+                var expression = node.GetExpression( context );
 
                 if ( expression is BlockExpression innerBlock )
-                    mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
+                    expressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
                 else
-                    mergedExpressions.Add( expression );
+                    expressions.Add( expression );
             }
 
-            return mergedExpressions;
+            return expressions;
 
             static bool IsDefaultVoid( Expression expression )
             {
