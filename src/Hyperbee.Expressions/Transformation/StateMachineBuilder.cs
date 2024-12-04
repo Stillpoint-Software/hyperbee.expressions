@@ -302,28 +302,16 @@ internal class StateMachineBuilder<TResult>
             finalResultField
         );
 
-        // Create the body 
-
-        var bodyExpressions = CreateBody( fields, context );
-
-        // Add the final builder result assignment
-
-        bodyExpressions.AddRange(
-        [
-            Assign( stateField, Constant( -2 ) ),
-            Call(
-                builderField,
-                nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
-                null,
-                finalResultField.Type != typeof(IVoidResult)
-                    ? finalResultField
-                    : Constant( null, finalResultField.Type ) // No result for IVoidResult
-            )
-        ] );
-
-        // Create final lambda with try-catch block
+        // lambda expressions
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
+        var returnValue = context.LoweringInfo.ReturnValue;
+
+        Expression finalResult = finalResultField.Type != typeof(IVoidResult)
+            ? finalResultField
+            : Constant( null, finalResultField.Type ); // No result for IVoidResult
+
+        // Create final lambda with try-catch block
 
         return Lambda(
             typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType ),
@@ -331,10 +319,18 @@ internal class StateMachineBuilder<TResult>
                 TryCatch(
                     Block(
                         typeof( void ),
-                        context.LoweringInfo.ReturnValue != null
-                            ? [context.LoweringInfo.ReturnValue]
-                            : null,
-                        bodyExpressions
+                        returnValue != null ? [returnValue] : null,
+                        CreateBody(
+                            fields,
+                            context,
+                            Assign( stateField, Constant( -2 ) ),
+                            Call(
+                                builderField,
+                                nameof(AsyncTaskMethodBuilder<TResult>.SetResult),
+                                null,
+                                finalResult
+                            )
+                        )
                     ),
                     Catch(
                         exceptionParam,
@@ -355,7 +351,7 @@ internal class StateMachineBuilder<TResult>
         );
     }
 
-    private static List<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context )
+    private static IEnumerable<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context, params Expression[] antecedents )
     {
         var stateMachineInfo = context.StateMachineInfo;
         var loweringInfo = context.LoweringInfo;
@@ -376,29 +372,37 @@ internal class StateMachineBuilder<TResult>
             stateMachineInfo.StateField
         );
 
-        var bodyBlock = Block( StateNodeHelper.MergeStates( firstScope.States, context ) );
-
         // hoist variables
 
         var bodyExpressions = HoistVariables(
-            [jumpTable, bodyBlock],
+            jumpTable,
+            firstScope.GetExpressions( context ),
             fields,
             stateMachineInfo.StateMachine
         );
 
-        return bodyExpressions;
+        // return the body expressions
+
+        return bodyExpressions.Concat( antecedents );
     }
 
-    private static List<Expression> HoistVariables( IReadOnlyList<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
+    private static IEnumerable<Expression> HoistVariables( Expression jumpTable, List<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
     {
         var fieldMembers = fields
             .Select( field => Field( stateMachine, field ) )
             .ToDictionary( x => x.Member.Name );
 
         var hoistingVisitor = new HoistingVisitor( fieldMembers );
-        var hoisted = expressions.Select( hoistingVisitor.Visit ).ToList();
 
-        return hoisted;
+        return HoistingSource().Select( hoistingVisitor.Visit );
+
+        IEnumerable<Expression> HoistingSource()
+        {
+            yield return jumpTable;
+
+            foreach ( var expression in expressions )
+                yield return expression;
+        }
     }
 
     private sealed class HoistingVisitor( IDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor
@@ -457,6 +461,4 @@ public static class StateMachineBuilder
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }
-
-
 }

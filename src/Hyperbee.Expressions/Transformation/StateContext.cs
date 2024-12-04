@@ -110,21 +110,22 @@ internal sealed class StateContext
         scope.JumpCases.Add( jumpCase );
     }
 
-    public bool TryGetLabelTarget( LabelTarget target, out StateExpression state )
+    public bool TryGetLabelTarget( LabelTarget target, out IStateNode node )
     {
-        state = null;
+        node = null;
 
         for ( var index = 0; index < CurrentScope.States.Count; index++ )
         {
             var check = CurrentScope.States[index];
+
             if ( check.NodeLabel != target )
                 continue;
 
-            state = check as StateExpression;
+            node = check; 
             break;
         }
 
-        return state != null;
+        return node != null;
     }
 
     public sealed class Scope
@@ -142,6 +143,30 @@ internal sealed class StateContext
             InitialLabel = initialLabel;
             States = new List<IStateNode>( initialCapacity );
             JumpCases = [];
+        }
+
+        internal List<Expression> GetExpressions( StateMachineContext context )
+        {
+            var mergedExpressions = new List<Expression>( 32 );
+
+            for ( var index = 0; index < States.Count; index++ )
+            {
+                var state = States[index];
+                var expression = state.GetExpression( context );
+
+                if ( expression is BlockExpression innerBlock )
+                    mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
+                else
+                    mergedExpressions.Add( expression );
+            }
+
+            return mergedExpressions;
+
+            static bool IsDefaultVoid( Expression expression )
+            {
+                return expression is DefaultExpression defaultExpression &&
+                       defaultExpression.Type == typeof(void);
+            }
         }
     }
 

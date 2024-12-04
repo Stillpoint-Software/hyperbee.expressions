@@ -336,12 +336,12 @@ internal class LoweringVisitor : ExpressionVisitor
         var updatedLeft = Visit( node.Left );
         var updatedRight = Visit( node.Right );
 
-        if ( updatedRight is StateExpression nodeExpression )
+        if ( updatedRight is not StateExpression nodeExpression )
         {
-            return node.Update( updatedLeft, node.Conversion, nodeExpression.Result.Variable );
+            return node.Update( updatedLeft, node.Conversion, updatedRight );
         }
 
-        return node.Update( updatedLeft, node.Conversion, updatedRight );
+        return node.Update( updatedLeft, node.Conversion, nodeExpression.Result.Variable );
     }
 
     // Override method for extension expression types

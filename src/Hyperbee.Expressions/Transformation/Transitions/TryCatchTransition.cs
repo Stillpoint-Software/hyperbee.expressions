@@ -34,7 +34,7 @@ internal class TryCatchTransition : Transition
                 )
             };
 
-            body.AddRange( StateNodeHelper.MergeStates( StateScope.States, context ) );
+            body.AddRange( StateScope.GetExpressions( context ) );
 
             MapCatchBlock( context.StateNode.StateOrder, out var catches, out var switchCases );
 
@@ -63,11 +63,8 @@ internal class TryCatchTransition : Transition
 
         for ( var index = 0; index < CatchBlocks.Count; index++ )
         {
-            if ( CatchBlocks[index].UpdateBody is not IStateNode nodeExpression )
-                continue;
-
-            CatchBlocks[index].UpdateBody = OptimizeGotos( nodeExpression ).AsExpression();
-            references.Add( nodeExpression.NodeLabel );
+            if ( CatchBlocks[index].UpdateBody is IStateNode state )
+                references.Add( state.NodeLabel );
         }
     }
 
@@ -86,9 +83,9 @@ internal class TryCatchTransition : Transition
             catches[index] = catchBlock.Reduce( ExceptionVariable, TryStateVariable );
 
             switchCases[index] = SwitchCase(
-                (catchBlock.UpdateBody is StateExpression nodeExpression)
-                    ? GotoOrFallThrough( order, nodeExpression )
-                    : Block( typeof( void ), catchBlock.UpdateBody ),
+                (catchBlock.UpdateBody is not IStateNode node)
+                    ? Block( typeof( void ), catchBlock.UpdateBody )
+                    : GotoOrFallThrough( order, node ),
                 Constant( catchBlock.CatchState ) );
         }
 
@@ -140,12 +137,5 @@ internal class TryCatchTransition : Transition
         public CatchBlock Handler { get; init; } = handler;
         public Expression UpdateBody { get; internal set; } = updateBody;
         public int CatchState { get; init; } = catchState;
-
-        public void Deconstruct( out CatchBlock handler, out Expression updateBody, out int catchState )
-        {
-            handler = Handler;
-            updateBody = UpdateBody;
-            catchState = CatchState;
-        }
     }
 }

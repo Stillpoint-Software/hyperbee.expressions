@@ -68,14 +68,5 @@ internal class SwitchTransition : Transition
         public List<Expression> TestValues = testValues;
         public IStateNode Body { get; set; } = body;
         public SwitchCase Reduce( int order ) => SwitchCase( GotoOrFallThrough( order, Body ), TestValues );
-
-        //internal SwitchCaseDefinition Update( List<Expression> testValues )
-        //{
-        //    // Check if TestValues are the same
-        //    if ( testValues.SequenceEqual( TestValues ) )
-        //        return this;
-
-        //    return new SwitchCaseDefinition( testValues, Body );
-        //}
     }
 }

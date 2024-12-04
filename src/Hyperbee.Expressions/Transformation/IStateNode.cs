@@ -3,7 +3,7 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal interface IStateNode //BF ME
+internal interface IStateNode 
 {
     public int StateId { get; }
     public int GroupId { get; }
@@ -19,6 +19,4 @@ internal interface IStateNode //BF ME
     public Transition Transition { get; }
 
     public Expression GetExpression( StateMachineContext context );
-
-    public Expression AsExpression() => this as Expression;
 }
