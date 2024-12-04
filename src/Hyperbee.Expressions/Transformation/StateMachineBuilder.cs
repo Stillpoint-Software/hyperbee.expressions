@@ -18,7 +18,8 @@ internal class StateMachineBuilder<TResult>
 
     protected static class FieldName
     {
-        // use special names to prevent collisions with user fields
+        // special names to prevent collisions with user identifiers
+
         public const string Builder = "__builder<>";
         public const string FinalResult = "__finalResult<>";
         public const string MoveNextDelegate = "__moveNextDelegate<>";
@@ -43,7 +44,7 @@ internal class StateMachineBuilder<TResult>
         if ( loweringInfo.AwaitCount == 0 )
             throw new InvalidOperationException( "The target of a lowering operation must contain at least one await." );
 
-        if ( loweringInfo.Scopes[0].Nodes == null )
+        if ( loweringInfo.Scopes[0].States == null )
             throw new InvalidOperationException( "States must be set before creating state machine." );
 
         // Create the state-machine builder context
@@ -86,12 +87,12 @@ internal class StateMachineBuilder<TResult>
         bodyExpression.Add( assignStateField );
 
         // create local copy of extern variables on state-machine
+
         foreach ( var externVariable in loweringInfo.ExternVariables )
         {
             var field = fields.First( field => field.Name == externVariable.Name );
-            var fieldExpression = Field( stateMachineVariable, field );
             var assignField = Assign(
-                fieldExpression,
+                Field( stateMachineVariable, field ),
                 externVariable
             );
             bodyExpression.Add( assignField );
@@ -301,28 +302,16 @@ internal class StateMachineBuilder<TResult>
             finalResultField
         );
 
-        // Create the body expressions
-
-        var bodyExpressions = CreateBody( fields, context );
-
-        // Add the final builder result assignment
-
-        bodyExpressions.AddRange(
-        [
-            Assign( stateField, Constant( -2 ) ),
-            Call(
-                builderField,
-                nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
-                null,
-                finalResultField.Type != typeof(IVoidResult)
-                    ? finalResultField
-                    : Constant( null, finalResultField.Type ) // No result for IVoidResult
-            )
-        ] );
-
-        // Create final lambda with try-catch block
+        // lambda expressions
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
+        var returnValue = context.LoweringInfo.ReturnValue;
+
+        Expression finalResult = finalResultField.Type != typeof( IVoidResult )
+            ? finalResultField
+            : Constant( null, finalResultField.Type ); // No result for IVoidResult
+
+        // Create final lambda with try-catch block
 
         return Lambda(
             typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType ),
@@ -330,10 +319,18 @@ internal class StateMachineBuilder<TResult>
                 TryCatch(
                     Block(
                         typeof( void ),
-                        context.LoweringInfo.ReturnValue != null
-                            ? [context.LoweringInfo.ReturnValue]
-                            : null,
-                        bodyExpressions
+                        returnValue != null ? [returnValue] : null,
+                        CreateBody(
+                            fields,
+                            context,
+                            Assign( stateField, Constant( -2 ) ),
+                            Call(
+                                builderField,
+                                nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
+                                null,
+                                finalResult
+                            )
+                        )
                     ),
                     Catch(
                         exceptionParam,
@@ -354,7 +351,7 @@ internal class StateMachineBuilder<TResult>
         );
     }
 
-    private static List<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context )
+    private static IEnumerable<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context, params Expression[] antecedents )
     {
         var stateMachineInfo = context.StateMachineInfo;
         var loweringInfo = context.LoweringInfo;
@@ -367,7 +364,7 @@ internal class StateMachineBuilder<TResult>
 
         // Create the body expressions
 
-        var firstScope = scopes.First();
+        var firstScope = scopes[0];
 
         var jumpTable = JumpTableBuilder.Build(
             firstScope,
@@ -375,29 +372,37 @@ internal class StateMachineBuilder<TResult>
             stateMachineInfo.StateField
         );
 
-        var bodyBlock = Block( NodeExpression.Merge( firstScope.Nodes, context ) );
-
         // hoist variables
 
         var bodyExpressions = HoistVariables(
-            [jumpTable, bodyBlock],
+            jumpTable,
+            firstScope.GetExpressions( context ),
             fields,
             stateMachineInfo.StateMachine
         );
 
-        return bodyExpressions;
+        // return the body expressions
+
+        return bodyExpressions.Concat( antecedents );
     }
 
-    private static List<Expression> HoistVariables( List<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
+    private static IEnumerable<Expression> HoistVariables( Expression jumpTable, List<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
     {
         var fieldMembers = fields
             .Select( field => Field( stateMachine, field ) )
             .ToDictionary( x => x.Member.Name );
 
         var hoistingVisitor = new HoistingVisitor( fieldMembers );
-        var hoisted = expressions.Select( hoistingVisitor.Visit ).ToList();
 
-        return hoisted;
+        return HoistingSource().Select( hoistingVisitor.Visit );
+
+        IEnumerable<Expression> HoistingSource()
+        {
+            yield return jumpTable;
+
+            foreach ( var expression in expressions )
+                yield return expression;
+        }
     }
 
     private sealed class HoistingVisitor( IDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor

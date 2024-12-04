@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal class FinalTransition : Transition
 {
-    internal override NodeExpression FallThroughNode => null;
+    internal override IStateNode FallThroughNode => null;
 
     internal override void Optimize( HashSet<LabelTarget> references )
     {
@@ -27,23 +27,23 @@ internal class FinalTransition : Transition
         {
             var lastExpression = expressions[^1];
 
-            if ( lastExpression.Type == typeof( void ) )
+            if ( lastExpression.Type != typeof( void ) )
+            {
+                expressions[^1] = Assign( finalResultField, lastExpression );
+            }
+            else
             {
                 expressions[^1] = Block(
                     Assign( finalResultField, Constant( null, typeof( IVoidResult ) ) ),
                     lastExpression
                 );
             }
-            else
-            {
-                expressions[^1] = Assign( finalResultField, lastExpression );
-            }
 
             return;
         }
 
         expressions.Add(
-            Assign( finalResultField, context.NodeInfo.Result.Value ?? Constant( null, typeof( IVoidResult ) ) )
+            Assign( finalResultField, context.StateNode.Result.Value ?? Constant( null, typeof( IVoidResult ) ) )
         );
     }
 }

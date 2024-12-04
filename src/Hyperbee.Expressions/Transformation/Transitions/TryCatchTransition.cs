@@ -6,8 +6,8 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 internal class TryCatchTransition : Transition
 {
     internal List<CatchBlockDefinition> CatchBlocks = [];
-    public NodeExpression TryNode { get; set; }
-    public NodeExpression FinallyNode { get; set; }
+    public IStateNode TryNode { get; set; }
+    public IStateNode FinallyNode { get; set; }
 
     public Expression TryStateVariable { get; set; }
     public Expression ExceptionVariable { get; set; }
@@ -15,7 +15,7 @@ internal class TryCatchTransition : Transition
     public StateContext.Scope StateScope { get; init; }
     public List<StateContext.Scope> Scopes { get; init; }
 
-    internal override NodeExpression FallThroughNode => TryNode;
+    internal override IStateNode FallThroughNode => TryNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
@@ -34,9 +34,9 @@ internal class TryCatchTransition : Transition
                 )
             };
 
-            body.AddRange( NodeExpression.Merge( StateScope.Nodes, context ) );
+            body.AddRange( StateScope.GetExpressions( context ) );
 
-            MapCatchBlock( context.NodeInfo.StateOrder, out var catches, out var switchCases );
+            MapCatchBlock( context.StateNode.StateOrder, out var catches, out var switchCases );
 
             return [
                 TryCatch(
@@ -63,11 +63,8 @@ internal class TryCatchTransition : Transition
 
         for ( var index = 0; index < CatchBlocks.Count; index++ )
         {
-            if ( CatchBlocks[index].UpdateBody is not NodeExpression nodeExpression )
-                continue;
-
-            CatchBlocks[index].UpdateBody = OptimizeGotos( nodeExpression );
-            references.Add( nodeExpression.NodeLabel );
+            if ( CatchBlocks[index].UpdateBody is IStateNode state )
+                references.Add( state.NodeLabel );
         }
     }
 
@@ -86,9 +83,9 @@ internal class TryCatchTransition : Transition
             catches[index] = catchBlock.Reduce( ExceptionVariable, TryStateVariable );
 
             switchCases[index] = SwitchCase(
-                (catchBlock.UpdateBody is NodeExpression nodeExpression)
-                    ? GotoOrFallThrough( order, nodeExpression )
-                    : Block( typeof( void ), catchBlock.UpdateBody ),
+                (catchBlock.UpdateBody is not IStateNode node)
+                    ? Block( typeof( void ), catchBlock.UpdateBody )
+                    : GotoOrFallThrough( order, node ),
                 Constant( catchBlock.CatchState ) );
         }
 
@@ -140,12 +137,5 @@ internal class TryCatchTransition : Transition
         public CatchBlock Handler { get; init; } = handler;
         public Expression UpdateBody { get; internal set; } = updateBody;
         public int CatchState { get; init; } = catchState;
-
-        public void Deconstruct( out CatchBlock handler, out Expression updateBody, out int catchState )
-        {
-            handler = Handler;
-            updateBody = UpdateBody;
-            catchState = CatchState;
-        }
     }
 }

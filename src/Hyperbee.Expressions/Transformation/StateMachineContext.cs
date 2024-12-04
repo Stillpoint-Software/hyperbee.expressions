@@ -5,15 +5,10 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal sealed class StateMachineContext
 {
-    public NodeInfo NodeInfo { get; set; }
+    public IStateNode StateNode { get; set; }
     public StateMachineInfo StateMachineInfo { get; set; }
     public LoweringInfo LoweringInfo { get; set; }
 }
-
-internal record NodeInfo(
-    int StateOrder,
-    NodeResult Result
-);
 
 internal record StateMachineInfo(
     ParameterExpression StateMachine,

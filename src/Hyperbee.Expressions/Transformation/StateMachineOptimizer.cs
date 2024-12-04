@@ -22,12 +22,11 @@ internal sealed class StateMachineOptimizer
 
     private static void OptimizeOrder( ref int stateOrder, StateContext.Scope scope, HashSet<LabelTarget> references )
     {
-        var nodes = scope.Nodes;
+        var nodes = scope.States;
 
-        var visited = new HashSet<NodeExpression>( nodes.Count );
+        var visited = new HashSet<IStateNode>( nodes.Count );
 
-
-        NodeExpression finalNode = null;
+        IStateNode finalNode = null;
 
         // Add scope references to the set
 
@@ -74,7 +73,7 @@ internal sealed class StateMachineOptimizer
 
         static void SetScopeReferences( StateContext.Scope scope, HashSet<LabelTarget> references )
         {
-            references.Add( scope.Nodes[0].NodeLabel ); // start node
+            references.Add( scope.States[0].NodeLabel ); // start node
 
             foreach ( var jumpCase in scope.JumpCases ) // jump cases
             {
@@ -88,7 +87,7 @@ internal sealed class StateMachineOptimizer
     {
         foreach ( var scope in scopes )
         {
-            scope.Nodes.RemoveAll( node => !references.Contains( node.NodeLabel ) );
+            scope.States.RemoveAll( node => !references.Contains( node.NodeLabel ) );
         }
     }
 }
