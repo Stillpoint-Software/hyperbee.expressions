@@ -127,9 +127,9 @@ internal sealed class VariableResolver : ExpressionVisitor
                     continue;
                 }
 
-                var newVar = Parameter( 
-                    variable.Type, 
-                    VariableName.ExternVariable( variable.Name, _states.TailState.StateId, ref _variableId ) 
+                var newVar = Parameter(
+                    variable.Type,
+                    VariableName.ExternVariable( variable.Name, _states.TailState.StateId, ref _variableId )
                 );
 
                 _externVariableMap.TryAdd( variable, newVar );

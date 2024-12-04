@@ -222,9 +222,9 @@ internal class StateMachineBuilder<TResult>
 
         var ilGenerator = setStateMachineMethod.GetILGenerator();
 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); 
-        ilGenerator.Emit( OpCodes.Ldflda, builderFieldInfo ); 
-        ilGenerator.Emit( OpCodes.Ldarg_1 ); 
+        ilGenerator.Emit( OpCodes.Ldarg_0 );
+        ilGenerator.Emit( OpCodes.Ldflda, builderFieldInfo );
+        ilGenerator.Emit( OpCodes.Ldarg_1 );
 
         var setStateMachineOnBuilder = builderFieldInfo
             .FieldType
@@ -256,9 +256,9 @@ internal class StateMachineBuilder<TResult>
 
         var ilGenerator = moveNextMethod.GetILGenerator();
 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); 
-        ilGenerator.Emit( OpCodes.Ldfld, moveNextDelegateField ); 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); 
+        ilGenerator.Emit( OpCodes.Ldarg_0 );
+        ilGenerator.Emit( OpCodes.Ldfld, moveNextDelegateField );
+        ilGenerator.Emit( OpCodes.Ldarg_0 );
 
         var openInvokeMethod = typeof( MoveNextDelegate<> ).GetMethod( "Invoke" )!;
         var invokeMethod = TypeBuilder.GetMethod( moveNextDelegateType, openInvokeMethod );
