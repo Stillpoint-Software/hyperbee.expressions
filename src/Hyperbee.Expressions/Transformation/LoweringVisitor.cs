@@ -310,7 +310,8 @@ internal class LoweringVisitor : ExpressionVisitor
         var tryStateVariable = _variableResolver.GetTryVariable( sourceState.StateId );
         var exceptionVariable = _variableResolver.GetExceptionVariable( sourceState.StateId );
 
-        // If there is a finally block then that is the join for a try/catch.
+        // if there is a finally block then that is the join for a try/catch.
+
         StateExpression finalExpression = null;
 
         if ( node.Finally != null )
