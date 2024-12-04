@@ -21,7 +21,7 @@ internal class StateMachineBuilder<TResult>
         // special names to prevent collisions with user identifiers
 
         public const string Builder = "__builder<>";
-        public const string FinalResult = "__finalResult<>";
+        public const string FinalResult = "__final<>";
         public const string MoveNextDelegate = "__moveNextDelegate<>";
         public const string State = "__state<>";
 
@@ -177,7 +177,7 @@ internal class StateMachineBuilder<TResult>
 
         // variables from this state-machine
 
-        foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>() )
+        foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>().Where( v => !FieldName.IsSystemField( v.Name ) ) )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -205,9 +205,7 @@ internal class StateMachineBuilder<TResult>
         // Close the type builder
         var stateMachineType = typeBuilder.CreateType();
 
-        fields = stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public )
-            .Where( field => !FieldName.IsSystemField( field.Name ) )
-            .ToArray();
+        fields = [.. stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public )];
 
         return stateMachineType;
     }
@@ -305,7 +303,6 @@ internal class StateMachineBuilder<TResult>
         // lambda expressions
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
-        var returnValue = context.LoweringInfo.ReturnValue;
 
         Expression finalResult = finalResultField.Type != typeof( IVoidResult )
             ? finalResultField
@@ -319,7 +316,6 @@ internal class StateMachineBuilder<TResult>
                 TryCatch(
                     Block(
                         typeof( void ),
-                        returnValue != null ? [returnValue] : null,
                         CreateBody(
                             fields,
                             context,

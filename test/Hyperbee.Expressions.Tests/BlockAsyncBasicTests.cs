@@ -258,6 +258,31 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( true )]
     [DataRow( false )]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithReturnLabel( bool immediateFlag )
+    {
+        // Arrange
+        var returnLabel = Label( typeof( int ) );
+        var block = BlockAsync( 
+            IfThenElse( 
+                Constant( true ),
+                Return( returnLabel, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) ) ),
+                Return( returnLabel, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 20 ) ) ) )
+            ),
+            Label( returnLabel, Constant( 30 ) )
+        );
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda(); // Should complete without exception
+
+        // Assert
+        Assert.AreEqual( 10, result ); // The last operation is asynchronous and returns 10
+    }
+
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
     public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait( bool immediateFlag )
     {
         // Arrange

@@ -9,7 +9,7 @@ internal class LoweringVisitor : ExpressionVisitor
 {
     private const int InitialCapacity = 4;
 
-    private ParameterExpression _returnValue;
+    private ParameterExpression _finalResultVariable;
 
     private int _awaitCount;
 
@@ -27,7 +27,7 @@ internal class LoweringVisitor : ExpressionVisitor
         return new LoweringInfo
         {
             Scopes = _states.Scopes,
-            ReturnValue = _returnValue,
+            HasFinalResultVariable = _finalResultVariable != null,
             AwaitCount = _awaitCount,
             Variables = _variableResolver.GetMappedVariables(),
             ExternVariables = externVariables
@@ -198,9 +198,9 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
             return updateNode;
 
-        _returnValue ??= _variableResolver.GetReturnVariable( gotoExpression.Value!.Type );
+        _finalResultVariable ??= _variableResolver.GetFinalResult( gotoExpression );
 
-        return Expression.Assign( _returnValue, gotoExpression.Value! );
+        return Expression.Assign( _finalResultVariable, gotoExpression.Value! );
     }
 
     protected override Expression VisitLoop( LoopExpression node )

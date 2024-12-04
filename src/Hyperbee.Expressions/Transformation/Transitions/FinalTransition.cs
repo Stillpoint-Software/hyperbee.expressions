@@ -13,15 +13,10 @@ internal class FinalTransition : Transition
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        var finalResultField = context.StateMachineInfo.FinalResultField;
-
-        var returnValue = context.LoweringInfo.ReturnValue;
-
-        if ( returnValue != null )
-        {
-            expressions.Add( Assign( finalResultField, returnValue ) );
+        if( context.LoweringInfo.HasFinalResultVariable )
             return;
-        }
+
+        var finalResultField = context.StateMachineInfo.FinalResultField;
 
         if ( expressions.Count > 1 )
         {
@@ -30,16 +25,8 @@ internal class FinalTransition : Transition
             if ( lastExpression.Type != typeof( void ) )
             {
                 expressions[^1] = Assign( finalResultField, lastExpression );
+                return;
             }
-            else
-            {
-                expressions[^1] = Block(
-                    Assign( finalResultField, Constant( null, typeof( IVoidResult ) ) ),
-                    lastExpression
-                );
-            }
-
-            return;
         }
 
         expressions.Add(

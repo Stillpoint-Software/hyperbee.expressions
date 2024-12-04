@@ -26,7 +26,7 @@ internal sealed class VariableResolver : ExpressionVisitor
         [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string ExternVariable( string name, int stateId, ref int variableId ) => $"__extern.{name}<{stateId}_{variableId++}>";
 
-        public const string Return = "__return<>";
+        public const string FinalResult = "__final<>";
     }
 
     private const int InitialCapacity = 8;
@@ -77,9 +77,9 @@ internal sealed class VariableResolver : ExpressionVisitor
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public ParameterExpression GetReturnVariable( Type type )
+    public ParameterExpression GetFinalResult( GotoExpression gotoExpression )
     {
-        return AddVariable( Expression.Variable( type, VariableName.Return ) );
+        return AddVariable( Expression.Variable( gotoExpression.Value.Type, VariableName.FinalResult ) );
     }
 
     // Resolving Visitor

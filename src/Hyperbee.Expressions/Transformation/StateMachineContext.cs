@@ -23,6 +23,6 @@ internal record LoweringInfo
     public IReadOnlyList<StateContext.Scope> Scopes { get; init; }
     public IReadOnlyCollection<Expression> Variables { get; init; }
     public IReadOnlyCollection<ParameterExpression> ExternVariables { get; init; }
-    public ParameterExpression ReturnValue { get; init; }
     public int AwaitCount { get; init; }
+    public bool HasFinalResultVariable { get; internal set; }
 }
