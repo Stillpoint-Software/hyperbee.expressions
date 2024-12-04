@@ -477,7 +477,7 @@ public static class StateMachineBuilder
         static bool IsDefaultVoid( Expression expression )
         {
             return expression is DefaultExpression defaultExpression &&
-                   defaultExpression.Type == typeof(void);
+                   defaultExpression.Type == typeof( void );
         }
     }
 }

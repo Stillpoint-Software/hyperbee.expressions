@@ -33,7 +33,7 @@ internal class TryCatchTransition : Transition
                     context.StateMachineInfo.StateField
                 )
             };
-            
+
             body.AddRange( StateMachineBuilder.MergeStates( StateScope.Nodes, context ) );
 
             MapCatchBlock( context.NodeInfo.StateOrder, out var catches, out var switchCases );
