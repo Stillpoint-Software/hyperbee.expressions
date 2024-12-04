@@ -10,6 +10,7 @@ internal class LoweringVisitor : ExpressionVisitor
     private const int InitialCapacity = 4;
 
     private ParameterExpression _finalResultVariable;
+    private bool _hasFinalResultVariable;
 
     private int _awaitCount;
 
@@ -18,20 +19,30 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private VariableResolver _variableResolver;
 
-    public LoweringInfo Transform( ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] externVariables )
+    public LoweringInfo Transform( Type resultType, ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] externVariables )
     {
         _variableResolver = new VariableResolver( variables, _states );
+        _finalResultVariable = CreateFinalResultVariable( resultType, _variableResolver );
 
         VisitExpressions( expressions );
 
         return new LoweringInfo
         {
             Scopes = _states.Scopes,
-            HasFinalResultVariable = _finalResultVariable != null,
+            HasFinalResultVariable = _hasFinalResultVariable,
             AwaitCount = _awaitCount,
             Variables = _variableResolver.GetMappedVariables(),
             ExternVariables = externVariables
         };
+
+        static ParameterExpression CreateFinalResultVariable( Type resultType, VariableResolver resolver )
+        {
+            var finalResultType = resultType == typeof(void) 
+                ? typeof(IVoidResult) 
+                : resultType;
+
+            return resolver.GetFinalResult( finalResultType );
+        }
     }
 
     // Visit methods
@@ -44,7 +55,20 @@ internal class LoweringVisitor : ExpressionVisitor
             UpdateTailState( updateNode );
         }
 
-        _states.TailState.Transition = new FinalTransition();
+        // update the final state
+
+        var tailState = _states.TailState;
+
+        if ( !_hasFinalResultVariable )
+        {
+            // assign the final result variable if not already assigned for state-machine builder.
+            // this is the case when the last expression is not a return statement.
+            // this will ensure that the state-machine builder will have a final result field.
+
+            tailState.Result.Variable = _finalResultVariable;
+        }
+
+        tailState.Transition = new FinalTransition();
     }
 
     private StateExpression VisitBranch( Expression expression, StateExpression joinState, Expression resultVariable = null, Action<StateExpression> init = null )
@@ -198,7 +222,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
             return updateNode;
 
-        _finalResultVariable ??= _variableResolver.GetFinalResult( gotoExpression );
+        _hasFinalResultVariable = true;
 
         return Expression.Assign( _finalResultVariable, gotoExpression.Value! );
     }

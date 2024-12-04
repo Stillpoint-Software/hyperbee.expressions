@@ -77,9 +77,9 @@ internal sealed class VariableResolver : ExpressionVisitor
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public ParameterExpression GetFinalResult( GotoExpression gotoExpression )
+    public ParameterExpression GetFinalResult( Type type )
     {
-        return AddVariable( Expression.Variable( gotoExpression.Value.Type, VariableName.FinalResult ) );
+        return AddVariable( Expression.Variable( type, VariableName.FinalResult ) );
     }
 
     // Resolving Visitor

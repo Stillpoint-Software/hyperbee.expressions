@@ -50,6 +50,7 @@ public class AsyncBlockExpression : Expression
         var visitor = new LoweringVisitor();
 
         var loweringInfo = visitor.Transform(
+            Result.Type,
             [.. Variables],
             [.. Expressions],
             ExternVariables != null ? [.. ExternVariables] : []

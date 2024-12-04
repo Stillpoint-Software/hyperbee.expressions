@@ -169,15 +169,9 @@ internal class StateMachineBuilder<TResult>
             FieldAttributes.Public
         );
 
-        typeBuilder.DefineField(
-            FieldName.FinalResult,
-            typeof( TResult ),
-            FieldAttributes.Public
-        );
-
         // variables from this state-machine
 
-        foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>().Where( v => !FieldName.IsSystemField( v.Name ) ) )
+        foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>() )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -300,15 +294,9 @@ internal class StateMachineBuilder<TResult>
             finalResultField
         );
 
-        // lambda expressions
+        // Create final lambda with try-catch block
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
-
-        Expression finalResult = finalResultField.Type != typeof( IVoidResult )
-            ? finalResultField
-            : Constant( null, finalResultField.Type ); // No result for IVoidResult
-
-        // Create final lambda with try-catch block
 
         return Lambda(
             typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType ),
@@ -324,7 +312,7 @@ internal class StateMachineBuilder<TResult>
                                 builderField,
                                 nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
                                 null,
-                                finalResult
+                                finalResultField
                             )
                         )
                     ),
