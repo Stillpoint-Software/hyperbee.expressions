@@ -14,7 +14,7 @@ internal interface IStateNode //BF ME
     public NodeResult Result { get; } //BF ME - NodeResult to StateResult ??
 
     public LabelTarget NodeLabel { get; }
-    public List<Expression> Expressions { get; } 
+    public List<Expression> Expressions { get; }
 
     public Transition Transition { get; }
 
