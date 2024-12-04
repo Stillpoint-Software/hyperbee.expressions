@@ -262,8 +262,8 @@ public class BlockAsyncBasicTests
     {
         // Arrange
         var returnLabel = Label( typeof( int ) );
-        var block = BlockAsync( 
-            IfThenElse( 
+        var block = BlockAsync(
+            IfThenElse(
                 Constant( true ),
                 Return( returnLabel, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) ) ),
                 Return( returnLabel, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 20 ) ) ) )

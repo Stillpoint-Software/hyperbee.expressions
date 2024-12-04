@@ -13,7 +13,7 @@ internal class FinalTransition : Transition
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        if( context.LoweringInfo.HasFinalResultVariable )
+        if ( context.LoweringInfo.HasFinalResultVariable )
             return;
 
         var finalResultField = context.StateMachineInfo.FinalResultField;
