@@ -206,7 +206,11 @@ internal sealed class VariableResolver : ExpressionVisitor
         return variable;
     }
 
-    private bool TryAddVariable( ParameterExpression parameter, Func<ParameterExpression, ParameterExpression> createParameter, out ParameterExpression updatedParameterExpression )
+    private bool TryAddVariable( 
+        ParameterExpression parameter, 
+        Func<ParameterExpression, ParameterExpression> createParameter, 
+        out ParameterExpression updatedParameterExpression 
+    )
     {
         if ( _variableMap.TryGetValue( parameter, out updatedParameterExpression ) ||
              _externVariableMap.TryGetValue( parameter, out updatedParameterExpression ) )
