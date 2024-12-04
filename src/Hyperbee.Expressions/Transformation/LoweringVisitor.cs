@@ -37,8 +37,8 @@ internal class LoweringVisitor : ExpressionVisitor
 
         static ParameterExpression CreateFinalResultVariable( Type resultType, VariableResolver resolver )
         {
-            var finalResultType = resultType == typeof(void) 
-                ? typeof(IVoidResult) 
+            var finalResultType = resultType == typeof( void )
+                ? typeof( IVoidResult )
                 : resultType;
 
             return resolver.GetFinalResult( finalResultType );

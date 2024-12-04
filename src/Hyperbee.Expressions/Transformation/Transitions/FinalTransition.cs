@@ -20,9 +20,9 @@ internal class FinalTransition : Transition
             return;
         }
 
-        if ( expressions.Count <= 1 || expressions[^1].Type == typeof(void) )
+        if ( expressions.Count <= 1 || expressions[^1].Type == typeof( void ) )
         {
-            value ??= Constant( null, typeof(IVoidResult) );
+            value ??= Constant( null, typeof( IVoidResult ) );
             expressions.Add( Assign( variable, value ) );
             return;
         }
