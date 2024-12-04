@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation.Transitions;
 
@@ -6,22 +6,22 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal interface IStateNode //BF ME
 {
-   public int StateId { get; }
-   public int GroupId { get; }
-   public int ScopeId { get; }
+    public int StateId { get; }
+    public int GroupId { get; }
+    public int ScopeId { get; }
 
-   public int StateOrder { get; set; }
+    public int StateOrder { get; set; }
 
    public NodeResult Result { get; } //BF ME - NodeResult to StateResult ??
 
     public LabelTarget NodeLabel { get; }
    public List<Expression> Expressions { get; } 
 
-   public Transition Transition { get; }
+    public Transition Transition { get; }
 
-   public Expression GetExpression( StateMachineContext context );
+    public Expression GetExpression( StateMachineContext context );
 
-   public Expression AsExpression() => this as Expression;
+    public Expression AsExpression() => this as Expression;
 }
 
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
@@ -52,7 +52,7 @@ internal sealed class NodeExpression : Expression, IStateNode //BF ME - NodeExpr
     public override Type Type => typeof( void );
     public override bool CanReduce => false; // This should NEVER be reduced
     public override Expression Reduce() => throw new NotSupportedException();
-    
+
     public Expression GetExpression( StateMachineContext context )
     {
         ArgumentNullException.ThrowIfNull( context, nameof( context ) );
