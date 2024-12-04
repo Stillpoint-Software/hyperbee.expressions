@@ -18,7 +18,8 @@ internal class StateMachineBuilder<TResult>
 
     protected static class FieldName
     {
-        // use special names to prevent collisions with user fields
+        // special names to prevent collisions with user identifiers
+
         public const string Builder = "__builder<>";
         public const string FinalResult = "__finalResult<>";
         public const string MoveNextDelegate = "__moveNextDelegate<>";
@@ -86,12 +87,12 @@ internal class StateMachineBuilder<TResult>
         bodyExpression.Add( assignStateField );
 
         // create local copy of extern variables on state-machine
+
         foreach ( var externVariable in loweringInfo.ExternVariables )
         {
             var field = fields.First( field => field.Name == externVariable.Name );
-            var fieldExpression = Field( stateMachineVariable, field );
             var assignField = Assign(
-                fieldExpression,
+                Field( stateMachineVariable, field ),
                 externVariable
             );
             bodyExpression.Add( assignField );
@@ -301,7 +302,7 @@ internal class StateMachineBuilder<TResult>
             finalResultField
         );
 
-        // Create the body expressions
+        // Create the body 
 
         var bodyExpressions = CreateBody( fields, context );
 
@@ -367,7 +368,7 @@ internal class StateMachineBuilder<TResult>
 
         // Create the body expressions
 
-        var firstScope = scopes.First();
+        var firstScope = scopes[0];
 
         var jumpTable = JumpTableBuilder.Build(
             firstScope,
@@ -375,7 +376,7 @@ internal class StateMachineBuilder<TResult>
             stateMachineInfo.StateField
         );
 
-        var bodyBlock = Block( StateMachineBuilder.MergeStates( firstScope.States, context ) );
+        var bodyBlock = Block( StateNodeHelper.MergeStates( firstScope.States, context ) );
 
         // hoist variables
 
@@ -388,7 +389,7 @@ internal class StateMachineBuilder<TResult>
         return bodyExpressions;
     }
 
-    private static List<Expression> HoistVariables( List<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
+    private static List<Expression> HoistVariables( IReadOnlyList<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
     {
         var fieldMembers = fields
             .Select( field => Field( stateMachine, field ) )
@@ -457,27 +458,5 @@ public static class StateMachineBuilder
         return stateMachineExpression; // the-best expression breakpoint ever
     }
 
-    internal static List<Expression> MergeStates( List<IStateNode> nodes, StateMachineContext context )
-    {
-        var mergedExpressions = new List<Expression>( 32 );
-
-        for ( var index = 0; index < nodes.Count; index++ )
-        {
-            var node = nodes[index];
-            var expression = node.GetExpression( context );
-
-            if ( expression is BlockExpression innerBlock )
-                mergedExpressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
-            else
-                mergedExpressions.Add( expression );
-        }
-
-        return mergedExpressions;
-
-        static bool IsDefaultVoid( Expression expression )
-        {
-            return expression is DefaultExpression defaultExpression &&
-                   defaultExpression.Type == typeof( void );
-        }
-    }
+  
 }
