@@ -100,8 +100,8 @@ public class AsyncBlockExpression : Expression
 
     private static Type GetTaskType( Type resultType )
     {
-        return resultType == typeof( void ) 
-            ? typeof( Task ) 
+        return resultType == typeof( void )
+            ? typeof( Task )
             : typeof( Task<> ).MakeGenericType( resultType );
     }
 
