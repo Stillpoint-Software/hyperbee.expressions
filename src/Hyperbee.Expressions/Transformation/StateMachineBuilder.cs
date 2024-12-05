@@ -24,9 +24,6 @@ internal class StateMachineBuilder<TResult>
         public const string FinalResult = "__final<>";
         public const string MoveNextDelegate = "__moveNextDelegate<>";
         public const string State = "__state<>";
-
-        [MethodImpl( MethodImplOptions.AggressiveInlining )]
-        public static bool IsSystemField( string name ) => name.EndsWith( "<>" );
     }
 
     public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
@@ -56,81 +53,69 @@ internal class StateMachineBuilder<TResult>
         // Conceptually:
         //
         // var stateMachine = new StateMachine();
+        //
         // stateMachine.__state<> = -1;
+        // stateMachine.<extern_fields> = <extern_fields>;
+        //
         // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
+        // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
+        //
+        // return stateMachine.__builder<>.Task;
 
         var stateMachineType = CreateStateMachineType( context, out var fields );
         var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
 
         // Initialize the state machine
 
-        var bodyExpression = new List<Expression>();
-
         var stateMachineVariable = Variable(
             stateMachineType,
             $"stateMachine<{id}>"
         );
 
-        var assignNew = Assign(
-            stateMachineVariable,
-            New( stateMachineType )
-        );
-        bodyExpression.Add( assignNew );
-
-        var assignStateField = Assign(
-            Field(
-                stateMachineVariable,
-                stateMachineType.GetField( FieldName.State )!
-            ),
-            Constant( -1 )
-        );
-        bodyExpression.Add( assignStateField );
-
-        // create local copy of extern variables on state-machine
-
-        foreach ( var externVariable in loweringInfo.ExternVariables )
+        var bodyExpression = new List<Expression>
         {
-            var field = fields.First( field => field.Name == externVariable.Name );
-            var assignField = Assign(
-                Field( stateMachineVariable, field ),
-                externVariable
-            );
-            bodyExpression.Add( assignField );
-        }
-
-        var assignMoveNextDelegate = Assign(
-            Field(
+            Assign( // Create the state-machine
                 stateMachineVariable,
-                stateMachineType.GetField( FieldName.MoveNextDelegate )!
+                New( stateMachineType )
             ),
-            moveNextLambda
+            Assign( // Set the state-machine state to -1
+                Field(
+                    stateMachineVariable,
+                    stateMachineType.GetField( FieldName.State )!
+                ),
+                Constant( -1 )
+            )
+        };
+
+        bodyExpression.AddRange( // Assign extern variables to state-machine
+            loweringInfo.ExternVariables.Select( externVariable =>
+                Assign(
+                    Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Name ) ),
+                    externVariable
+                )
+            )
         );
-        bodyExpression.Add( assignMoveNextDelegate );
 
-        // Run the state-machine
-        //
-        // Conceptually:
-        //
-        // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
-        // return stateMachine.__builder<>.Task;
-
-        var builderFieldInfo = stateMachineType.GetField( FieldName.Builder )!;
-        var builderField = Field( stateMachineVariable, builderFieldInfo );
-
-        var startMethod = builderFieldInfo.FieldType
-            .GetMethod( "Start" )!
-            .MakeGenericMethod( stateMachineType );
-
-        var callBuilderStart = Call(
-            builderField,
-            startMethod,
-            stateMachineVariable
-        );
-        bodyExpression.Add( callBuilderStart );
-
-        var taskProperty = builderFieldInfo.FieldType.GetProperty( "Task" );
-        var taskExpression = Property( builderField, taskProperty! );
-        bodyExpression.Add( taskExpression );
+        bodyExpression.AddRange( [
+            Assign( // Set the state-machine moveNextDelegate
+                Field(
+                    stateMachineVariable,
+                    stateMachineType.GetField( FieldName.MoveNextDelegate )!
+                ),
+                moveNextLambda
+            ),
+            Call( // Start the state-machine
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
+                stateMachineType.GetField( FieldName.Builder )!.FieldType
+                    .GetMethod( "Start" )!
+                    .MakeGenericMethod( stateMachineType ),
+                stateMachineVariable
+            ),
+            Property( // Return the state-machine task
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
+                stateMachineType.GetField( FieldName.Builder )!.FieldType.GetProperty( "Task" )!
+            )
+        ] );
 
         return Block(
             [stateMachineVariable],
