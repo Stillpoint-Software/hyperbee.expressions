@@ -51,12 +51,12 @@ internal static class JumpTableBuilder
 
     private static List<ConstantExpression> GetNestedTestValues( StateContext.Scope current, IReadOnlyList<StateContext.Scope> scopes )
     {
-        var testCases = current.JumpCases.Select( c => Constant( c.StateId ) ).ToList();
+        var testCases = current.JumpCases.Select( jumpCase => Constant( jumpCase.StateId ) ).ToList();
         var stack = new Stack<StateContext.Scope>();
 
         while ( true )
         {
-            foreach ( var child in scopes.Where( s => s.Parent == current ) )
+            foreach ( var child in scopes.Where( scope => scope.Parent == current ) )
             {
                 stack.Push( child );
             }
@@ -64,9 +64,9 @@ internal static class JumpTableBuilder
             if ( !stack.TryPop( out current ) )
                 break;
 
-            foreach ( var childJumpCase in current.JumpCases )
+            foreach ( var jumpCase in current.JumpCases )
             {
-                testCases.Add( Constant( childJumpCase.StateId ) );
+                testCases.Add( Constant( jumpCase.StateId ) );
             }
         }
 

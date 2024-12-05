@@ -29,7 +29,7 @@ internal sealed class StateContext
 
         _joinStates = new Stack<StateExpression>( _initialCapacity );
         _scopeIndexes = new Stack<int>( _initialCapacity );
-        _scopeIndexes.Push( 0 ); // root scope index
+        _scopeIndexes.Push( 0 ); // the root scope index
 
         AddState();
     }

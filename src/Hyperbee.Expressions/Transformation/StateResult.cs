@@ -2,7 +2,7 @@
 
 namespace Hyperbee.Expressions.Transformation;
 
-public sealed class StateResult
+internal sealed class StateResult
 {
     public Expression Variable { get; set; } // Left
     public Expression Value { get; set; } // Right
