@@ -145,7 +145,7 @@ internal sealed class StateContext
             JumpCases = [];
         }
 
-        internal List<Expression> GetExpressions( StateMachineContext context )
+        internal IReadOnlyList<Expression> GetExpressions( StateMachineContext context )
         {
             var expressions = new List<Expression>( 32 );
 

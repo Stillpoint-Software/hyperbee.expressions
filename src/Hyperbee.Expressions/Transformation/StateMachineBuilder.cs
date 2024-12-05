@@ -355,7 +355,7 @@ internal class StateMachineBuilder<TResult>
         return bodyExpressions.Concat( antecedents );
     }
 
-    private static IEnumerable<Expression> HoistVariables( Expression jumpTable, List<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
+    private static IEnumerable<Expression> HoistVariables( Expression jumpTable, IReadOnlyList<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
     {
         var fieldMembers = fields
             .Select( field => Field( stateMachine, field ) )
@@ -374,7 +374,7 @@ internal class StateMachineBuilder<TResult>
         }
     }
 
-    private sealed class HoistingVisitor( IDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor
+    private sealed class HoistingVisitor( IReadOnlyDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor
     {
         protected override Expression VisitParameter( ParameterExpression node )
         {
