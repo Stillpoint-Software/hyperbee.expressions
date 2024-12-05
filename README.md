@@ -33,9 +33,6 @@ When the expression tree is compiled, the `BlockAsyncExpression` will auto-gener
 `AwaitExpressions` in the block asynchronously.
 
 ```csharp
-the `BlockAsync` expression will generate a state machine that executes the expressions in the block asynchronously.
-
-```csharp
 
 public class AsyncExample
 {
