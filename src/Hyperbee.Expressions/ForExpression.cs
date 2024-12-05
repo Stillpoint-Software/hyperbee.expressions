@@ -87,12 +87,11 @@ public class ForExpression : Expression
         var newIteration = visitor.Visit( Iteration );
         var newBody = visitor.Visit( Body );
 
-        if ( newInitialization != Initialization || newTest != Test || newIteration != Iteration || newBody != Body )
-        {
-            return new ForExpression( newInitialization, newTest, newIteration, newBody, BreakLabel, ContinueLabel );
-        }
+        if ( newInitialization == Initialization && newTest == Test && newIteration == Iteration && newBody == Body )
+            return this;
 
-        return this;
+        return new ForExpression( newInitialization, newTest, newIteration, newBody, BreakLabel, ContinueLabel );
+
     }
 }
 

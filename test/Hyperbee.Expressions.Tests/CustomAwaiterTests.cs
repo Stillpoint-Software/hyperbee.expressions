@@ -1,9 +1,12 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
-public readonly struct LazyAwaiter<T> : ICriticalNotifyCompletion //INotifyCompletion
+public class LazyAwaiter<T> : ICriticalNotifyCompletion
 {
     private readonly Lazy<T> _lazy;
 
@@ -34,11 +37,11 @@ public class CustomAwaiterTests
 
         Expression<Func<int>> valueExpression = () => 42;
         var lazyConstructor = typeof( Lazy<int> ).GetConstructor( [typeof( Func<int> )] );
-        var lazyExpression = Expression.New( lazyConstructor!, valueExpression );
+        var lazyExpression = New( lazyConstructor!, valueExpression );
 
-        var awaitExpression = ExpressionExtensions.Await( lazyExpression, configureAwait: false );
+        var awaitExpression = Await( lazyExpression, configureAwait: false );
 
-        var lambda = Expression.Lambda<Func<int>>( awaitExpression );
+        var lambda = Lambda<Func<int>>( awaitExpression );
         var compiledLambda = lambda.Compile();
 
         var result = compiledLambda();
@@ -54,17 +57,81 @@ public class CustomAwaiterTests
 
         Expression<Func<int>> valueExpression = () => 42;
         var lazyConstructor = typeof( Lazy<int> ).GetConstructor( [typeof( Func<int> )] );
-        var lazyExpression = Expression.New( lazyConstructor!, valueExpression );
+        var lazyExpression = New( lazyConstructor!, valueExpression );
 
-        var block = ExpressionExtensions.BlockAsync(
-            ExpressionExtensions.Await( lazyExpression, configureAwait: false )
+        var block = BlockAsync(
+            Await( lazyExpression, configureAwait: false )
         );
 
-        var lambda = Expression.Lambda<Func<Task<int>>>( block );
+        var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
 
         var result = await compiledLambda();
 
+        Assert.AreEqual( 42, result, "The result should be 42." );
+    }
+
+    [DataTestMethod]
+    [DataRow( true )] // Immediate completion
+    [DataRow( false )] // Deferred completion
+    public async Task TestCustomAwaiter_TaskLike( bool immediateFlag )
+    {
+        // Arrange
+        var resultValue = Parameter( typeof( int ), "result" );
+
+        var block = BlockAsync(
+            [resultValue],
+            Assign( resultValue, Constant( 5 ) ),
+            Await(
+                AsyncHelper.Completable(
+                    Constant( immediateFlag )
+                )
+            ),
+            Assign( resultValue, Add( resultValue, Constant( 37 ) ) ),
+            resultValue
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 42, result, "The result should be 42." );
+    }
+
+    [DataTestMethod]
+    [DataRow( true )] // Immediate completion
+    [DataRow( false )] // Deferred completion
+    public async Task TestCustomAwaiter_TaskResultLike( bool immediateFlag )
+    {
+        // Arrange
+        var resultValue = Parameter( typeof( int ), "result" );
+
+        var block = BlockAsync(
+            [resultValue],
+            Assign( resultValue,
+                Add(
+                    Await(
+                        AsyncHelper.Completable(
+                            Constant( immediateFlag ),
+                            Constant( 37 )
+                        )
+                    ),
+                    Constant( 5 )
+                )
+            ),
+            resultValue
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile();
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 }

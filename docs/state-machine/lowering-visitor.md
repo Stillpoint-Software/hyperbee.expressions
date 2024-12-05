@@ -16,11 +16,11 @@ It also identifies variables that will need to be hoisted so that variable scope
 
 ## Introduction
 
-The `LoweringVisitor` is responsible for transforming an expression tree into discrete states, and transitions, that will be used 
+The `LoweringVisitor` is responsible for transforming an expression tree into discrete states and transitions, that will be used 
 to generate the final state machine. 
 
-The purpose of this visitor is to "lower" high-level constructs, such as `await`, `if/else`, `switch`, and loops, into individual 
-`NodeExpression` objects that the state machine can later process.
+The purpose of this visitor is to "lower" high-level constructs, such as `await`, `if/else`, `switch`, `try\catch`, and loops, 
+into individual `NodeExpression` objects that the state machine can later process.
 
 
 ## 1. Handling Control Flow Constructs (Branching and Loops)

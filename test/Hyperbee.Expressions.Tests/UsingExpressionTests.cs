@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
@@ -17,7 +19,6 @@ public class UsingExpressionTests
 
     private bool _wasBodyExecuted;
 
-    // Helper method used in the body expression
     public void SetWasBodyExecuted()
     {
         _wasBodyExecuted = true;
@@ -34,14 +35,14 @@ public class UsingExpressionTests
     {
         // Arrange
         var resource = new TestDisposableResource();
-        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
+        var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
-        var bodyExpression = Expression.Empty(); // Actual body is unimportant
+        var bodyExpression = Empty(); // Actual body is unimportant
 
         // Act
-        var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
+        var usingExpression = Using( disposableExpression, bodyExpression );
 
-        var lambda = Expression.Lambda<Action>( usingExpression );
+        var lambda = Lambda<Action>( usingExpression );
         var compiledLambda = lambda.Compile();
 
         compiledLambda();
@@ -55,18 +56,18 @@ public class UsingExpressionTests
     {
         // Arrange
         var resource = new TestDisposableResource();
-        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
+        var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
         // Create a body expression that sets 'wasBodyExecuted' to true
-        var bodyExpression = Expression.Call(
-            Expression.Constant( this ),
+        var bodyExpression = Call(
+            Constant( this ),
             typeof( UsingExpressionTests ).GetMethod( nameof( SetWasBodyExecuted ) )!
         );
 
         // Act
-        var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
+        var usingExpression = Using( disposableExpression, bodyExpression );
 
-        var lambda = Expression.Lambda<Action>( usingExpression );
+        var lambda = Lambda<Action>( usingExpression );
         var compiledLambda = lambda.Compile();
 
         compiledLambda();
@@ -75,15 +76,66 @@ public class UsingExpressionTests
         Assert.IsTrue( _wasBodyExecuted, "The body expression should be executed." );
     }
 
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task UsingExpression_ShouldExecuteAsyncExpression( bool immediateFlag )
+    {
+        // Arrange
+        var resource = new TestDisposableResource();
+        var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
+
+        var bodyExpression = BlockAsync(
+            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) )
+        );
+
+        // Act
+        var usingExpression = Using( disposableExpression, bodyExpression );
+
+        var lambda = Lambda<Func<Task<int>>>( usingExpression );
+        var compiledLambda = lambda.Compile();
+
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 10, result );
+    }
+
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing( bool immediateFlag )
+    {
+        // Arrange
+        var resource = new TestDisposableResource();
+        var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
+
+        var bodyExpression = BlockAsync(
+            Using(
+                disposableExpression,
+                Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) )
+            )
+        );
+
+        // Act
+        var lambda = Lambda<Func<Task<int>>>( bodyExpression );
+        var compiledLambda = lambda.Compile();
+
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 10, result );
+    }
+
     [TestMethod]
     [ExpectedException( typeof( ArgumentException ) )]
     public void UsingExpression_ShouldThrowArgumentException_WhenNonDisposableUsed()
     {
         // Arrange
-        var nonDisposableExpression = Expression.Constant( "non-disposable string" );
+        var nonDisposableExpression = Constant( "non-disposable string" );
 
         // Act
-        ExpressionExtensions.Using( nonDisposableExpression, Expression.Empty() );
+        Using( nonDisposableExpression, Empty() );
 
         // Assert: Expect an ArgumentException due to non-disposable resource
         // The constructor should throw the exception, no need for further assertions
@@ -94,15 +146,14 @@ public class UsingExpressionTests
     {
         // Arrange
         var resource = new TestDisposableResource();
-        var disposableExpression = Expression.Constant( resource, typeof( TestDisposableResource ) );
+        var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
-        // Create a body expression that throws an exception
-        var bodyExpression = Expression.Throw( Expression.New( typeof( Exception ) ) );
+        var bodyExpression = Throw( New( typeof( Exception ) ) );
 
         // Act
-        var usingExpression = ExpressionExtensions.Using( disposableExpression, bodyExpression );
+        var usingExpression = Using( disposableExpression, bodyExpression );
 
-        var lambda = Expression.Lambda<Action>( usingExpression );
+        var lambda = Lambda<Action>( usingExpression );
         var compiledLambda = lambda.Compile();
 
         // Assert: Execute the expression and catch the exception, check if the resource was disposed

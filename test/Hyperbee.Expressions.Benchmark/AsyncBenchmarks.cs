@@ -1,7 +1,6 @@
 ﻿using System.Linq.Expressions;
 using BenchmarkDotNet.Attributes;
 using FastExpressionCompiler;
-
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -13,6 +12,8 @@ public class AsyncBenchmarks
     private Func<Task<int>> _fastCompiledLambda = null!;
     private Expression<Func<Task<int>>> _lambda = null!;
 
+    private Expression _expression = null!;
+
     [GlobalSetup]
     public void Setup()
     {
@@ -22,7 +23,7 @@ public class AsyncBenchmarks
 
         var variable = Variable( typeof( int ), "variable" );
 
-        var asyncBlock =
+        _expression =
             BlockAsync(
                 [variable],
                 Assign( variable, Await( Call( asyncInitVariableMethodInfo ) ) ),
@@ -31,7 +32,7 @@ public class AsyncBenchmarks
                         Await( Call( asyncAddMethodInfo, variable, variable ) ) ) ),
                 variable );
 
-        _lambda = (Lambda<Func<Task<int>>>( asyncBlock ).Reduce() as Expression<Func<Task<int>>>)!;
+        _lambda = (Lambda<Func<Task<int>>>( _expression ).Reduce() as Expression<Func<Task<int>>>)!;
 
         _compiledLambda = _lambda.Compile();
 
@@ -39,14 +40,14 @@ public class AsyncBenchmarks
     }
 
     [Benchmark]
-    public async Task Hyperbee_AsyncBlock_CompileAndExecute()
+    public async Task Hyperbee_AsyncBlock_First_CompileAndExecute()
     {
         var compiled = _lambda.Compile();
         await compiled();
     }
 
     [Benchmark]
-    public async Task Hyperbee_AsyncBlock_FastCompileAndExecute()
+    public async Task Hyperbee_AsyncBlock_First_FastCompileAndExecute()
     {
         var compiled = _lambda.CompileFast();
         await compiled();

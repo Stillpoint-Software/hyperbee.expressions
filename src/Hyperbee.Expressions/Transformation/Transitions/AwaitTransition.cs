@@ -3,64 +3,72 @@ using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class AwaitTransition : Transition
+internal class AwaitTransition : Transition
 {
     public int StateId { get; set; }
 
     public Expression Target { get; set; }
-    public ParameterExpression AwaiterVariable { get; set; }
-    public NodeExpression CompletionNode { get; set; }
+    public Expression AwaiterVariable { get; set; }
+    public IStateNode CompletionNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
     public bool ConfigureAwait { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    internal override IStateNode FallThroughNode => CompletionNode;
+
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        var awaitable = Variable( Target.Type, "awaitable" );
+        base.AddExpressions( expressions, context );
+        expressions.AddRange( Expressions() );
+        return;
 
-        var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
-
-        var getAwaiterCall = getAwaiterMethod.IsStatic
-            ? Call( getAwaiterMethod, awaitable, Constant( ConfigureAwait ) )
-            : Call( Constant( AwaitBinder ), getAwaiterMethod, awaitable, Constant( ConfigureAwait ) );
-
-        // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
-        var awaitUnsafeOnCompleted = resolverSource.BuilderField.Type
-            .GetMethods()
-            .Single( m => m.Name == "AwaitUnsafeOnCompleted" && m.IsGenericMethodDefinition )
-            .MakeGenericMethod( AwaiterVariable.Type, resolverSource.StateMachine.Type );
-
-        var expressions = new List<Expression>
+        List<Expression> Expressions()
         {
-            Assign(
-                awaitable,
-                Target
-            ),
-            Assign(
-                AwaiterVariable,
-                getAwaiterCall
-            ),
-            IfThen(
-                IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
-                Block(
-                    Assign( resolverSource.StateIdField, Constant( StateId ) ),
-                    Call(
-                        resolverSource.BuilderField,
-                        awaitUnsafeOnCompleted,
-                        AwaiterVariable,
-                        resolverSource.StateMachine
-                    ),
-                    Return( resolverSource.ExitLabel )
+            var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
+            var source = context.StateMachineInfo;
+
+            var getAwaiterCall = getAwaiterMethod.IsStatic
+                ? Call( getAwaiterMethod, Target, Constant( ConfigureAwait ) )
+                : Call( Constant( AwaitBinder ), getAwaiterMethod, Target, Constant( ConfigureAwait ) );
+
+            // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
+            var awaitUnsafeOnCompleted = source.BuilderField.Type
+                .GetMethods()
+                .Single( methodInfo => methodInfo.Name == "AwaitUnsafeOnCompleted" && methodInfo.IsGenericMethodDefinition )
+                .MakeGenericMethod( AwaiterVariable.Type, source.StateMachine.Type );
+
+            var body = new List<Expression>
+            {
+                Assign(
+                    AwaiterVariable,
+                    getAwaiterCall
+                ),
+                IfThen(
+                    IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
+                    Block(
+                        Assign( source.StateField, Constant( StateId ) ),
+                        Call(
+                            source.BuilderField,
+                            awaitUnsafeOnCompleted,
+                            AwaiterVariable,
+                            source.StateMachine
+                        ),
+                        Return( source.ExitLabel )
+                    )
                 )
-            )
-        };
+            };
 
-        var fallThrough = GotoOrFallThrough( order, CompletionNode, true );
+            var fallThrough = GotoOrFallThrough( context.StateNode.StateOrder, CompletionNode, true );
 
-        if ( fallThrough != null )
-            expressions.Add( fallThrough );
+            if ( fallThrough != null )
+                body.Add( fallThrough );
 
-        return Block( [awaitable], expressions );
+            return body;
+        }
     }
 
-    internal override NodeExpression FallThroughNode => CompletionNode;
+    internal override void Optimize( HashSet<LabelTarget> references )
+    {
+        CompletionNode = OptimizeGotos( CompletionNode );
+        references.Add( CompletionNode.NodeLabel );
+    }
 }

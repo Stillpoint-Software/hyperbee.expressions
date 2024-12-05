@@ -3,37 +3,70 @@ using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class SwitchTransition : Transition
+internal class SwitchTransition : Transition
 {
-    internal readonly List<SwitchCaseDefinition> CaseNodes = [];
-    public NodeExpression DefaultNode { get; set; }
+    public IStateNode DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
+    internal List<SwitchCaseDefinition> CaseNodes = [];
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    internal override IStateNode FallThroughNode => DefaultNode;
+
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        var defaultBody = DefaultNode != null
-            ? GotoOrFallThrough( order, DefaultNode, allowNull: true )
-            : null;
+        base.AddExpressions( expressions, context );
+        expressions.Add( Expression() );
+        return;
 
-        var cases = CaseNodes
-            .Select( switchCase => switchCase.Reduce() );
+        Expression Expression()
+        {
+            var stateOrder = context.StateNode.StateOrder;
 
-        return Switch(
-            SwitchValue,
-            defaultBody,
-            [.. cases]
-        );
+            Expression defaultBody;
+
+            if ( DefaultNode != null )
+            {
+                defaultBody = GotoOrFallThrough(
+                    stateOrder,
+                    DefaultNode,
+                    allowNull: true
+                );
+            }
+            else
+            {
+                defaultBody = null;
+            }
+
+            var cases = CaseNodes
+                .Select( switchCase => switchCase.Reduce( stateOrder ) )
+                .ToArray();
+
+            return Switch( SwitchValue, defaultBody, cases );
+        }
     }
 
-    internal override NodeExpression FallThroughNode => DefaultNode;
+    internal override void Optimize( HashSet<LabelTarget> references )
+    {
+        DefaultNode = OptimizeGotos( DefaultNode );
+        references.Add( DefaultNode.NodeLabel );
 
-    public void AddSwitchCase( List<Expression> testValues, NodeExpression body )
+        for ( var index = 0; index < CaseNodes.Count; index++ )
+        {
+            var caseNode = CaseNodes[index];
+            caseNode.Body = OptimizeGotos( caseNode.Body );
+
+            references.Add( caseNode.Body.NodeLabel );
+        }
+    }
+
+    public void AddSwitchCase( List<Expression> testValues, IStateNode body )
     {
         CaseNodes.Add( new SwitchCaseDefinition( testValues, body ) );
     }
 
-    internal record SwitchCaseDefinition( List<Expression> TestValues, NodeExpression Body )
+    internal sealed class SwitchCaseDefinition( List<Expression> testValues, IStateNode body )
     {
-        public SwitchCase Reduce() => SwitchCase( Goto( Body.NodeLabel ), TestValues );
+        public List<Expression> TestValues = testValues;
+        public IStateNode Body { get; set; } = body;
+        public SwitchCase Reduce( int order ) => SwitchCase( GotoOrFallThrough( order, Body ), TestValues );
     }
 }

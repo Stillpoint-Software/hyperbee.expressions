@@ -63,7 +63,7 @@ public class ForEachExpression : Expression
         ArgumentNullException.ThrowIfNull( body, nameof( body ) );
 
         if ( !typeof( IEnumerable ).IsAssignableFrom( collection.Type ) )
-            throw new ArgumentException( "Collection must implement IEnumerable.", nameof( collection ) );
+            throw new ArgumentException( $"Collection must implement {nameof( IEnumerable )}.", nameof( collection ) );
     }
 
     public override Type Type => typeof( void );
@@ -98,12 +98,10 @@ public class ForEachExpression : Expression
         var newCollection = visitor.Visit( Collection );
         var newBody = visitor.Visit( Body );
 
-        if ( newCollection != Collection || newBody != Body )
-        {
-            return new ForEachExpression( newCollection, Element, newBody, BreakLabel, ContinueLabel );
-        }
+        if ( newCollection == Collection && newBody == Body )
+            return this;
 
-        return this;
+        return new ForEachExpression( newCollection, Element, newBody, BreakLabel, ContinueLabel );
     }
 }
 

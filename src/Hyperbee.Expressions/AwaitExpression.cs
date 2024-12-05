@@ -13,7 +13,6 @@ public class AwaitExpression : Expression
     internal AwaitExpression( Expression asyncExpression, bool configureAwait )
     {
         Target = asyncExpression ?? throw new ArgumentNullException( nameof( asyncExpression ) );
-
         ConfigureAwait = configureAwait;
     }
 
@@ -25,15 +24,13 @@ public class AwaitExpression : Expression
 
     public bool ConfigureAwait { get; }
 
-    public AwaitBinder GetAwaitBinder() => AwaitBinderFactory.GetOrCreate( Target.Type );
+    internal AwaitBinder GetAwaitBinder() => AwaitBinderFactory.GetOrCreate( Target.Type );
 
     public override Expression Reduce()
     {
-        var awaitableType = Target.Type;
-        var awaitableInfo = AwaitBinderFactory.GetOrCreate( awaitableType );
+        var awaitableInfo = AwaitBinderFactory.GetOrCreate( Target.Type );
 
-        var reduced = Call( Constant( awaitableInfo ), awaitableInfo.AwaitMethod, Target, Constant( ConfigureAwait ) );
-        return reduced;
+        return Call( Constant( awaitableInfo ), awaitableInfo.WaitMethod, Target, Constant( ConfigureAwait ) );
     }
 
     private static Type ResultType( Type awaitableType )
@@ -59,6 +56,15 @@ public class AwaitExpression : Expression
         return awaiterInfo.GetResultMethod.ReturnType;
     }
 
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        var newTarget = visitor.Visit( Target );
+
+        return newTarget == Target
+            ? this
+            : new AwaitExpression( newTarget, ConfigureAwait );
+    }
+
     internal static bool IsAwaitable( Type type )
     {
         return typeof( Task ).IsAssignableFrom( type ) || typeof( ValueTask ).IsAssignableFrom( type ) || AwaitBinderFactory.TryGetOrCreate( type, out _ );
@@ -75,9 +81,6 @@ public static partial class ExpressionExtensions
 {
     public static AwaitExpression Await( Expression expression, bool configureAwait = false )
     {
-        if ( expression is AsyncBlockExpression )
-            return new AwaitExpression( expression, configureAwait );
-
         if ( !AwaitExpression.IsAwaitable( expression.Type ) )
             throw new ArgumentException( "Expression must be awaitable.", nameof( expression ) );
 

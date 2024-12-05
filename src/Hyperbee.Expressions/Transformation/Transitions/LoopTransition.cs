@@ -2,14 +2,22 @@
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class LoopTransition : Transition
+internal class LoopTransition : Transition
 {
-    public NodeExpression BodyNode { get; set; }
+    public IStateNode BodyNode { get; set; }
+    public LabelTarget BreakLabel { get; set; }
+    public LabelTarget ContinueLabel { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    internal override IStateNode FallThroughNode => BodyNode;
+
+    internal override void Optimize( HashSet<LabelTarget> references )
     {
-        return Expression.Empty();
-    }
+        references.Add( BodyNode.NodeLabel );
 
-    internal override NodeExpression FallThroughNode => BodyNode; // We won't reduce, but we need to provide a value for ordering
+        if ( BreakLabel != null )
+            references.Add( BreakLabel );
+
+        if ( ContinueLabel != null )
+            references.Add( ContinueLabel );
+    }
 }

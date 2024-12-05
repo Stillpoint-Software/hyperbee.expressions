@@ -3,47 +3,72 @@ using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class TryCatchTransition : Transition
+internal class TryCatchTransition : Transition
 {
-    internal readonly List<CatchBlockDefinition> CatchBlocks = [];
-    public NodeExpression TryNode { get; set; }
-    public NodeExpression FinallyNode { get; set; }
+    internal List<CatchBlockDefinition> CatchBlocks = [];
+    public IStateNode TryNode { get; set; }
+    public IStateNode FinallyNode { get; set; }
 
-    internal override NodeExpression FallThroughNode => TryNode;
-    public ParameterExpression TryStateVariable { get; set; }
-    public ParameterExpression ExceptionVariable { get; set; }
+    public Expression TryStateVariable { get; set; }
+    public Expression ExceptionVariable { get; set; }
 
-    public StateScope StateScope { get; init; }
-    public List<StateScope> Scopes { get; init; }
+    public StateContext.Scope StateScope { get; init; }
+    public List<StateContext.Scope> Scopes { get; init; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    internal override IStateNode FallThroughNode => TryNode;
+
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        var expressions = new List<Expression>( StateScope.Nodes.Count + 1 )
+        base.AddExpressions( expressions, context );
+        expressions.AddRange( Expressions() );
+        return;
+
+        List<Expression> Expressions()
         {
-            JumpTableBuilder.Build(
-                StateScope,
-                Scopes,
-                resolverSource.StateIdField
-            )
-        };
+            var body = new List<Expression>
+            {
+                JumpTableBuilder.Build(
+                    StateScope,
+                    Scopes,
+                    context.StateMachineInfo.StateField
+                )
+            };
 
-        expressions.AddRange( StateScope.Nodes.Select( x => x.Reduce( resolverSource ) ) );
+            body.AddRange( StateScope.GetExpressions( context ) );
 
-        MapCatchBlock( out var catches, out var switchCases );
+            MapCatchBlock( context.StateNode.StateOrder, out var catches, out var switchCases );
 
-        return Block(
-            TryCatch(
-                Block( expressions ),
-                catches
-            ),
-            Switch( // Handle error
-                TryStateVariable,
-                Empty(),
-                switchCases )
-            );
+            return [
+                TryCatch(
+                    body.Count == 1
+                        ? body[0]
+                        : Block( body ),
+                    catches
+                ),
+                Switch( // Handle error
+                    TryStateVariable,
+                    Empty(),
+                    switchCases
+                )
+            ];
+        }
     }
 
-    private void MapCatchBlock( out CatchBlock[] catches, out SwitchCase[] switchCases )
+    internal override void Optimize( HashSet<LabelTarget> references )
+    {
+        references.Add( TryNode.NodeLabel );
+
+        if ( FinallyNode != null )
+            references.Add( FinallyNode.NodeLabel );
+
+        for ( var index = 0; index < CatchBlocks.Count; index++ )
+        {
+            if ( CatchBlocks[index].UpdateBody is IStateNode state )
+                references.Add( state.NodeLabel );
+        }
+    }
+
+    private void MapCatchBlock( int order, out CatchBlock[] catches, out SwitchCase[] switchCases )
     {
         var includeFinal = FinallyNode != null;
         var size = CatchBlocks.Count + (includeFinal ? 1 : 0);
@@ -58,9 +83,9 @@ public class TryCatchTransition : Transition
             catches[index] = catchBlock.Reduce( ExceptionVariable, TryStateVariable );
 
             switchCases[index] = SwitchCase(
-                (catchBlock.UpdateBody is NodeExpression nodeExpression)
-                    ? Goto( nodeExpression.NodeLabel )
-                    : Block( typeof( void ), catchBlock.UpdateBody ),
+                (catchBlock.UpdateBody is not IStateNode node)
+                    ? Block( typeof( void ), catchBlock.UpdateBody )
+                    : GotoOrFallThrough( order, node ),
                 Constant( catchBlock.CatchState ) );
         }
 
@@ -86,9 +111,9 @@ public class TryCatchTransition : Transition
         CatchBlocks.Add( new CatchBlockDefinition( handler, updateBody, catchState ) );
     }
 
-    internal record CatchBlockDefinition( CatchBlock Handler, Expression UpdateBody, int CatchState )
+    internal class CatchBlockDefinition( CatchBlock handler, Expression updateBody, int catchState )
     {
-        public CatchBlock Reduce( ParameterExpression exceptionVariable, ParameterExpression tryStateVariable )
+        public CatchBlock Reduce( Expression exceptionVariable, Expression tryStateVariable )
         {
             if ( Handler.Variable == null )
             {
@@ -108,5 +133,9 @@ public class TryCatchTransition : Transition
                     Assign( tryStateVariable, Constant( CatchState ) )
                 ) );
         }
+
+        public CatchBlock Handler { get; init; } = handler;
+        public Expression UpdateBody { get; internal set; } = updateBody;
+        public int CatchState { get; init; } = catchState;
     }
 }

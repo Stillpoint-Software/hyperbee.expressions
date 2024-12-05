@@ -7,24 +7,23 @@ using static System.Linq.Expressions.Expression;
 namespace Hyperbee.Expressions.Transformation;
 
 public interface IVoidResult; // Marker interface for void Task results
+public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
 
-public delegate void MoveNextDelegate<T>( ref T stateMachine ) where T : IAsyncStateMachine;
+internal delegate LoweringInfo LoweringTransformer();
 
-public class StateMachineBuilder<TResult>
+internal class StateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
 
-    private static class FieldName
+    protected static class FieldName
     {
-        // use special names to prevent collisions with user fields
+        // special names to prevent collisions with user identifiers
+
         public const string Builder = "__builder<>";
-        public const string FinalResult = "__finalResult<>";
+        public const string FinalResult = "__final<>";
         public const string MoveNextDelegate = "__moveNextDelegate<>";
         public const string State = "__state<>";
-
-        [MethodImpl( MethodImplOptions.AggressiveInlining )]
-        public static bool IsSystemField( string name ) => name.EndsWith( "<>" );
     }
 
     public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
@@ -33,21 +32,34 @@ public class StateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( LoweringResult source, int id, bool createRunner = true )
+    public Expression CreateStateMachine( LoweringTransformer loweringTransformer, int id )
     {
-        if ( source.Scopes[0].Nodes == null )
-            throw new InvalidOperationException( "States must be set before creating state machine." );
+        ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
+
+        // Lower the async expression
+        //
+        var loweringInfo = loweringTransformer();
+
+        // Create the state-machine builder context
+        //
+        var context = new StateMachineContext { LoweringInfo = loweringInfo };
 
         // Create the state-machine
         //
         // Conceptually:
         //
         // var stateMachine = new StateMachine();
+        //
         // stateMachine.__state<> = -1;
+        // stateMachine.<extern_fields> = <extern_fields>;
+        //
         // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
+        // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
+        //
+        // return stateMachine.__builder<>.Task;
 
-        var stateMachineType = CreateStateMachineType( source, out var fields );
-        var moveNextLambda = CreateMoveNextBody( id, source, stateMachineType, fields );
+        var stateMachineType = CreateStateMachineType( context, out var fields );
+        var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
 
         // Initialize the state machine
 
@@ -56,78 +68,64 @@ public class StateMachineBuilder<TResult>
             $"stateMachine<{id}>"
         );
 
-        var assignNew = Assign(
-            stateMachineVariable,
-            New( stateMachineType )
-        );
-
-        var assignStateField = Assign(
-            Field(
-                stateMachineVariable,
-                stateMachineType.GetField( FieldName.State )!
-            ),
-            Constant( -1 )
-        );
-
-        var assignMoveNextDelegate = Assign(
-            Field(
-                stateMachineVariable,
-                stateMachineType.GetField( FieldName.MoveNextDelegate )!
-            ),
-            moveNextLambda
-        );
-
-        if ( !createRunner )
+        var bodyExpression = new List<Expression>
         {
-            return Block(
-                [stateMachineVariable],
-                assignNew,
-                assignStateField,
-                assignMoveNextDelegate,
-                stateMachineVariable
-            );
-        }
+            Assign( // Create the state-machine
+                stateMachineVariable,
+                New( stateMachineType )
+            ),
+            Assign( // Set the state-machine state to -1
+                Field(
+                    stateMachineVariable,
+                    stateMachineType.GetField( FieldName.State )!
+                ),
+                Constant( -1 )
+            )
+        };
 
-        // Run the state-machine
-        //
-        // Conceptually:
-        //
-        // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
-        // return stateMachine.__builder<>.Task;
-
-        var builderFieldInfo = stateMachineType.GetField( FieldName.Builder )!;
-        var builderField = Field( stateMachineVariable, builderFieldInfo );
-
-        var startMethod = builderFieldInfo.FieldType
-            .GetMethod( "Start" )!
-            .MakeGenericMethod( stateMachineType );
-
-        var callBuilderStart = Call(
-            builderField,
-            startMethod,
-            stateMachineVariable // ref stateMachine
+        bodyExpression.AddRange( // Assign extern variables to state-machine
+            loweringInfo.ExternVariables.Select( externVariable =>
+                Assign(
+                    Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Name ) ),
+                    externVariable
+                )
+            )
         );
 
-        var taskProperty = builderFieldInfo.FieldType.GetProperty( "Task" );
-        var taskExpression = Property( builderField, taskProperty! );
+        bodyExpression.AddRange( [
+            Assign( // Set the state-machine moveNextDelegate
+                Field(
+                    stateMachineVariable,
+                    stateMachineType.GetField( FieldName.MoveNextDelegate )!
+                ),
+                moveNextLambda
+            ),
+            Call( // Start the state-machine
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
+                stateMachineType.GetField( FieldName.Builder )!.FieldType
+                    .GetMethod( "Start" )!
+                    .MakeGenericMethod( stateMachineType ),
+                stateMachineVariable
+            ),
+            Property( // Return the state-machine task
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
+                stateMachineType.GetField( FieldName.Builder )!.FieldType.GetProperty( "Task" )!
+            )
+        ] );
 
         return Block(
             [stateMachineVariable],
-            assignNew,
-            assignStateField,
-            assignMoveNextDelegate,
-            callBuilderStart,
-            taskExpression
+            bodyExpression
         );
     }
 
-    private Type CreateStateMachineType( LoweringResult source, out IEnumerable<FieldInfo> fields )
+    private Type CreateStateMachineType( StateMachineContext context, out FieldInfo[] fields )
     {
         var typeBuilder = _moduleBuilder.DefineType(
             _typeName,
-            TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed,
-            typeof( ValueType ) // struct
-        );
+            TypeAttributes.Public | TypeAttributes.Class,
+            typeof( object ),
+            [typeof( IAsyncStateMachine )] );
 
         typeBuilder.AddInterfaceImplementation( typeof( IAsyncStateMachine ) );
 
@@ -152,13 +150,20 @@ public class StateMachineBuilder<TResult>
             FieldAttributes.Public
         );
 
-        typeBuilder.DefineField(
-            FieldName.FinalResult,
-            typeof( TResult ),
-            FieldAttributes.Public
-        );
+        // variables from this state-machine
 
-        foreach ( var parameterExpression in source.Variables )
+        foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>() )
+        {
+            typeBuilder.DefineField(
+                parameterExpression.Name ?? parameterExpression.ToString(),
+                parameterExpression.Type,
+                FieldAttributes.Public
+            );
+        }
+
+        // variables from other state-machines
+
+        foreach ( var parameterExpression in context.LoweringInfo.ExternVariables )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -175,14 +180,12 @@ public class StateMachineBuilder<TResult>
         // Close the type builder
         var stateMachineType = typeBuilder.CreateType();
 
-        fields = stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public )
-            .Where( field => !FieldName.IsSystemField( field.Name ) )
-            .ToArray();
+        fields = [.. stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public )];
 
         return stateMachineType;
     }
 
-    private static void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldInfo builderFieldInfo )
+    private static void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldBuilder builderFieldInfo )
     {
         // Define the IAsyncStateMachine.SetStateMachine method
         //
@@ -200,16 +203,16 @@ public class StateMachineBuilder<TResult>
 
         var ilGenerator = setStateMachineMethod.GetILGenerator();
 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // Load 'this'
-        ilGenerator.Emit( OpCodes.Ldflda, builderFieldInfo ); // Load address of '__builder<>'
-        ilGenerator.Emit( OpCodes.Ldarg_1 ); // Load 'stateMachine' argument
+        ilGenerator.Emit( OpCodes.Ldarg_0 );
+        ilGenerator.Emit( OpCodes.Ldflda, builderFieldInfo );
+        ilGenerator.Emit( OpCodes.Ldarg_1 );
 
         var setStateMachineOnBuilder = builderFieldInfo
             .FieldType
             .GetMethod( "SetStateMachine", [typeof( IAsyncStateMachine )]
         );
 
-        ilGenerator.Emit( OpCodes.Call, setStateMachineOnBuilder! );
+        ilGenerator.Emit( OpCodes.Callvirt, setStateMachineOnBuilder! );
         ilGenerator.Emit( OpCodes.Ret );
 
         typeBuilder.DefineMethodOverride( setStateMachineMethod,
@@ -234,9 +237,9 @@ public class StateMachineBuilder<TResult>
 
         var ilGenerator = moveNextMethod.GetILGenerator();
 
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // Load 'this'
-        ilGenerator.Emit( OpCodes.Ldfld, moveNextDelegateField ); // Load '__moveNextDelegate<>'
-        ilGenerator.Emit( OpCodes.Ldarg_0 ); // Load 'this'
+        ilGenerator.Emit( OpCodes.Ldarg_0 );
+        ilGenerator.Emit( OpCodes.Ldfld, moveNextDelegateField );
+        ilGenerator.Emit( OpCodes.Ldarg_0 );
 
         var openInvokeMethod = typeof( MoveNextDelegate<> ).GetMethod( "Invoke" )!;
         var invokeMethod = TypeBuilder.GetMethod( moveNextDelegateType, openInvokeMethod );
@@ -249,209 +252,130 @@ public class StateMachineBuilder<TResult>
 
     private static LambdaExpression CreateMoveNextBody(
         int id,
-        LoweringResult source,
+        StateMachineContext context,
         Type stateMachineType,
-        IEnumerable<FieldInfo> fields
+        FieldInfo[] fields
     )
     {
-        /* Example state-machine:
+        // Set context state-machine-info
 
-            (ref StateMachine1 sm<1>) =>
-            {
-                var var<1> = sm<1>.__stateMachineData<>;
-                try
-                {
-                    switch (var<1>.__state<>)
-                    {
-                        case 0:
-                            var<1>.__state<> = -1;
-                            goto ST_0002;
-            
-                        case 1:
-                            var<1>.__state<> = -1;
-                            goto ST_0004;
-                    }
-            
-                    var awaitable = Task<int>;
-                    var<1>.__awaiter<0> = AwaitBinder.GetAwaiter(ref awaitable, false);
-            
-                    if (!var<1>.__awaiter<0>.IsCompleted)
-                    {
-                        var<1>.__state<> = 0;
-                        var<1>.__builder<>.AwaitUnsafeOnCompleted(ref var<1>.__awaiter<0>, ref sm<1>);
-                        return;
-                    }
-
-                ST_0002:
-                    var<1>.__result<0> = AwaitBinder.GetResult(ref var<1>.__awaiter<0>);
-                    var<1>.__result<1> = var<1>.__result<0>;
-                    Task<int> awaitable;
-                    awaitable = Task<int>;
-                    var<1>.__awaiter<1> = AwaitBinder.GetAwaiter(ref awaitable, false);
-            
-                    if (!var<1>.__awaiter<1>.IsCompleted)
-                    {
-                        var<1>.__state<> = 1;
-                        var<1>.__builder<>.AwaitUnsafeOnCompleted(ref var<1>.__awaiter<1>, ref sm<1>);
-                        return;
-                    }
-
-                ST_0004:
-                    var<1>.__result<1> = AwaitBinder.GetResult(ref var<1>.__awaiter<1>);
-                    var<1>.__finalResult<> = var<1>.__result<1>;
-                    var<1>.__state<> = -2;
-                    var<1>.__builder<>.SetResult(var<1>.__finalResult<>);
-                }
-                catch (Exception ex)
-                {
-                    var<1>.__state<> = -2;
-                    var<1>.__builder<>.SetException(ex);
-                }
-            }
-           
-        */
-
-        var stateMachine = Parameter( stateMachineType.MakeByRefType(), $"sm<{id}>" );
+        var stateMachine = Parameter( stateMachineType, $"sm<{id}>" );
 
         var stateField = Field( stateMachine, FieldName.State );
         var builderField = Field( stateMachine, FieldName.Builder );
         var finalResultField = Field( stateMachine, FieldName.FinalResult );
 
-        var fieldMembers = fields
-            .Select( field => Field( stateMachine, field ) )
-            .ToDictionary( x => x.Member.Name );
-
         var exitLabel = Label( "ST_EXIT" );
 
-        // Optimize node ordering to reduce goto calls
-
-        var nodes = OptimizeNodeOrder( source.Scopes );
-
-        // Create the jump table
-
-        var jumpTable = JumpTableBuilder.Build(
-            source.Scopes[0],
-            source.Scopes,
-            stateField
-        );
-
-        // Create the body 
-
-        var hoistingVisitor = new HoistingVisitor(
+        context.StateMachineInfo = new StateMachineInfo(
             stateMachine,
-            fieldMembers,
+            exitLabel,
             stateField,
             builderField,
-            finalResultField,
-            exitLabel,
-            source.ReturnValue );
-
-        var bodyExpressions = new List<Expression>( 8 ) // preallocate slots for expressions
-        {
-            jumpTable
-        };
-
-        bodyExpressions.AddRange( nodes.Select( hoistingVisitor.Visit ) );
-
-        // Create a try-catch block to handle exceptions
-
-        var exceptionParam = Parameter( typeof( Exception ), "ex" );
-
-        var tryCatchBlock = TryCatch(
-            Block(
-                typeof( void ),
-                source.ReturnValue != null
-                    ? [source.ReturnValue]
-                    : [],
-                bodyExpressions
-            ),
-            Catch(
-                exceptionParam,
-                Block(
-                    Assign( stateField, Constant( -2 ) ),
-                    Call(
-                        builderField,
-                        nameof( AsyncTaskMethodBuilder<TResult>.SetException ),
-                        null,
-                        exceptionParam
-                    )
-                )
-            )
+            finalResultField
         );
 
-        // Create the final lambda expression
+        // Create final lambda with try-catch block
+
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
         return Lambda(
             typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType ),
             Block(
-                tryCatchBlock,
+                TryCatch(
+                    Block(
+                        typeof( void ),
+                        CreateBody(
+                            fields,
+                            context,
+                            Assign( stateField, Constant( -2 ) ),
+                            Call(
+                                builderField,
+                                nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
+                                null,
+                                finalResultField
+                            )
+                        )
+                    ),
+                    Catch(
+                        exceptionParam,
+                        Block(
+                            Assign( stateField, Constant( -2 ) ),
+                            Call(
+                                builderField,
+                                nameof( AsyncTaskMethodBuilder<TResult>.SetException ),
+                                null,
+                                exceptionParam
+                            )
+                        )
+                    )
+                ),
                 Label( exitLabel )
             ),
             stateMachine
         );
     }
 
-    private static List<NodeExpression> OptimizeNodeOrder( List<StateScope> scopes )
+    private static IEnumerable<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context, params Expression[] antecedents )
     {
-        for ( var i = 1; i < scopes.Count - 1; i++ )
+        var stateMachineInfo = context.StateMachineInfo;
+        var loweringInfo = context.LoweringInfo;
+
+        var scopes = loweringInfo.Scopes;
+
+        // Create the body expressions
+
+        var firstScope = scopes[0];
+
+        var jumpTable = JumpTableBuilder.Build(
+            firstScope,
+            scopes,
+            stateMachineInfo.StateField
+        );
+
+        // hoist variables
+
+        var bodyExpressions = HoistVariables(
+            jumpTable,
+            firstScope.GetExpressions( context ),
+            fields,
+            stateMachineInfo.StateMachine
+        );
+
+        // return the body expressions
+
+        return bodyExpressions.Concat( antecedents );
+    }
+
+    private static IEnumerable<Expression> HoistVariables( Expression jumpTable, IReadOnlyList<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
+    {
+        var fieldMembers = fields
+            .Select( field => Field( stateMachine, field ) )
+            .ToDictionary( x => x.Member.Name );
+
+        var hoistingVisitor = new HoistingVisitor( fieldMembers );
+
+        return HoistingSource().Select( hoistingVisitor.Visit );
+
+        IEnumerable<Expression> HoistingSource()
         {
-            scopes[i].Nodes = OrderNodes( scopes[i].ScopeId, scopes[i].Nodes );
+            yield return jumpTable;
+
+            foreach ( var expression in expressions )
+                yield return expression;
         }
+    }
 
-        return OrderNodes( scopes[0].ScopeId, scopes[0].Nodes );
-
-        static List<NodeExpression> OrderNodes( int currentScopeId, List<NodeExpression> nodes )
+    private sealed class HoistingVisitor( IReadOnlyDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter( ParameterExpression node )
         {
-            // Optimize node order for better performance by performing a greedy depth-first
-            // search to find the best order of execution for each node.
-            //
-            // Doing this will allow us to reduce the number of goto calls in the final machine.
-            //
-            // The first node is always the start node, and the last node is always the final node.
+            var name = node.Name ?? node.ToString();
 
-            var ordered = new List<NodeExpression>( nodes.Count );
-            var visited = new HashSet<NodeExpression>( nodes.Count );
+            if ( memberExpressions.TryGetValue( name, out var fieldAccess ) )
+                return fieldAccess;
 
-            // Perform greedy DFS for every unvisited node
-
-            for ( var index = 0; index < nodes.Count; index++ )
-            {
-                var node = nodes[index];
-
-                if ( !visited.Contains( node ) )
-                    Visit( node );
-            }
-
-            // Make sure the final state is last
-
-            var finalNode = nodes.FirstOrDefault( x => x.Transition == null );
-
-            if ( finalNode != null && ordered.Last() != finalNode )
-            {
-                ordered.Remove( finalNode );
-                ordered.Add( finalNode );
-            }
-
-            // Update the order property of each node
-
-            for ( var index = 0; index < ordered.Count; index++ )
-            {
-                ordered[index].MachineOrder = index;
-            }
-
-            return ordered;
-
-            void Visit( NodeExpression node )
-            {
-                while ( node != null && visited.Add( node ) )
-                {
-                    ordered.Add( node );
-                    node = node.Transition?.FallThroughNode;
-
-                    if ( node?.ScopeId != currentScopeId )
-                        return;
-                }
-            }
+            return node;
         }
     }
 }
@@ -462,6 +386,10 @@ public static class StateMachineBuilder
     private static readonly ModuleBuilder ModuleBuilder;
     private static int __id;
 
+    const string RuntimeAssemblyName = "RuntimeStateMachineAssembly";
+    const string RuntimeModuleName = "RuntimeStateMachineModule";
+    const string StateMachineTypeName = "StateMachine";
+
     static StateMachineBuilder()
     {
         BuildStateMachineMethod = typeof( StateMachineBuilder )
@@ -469,27 +397,28 @@ public static class StateMachineBuilder
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
 
         // Create the state machine module
-        var assemblyName = new AssemblyName( "RuntimeStateMachineAssembly" );
+        var assemblyName = new AssemblyName( RuntimeAssemblyName );
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
-        ModuleBuilder = assemblyBuilder.DefineDynamicModule( "MainModule" );
+        ModuleBuilder = assemblyBuilder.DefineDynamicModule( RuntimeModuleName );
     }
 
-    public static Expression Create( Type resultType, LoweringResult source, bool createRunner = true )
+    internal static Expression Create( Type resultType, LoweringTransformer loweringTransformer )
     {
-        // If the result type is void, use the internal IVoidResult type
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
-        return (Expression) buildStateMachine.Invoke( null, [source, createRunner] );
+
+        return (Expression) buildStateMachine.Invoke( null, [loweringTransformer] );
     }
 
-    internal static Expression Create<TResult>( LoweringResult source, bool createRunner = true )
+    internal static Expression Create<TResult>( LoweringTransformer loweringTransformer )
     {
-        var typeName = $"StateMachine{Interlocked.Increment( ref __id )}";
+        var typeId = Interlocked.Increment( ref __id );
+        var typeName = $"{StateMachineTypeName}{typeId}";
 
         var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( source, __id, createRunner );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }

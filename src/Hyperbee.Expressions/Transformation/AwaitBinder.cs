@@ -6,9 +6,9 @@ namespace Hyperbee.Expressions.Transformation;
 internal delegate TAwaiter AwaitBinderGetAwaiterDelegate<TAwaitable, out TAwaiter>( ref TAwaitable awaitable, bool configureAwait );
 internal delegate TResult AwaitBinderGetResultDelegate<TAwaiter, out TResult>( ref TAwaiter awaiter );
 
-public class AwaitBinder
+internal class AwaitBinder
 {
-    public MethodInfo AwaitMethod { get; }
+    public MethodInfo WaitMethod { get; }
     public MethodInfo GetAwaiterMethod { get; }
     public MethodInfo GetResultMethod { get; }
 
@@ -16,13 +16,13 @@ public class AwaitBinder
     private Delegate GetResultImplDelegate { get; }
 
     internal AwaitBinder(
-        MethodInfo awaitMethod,
+        MethodInfo waitMethod,
         MethodInfo getAwaiterMethod,
         MethodInfo getResultMethod,
         Delegate getAwaiterImplDelegate = null,
         Delegate getResultImplDelegate = null )
     {
-        AwaitMethod = awaitMethod;
+        WaitMethod = waitMethod;
         GetAwaiterMethod = getAwaiterMethod;
         GetResultMethod = getResultMethod;
         GetAwaiterImplDelegate = getAwaiterImplDelegate;
@@ -32,7 +32,7 @@ public class AwaitBinder
     // Await methods
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal void Await<TAwaitable, TAwaiter>( ref TAwaitable awaitable, bool configureAwait )
+    internal void Wait<TAwaitable, TAwaiter>( ref TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )
         {
@@ -52,7 +52,7 @@ public class AwaitBinder
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal TResult AwaitResult<TAwaitable, TAwaiter, TResult>( ref TAwaitable awaitable, bool configureAwait )
+    internal TResult WaitResult<TAwaitable, TAwaiter, TResult>( ref TAwaitable awaitable, bool configureAwait )
     {
         switch ( awaitable )
         {

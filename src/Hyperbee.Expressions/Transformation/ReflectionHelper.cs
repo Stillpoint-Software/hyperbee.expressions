@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Transformation;
 
 public delegate bool MethodMatchDelegate( Type[] parameterTypes, int? argCount = null );
 
-internal static class Reflection
+internal static class ReflectionHelper
 {
     internal static bool OpenGenericIsOrInherits( Type baseType, Type checkType )
     {
@@ -30,16 +30,13 @@ internal static class Reflection
 
     // find open-generic and non-generic methods
 
-    public static void GetMethods( Type target, BindingFlags bindingFlags, Action<string, MethodInfo, MethodMatchDelegate> matchCallback )
+    internal static void GetMethods( Type target, BindingFlags bindingFlags, Action<string, MethodInfo, MethodMatchDelegate> matchCallback )
     {
         var methods = target.GetMethods( bindingFlags );
 
         foreach ( var method in methods )
         {
-            var methodName = method.Name;
-
-            matchCallback( methodName, method, Matches );
-
+            matchCallback( method.Name, method, Matches );
             continue;
 
             bool Matches( Type[] parameterTypes, int? argCount = null )
@@ -183,7 +180,7 @@ internal static class Reflection
     internal static MethodInfo FindExtensionMethodInAssembly( Assembly assembly, Type targetType, string methodName )
     {
         // Search for an extension method with the specified name that extends the specified target type.
-        // This is a very expensive operation. To minimize the performance impact, we will filter out as
+        // This is an expensive operation. To minimize the performance impact, we will filter out as
         // many types as possible.
 
         var methods = assembly.GetTypes()

@@ -3,25 +3,41 @@ using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class ConditionalTransition : Transition
+internal class ConditionalTransition : Transition
 {
     public Expression Test { get; set; }
-    public NodeExpression IfTrue { get; set; }
-    public NodeExpression IfFalse { get; set; }
+    public IStateNode IfTrue { get; set; }
+    public IStateNode IfFalse { get; set; }
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    internal override IStateNode FallThroughNode => IfFalse;
+
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        var fallThrough = GotoOrFallThrough( order, IfFalse, true );
+        base.AddExpressions( expressions, context );
+        expressions.Add( Expression() );
+        return;
 
-        if ( fallThrough == null )
-            return IfThen( Test, Goto( IfTrue.NodeLabel ) );
+        Expression Expression()
+        {
+            var fallThrough = GotoOrFallThrough( context.StateNode.StateOrder, IfFalse, true );
 
-        return IfThenElse(
-            Test,
-            Goto( IfTrue.NodeLabel ),
-            fallThrough
-        );
+            if ( fallThrough == null )
+                return IfThen( Test, Goto( IfTrue.NodeLabel ) );
+
+            return IfThenElse(
+                Test,
+                Goto( IfTrue.NodeLabel ),
+                fallThrough
+            );
+        }
     }
 
-    internal override NodeExpression FallThroughNode => IfFalse;
+    internal override void Optimize( HashSet<LabelTarget> references )
+    {
+        IfTrue = OptimizeGotos( IfTrue );
+        IfFalse = OptimizeGotos( IfFalse );
+
+        references.Add( IfTrue.NodeLabel );
+        references.Add( IfFalse.NodeLabel );
+    }
 }

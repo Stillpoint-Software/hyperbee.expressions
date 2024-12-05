@@ -1,90 +1,76 @@
 ﻿using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation;
 
 internal static class JumpTableBuilder
 {
-    public static Expression Build( StateScope current, List<StateScope> scopes, Expression stateField )
+    public static Expression Build( StateContext.Scope current, IReadOnlyList<StateContext.Scope> scopes, Expression stateField )
     {
         var jumpCases = current.JumpCases;
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
 
-        for ( var index = 0; index < jumpCases.Count; index++ )
+        foreach ( var jumpCase in jumpCases )
         {
-            var jumpCase = jumpCases[index];
-
             // Go to the result of awaiter
-            var resultJumpExpression = Expression.SwitchCase(
-                Expression.Block(
-                    Expression.Assign( stateField, Expression.Constant( -1 ) ),
-                    Expression.Goto( jumpCase.ResultLabel )
+
+            var resultJumpExpression = SwitchCase(
+                Block(
+                    Assign( stateField, Constant( -1 ) ),
+                    Goto( jumpCase.ResultLabel )
                 ),
-                Expression.Constant( jumpCase.StateId )
+                Constant( jumpCase.StateId )
             );
 
             jumpTable.Add( resultJumpExpression );
+        }
 
-            // Go to nested jump cases
+        // Loop over scopes and flatten; nested by parent
 
-            var testValues = JumpCaseTests( current, jumpCase.StateId, scopes );
+        foreach ( var childScope in scopes.Where( x => x.Parent == current ) )
+        {
+            var testValues = GetNestedTestValues( childScope, scopes );
 
             if ( testValues.Count <= 0 )
                 continue;
 
-            var nestedJumpExpression = Expression.SwitchCase(
-                Expression.Block(
-                    Expression.Assign( stateField, Expression.Constant( -1 ) ),
-                    Expression.Goto( jumpCase.ContinueLabel )
-                ),
+            var nestedJumpExpression = SwitchCase(
+                Goto( childScope.InitialLabel ),
                 testValues
             );
 
             jumpTable.Add( nestedJumpExpression );
         }
 
-        return Expression.Switch(
+        return Switch(
             stateField,
-            Expression.Empty(),
+            Empty(),
             [.. jumpTable]
         );
     }
 
-    // Iterative function to build jump table cases
-    private static List<Expression> JumpCaseTests( StateScope scope, int stateId, List<StateScope> scopes )
+    private static List<ConstantExpression> GetNestedTestValues( StateContext.Scope current, IReadOnlyList<StateContext.Scope> scopes )
     {
-        var testValues = new List<Expression>();
-        var stack = new Stack<(StateScope, int)>();
+        var testCases = current.JumpCases.Select( jumpCase => Constant( jumpCase.StateId ) ).ToList();
+        var stack = new Stack<StateContext.Scope>();
 
         while ( true )
         {
-            for ( var scopeIndex = 0; scopeIndex < scopes.Count; scopeIndex++ )
+            foreach ( var child in scopes.Where( scope => scope.Parent == current ) )
             {
-                var nestedScope = scopes[scopeIndex];
-
-                if ( nestedScope.Parent != scope )
-                    continue;
-
-                for ( var jumpIndex = 0; jumpIndex < nestedScope.JumpCases.Count; jumpIndex++ )
-                {
-                    var childJumpCase = nestedScope.JumpCases[jumpIndex];
-
-                    if ( childJumpCase.ParentId != stateId )
-                        continue;
-
-                    // Return self
-                    testValues.Add( Expression.Constant( childJumpCase.StateId ) );
-
-                    // Push nested jump cases onto the stack
-                    stack.Push( (nestedScope, childJumpCase.StateId) );
-                }
+                stack.Push( child );
             }
 
-            if ( !stack.TryPop( out var item ) )
+            if ( !stack.TryPop( out current ) )
                 break;
 
-            (scope, stateId) = item;
+            foreach ( var jumpCase in current.JumpCases )
+            {
+                testCases.Add( Constant( jumpCase.StateId ) );
+            }
         }
 
-        return testValues;
+        return testCases;
     }
+
 }

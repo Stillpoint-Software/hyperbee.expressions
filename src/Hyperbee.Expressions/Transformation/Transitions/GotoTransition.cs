@@ -1,20 +1,21 @@
 ﻿using System.Linq.Expressions;
 
-using static System.Linq.Expressions.Expression;
-
 namespace Hyperbee.Expressions.Transformation.Transitions;
 
-public class GotoTransition : Transition
+internal class GotoTransition : Transition
 {
-    public NodeExpression TargetNode { get; set; }
+    public IStateNode TargetNode { get; set; }
+    internal override IStateNode FallThroughNode => TargetNode;
 
-    internal override Expression Reduce( int order, NodeExpression expression, IHoistingSource resolverSource )
+    public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        return Goto( TargetNode.NodeLabel );
-
-        // TODO: causes infinite loop with nested try/catch
-        // return GotoOrFallThrough( order, TargetNode );
+        base.AddExpressions( expressions, context );
+        expressions.Add( GotoOrFallThrough( context.StateNode.StateOrder, TargetNode ) );
     }
 
-    internal override NodeExpression FallThroughNode => TargetNode;
+    internal override void Optimize( HashSet<LabelTarget> references )
+    {
+        TargetNode = OptimizeGotos( TargetNode );
+        references.Add( TargetNode.NodeLabel );
+    }
 }
