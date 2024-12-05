@@ -4,8 +4,8 @@ namespace Hyperbee.Expressions.Transformation;
 
 internal sealed class StateResult
 {
-    public Expression Variable { get; set; } // Left
-    public Expression Value { get; set; } // Right
+    public Expression Variable { get; set; } 
+    public Expression Value { get; set; } 
 
     public void Deconstruct( out Expression variable, out Expression value )
     {

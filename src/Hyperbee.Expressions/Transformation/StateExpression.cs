@@ -7,16 +7,16 @@ namespace Hyperbee.Expressions.Transformation;
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
 internal sealed class StateExpression : Expression, IStateNode
 {
-    public int StateId { get; set; }
-    public int GroupId { get; set; }
-    public int ScopeId { get; set; }
+    public int StateId { get; }
+    public int GroupId { get; }
+    public int ScopeId { get; }
 
     public int StateOrder { get; set; }
 
-    public StateResult Result { get; set; } = new();
+    public StateResult Result { get; } = new();
 
-    public LabelTarget NodeLabel { get; set; }
-    public List<Expression> Expressions { get; set; } = new( 8 );
+    public LabelTarget NodeLabel { get; }
+    public List<Expression> Expressions { get; } = new( 8 );
 
     public Transition Transition { get; set; }
 

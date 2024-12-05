@@ -24,5 +24,5 @@ internal record LoweringInfo
     public IReadOnlyCollection<Expression> Variables { get; init; }
     public IReadOnlyCollection<ParameterExpression> ExternVariables { get; init; }
     public int AwaitCount { get; init; }
-    public bool HasFinalResultVariable { get; internal set; }
+    public bool HasFinalResultVariable { get; init; }
 }
