@@ -47,10 +47,10 @@ internal class LoweringVisitor : ExpressionVisitor
         void ThrowIfInvalid()
         {
             if ( _states.Scopes[0].States.Count == 0 )
-                throw new LoweringException( $"Evaluation of the {nameof(expressions)} parameter resulted in empty states." );
+                throw new LoweringException( $"Evaluation of the {nameof( expressions )} parameter resulted in empty states." );
 
             if ( _awaitCount == 0 )
-                throw new LoweringException( $"The {nameof(expressions)} parameter must contain at least one awaitable." );
+                throw new LoweringException( $"The {nameof( expressions )} parameter must contain at least one awaitable." );
         }
 
         static ParameterExpression CreateFinalResultVariable( Type resultType, VariableResolver resolver )

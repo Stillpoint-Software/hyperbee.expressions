@@ -64,7 +64,7 @@ public class AsyncBlockExpression : Expression
         }
         catch ( LoweringException ex )
         {
-            throw new InvalidOperationException( $"Unable to lower {nameof(AsyncBlockExpression)}.", ex );
+            throw new InvalidOperationException( $"Unable to lower {nameof( AsyncBlockExpression )}.", ex );
         }
     }
 

@@ -34,7 +34,7 @@ internal class StateMachineBuilder<TResult>
 
     public Expression CreateStateMachine( LoweringTransformer loweringTransformer, int id )
     {
-        ArgumentNullException.ThrowIfNull( loweringTransformer, nameof(loweringTransformer) );
+        ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
 
         // Lower the async expression
         //
