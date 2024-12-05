@@ -22,10 +22,10 @@ public class AsyncBlockExpression : Expression
     {
     }
 
-    internal AsyncBlockExpression( 
-        ReadOnlyCollection<ParameterExpression> variables, 
-        ReadOnlyCollection<Expression> expressions, 
-        ReadOnlyCollection<ParameterExpression> externVariables 
+    internal AsyncBlockExpression(
+        ReadOnlyCollection<ParameterExpression> variables,
+        ReadOnlyCollection<Expression> expressions,
+        ReadOnlyCollection<ParameterExpression> externVariables
     )
     {
         if ( expressions == null || expressions.Count == 0 )
@@ -61,7 +61,7 @@ public class AsyncBlockExpression : Expression
         );
 
         if ( loweringInfo.AwaitCount == 0 )
-            throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one {nameof(AwaitExpression)}." );
+            throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one {nameof( AwaitExpression )}." );
 
         return loweringInfo;
     }
