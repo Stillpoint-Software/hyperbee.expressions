@@ -8,7 +8,7 @@
     <Authors>Stillpoint Software, Inc.</Authors>
     <PackageId>Hyperbee.Expressions</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>expression-tree;expressions;async;await;expression-extension;async-await;custom-expressions;dynamic-code;code-generation</PackageTags>
+    <PackageTags>expression-tree;expressions;async;await;expression-extension</PackageTags>
 
     <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
