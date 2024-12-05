@@ -10,7 +10,7 @@ public class UsingExpression : Expression
     internal UsingExpression( Expression disposable, Expression body )
     {
         if ( !typeof( IDisposable ).IsAssignableFrom( disposable.Type ) )
-            throw new ArgumentException( "The disposable expression must return an IDisposable.", nameof( disposable ) );
+            throw new ArgumentException( $"The disposable expression must return an {nameof(IDisposable)}.", nameof( disposable ) );
 
         Disposable = disposable;
         Body = body;

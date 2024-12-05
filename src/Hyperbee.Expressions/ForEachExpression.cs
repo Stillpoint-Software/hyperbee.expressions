@@ -63,7 +63,7 @@ public class ForEachExpression : Expression
         ArgumentNullException.ThrowIfNull( body, nameof( body ) );
 
         if ( !typeof( IEnumerable ).IsAssignableFrom( collection.Type ) )
-            throw new ArgumentException( "Collection must implement IEnumerable.", nameof( collection ) );
+            throw new ArgumentException( $"Collection must implement {nameof(IEnumerable)}.", nameof( collection ) );
     }
 
     public override Type Type => typeof( void );
