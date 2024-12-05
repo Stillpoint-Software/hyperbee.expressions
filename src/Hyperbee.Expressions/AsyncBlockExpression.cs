@@ -51,19 +51,21 @@ public class AsyncBlockExpression : Expression
 
     private LoweringInfo LoweringTransformer()
     {
-        var visitor = new LoweringVisitor();
+        try
+        {
+            var visitor = new LoweringVisitor();
 
-        var loweringInfo = visitor.Transform(
-            Result.Type,
-            [.. Variables],
-            [.. Expressions],
-            ExternVariables != null ? [.. ExternVariables] : []
-        );
-
-        if ( loweringInfo.AwaitCount == 0 )
-            throw new InvalidOperationException( $"{nameof( AsyncBlockExpression )} must contain at least one {nameof( AwaitExpression )}." );
-
-        return loweringInfo;
+            return visitor.Transform(
+                Result.Type,
+                [.. Variables],
+                [.. Expressions],
+                ExternVariables != null ? [.. ExternVariables] : []
+            );
+        }
+        catch ( LoweringException ex )
+        {
+            throw new InvalidOperationException( $"Unable to lower {nameof(AsyncBlockExpression)}.", ex );
+        }
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )

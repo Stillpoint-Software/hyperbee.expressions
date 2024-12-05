@@ -3,14 +3,14 @@ using Hyperbee.Expressions.Transformation.Transitions;
 
 namespace Hyperbee.Expressions.Transformation;
 
-internal sealed class StateMachineOptimizer
+internal sealed class StateOptimizer
 {
-    internal static void Optimize( LoweringInfo source )
+    internal static void Optimize( StateContext states )
     {
         var references = new HashSet<LabelTarget>();
         int stateOrder = 0;
 
-        var scopes = source.Scopes;
+        var scopes = states.Scopes;
 
         foreach ( var scope in scopes )
         {

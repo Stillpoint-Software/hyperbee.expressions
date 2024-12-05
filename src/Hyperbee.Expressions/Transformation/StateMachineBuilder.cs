@@ -34,15 +34,11 @@ internal class StateMachineBuilder<TResult>
 
     public Expression CreateStateMachine( LoweringTransformer loweringTransformer, int id )
     {
+        ArgumentNullException.ThrowIfNull( loweringTransformer, nameof(loweringTransformer) );
+
         // Lower the async expression
         //
         var loweringInfo = loweringTransformer();
-
-        if ( loweringInfo.AwaitCount == 0 )
-            throw new InvalidOperationException( "The target of a lowering operation must contain at least one await." );
-
-        if ( loweringInfo.Scopes[0].States == null )
-            throw new InvalidOperationException( "States must be set before creating state machine." );
 
         // Create the state-machine builder context
         //
@@ -326,10 +322,6 @@ internal class StateMachineBuilder<TResult>
         var loweringInfo = context.LoweringInfo;
 
         var scopes = loweringInfo.Scopes;
-
-        // Optimize source nodes
-
-        StateMachineOptimizer.Optimize( loweringInfo );
 
         // Create the body expressions
 

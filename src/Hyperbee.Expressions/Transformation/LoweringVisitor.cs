@@ -21,10 +21,17 @@ internal class LoweringVisitor : ExpressionVisitor
 
     public LoweringInfo Transform( Type resultType, ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] externVariables )
     {
+        ArgumentNullException.ThrowIfNull( expressions, nameof( expressions ) );
+        ArgumentOutOfRangeException.ThrowIfZero( expressions.Length, nameof( expressions ) );
+
         _variableResolver = new VariableResolver( variables, _states );
         _finalResultVariable = CreateFinalResultVariable( resultType, _variableResolver );
 
         VisitExpressions( expressions );
+
+        StateOptimizer.Optimize( _states );
+
+        ThrowIfInvalid();
 
         return new LoweringInfo
         {
@@ -34,6 +41,17 @@ internal class LoweringVisitor : ExpressionVisitor
             Variables = _variableResolver.GetMappedVariables(),
             ExternVariables = externVariables
         };
+
+        // helpers
+
+        void ThrowIfInvalid()
+        {
+            if ( _states.Scopes[0].States.Count == 0 )
+                throw new LoweringException( $"Evaluation of the {nameof(expressions)} parameter resulted in empty states." );
+
+            if ( _awaitCount == 0 )
+                throw new LoweringException( $"The {nameof(expressions)} parameter must contain at least one awaitable." );
+        }
 
         static ParameterExpression CreateFinalResultVariable( Type resultType, VariableResolver resolver )
         {
