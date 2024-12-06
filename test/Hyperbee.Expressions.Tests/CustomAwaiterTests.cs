@@ -45,8 +45,10 @@ public class CustomAwaiterTests
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
-    [TestMethod]
-    public async Task TestCustomAwaiter_AsyncBlock()
+    [DataTestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    public async Task TestCustomAwaiter_AsyncBlock( CompilerType compiler )
     {
         // var lazy = new Lazy<int>( () => 42 );
         // var result = await lazy;
@@ -60,7 +62,7 @@ public class CustomAwaiterTests
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = await compiledLambda();
 

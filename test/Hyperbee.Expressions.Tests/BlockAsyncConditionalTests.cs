@@ -2,6 +2,7 @@
 using System.Formats.Tar;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using FastExpressionCompiler;
 using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
@@ -319,105 +320,110 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 10, result ); // The true branch contains another conditional, false branch executed
     }
 
-    private static TAwaiter GetAwaiter<TAwaitable, TAwaiter>( ref TAwaitable value )
-    {
-        return default( TAwaiter );
-    }
-
-    private static TResult GetResult<TAwaiter, TResult>( ref TAwaiter awaiter )
-    {
-        return default( TResult );
-    }
-
-    public delegate TAwaiter MyFunc<TAwaitable, TAwaiter>( ref TAwaitable value );
-
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
-    public void AsyncBlock_ShouldAwaitSuccessfully_WithConditionalReturningTask( CompleterType completer, CompilerType compiler )
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalReturningTask( CompleterType completer, CompilerType compiler )
     {
-
-        /*
-        internal class AwaitBinder
-        {
-            public MethodInfo GetAwaiterMethod { get; }
-            public MethodInfo GetResultMethod { get; }
-        }
-
-            internal TAwaiter GetAwaiter<TAwaitable, TAwaiter>( ref TAwaitable awaitable, bool configureAwait )
-
-            internal TResult GetResult<TAwaiter, TResult>( ref TAwaiter awaiter )
-
-        */
-        // Arrange: The result of the conditional is an awaited Task
-        //var block = BlockAsync(
-        //    Await(
-        //        Condition(
-        //            Constant( true ),
-        //            AsyncHelper.Completable(
-        //                Constant( completable ),
-        //                Constant( 15 )
-        //            ),
-        //            AsyncHelper.Completable(
-        //                Constant( completable ),
-        //                Constant( 20 )
-        //            )
-        //        )
-        //    )
-        //);
-        var methodInfo = typeof( BlockAsyncConditionalTests ).GetMethod(
-            nameof( GetAwaiter ),
-            BindingFlags.Static | BindingFlags.NonPublic
-        ).MakeGenericMethod( typeof( int ), typeof( int ) );
-
-        var resultMethodInfo = typeof( BlockAsyncConditionalTests ).GetMethod(
-            nameof( GetResult ),
-            BindingFlags.Static | BindingFlags.NonPublic
-        ).MakeGenericMethod( typeof( int ), typeof( int ) );
-
-        Expression<Func<int>> test = () => 15;
-
-        var block = Block(
-            Call( resultMethodInfo, Call( methodInfo, Invoke( test ) ) )
+        //Arrange: The result of the conditional is an awaited Task
+        var block = BlockAsync(
+           Await(
+               Condition(
+                   Constant( true ),
+                   AsyncHelper.Completer(
+                       Constant( completer ),
+                       Constant( 15 )
+                   ),
+                   AsyncHelper.Completer(
+                       Constant( completer ),
+                       Constant( 20 )
+                   )
+               )
+           )
         );
-        var lambda = Lambda<Action>( block );
 
-
-        //var block = BlockAsync(
-        //    Await(
-        //        Condition(
-        //            Constant( true ),
-        //            Call( methodInfo, Constant( 15, typeof(int).MakeByRefType() ) ),
-        //            Call( methodInfo, Constant( 20 ) )
-        //        //Constant( Task.FromResult( 15 ) ),
-        //        //Constant( Task.FromResult( 20 ) )
-        //        //AsyncHelper.Completable(
-        //        //    Constant( completable ),
-        //        //    Constant( 15 )
-        //        //),
-        //        //AsyncHelper.Completable(
-        //        //    Constant( completable ),
-        //        //    Constant( 20 )
-        //        //)
-        //        )
-        //    )
-        //);
-
-        //var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo ); // compiler );
-        var t = compiledLambda.Target;
-
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+        
         // Act
 
-        //var result = await compiledLambda();
-        //var myint = 15;
-        compiledLambda();
+        var result = await compiledLambda();
 
         // Assert
-        //Assert.AreEqual( 15, result ); // True branch task should be awaited and return 15
+        Assert.AreEqual( 15, result ); // True branch task should be awaited and return 15
     }
+
+
+    [DataTestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    public async Task BF_Test0( CompleterType completer, CompilerType compiler )
+    {
+        // this pattern throws a null reference exception
+
+        var block = BlockAsync(
+            Await( Constant( Task.FromResult( 42 ) ) )
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        await compiledLambda();
+    }
+
+    [DataTestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    public async Task BF_Test1( CompleterType completer, CompilerType compiler )
+    {
+        // this pattern throws a bad IL exception
+        // this pattern works for flag = false; but not for flag = true;
+
+        const bool flag = true;
+
+        var block = BlockAsync(
+
+            Condition( Constant( flag ),
+                Constant( 10 ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
+                    Constant( 20 )
+                ) )
+            )
+
+        );
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        await compiledLambda();
+    }
+
+    [DataTestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    public void BF_Test2( CompleterType completer, CompilerType compiler )
+    {
+        const bool flag = true;
+
+        var block = Block(
+
+            Condition( Constant( flag ),
+                Constant( 10 ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
+                    Constant( 20 )
+                ) )
+            )
+
+        );
+        var lambda = Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        compiledLambda();
+    }
+
 
     [TestMethod]
     [ExpectedException( typeof( NullReferenceException ) )]

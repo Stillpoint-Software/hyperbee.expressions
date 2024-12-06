@@ -71,7 +71,7 @@ internal class AwaitBinder
     // GetAwaiter methods
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static ConfiguredTaskAwaitable.ConfiguredTaskAwaiter GetAwaiter( Task task, bool configureAwait )
+    internal static ConfiguredTaskAwaitable.ConfiguredTaskAwaiter GetAwaiter( ref Task task, bool configureAwait )
     {
         return task.ConfigureAwait( configureAwait ).GetAwaiter();
     }
@@ -83,7 +83,7 @@ internal class AwaitBinder
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter GetAwaiter<TResult>( Task<TResult> task, bool configureAwait )
+    internal static ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter GetAwaiter<TResult>( ref Task<TResult> task, bool configureAwait )
     {
         return task.ConfigureAwait( configureAwait ).GetAwaiter();
     }

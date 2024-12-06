@@ -493,7 +493,7 @@ public class BlockAsyncBasicTests
             typeof( Task ).GetMethod( nameof( Task.Run ), [typeof( Func<Task> )] )!,
             Lambda<Func<Task>>(
                 BlockAsync(
-                    Await( Call( delayMethod, Constant( 10 ) ) ),
+                    Await( Call( delayMethod!, Constant( 10 ) ) ),
                     Assign( ArrayAccess( tracker, temp ), temp )
                 )
             )
@@ -511,10 +511,10 @@ public class BlockAsyncBasicTests
                 Block(
                     [temp],
                     Assign( temp, i ),
-                    Call( tasks, typeof( List<Task> ).GetMethod( nameof( List<Task>.Add ) ), taskRun )
+                    Call( tasks, typeof( List<Task> ).GetMethod( nameof( List<Task>.Add ) )!, taskRun )
                 )
             ),
-            Await( Call( typeof( Task ).GetMethod( nameof( Task.WhenAll ), [typeof( IEnumerable<Task> )] ), tasks ), false ),
+            Await( Call( typeof( Task ).GetMethod( nameof( Task.WhenAll ), [typeof( IEnumerable<Task> )] )!, tasks ), false ),
             tracker
         );
 
