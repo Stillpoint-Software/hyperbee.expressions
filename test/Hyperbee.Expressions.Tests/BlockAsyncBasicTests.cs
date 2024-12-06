@@ -38,15 +38,15 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithCompletedTask( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithCompletedTask( CompleterType completer, CompilerType compiler )
     {
         // Arrange
-        var block = BlockAsync( Await( AsyncHelper.Completable(
-                        Constant( completable ),
+        var block = BlockAsync( Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ) );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -60,19 +60,19 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAwaitMultipleSuccessfully_WithCompletedTask( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAwaitMultipleSuccessfully_WithCompletedTask( CompleterType completer, CompilerType compiler )
     {
         // Arrange
-        var block = BlockAsync( Await( AsyncHelper.Completable(
-                        Constant( completable ),
+        var block = BlockAsync( Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ),
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 2 )
                     ) ) );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -102,20 +102,20 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAwaitMultipleTasks_WithDifferentResults( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAwaitMultipleTasks_WithDifferentResults( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var block = BlockAsync(
-            Await( AsyncHelper.Completable(
-                        Constant( completable ),
+            Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ),
-            Await( AsyncHelper.Completable(
-                        Constant( completable ),
+            Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 2 )
                     ) )
         );
@@ -163,18 +163,18 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedTasks( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedTasks( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var innerBlock = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( completable ), Constant( 2 ) ) )
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 2 ) ) )
         );
         var block = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( completable ), Constant( 1 ) ) ),
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 1 ) ) ),
             Await( innerBlock )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -188,21 +188,21 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedLambdas( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAwaitNestedBlockAsync_WithNestedLambdas( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var innerBlock = Lambda<Func<Task<int>>>(
             BlockAsync(
-                Await( AsyncHelper.Completable( Constant( completable ), Constant( 2 ) ) )
+                Await( AsyncHelper.Completer( Constant( completer ), Constant( 2 ) ) )
             )
         );
 
         var block = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( completable ), Constant( 1 ) ) ),
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 1 ) ) ),
             Await( Invoke( innerBlock ) )
         );
 
@@ -217,11 +217,11 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldShareVariablesBetweenBlocks_WithNestedAwaits( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldShareVariablesBetweenBlocks_WithNestedAwaits( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var var1 = Variable( typeof( int ), "var1" );
@@ -232,8 +232,8 @@ public class BlockAsyncBasicTests
         var mostInnerBlock = Lambda<Func<Task>>(
             BlockAsync(
                 Assign( var1, Add( var1, var2 ) ),
-                Await( AsyncHelper.Completable(
-                        Constant( completable )
+                Await( AsyncHelper.Completer(
+                        Constant( completer )
                     ) )
             ) );
 
@@ -262,16 +262,16 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldHandleSyncAndAsync_WithMixedOperations( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldHandleSyncAndAsync_WithMixedOperations( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var block = BlockAsync(
             Constant( 10 ),
-            Await( AsyncHelper.Completable( Constant( completable ), Constant( 20 ) ) )
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 20 ) ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile( compiler );
@@ -299,19 +299,19 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithReturnLabel( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithReturnLabel( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var returnLabel = Label( typeof( int ) );
         var block = BlockAsync(
             IfThenElse(
                 Constant( true ),
-                Return( returnLabel, Await( AsyncHelper.Completable( Constant( completable ), Constant( 10 ) ) ) ),
-                Return( returnLabel, Await( AsyncHelper.Completable( Constant( completable ), Constant( 20 ) ) ) )
+                Return( returnLabel, Await( AsyncHelper.Completer( Constant( completer ), Constant( 10 ) ) ) ),
+                Return( returnLabel, Await( AsyncHelper.Completer( Constant( completer ), Constant( 20 ) ) ) )
             ),
             Label( returnLabel, Constant( 30 ) )
         );
@@ -326,11 +326,11 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldPreserveVariableAssignment_BeforeAndAfterAwait( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -338,8 +338,8 @@ public class BlockAsyncBasicTests
         var block = BlockAsync(
             [resultValue],
             Assign( resultValue, Constant( 5 ) ),
-            Await( AsyncHelper.Completable(
-                        Constant( completable )
+            Await( AsyncHelper.Completer(
+                        Constant( completer )
                     ) ),
             Assign( resultValue, Add( resultValue, Constant( 10 ) ) ),
             resultValue // Return the result
@@ -356,11 +356,11 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldPreserveVariablesInNestedBlock_WithAwaits( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldPreserveVariablesInNestedBlock_WithAwaits( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         // NOTE: this test is also verifying the hoisting visitor and reuse of names
@@ -378,7 +378,7 @@ public class BlockAsyncBasicTests
                 Block(
                     Assign( otherValue1, Condition( Constant( false ), Constant( 100 ), Block( Constant( 150 ) ) ) ),
                     Assign( otherValue2, Constant( "200" ) ),
-                    Await( AsyncHelper.Completable( Constant( completable ) ) ),
+                    Await( AsyncHelper.Completer( Constant( completer ) ) ),
                     innerValue ),
                 Condition( Constant( false ), Assign( innerValue, Constant( "200" ) ), Assign( otherValue2, Constant( "250" ) ) )
             ),
@@ -433,19 +433,19 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAllowLambdaParameters( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAllowLambdaParameters( CompleterType completer, CompilerType compiler )
     {
         var var1 = Variable( typeof( int ), "var1" );
         var param1 = Parameter( typeof( Func<Task<int>> ), "param1" );
 
         var parameterAsync = Lambda<Func<Task<int>>>(
             BlockAsync(
-                Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 15 )
                     ) )
             )
@@ -534,11 +534,11 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var innerVar = Variable( typeof( int ), "innerVar" );
@@ -552,22 +552,22 @@ public class BlockAsyncBasicTests
                 Await(
                     BlockAsync(
                         [innerVar],
-                        Assign( outerVar, Await( AsyncHelper.Completable(
-                            Constant( completable ),
+                        Assign( outerVar, Await( AsyncHelper.Completer(
+                            Constant( completer ),
                             Constant( 3 )
                         ) ) ),
                         Assign( innerVar, Constant( 1 ) ),
                         Assign( middleVar, Constant( 2 ) )
                     )
                 ),
-                Assign( middleVar, Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                Assign( middleVar, Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 4 )
                     ) ) ),
                 Assign( outerVar, Add( outerVar, middleVar ) )
             ),
             Await(
-                AsyncHelper.Completable( Constant( completable ) )
+                AsyncHelper.Completer( Constant( completer ) )
             ),
             outerVar
         );
@@ -584,19 +584,19 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithBlockConditional( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithBlockConditional( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var block = BlockAsync(
             Block(
                 Constant( 5 ),
                 Condition( Constant( true ),
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ),
                     Constant( 0 )
@@ -633,11 +633,11 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task BlockAsync_ShouldAwaitSuccessfully_WithNestedLambdaArgument( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAwaitSuccessfully_WithNestedLambdaArgument( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var control = Constant( new TestContext() );
@@ -672,8 +672,8 @@ public class BlockAsyncBasicTests
         // Act
         var lambda = Lambda<Func<Task<int>>>( BlockAsync(
              Using( disposableBlock,
-                 Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                 Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 3 )
                     ) ) )
              ) );

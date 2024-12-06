@@ -68,11 +68,11 @@ public class CustomAwaiterTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task TestCustomAwaiter_TaskLike( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task TestCustomAwaiter_TaskLike( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -81,8 +81,8 @@ public class CustomAwaiterTests
             [resultValue],
             Assign( resultValue, Constant( 5 ) ),
             Await(
-                AsyncHelper.Completable(
-                    Constant( completable )
+                AsyncHelper.Completer(
+                    Constant( completer )
                 )
             ),
             Assign( resultValue, Add( resultValue, Constant( 37 ) ) ),
@@ -100,11 +100,11 @@ public class CustomAwaiterTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task TestCustomAwaiter_TaskResultLike( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task TestCustomAwaiter_TaskResultLike( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -114,8 +114,8 @@ public class CustomAwaiterTests
             Assign( resultValue,
                 Add(
                     Await(
-                        AsyncHelper.Completable(
-                            Constant( completable ),
+                        AsyncHelper.Completer(
+                            Constant( completer ),
                             Constant( 37 )
                         )
                     ),

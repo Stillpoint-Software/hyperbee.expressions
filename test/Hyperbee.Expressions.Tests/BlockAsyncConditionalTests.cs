@@ -13,15 +13,15 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockAsyncConditionalTests
 {
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenCondition( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenCondition( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Condition depends on awaited value
-        var condition = Await( AsyncHelper.Completable(
-            Constant( completable ),
+        var condition = Await( AsyncHelper.Completer(
+            Constant( completer ),
             Constant( true )
         ) );
 
@@ -40,11 +40,11 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalAssignment( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalAssignment( CompleterType completer, CompilerType compiler )
     {
         // Arrange: IfTrue branch contains an awaited task
         var var = Variable( typeof( int ), "var" );
@@ -54,8 +54,8 @@ public class BlockAsyncConditionalTests
             [var],
             Assign( var,
                 Condition( condition,
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ),
                     Constant( 0 )
@@ -74,18 +74,18 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenElseTrueBranch( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenElseTrueBranch( CompleterType completer, CompilerType compiler )
     {
         // Arrange: IfTrue branch contains an awaited task
         var condition = Constant( true );
         var block = BlockAsync(
             Condition( condition,
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 1 )
                 ) ),
                 Constant( 0 )
@@ -102,19 +102,19 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenElseFalseBranch( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenElseFalseBranch( CompleterType completer, CompilerType compiler )
     {
         // Arrange: IfFalse branch contains an awaited task
         var condition = Constant( false );
         var block = BlockAsync(
             Condition( condition,
                 Constant( 0 ),
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 2 )
                 ) )
             )
@@ -130,15 +130,15 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalInTest( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalInTest( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Test depends on awaited value
-        var test = Await( AsyncHelper.Completable(
-            Constant( completable ),
+        var test = Await( AsyncHelper.Completer(
+            Constant( completer ),
             Constant( true )
         ) );
 
@@ -157,22 +157,22 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTrueAndFalseBranches( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTrueAndFalseBranches( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Both branches return values from awaited tasks
         var condition = Constant( true );
         var block = BlockAsync(
             Condition( condition,
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 10 )
                 ) ),
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 20 )
                 ) )
             )
@@ -188,21 +188,21 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeAndAfterConditional( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeAndAfterConditional( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await a task before and after a conditional expression
         var block = BlockAsync(
-            Await( AsyncHelper.Completable(
-                Constant( completable ),
+            Await( AsyncHelper.Completer(
+                Constant( completer ),
                 Constant( 5 )
             ) ),
             Condition( Constant( true ), Constant( 10 ), Constant( 0 ) ),
-            Await( AsyncHelper.Completable(
-                Constant( completable ),
+            Await( AsyncHelper.Completer(
+                Constant( completer ),
                 Constant( 15 )
             ) )
         );
@@ -217,19 +217,19 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithFalseCondition( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithFalseCondition( CompleterType completer, CompilerType compiler )
     {
         // Arrange: False condition should lead to the false branch being executed
         var condition = Constant( false );
         var block = BlockAsync(
             Condition( condition,
                 Constant( 10 ),
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 20 )
                 ) )
             )
@@ -245,31 +245,31 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexConditionalLogic( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexConditionalLogic( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Two conditionals where both branches return awaited values
         var block = BlockAsync(
             Condition( Constant( true ),
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 10 )
                 ) ),
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 5 )
                 ) )
             ),
             Condition( Constant( false ),
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 1 )
                 ) ),
-                Await( AsyncHelper.Completable(
-                    Constant( completable ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 2 )
                 ) )
             )
@@ -285,11 +285,11 @@ public class BlockAsyncConditionalTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedConditionals( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedConditionals( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Conditionals nested inside each other
         var block = BlockAsync(
@@ -297,12 +297,12 @@ public class BlockAsyncConditionalTests
                 Constant( true ),
                 Condition(
                     Constant( false ),
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 5 )
                     ) ),
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 10 )
                     ) )
                 ),
@@ -332,11 +332,11 @@ public class BlockAsyncConditionalTests
     public delegate TAwaiter MyFunc<TAwaitable, TAwaiter>( ref TAwaitable value );
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public void AsyncBlock_ShouldAwaitSuccessfully_WithConditionalReturningTask( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public void AsyncBlock_ShouldAwaitSuccessfully_WithConditionalReturningTask( CompleterType completer, CompilerType compiler )
     {
 
         /*

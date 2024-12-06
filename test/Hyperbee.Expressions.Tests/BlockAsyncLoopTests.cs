@@ -8,11 +8,11 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockAsyncLoopTests
 {
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeBreak( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeBreak( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await before break in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -22,8 +22,8 @@ public class BlockAsyncLoopTests
             Assign( loopCount, Constant( 0 ) ),
             Loop(
                 Block(
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ), // Await before break
                     IfThen(
@@ -48,11 +48,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterLoop( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterLoop( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await after break in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -72,8 +72,8 @@ public class BlockAsyncLoopTests
                 breakLabel,
                 null
             ),
-            Await( AsyncHelper.Completable(
-                        Constant( completable ),
+            Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 5 )
                     ) ), // Await after loop ends
             loopCount
@@ -89,11 +89,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeContinue( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeContinue( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await before continue in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -105,8 +105,8 @@ public class BlockAsyncLoopTests
             Loop(
                 Block(
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ),
                     IfThen(
@@ -131,11 +131,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterContinue( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterContinue( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await after continue in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -151,8 +151,8 @@ public class BlockAsyncLoopTests
                         Equal( loopCount, Constant( 1 ) ),
                         Continue( continueLabel )
                     ),
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 3 )
                     ) ),
                     Break( breakLabel )
@@ -173,11 +173,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithMultipleAwaitsInLoop( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithMultipleAwaitsInLoop( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Multiple awaits in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -187,13 +187,13 @@ public class BlockAsyncLoopTests
             Assign( loopCount, Constant( 0 ) ),
             Loop(
                 Block(
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ),
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 3 )
                     ) ),
                     Break( breakLabel )
@@ -214,11 +214,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
-    [DataRow( CompletableType.Immediate, CompilerType.System )]
-    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
-    [DataRow( CompletableType.Deferred, CompilerType.System )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithBreakAndContinueLabels( CompletableType completable, CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithBreakAndContinueLabels( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Use both breakLabel and continueLabel in the loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -231,8 +231,8 @@ public class BlockAsyncLoopTests
             Loop(
                 Block(
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
-                    Await( AsyncHelper.Completable(
-                        Constant( completable ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) ),
                     IfThen(
