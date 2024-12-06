@@ -346,7 +346,7 @@ public class BlockAsyncConditionalTests
 
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile( compiler );
-        
+
         // Act
 
         var result = await compiledLambda();
