@@ -18,8 +18,8 @@ public static class ExpressionCompilerExtensions
     public static Func<T> Compile<T>( this Expression<Func<T>> expression, CompilerType compilerType = CompilerType.System )
     {
 #if FAST_EXPRESSION_COMPILER
-        if ( compilerType == CompilerType.Fast ) 
-        { 
+        if ( compilerType == CompilerType.Fast )
+        {
             var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo | CompilerFlags.ThrowOnNotSupportedExpression );
             var t = compiledExpression.Target;
             return compiledExpression;
@@ -31,7 +31,7 @@ public static class ExpressionCompilerExtensions
     public static Func<T1, T2> Compile<T1, T2>( this Expression<Func<T1, T2>> expression, CompilerType compilerType = CompilerType.System )
     {
 #if FAST_EXPRESSION_COMPILER
-        if ( compilerType == CompilerType.Fast ) 
+        if ( compilerType == CompilerType.Fast )
         {
             var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo | CompilerFlags.ThrowOnNotSupportedExpression );
             var t = compiledExpression.Target;

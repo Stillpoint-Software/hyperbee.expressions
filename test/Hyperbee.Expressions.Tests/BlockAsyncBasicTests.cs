@@ -25,7 +25,7 @@ public class BlockAsyncBasicTests
         var lambda = Lambda<CustomDelegate<string, string>>(
             Block(
                 Invoke( innerLambda, input )
-            ), 
+            ),
             parameters: input
         );
         var compiledLambda = lambda.CompileFast();

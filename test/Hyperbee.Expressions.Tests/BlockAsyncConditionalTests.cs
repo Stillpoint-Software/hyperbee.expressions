@@ -321,12 +321,12 @@ public class BlockAsyncConditionalTests
 
     private static TAwaiter GetAwaiter<TAwaitable, TAwaiter>( ref TAwaitable value )
     {
-        return default(TAwaiter);
+        return default( TAwaiter );
     }
 
     private static TResult GetResult<TAwaiter, TResult>( ref TAwaiter awaiter )
     {
-        return default(TResult);
+        return default( TResult );
     }
 
     public delegate TAwaiter MyFunc<TAwaitable, TAwaiter>( ref TAwaitable value );
@@ -410,7 +410,7 @@ public class BlockAsyncConditionalTests
         var t = compiledLambda.Target;
 
         // Act
-        
+
         //var result = await compiledLambda();
         //var myint = 15;
         compiledLambda();
