@@ -6,13 +6,9 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
-public class LazyAwaiter<T> : ICriticalNotifyCompletion
+public class LazyAwaiter<T>( Lazy<T> lazy ) : ICriticalNotifyCompletion
 {
-    private readonly Lazy<T> _lazy;
-
-    public LazyAwaiter( Lazy<T> lazy ) => _lazy = lazy;
-
-    public T GetResult() => _lazy.Value;
+    public T GetResult() => lazy.Value;
     public bool IsCompleted => true;
     public void OnCompleted( Action continuation ) { }
     public void UnsafeOnCompleted( Action continuation ) { }
@@ -72,9 +68,11 @@ public class CustomAwaiterTests
     }
 
     [DataTestMethod]
-    [DataRow( true )] // Immediate completion
-    [DataRow( false )] // Deferred completion
-    public async Task TestCustomAwaiter_TaskLike( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task TestCustomAwaiter_TaskLike( CompletableType completable, CompilerType compiler )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -84,7 +82,7 @@ public class CustomAwaiterTests
             Assign( resultValue, Constant( 5 ) ),
             Await(
                 AsyncHelper.Completable(
-                    Constant( immediateFlag )
+                    Constant( completable )
                 )
             ),
             Assign( resultValue, Add( resultValue, Constant( 37 ) ) ),
@@ -92,7 +90,7 @@ public class CustomAwaiterTests
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -102,9 +100,11 @@ public class CustomAwaiterTests
     }
 
     [DataTestMethod]
-    [DataRow( true )] // Immediate completion
-    [DataRow( false )] // Deferred completion
-    public async Task TestCustomAwaiter_TaskResultLike( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task TestCustomAwaiter_TaskResultLike( CompletableType completable, CompilerType compiler )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -115,7 +115,7 @@ public class CustomAwaiterTests
                 Add(
                     Await(
                         AsyncHelper.Completable(
-                            Constant( immediateFlag ),
+                            Constant( completable ),
                             Constant( 37 )
                         )
                     ),
@@ -126,7 +126,7 @@ public class CustomAwaiterTests
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();

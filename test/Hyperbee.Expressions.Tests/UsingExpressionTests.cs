@@ -77,23 +77,25 @@ public class UsingExpressionTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task UsingExpression_ShouldExecuteAsyncExpression( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task UsingExpression_ShouldExecuteAsyncExpression( CompletableType completable, CompilerType compiler )
     {
         // Arrange
         var resource = new TestDisposableResource();
         var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
         var bodyExpression = BlockAsync(
-            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) )
+            Await( AsyncHelper.Completable( Constant( completable ), Constant( 10 ) ) )
         );
 
         // Act
         var usingExpression = Using( disposableExpression, bodyExpression );
 
         var lambda = Lambda<Func<Task<int>>>( usingExpression );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = await compiledLambda();
 
@@ -102,9 +104,11 @@ public class UsingExpressionTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing( CompletableType completable, CompilerType compiler )
     {
         // Arrange
         var resource = new TestDisposableResource();
@@ -113,13 +117,13 @@ public class UsingExpressionTests
         var bodyExpression = BlockAsync(
             Using(
                 disposableExpression,
-                Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) )
+                Await( AsyncHelper.Completable( Constant( completable ), Constant( 10 ) ) )
             )
         );
 
         // Act
         var lambda = Lambda<Func<Task<int>>>( bodyExpression );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = await compiledLambda();
 

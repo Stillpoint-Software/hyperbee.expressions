@@ -8,9 +8,11 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockAsyncLoopTests
 {
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeBreak( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeBreak( CompletableType completable, CompilerType compiler )
     {
         // Arrange: Await before break in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -21,7 +23,7 @@ public class BlockAsyncLoopTests
             Loop(
                 Block(
                     Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                        Constant( completable ),
                         Constant( 1 )
                     ) ), // Await before break
                     IfThen(
@@ -36,7 +38,7 @@ public class BlockAsyncLoopTests
             loopCount
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -46,9 +48,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterLoop( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterLoop( CompletableType completable, CompilerType compiler )
     {
         // Arrange: Await after break in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -69,13 +73,13 @@ public class BlockAsyncLoopTests
                 null
             ),
             Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                        Constant( completable ),
                         Constant( 5 )
                     ) ), // Await after loop ends
             loopCount
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -85,9 +89,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeContinue( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeContinue( CompletableType completable, CompilerType compiler )
     {
         // Arrange: Await before continue in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -100,7 +106,7 @@ public class BlockAsyncLoopTests
                 Block(
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
                     Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                        Constant( completable ),
                         Constant( 1 )
                     ) ),
                     IfThen(
@@ -115,7 +121,7 @@ public class BlockAsyncLoopTests
             loopCount
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -125,9 +131,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterContinue( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterContinue( CompletableType completable, CompilerType compiler )
     {
         // Arrange: Await after continue in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -144,7 +152,7 @@ public class BlockAsyncLoopTests
                         Continue( continueLabel )
                     ),
                     Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                        Constant( completable ),
                         Constant( 3 )
                     ) ),
                     Break( breakLabel )
@@ -155,7 +163,7 @@ public class BlockAsyncLoopTests
             loopCount
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -165,9 +173,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithMultipleAwaitsInLoop( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithMultipleAwaitsInLoop( CompletableType completable, CompilerType compiler )
     {
         // Arrange: Multiple awaits in a loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -178,12 +188,12 @@ public class BlockAsyncLoopTests
             Loop(
                 Block(
                     Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                        Constant( completable ),
                         Constant( 1 )
                     ) ),
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
                     Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                        Constant( completable ),
                         Constant( 3 )
                     ) ),
                     Break( breakLabel )
@@ -194,7 +204,7 @@ public class BlockAsyncLoopTests
             loopCount
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -204,9 +214,11 @@ public class BlockAsyncLoopTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithBreakAndContinueLabels( bool immediateFlag )
+    [DataRow( CompletableType.Immediate, CompilerType.Fast )]
+    [DataRow( CompletableType.Immediate, CompilerType.System )]
+    [DataRow( CompletableType.Deferred, CompilerType.Fast )]
+    [DataRow( CompletableType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithBreakAndContinueLabels( CompletableType completable, CompilerType compiler )
     {
         // Arrange: Use both breakLabel and continueLabel in the loop
         var loopCount = Variable( typeof( int ), "count" );
@@ -220,7 +232,7 @@ public class BlockAsyncLoopTests
                 Block(
                     Assign( loopCount, Add( loopCount, Constant( 1 ) ) ),
                     Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                        Constant( completable ),
                         Constant( 1 )
                     ) ),
                     IfThen(
@@ -239,7 +251,7 @@ public class BlockAsyncLoopTests
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();

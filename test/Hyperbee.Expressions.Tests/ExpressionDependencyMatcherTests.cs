@@ -14,12 +14,12 @@ public class ExpressionDependencyMatcherTests
         // Arrange
 
         var awaitExpr1 = Await( AsyncHelper.Completable(
-            Constant( false ),
+            Constant( CompletableType.Deferred ),
             Constant( 1 )
         ) );
 
         var awaitExpr2 = Await( AsyncHelper.Completable(
-            Constant( false ),
+            Constant( CompletableType.Deferred ),
             Constant( 2 )
         ) );
 

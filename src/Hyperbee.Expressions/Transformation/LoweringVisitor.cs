@@ -392,21 +392,18 @@ internal class LoweringVisitor : ExpressionVisitor
 
     protected override Expression VisitExtension( Expression node )
     {
-        switch ( node )
+        return node switch
         {
-            case AwaitExpression awaitExpression:
-                return VisitAwaitExtension( awaitExpression );
+            AwaitExpression awaitExpression => VisitAwaitExtension( awaitExpression ),
 
-            case AsyncBlockExpression:
-                // Nested blocks should be visited by their own visitor,
-                // but nested variables must be replaced
-                return _variableResolver.Resolve( node );
+            // Nested blocks should be visited by their own visitor,
+            // but nested variables must be replaced
+            AsyncBlockExpression => _variableResolver.Resolve( node ),
 
-            default:
-                // Lowering visitor shouldn't be used by extensions directly
-                // since it changes the shape of the code
-                return Visit( node.Reduce() );
-        }
+            // Lowering visitor shouldn't be used by extensions directly
+            // since it changes the shape of the code
+            _ => Visit( node.Reduce() )
+        };
     }
 
     protected Expression VisitAwaitExtension( AwaitExpression node )
