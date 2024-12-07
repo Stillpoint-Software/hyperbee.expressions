@@ -130,7 +130,7 @@ public class CompilerTests
         var st0001Label = Expression.Label( "ST_0001" );
         var stExitLabel = Expression.Label( typeof( void ), "ST_EXIT" );
 
-        var smVar = Expression.Variable( typeof(StateMachine1), "sm" );
+        var smVar = Expression.Variable( typeof( StateMachine1 ), "sm" );
 
         // Build the MoveNext delegate
         var moveNextLambda = Expression.Lambda<MoveNextDelegate<StateMachine1>>(
@@ -138,12 +138,12 @@ public class CompilerTests
                 // if (sm.__state == 0) { sm.__state = -1; goto ST_0002; }
                 Expression.IfThen(
                     Expression.Equal(
-                        Expression.Field( smVar, nameof(StateMachine1.__state) ),
+                        Expression.Field( smVar, nameof( StateMachine1.__state ) ),
                         Expression.Constant( 0 )
                     ),
                     Expression.Block(
                         Expression.Assign(
-                            Expression.Field( smVar, nameof(StateMachine1.__state) ),
+                            Expression.Field( smVar, nameof( StateMachine1.__state ) ),
                             Expression.Constant( -1 )
                         ),
                         Expression.Goto( st0002Label )
