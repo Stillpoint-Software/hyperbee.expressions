@@ -122,7 +122,7 @@ public class CompilerTests
         );
 
         // Define variables
-        var stateMachineVar = Expression.Variable( typeof(StateMachine1), "stateMachine" );
+        var stateMachineVar = Expression.Variable( typeof( StateMachine1 ), "stateMachine" );
 
         var st0002Label = Expression.Label( "ST_0002" );
         var st0001Label = Expression.Label( "ST_0001" );
