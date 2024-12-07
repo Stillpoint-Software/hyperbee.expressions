@@ -77,7 +77,7 @@ public class CompilerTests
             ExpressionExtensions.Await( Expression.Constant( Task.FromResult( 42 ) ) )
         );
 #else
-        var completedTask = Expression.Variable( typeof(Task<int>), "completedTask" ); 
+        var completedTask = Expression.Variable( typeof( Task<int> ), "completedTask" );
 
         var block = ExpressionExtensions.BlockAsync(
             Expression.Assign(
