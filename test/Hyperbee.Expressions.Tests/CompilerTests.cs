@@ -112,14 +112,14 @@ public class CompilerTests
     {
         // Methods to call
 
-        var binder = AwaitBinderFactory.GetOrCreate( typeof(Task<int>) );
+        var binder = AwaitBinderFactory.GetOrCreate( typeof( Task<int> ) );
 
         // Define variables
-        var stateMachineVar = Expression.Variable( typeof(StateMachine1), "stateMachine" );
-        var smVar = Expression.Variable( typeof(StateMachine1), "sm" );
+        var stateMachineVar = Expression.Variable( typeof( StateMachine1 ), "stateMachine" );
+        var smVar = Expression.Variable( typeof( StateMachine1 ), "sm" );
 
 #if _WORKAROUND
-        var completedTask = Expression.Variable( typeof( Task<int> ), "completedTask" ); 
+        var completedTask = Expression.Variable( typeof( Task<int> ), "completedTask" );
 #endif
 
         // Build the MoveNext delegate
@@ -137,7 +137,7 @@ public class CompilerTests
 
                 // sm.__awaiter = AwaitBinder.GetAwaiter<int>(ref Task.FromResult(42), false);
                 Expression.Assign(
-                    Expression.Field( smVar, nameof(StateMachine1.__awaiter) ),
+                    Expression.Field( smVar, nameof( StateMachine1.__awaiter ) ),
                     Expression.Call(
                         binder.GetAwaiterMethod,
 #if _WORKAROUND
@@ -148,20 +148,20 @@ public class CompilerTests
                         Expression.Constant( false )
                     )
                 ),
-                
+
                 // sm.__result = AwaitBinder.GetResult<int>(ref sm.__awaiter);
                 Expression.Assign(
-                    Expression.Field( smVar, nameof(StateMachine1.__result) ),
+                    Expression.Field( smVar, nameof( StateMachine1.__result ) ),
                     Expression.Call(
                         binder.GetResultMethod,
-                        Expression.Field( smVar, nameof(StateMachine1.__awaiter) )
+                        Expression.Field( smVar, nameof( StateMachine1.__awaiter ) )
                     )
                 ),
                 // sm.__builder.SetResult(sm.__result);
                 Expression.Call(
-                    Expression.Field( smVar, nameof(StateMachine1.__builder) ),
-                    typeof(AsyncTaskMethodBuilder<int>).GetMethod( nameof(AsyncTaskMethodBuilder<int>.SetResult) )!,
-                    Expression.Field( smVar, nameof(StateMachine1.__result) )
+                    Expression.Field( smVar, nameof( StateMachine1.__builder ) ),
+                    typeof( AsyncTaskMethodBuilder<int> ).GetMethod( nameof( AsyncTaskMethodBuilder<int>.SetResult ) )!,
+                    Expression.Field( smVar, nameof( StateMachine1.__result ) )
                 )
             ),
             smVar // MoveNext delegate parameter
@@ -171,22 +171,22 @@ public class CompilerTests
         var mainBlock = Expression.Block(
             [stateMachineVar],
             // stateMachine = new StateMachine1();
-            Expression.Assign( stateMachineVar, Expression.New( typeof(StateMachine1) ) ),
+            Expression.Assign( stateMachineVar, Expression.New( typeof( StateMachine1 ) ) ),
             // stateMachine.__moveNextDelegate = (StateMachine1 sm) => { ... }
             Expression.Assign(
-                Expression.Field( stateMachineVar, nameof(StateMachine1.__moveNextDelegate) ),
+                Expression.Field( stateMachineVar, nameof( StateMachine1.__moveNextDelegate ) ),
                 moveNextLambda
             ),
             // stateMachine.__builder.Start<StateMachine1>(ref stateMachine);
             Expression.Call(
-                Expression.Field( stateMachineVar, nameof(StateMachine1.__builder) ),
-                typeof(AsyncTaskMethodBuilder<int>).GetMethod( nameof(AsyncTaskMethodBuilder<int>.Start) )!.MakeGenericMethod( typeof(StateMachine1) ),
+                Expression.Field( stateMachineVar, nameof( StateMachine1.__builder ) ),
+                typeof( AsyncTaskMethodBuilder<int> ).GetMethod( nameof( AsyncTaskMethodBuilder<int>.Start ) )!.MakeGenericMethod( typeof( StateMachine1 ) ),
                 stateMachineVar
             ),
             // stateMachine.__builder.Task;
             Expression.Property(
-                Expression.Field( stateMachineVar, stateMachineVar.Type.GetField( nameof(StateMachine1.__builder) )! ),
-                stateMachineVar.Type.GetField( nameof(StateMachine1.__builder) )!.FieldType.GetProperty( "Task" )!
+                Expression.Field( stateMachineVar, stateMachineVar.Type.GetField( nameof( StateMachine1.__builder ) )! ),
+                stateMachineVar.Type.GetField( nameof( StateMachine1.__builder ) )!.FieldType.GetProperty( "Task" )!
             )
         );
 
