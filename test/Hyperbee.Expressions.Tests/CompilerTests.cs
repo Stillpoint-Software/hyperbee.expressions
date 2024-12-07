@@ -228,9 +228,9 @@ public class CompilerTests
                 stateMachineVar
             ),
             // stateMachine.__builder.Task;
-            Expression.Property( 
-                Expression.Field( stateMachineVar, stateMachineVar.Type.GetField( nameof(StateMachine1.__builder) )! ),
-                stateMachineVar.Type.GetField( nameof(StateMachine1.__builder) )!.FieldType.GetProperty( "Task" )!
+            Expression.Property(
+                Expression.Field( stateMachineVar, stateMachineVar.Type.GetField( nameof( StateMachine1.__builder ) )! ),
+                stateMachineVar.Type.GetField( nameof( StateMachine1.__builder ) )!.FieldType.GetProperty( "Task" )!
             )
         );
 
@@ -248,12 +248,12 @@ public class StateMachine1 : IAsyncStateMachine
     public ConfiguredTaskAwaitable<int>.ConfiguredTaskAwaiter __awaiter;
     public MoveNextDelegate<StateMachine1> __moveNextDelegate;
 
-    public void MoveNext() 
+    public void MoveNext()
     {
         __moveNextDelegate( this );
     }
 
-    public void SetStateMachine( IAsyncStateMachine stateMachine ) 
+    public void SetStateMachine( IAsyncStateMachine stateMachine )
     {
         __builder.SetStateMachine( stateMachine );
     }
