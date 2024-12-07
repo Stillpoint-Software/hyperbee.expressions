@@ -110,10 +110,6 @@ public class CompilerTests
 
         var binder = AwaitBinderFactory.GetOrCreate( typeof( Task<int> ) );
 
-        //var taskFromResultMethod = typeof( Task )
-        //    .GetMethod( "FromResult" )!
-        //    .MakeGenericMethod( typeof( int ) );
-
         var awaitOnUnsafeCompletedMethod = typeof( AsyncTaskMethodBuilder<int> )
             .GetMethod( "AwaitUnsafeOnCompleted" )!
             .MakeGenericMethod(
@@ -152,7 +148,6 @@ public class CompilerTests
                     Expression.Field( smVar, nameof( StateMachine1.__awaiter ) ),
                     Expression.Call(
                         binder.GetAwaiterMethod,
-                        //Expression.Call( taskFromResultMethod, Expression.Constant( 42 ) ),
                         Expression.Constant( Task.FromResult( 42 ) ),
                         Expression.Constant( false )
                     )
@@ -233,9 +228,9 @@ public class CompilerTests
                 stateMachineVar
             ),
             // stateMachine.__builder.Task;
-            Expression.Call(
-                Expression.Field( stateMachineVar, nameof( StateMachine1.__builder ) ),
-                typeof( AsyncTaskMethodBuilder<int> ).GetProperty( nameof( AsyncTaskMethodBuilder<int>.Task ) )!.GetMethod!
+            Expression.Property( 
+                Expression.Field( stateMachineVar, stateMachineVar.Type.GetField( nameof(StateMachine1.__builder) )! ),
+                stateMachineVar.Type.GetField( nameof(StateMachine1.__builder) )!.FieldType.GetProperty( "Task" )!
             )
         );
 
@@ -253,6 +248,13 @@ public class StateMachine1 : IAsyncStateMachine
     public ConfiguredTaskAwaitable<int>.ConfiguredTaskAwaiter __awaiter;
     public MoveNextDelegate<StateMachine1> __moveNextDelegate;
 
-    public void MoveNext() { }
-    public void SetStateMachine( IAsyncStateMachine stateMachine ) { }
+    public void MoveNext() 
+    {
+        __moveNextDelegate( this );
+    }
+
+    public void SetStateMachine( IAsyncStateMachine stateMachine ) 
+    {
+        __builder.SetStateMachine( stateMachine );
+    }
 }
