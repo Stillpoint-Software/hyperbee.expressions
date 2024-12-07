@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿#define USE_LOCAL_AWAITER
+
+using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
@@ -20,7 +22,58 @@ internal class AwaitTransition : Transition
         base.AddExpressions( expressions, context );
         expressions.AddRange( Expressions() );
         return;
+#if USE_LOCAL_AWAITER
+        List<Expression> Expressions()
+        {
+            var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
+            var source = context.StateMachineInfo;
+            var localAwaiter = Variable( Target.Type, "localAwaiter" );
 
+            var getAwaiterCall = getAwaiterMethod.IsStatic
+                ? Call( getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) )
+                : Call( Constant( AwaitBinder ), getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) );
+
+            // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
+            var awaitUnsafeOnCompleted = source.BuilderField.Type
+                .GetMethods()
+                .Single( methodInfo => methodInfo.Name == "AwaitUnsafeOnCompleted" && methodInfo.IsGenericMethodDefinition )
+                .MakeGenericMethod( AwaiterVariable.Type, source.StateMachine.Type );
+
+            var body = new List<Expression>
+            {
+                Assign( localAwaiter, Target ),
+                Assign(
+                    AwaiterVariable,
+                    getAwaiterCall
+                ),
+                IfThen(
+                    IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
+                    Block(
+                        Assign( source.StateField, Constant( StateId ) ),
+                        Call(
+                            source.BuilderField,
+                            awaitUnsafeOnCompleted,
+                            AwaiterVariable,
+                            source.StateMachine
+                        ),
+                        Return( source.ExitLabel )
+                    )
+                )
+            };
+
+            var fallThrough = GotoOrFallThrough( context.StateNode.StateOrder, CompletionNode, true );
+
+            if ( fallThrough != null )
+                body.Add( fallThrough );
+
+            return [
+                Block(
+                    [localAwaiter],
+                    body
+                )
+            ];
+        }
+#else
         List<Expression> Expressions()
         {
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
@@ -64,6 +117,7 @@ internal class AwaitTransition : Transition
 
             return body;
         }
+#endif
     }
 
     internal override void Optimize( HashSet<LabelTarget> references )
