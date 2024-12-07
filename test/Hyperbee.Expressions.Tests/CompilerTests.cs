@@ -130,20 +130,28 @@ public class CompilerTests
         var st0001Label = Expression.Label( "ST_0001" );
         var stExitLabel = Expression.Label( typeof( void ), "ST_EXIT" );
 
+        var smVar = Expression.Variable( typeof(StateMachine1), "sm" );
+
         // Build the MoveNext delegate
         var moveNextLambda = Expression.Lambda<MoveNextDelegate<StateMachine1>>(
             Expression.Block(
-                // if (sm.__state != -1) goto ST_0002;
+                // if (sm.__state == 0) { sm.__state = -1; goto ST_0002; }
                 Expression.IfThen(
-                    Expression.NotEqual(
-                        Expression.Field( stateMachineVar, nameof( StateMachine1.__state ) ),
-                        Expression.Constant( -1 )
+                    Expression.Equal(
+                        Expression.Field( smVar, nameof(StateMachine1.__state) ),
+                        Expression.Constant( 0 )
                     ),
-                    Expression.Goto( st0002Label )
+                    Expression.Block(
+                        Expression.Assign(
+                            Expression.Field( smVar, nameof(StateMachine1.__state) ),
+                            Expression.Constant( -1 )
+                        ),
+                        Expression.Goto( st0002Label )
+                    )
                 ),
                 // sm.__awaiter = AwaitBinder.GetAwaiter<int>(ref Task.FromResult(42), false);
                 Expression.Assign(
-                    Expression.Field( stateMachineVar, nameof( StateMachine1.__awaiter ) ),
+                    Expression.Field( smVar, nameof( StateMachine1.__awaiter ) ),
                     Expression.Call(
                         binder.GetAwaiterMethod,
                         Expression.Call( taskFromResultMethod, Expression.Constant( 42 ) ),
@@ -154,21 +162,21 @@ public class CompilerTests
                 Expression.IfThen(
                     Expression.IsFalse(
                         Expression.Property(
-                            Expression.Field( stateMachineVar, nameof( StateMachine1.__awaiter ) ),
+                            Expression.Field( smVar, nameof( StateMachine1.__awaiter ) ),
                             nameof( ConfiguredTaskAwaitable<int>.ConfiguredTaskAwaiter.IsCompleted )
                         )
                     ),
                     Expression.Block(
                         // sm.__state = 0;
                         Expression.Assign(
-                            Expression.Field( stateMachineVar, nameof( StateMachine1.__state ) ),
+                            Expression.Field( smVar, nameof( StateMachine1.__state ) ),
                             Expression.Constant( 0 )
                         ),
                         // sm.__builder.AwaitUnsafeOnCompleted(...);
                         Expression.Call(
-                            Expression.Field( stateMachineVar, nameof( StateMachine1.__builder ) ), // instance
+                            Expression.Field( smVar, nameof( StateMachine1.__builder ) ), // instance
                             awaitOnUnsafeCompletedMethod, // method
-                            Expression.Field( stateMachineVar, nameof( StateMachine1.__awaiter ) ), // ref awaiter
+                            Expression.Field( smVar, nameof( StateMachine1.__awaiter ) ), // ref awaiter
                             stateMachineVar // ref stateMachine
                         ),
                         // return;
@@ -178,30 +186,30 @@ public class CompilerTests
                 // ST_0002: sm.__result = AwaitBinder.GetResult<int>(ref sm.__awaiter);
                 Expression.Label( st0002Label ),
                 Expression.Assign(
-                    Expression.Field( stateMachineVar, nameof( StateMachine1.__result ) ),
+                    Expression.Field( smVar, nameof( StateMachine1.__result ) ),
                     Expression.Call(
                         binder.GetResultMethod,
-                        Expression.Field( stateMachineVar, nameof( StateMachine1.__awaiter ) )
+                        Expression.Field( smVar, nameof( StateMachine1.__awaiter ) )
                     )
                 ),
                 // ST_0001: sm.__final = sm.__result;
                 Expression.Label( st0001Label ),
                 Expression.Assign(
-                    Expression.Field( stateMachineVar, nameof( StateMachine1.__final ) ),
-                    Expression.Field( stateMachineVar, nameof( StateMachine1.__result ) )
+                    Expression.Field( smVar, nameof( StateMachine1.__final ) ),
+                    Expression.Field( smVar, nameof( StateMachine1.__result ) )
                 ),
                 Expression.Assign(
-                    Expression.Field( stateMachineVar, nameof( StateMachine1.__state ) ),
+                    Expression.Field( smVar, nameof( StateMachine1.__state ) ),
                     Expression.Constant( -2 )
                 ),
                 Expression.Call(
-                    Expression.Field( stateMachineVar, nameof( StateMachine1.__builder ) ),
+                    Expression.Field( smVar, nameof( StateMachine1.__builder ) ),
                     typeof( AsyncTaskMethodBuilder<int> ).GetMethod( nameof( AsyncTaskMethodBuilder<int>.SetResult ) )!,
-                    Expression.Field( stateMachineVar, nameof( StateMachine1.__final ) )
+                    Expression.Field( smVar, nameof( StateMachine1.__final ) )
                 ),
                 Expression.Label( stExitLabel )
             ),
-            stateMachineVar // MoveNext delegate parameter
+            smVar // MoveNext delegate parameter
         );
 
         // Assign the delegate to the state machine
@@ -214,15 +222,10 @@ public class CompilerTests
                 Expression.Field( stateMachineVar, nameof( StateMachine1.__state ) ),
                 Expression.Constant( -1 )
             ),
-            // moveNextDelegate = (StateMachine1 sm) => { ... }
-            Expression.Assign(
-                moveNextDelegateVar,
-                moveNextLambda
-            ),
-            // stateMachine.__moveNextDelegate = moveNextDelegate;
+            // stateMachine.__moveNextDelegate = (StateMachine1 sm) => { ... }
             Expression.Assign(
                 Expression.Field( stateMachineVar, nameof( StateMachine1.__moveNextDelegate ) ),
-                moveNextDelegateVar
+                moveNextLambda
             ),
             // stateMachine.__builder.Start<StateMachine1>(ref stateMachine);
             Expression.Call(
@@ -239,17 +242,18 @@ public class CompilerTests
 
         return mainBlock;
     }
+}
 
-    public class StateMachine1 : IAsyncStateMachine
-    {
-        public AsyncTaskMethodBuilder<int> __builder;
-        public int __state;
-        public ConfiguredTaskAwaitable<int>.ConfiguredTaskAwaiter __awaiter;
-        public int __result;
-        public int __final;
-        public MoveNextDelegate<StateMachine1> __moveNextDelegate;
+public class StateMachine1 : IAsyncStateMachine
+{
+    public int __state;
+    public int __result;
+    public int __final;
 
-        public void MoveNext() { }
-        public void SetStateMachine( IAsyncStateMachine stateMachine ) { }
-    }
+    public AsyncTaskMethodBuilder<int> __builder;
+    public ConfiguredTaskAwaitable<int>.ConfiguredTaskAwaiter __awaiter;
+    public MoveNextDelegate<StateMachine1> __moveNextDelegate;
+
+    public void MoveNext() { }
+    public void SetStateMachine( IAsyncStateMachine stateMachine ) { }
 }
