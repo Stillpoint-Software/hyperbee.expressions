@@ -72,9 +72,21 @@ public class CompilerTests
     {
         // this pattern throws a null reference exception
 
+#if !_WORKAROUND
         var block = ExpressionExtensions.BlockAsync(
             ExpressionExtensions.Await( Expression.Constant( Task.FromResult( 42 ) ) )
         );
+#else
+        var completedTask = Expression.Variable( typeof(Task<int>), "completedTask" ); 
+
+        var block = ExpressionExtensions.BlockAsync(
+            Expression.Assign(
+                completedTask,
+                Expression.Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Expression.Constant( 42 ) )
+            ),
+            ExpressionExtensions.Await( completedTask )
+        );
+#endif
 
         var lambda = Expression.Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile( compiler );
