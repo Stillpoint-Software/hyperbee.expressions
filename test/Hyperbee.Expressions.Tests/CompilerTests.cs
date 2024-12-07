@@ -80,9 +80,9 @@ public class CompilerTests
     }
 
     [DataTestMethod]
-    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
-    [DataRow( CompleterType.Immediate, CompilerType.System )]
-    public async Task Compiler_Test0_Lowered( CompleterType completer, CompilerType compiler )
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    public async Task Compiler_Test0_Lowered( CompilerType compiler )  //BF ME
     {
         //var block = ExpressionExtensions.BlockAsync(
         //    ExpressionExtensions.Await( Expression.Constant( Task.FromResult( 42 ) ) )
