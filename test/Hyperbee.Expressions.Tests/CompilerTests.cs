@@ -82,8 +82,8 @@ public class CompilerTests
         var block = ExpressionExtensions.BlockAsync( // WORKS
             Expression.Assign(
                 completedTask,
-                Expression.Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], 
-                    Expression.Constant( 42 ) 
+                Expression.Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )],
+                    Expression.Constant( 42 )
                 )
             ),
             ExpressionExtensions.Await( completedTask )
@@ -92,7 +92,7 @@ public class CompilerTests
         var block1 = ExpressionExtensions.BlockAsync( // WORKS
             ExpressionExtensions.Await(
                 Expression.Call(
-                    typeof(Task), nameof(Task.FromResult), [typeof(int)],
+                    typeof( Task ), nameof( Task.FromResult ), [typeof( int )],
                     Expression.Constant( 42 )
                 )
             )
