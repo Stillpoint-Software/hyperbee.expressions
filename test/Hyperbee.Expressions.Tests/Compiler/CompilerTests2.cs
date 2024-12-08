@@ -16,28 +16,65 @@ public class CompilerTests2
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
-    public async Task Compiler_Test2( CompleterType completer, CompilerType compiler )
+    public async Task Compiler_Test2_CustomAwaitable( CompleterType completer, CompilerType compiler )
     {
-        // Arrange
-        var block = BlockAsync(
-            Await( Constant( Task.FromResult( 10 ) ) ),
-            Await( Constant( Task.FromResult( 42 ) ) )
-        );
+        try
+        {
+            var block = BlockAsync(
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
+                    Constant( 10 )
+                ) ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
+                    Constant( 42 )
+                ) )
+            );
 
-        var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile( compiler );
+            var lambda = Lambda<Func<Task<int>>>( block );
+            var compiledLambda = lambda.Compile( compiler );
 
-        // Act
-        var result = await compiledLambda();
+            var result = await compiledLambda();
 
-        //Assert
-        Assert.AreEqual( 42, result );
+            Assert.AreEqual( 42, result );
+        }
+        catch ( Exception e )
+        {
+            Console.WriteLine( e );
+            throw;
+        }
+    }
+
+    [DataTestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    public async Task Compiler_Test2_CompletedTask( CompleterType completer, CompilerType compiler )
+    {
+        try
+        {
+            var block = BlockAsync(
+                Await( Constant( Task.FromResult( 10 ) ) ),
+                Await( Constant( Task.FromResult( 42 ) ) )
+            );
+
+            var lambda = Lambda<Func<Task<int>>>( block );
+            var compiledLambda = lambda.Compile( compiler );
+
+            var result = await compiledLambda();
+
+            Assert.AreEqual( 42, result );
+        }
+        catch ( Exception e )
+        {
+            Console.WriteLine( e );
+            throw;
+        }
     }
 
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public async Task Compiler_Test2_Lowered( CompilerType compiler ) //BF ME
+    public async Task Compiler_Test2_CompletedTask_Lowered( CompilerType compiler ) //BF ME
     {
         //var block = BlockAsync(
         //    Await( Constant( Task.FromResult( 10 ) ) ),
@@ -214,9 +251,18 @@ public class CompilerTests2
 
         var smVar = Variable( typeof( StateMachine2 ), "sm" );
 
+#if _WORKAROUND
+        var completedTask0 = Variable( typeof(Task<int>), "completedTask0" );
+        var completedTask1 = Variable( typeof(Task<int>), "completedTask1" );
+#endif
+
         // Build the MoveNext delegate
         var moveNextLambda = Lambda<MoveNextDelegate<StateMachine2>>(
             Block(
+#if _WORKAROUND
+                [completedTask0, completedTask1],
+#endif
+
                 // if (sm.__state == 0) { sm.__state = -1; goto ST_RESUME_0; }
                 Switch(
                     Field( smVar, nameof( StateMachine2.__state ) ),
@@ -245,6 +291,20 @@ public class CompilerTests2
 
                 // ***** FIRST AWAIT *****
 
+#if _WORKAROUND
+                Assign(
+                    completedTask0,
+                    Call( typeof(Task), nameof(Task.FromResult), [typeof(int)], Constant( 10 ) )
+                ),
+                Assign(
+                    Field( smVar, nameof(StateMachine2.__awaiter0) ),
+                    Call(
+                        binder.GetAwaiterMethod,
+                        completedTask0, // immediate result
+                        Constant( false )
+                    )
+                ),
+#else
                 // sm.__awaiter = AwaitBinder.GetAwaiter<int>(ref Task.FromResult(10), false);
                 Assign(
                     Field( smVar, nameof( StateMachine2.__awaiter0 ) ),
@@ -254,6 +314,8 @@ public class CompilerTests2
                         Constant( false )
                     )
                 ),
+#endif
+
                 // if (!sm.__awaiter.IsCompleted)
                 IfThen(
                     IsFalse(
@@ -289,17 +351,39 @@ public class CompilerTests2
                     )
                 ),
 
+                Field( smVar, nameof( StateMachine2.__result0 ) ), //BF junk calls
+                Assign(
+                    Field( smVar, nameof( StateMachine2.__result1 ) ),
+                    Field( smVar, nameof( StateMachine2.__result0 ) )
+                ),
+
                 // ***** SECOND AWAIT *****
 
-                // sm.__awaiter = AwaitBinder.GetAwaiter<int>(ref Task.FromResult(10), false);
+#if _WORKAROUND
                 Assign(
-                    Field( smVar, nameof( StateMachine2.__awaiter1 ) ),
+                    completedTask1,
+                    Call( typeof(Task), nameof(Task.FromResult), [typeof(int)], Constant( 42 ) )
+                ),
+                Assign(
+                    Field( smVar, nameof(StateMachine2.__awaiter1) ),
+                    Call(
+                        binder.GetAwaiterMethod,
+                        completedTask1, // immediate result
+                        Constant( false )
+                    )
+                ),
+#else
+                // sm.__awaiter = AwaitBinder.GetAwaiter<int>(ref Task.FromResult(42), false);
+                Assign(
+                    Field( smVar, nameof(StateMachine2.__awaiter1) ),
                     Call(
                         binder.GetAwaiterMethod,
                         Constant( Task.FromResult( 42 ) ), // immediate result
                         Constant( false )
                     )
                 ),
+#endif
+
                 // if (!sm.__awaiter.IsCompleted)
                 IfThen(
                     IsFalse(

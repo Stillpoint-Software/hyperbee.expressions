@@ -1,4 +1,4 @@
-﻿#define USE_LOCAL_AWAITER
+#define USE_LOCAL_AWAITER
 
 using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
@@ -30,11 +30,21 @@ internal class AwaitTransition : Transition
 
             var localAwaiter = Variable( Target.Type, "localAwaiter" );
 
-            var getBinderCall = Call( typeof( AwaitBinderFactory ).GetMethod( nameof( AwaitBinderFactory.GetOrCreate ), [typeof( Type )] )!, Constant( AwaitBinder.TargetType ) ); //BF ME - Test to bypass Constant(AwaitBinder)
+            //var getAwaiterCall = getAwaiterMethod.IsStatic
+            //    ? Call( getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) )
+            //    : Call( Constant( AwaitBinder ), getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) );
 
-            var getAwaiterCall = getAwaiterMethod.IsStatic
-                ? Call( getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) )
-                : Call( /*Constant( AwaitBinder )*/ getBinderCall, getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) ); //BF ME - Bypass Constant(AwaitBinder)
+            Expression getAwaiterCall;
+
+            if ( getAwaiterMethod.IsStatic ) //BF ME
+            {
+                getAwaiterCall = Call( getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) );
+            }
+            else
+            {
+                var (getAwaiterFixMethod, _) = AwaitBinder.GetBinderFixupMethods( AwaitBinder );
+                getAwaiterCall = Call( getAwaiterFixMethod, localAwaiter, Constant( ConfigureAwait ) );
+            }
 
             // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
             var awaitUnsafeOnCompleted = source.BuilderField.Type

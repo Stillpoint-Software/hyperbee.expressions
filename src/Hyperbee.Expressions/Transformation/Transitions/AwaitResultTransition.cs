@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
@@ -22,11 +22,21 @@ internal class AwaitResultTransition : Transition
         {
             var getResultMethod = AwaitBinder.GetResultMethod;
 
-            var getBinderCall = Call( typeof( AwaitBinderFactory ).GetMethod( nameof( AwaitBinderFactory.GetOrCreate ), [typeof( Type )] )!, Constant( AwaitBinder.TargetType ) ); //BF ME - Test to bypass Constant(AwaitBinder)
+            //var getResultCall = getResultMethod.IsStatic
+            //    ? Call( getResultMethod, AwaiterVariable )
+            //    : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
 
-            var getResultCall = getResultMethod.IsStatic
-                ? Call( getResultMethod, AwaiterVariable )
-                : Call( /*Constant( AwaitBinder )*/ getBinderCall, getResultMethod, AwaiterVariable ); //BF ME - Bypass Constant(AwaitBinder)
+            Expression getResultCall;
+
+            if ( getResultMethod.IsStatic ) //BF ME
+            {
+                getResultCall = Call( getResultMethod, AwaiterVariable );
+            }
+            else
+            {
+                var (_, getResultFixMethod) = AwaitBinder.GetBinderFixupMethods( AwaitBinder );
+                getResultCall = Call( getResultFixMethod, AwaiterVariable ); 
+            }
 
             if ( ResultVariable == null )
             {
