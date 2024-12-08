@@ -88,7 +88,7 @@ public class CompilerTests2
 #if _WORKAROUND
                 Assign(
                     completedTask0,
-                    Call( typeof(Task), nameof(Task.FromResult), [typeof(int)], Constant( 10 ) )
+                    Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 10 ) )
                 ),
                 Assign(
                     Field( smVar, nameof( StateMachine2.__awaiter0 ) ),
@@ -123,16 +123,16 @@ public class CompilerTests2
 #if _WORKAROUND
                 Assign(
                     completedTask1,
-                    Call( typeof(Task), nameof(Task.FromResult), [typeof(int)], Constant( 42 ) )
+                    Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) )
                 ),
                 Assign(
-                    Field( smVar, nameof(StateMachine2.__awaiter1) ),
+                    Field( smVar, nameof( StateMachine2.__awaiter1 ) ),
                     Call(
                         binder.GetAwaiterMethod,
                         completedTask1, // immediate result
                         Constant( false )
                     )
-                ), 
+                ),
 #else
                 // sm.__awaiter = AwaitBinder.GetAwaiter<int>(ref Task.FromResult(42), false);
                 Assign(
@@ -146,10 +146,10 @@ public class CompilerTests2
 #endif
                 // sm.__result = AwaitBinder.GetResult<int>(ref sm.__awaiter);
                 Assign(
-                    Field( smVar, nameof(StateMachine2.__result1) ),
+                    Field( smVar, nameof( StateMachine2.__result1 ) ),
                     Call(
                         binder.GetResultMethod,
-                        Field( smVar, nameof(StateMachine2.__awaiter1) )
+                        Field( smVar, nameof( StateMachine2.__awaiter1 ) )
                     )
                 ),
 
@@ -157,9 +157,9 @@ public class CompilerTests2
 
                 // sm.__builder.SetResult(sm.__result);
                 Call(
-                    Field( smVar, nameof(StateMachine2.__builder) ),
-                    typeof(AsyncTaskMethodBuilder<int>).GetMethod( nameof(AsyncTaskMethodBuilder<int>.SetResult) )!,
-                    Field( smVar, nameof(StateMachine2.__result1) )
+                    Field( smVar, nameof( StateMachine2.__builder ) ),
+                    typeof( AsyncTaskMethodBuilder<int> ).GetMethod( nameof( AsyncTaskMethodBuilder<int>.SetResult ) )!,
+                    Field( smVar, nameof( StateMachine2.__result1 ) )
                 )
 
             ),
@@ -219,12 +219,12 @@ public class CompilerTests2
             Block(
                 // if (sm.__state == 0) { sm.__state = -1; goto ST_RESUME_0; }
                 Switch(
-                    Field( smVar, nameof(StateMachine2.__state) ),
+                    Field( smVar, nameof( StateMachine2.__state ) ),
                     Empty(), // Default case: do nothing
                     SwitchCase(
                         Block(
                             Assign(
-                                Field( smVar, nameof(StateMachine2.__state) ),
+                                Field( smVar, nameof( StateMachine2.__state ) ),
                                 Constant( -1 )
                             ),
                             Goto( stResume0Label )
@@ -234,7 +234,7 @@ public class CompilerTests2
                     SwitchCase(
                         Block(
                             Assign(
-                                Field( smVar, nameof(StateMachine2.__state) ),
+                                Field( smVar, nameof( StateMachine2.__state ) ),
                                 Constant( -1 )
                             ),
                             Goto( stResume1Label )

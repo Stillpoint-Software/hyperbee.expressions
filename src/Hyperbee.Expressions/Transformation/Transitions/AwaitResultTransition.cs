@@ -22,7 +22,7 @@ internal class AwaitResultTransition : Transition
         {
             var getResultMethod = AwaitBinder.GetResultMethod;
 
-            var getBinderCall = Call( typeof(AwaitBinderFactory).GetMethod( nameof(AwaitBinderFactory.GetOrCreate), [typeof(Type)] )!, Constant( AwaitBinder.TargetType ) ); //BF ME - Test to bypass Constant(AwaitBinder)
+            var getBinderCall = Call( typeof( AwaitBinderFactory ).GetMethod( nameof( AwaitBinderFactory.GetOrCreate ), [typeof( Type )] )!, Constant( AwaitBinder.TargetType ) ); //BF ME - Test to bypass Constant(AwaitBinder)
 
             var getResultCall = getResultMethod.IsStatic
                 ? Call( getResultMethod, AwaiterVariable )

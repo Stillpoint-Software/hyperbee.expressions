@@ -27,10 +27,10 @@ internal class AwaitTransition : Transition
         {
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
             var source = context.StateMachineInfo;
-            
+
             var localAwaiter = Variable( Target.Type, "localAwaiter" );
 
-            var getBinderCall = Call( typeof(AwaitBinderFactory).GetMethod( nameof(AwaitBinderFactory.GetOrCreate), [typeof( Type )] )!, Constant( AwaitBinder.TargetType ) ); //BF ME - Test to bypass Constant(AwaitBinder)
+            var getBinderCall = Call( typeof( AwaitBinderFactory ).GetMethod( nameof( AwaitBinderFactory.GetOrCreate ), [typeof( Type )] )!, Constant( AwaitBinder.TargetType ) ); //BF ME - Test to bypass Constant(AwaitBinder)
 
             var getAwaiterCall = getAwaiterMethod.IsStatic
                 ? Call( getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) )

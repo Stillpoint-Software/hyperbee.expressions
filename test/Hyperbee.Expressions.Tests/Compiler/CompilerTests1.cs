@@ -103,7 +103,7 @@ public class CompilerTests1
         var moveNextLambda = Lambda<MoveNextDelegate<StateMachine1>>(
             Block(
 #if _WORKAROUND
-                [completedTask], 
+                [completedTask],
 #endif
 
                 // ***** FIRST AWAIT *****
@@ -114,7 +114,7 @@ public class CompilerTests1
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) )
                 ),
                 Assign(
-                    Field( smVar, nameof(StateMachine1.__awaiter) ),
+                    Field( smVar, nameof( StateMachine1.__awaiter ) ),
                     Call(
                         binder.GetAwaiterMethod,
                         completedTask, // immediate result
