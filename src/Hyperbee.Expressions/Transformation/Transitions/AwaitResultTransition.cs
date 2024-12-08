@@ -22,22 +22,9 @@ internal class AwaitResultTransition : Transition
         {
             var getResultMethod = AwaitBinder.GetResultMethod;
 
-            //var getResultCall = getResultMethod.IsStatic
-            //    ? Call( getResultMethod, AwaiterVariable )
-            //    : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
-
-            Expression getResultCall;
-
-            if ( getResultMethod.IsStatic ) //BF ME
-            {
-                getResultCall = Call( getResultMethod, AwaiterVariable );
-            }
-            else
-            {
-                //BF ME - use static interceptors
-                var (_, getResultFixMethod) = AwaitBinder.GetBinderFixupMethods( AwaitBinder );
-                getResultCall = Call( getResultFixMethod, AwaiterVariable );
-            }
+            var getResultCall = getResultMethod.IsStatic
+                ? Call( getResultMethod, AwaiterVariable )
+                : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
 
             if ( ResultVariable == null )
             {

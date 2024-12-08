@@ -20,38 +20,13 @@ public class CompilerTests1
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     public async Task Compiler_Test1( CompleterType completer, CompilerType compiler )
     {
-        // this pattern throws a null reference exception
+        // this pattern now works
 
-#if !_WORKAROUND
-        var block = ExpressionExtensions.BlockAsync( // FAILS
-            ExpressionExtensions.Await( 
-                Expression.Constant( Task.FromResult( 42 ) ) 
+        var block = BlockAsync( 
+            Await( 
+                Constant( Task.FromResult( 42 ) ) 
             )
         );
-#else
-        var completedTask = Variable( typeof( Task<int> ), "completedTask" );
-
-        var block = BlockAsync( // WORKS
-            Assign(
-                completedTask,
-                Call(
-                    typeof( Task ), nameof( Task.FromResult ), [typeof( int )],
-                    Constant( 42 )
-                )
-            ),
-            Await( completedTask )
-        );
-
-        var block1 = BlockAsync( // WORKS
-            Await(
-                Call(
-                    typeof( Task ), nameof( Task.FromResult ), [typeof( int )],
-                    Constant( 42 )
-                )
-            )
-        );
-
-#endif
 
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile( compiler );
@@ -62,7 +37,7 @@ public class CompilerTests1
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public async Task Compiler_Test1_Lowered( CompilerType compiler ) //BF ME
+    public async Task Compiler_Test1_Lowered( CompilerType compiler ) 
     {
         //var block = ExpressionExtensions.BlockAsync(
         //    ExpressionExtensions.Await( Expression.Constant( Task.FromResult( 42 ) ) )

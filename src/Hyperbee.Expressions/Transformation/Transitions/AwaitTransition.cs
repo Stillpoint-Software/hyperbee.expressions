@@ -30,22 +30,9 @@ internal class AwaitTransition : Transition
 
             var localAwaiter = Variable( Target.Type, "localAwaiter" );
 
-            //var getAwaiterCall = getAwaiterMethod.IsStatic
-            //    ? Call( getAwaiterMethod, /*Target*/ localAwaiter, Constant( ConfigureAwait ) )
-            //    : Call( Constant( AwaitBinder ), getAwaiterMethod, /*Target*/ localAwaiter, Constant( ConfigureAwait ) );
-
-            Expression getAwaiterCall;
-
-            if ( getAwaiterMethod.IsStatic ) //BF ME
-            {
-                getAwaiterCall = Call( getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) );
-            }
-            else
-            {
-                //BF ME - use static interceptors
-                var (getAwaiterFixMethod, _) = AwaitBinder.GetBinderFixupMethods( AwaitBinder );
-                getAwaiterCall = Call( getAwaiterFixMethod, localAwaiter, Constant( ConfigureAwait ) );
-            }
+            var getAwaiterCall = getAwaiterMethod.IsStatic
+                ? Call( getAwaiterMethod, /*Target*/ localAwaiter, Constant( ConfigureAwait ) )
+                : Call( Constant( AwaitBinder ), getAwaiterMethod, /*Target*/ localAwaiter, Constant( ConfigureAwait ) );
 
             // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
             var awaitUnsafeOnCompleted = source.BuilderField.Type

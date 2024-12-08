@@ -24,12 +24,6 @@ internal abstract class Transition
             return;
         }
 
-        if ( value != null && variable.Type.IsAssignableFrom( value.Type ) )
-        {
-            expressions.Add( Assign( variable, value ) );
-            return;
-        }
-
         if ( expressions.Count > 1 )
         {
             var lastExpression = expressions[^1];
@@ -38,6 +32,13 @@ internal abstract class Transition
             {
                 expressions[^1] = Assign( variable, lastExpression );
             }
+
+            return;
+        }
+
+        if ( value != null && variable.Type.IsAssignableFrom( value.Type ) ) //BF ME - Relocated to after the if ( expressions.Count > 1 )
+        {
+            expressions.Add( Assign( variable, value ) );
         }
     }
 
