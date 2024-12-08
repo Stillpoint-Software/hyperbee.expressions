@@ -1,4 +1,6 @@
 ﻿#define _WORKAROUND
+#define _REMOVE_JUNK
+
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Tests.TestSupport;
@@ -87,8 +89,8 @@ public class CompilerTests2
 
         try
         {
-            //var block = CreateFullExpressionTree();
-            var block = CreateMinimalFailureExpressionTree();
+            var block = CreateFullExpressionTree();
+            //var block = CreateMinimalFailureExpressionTree();
 
             var lambda = Lambda<Func<Task<int>>>( block );
             var compiledLambda = lambda.Compile( compiler );
@@ -355,12 +357,13 @@ public class CompilerTests2
                     )
                 ),
 
-                Field( smVar, nameof( StateMachine2.__result0 ) ), //BF junk calls
-                Assign(
+#if !_REMOVE_JUNK
+                Field( smVar, nameof( StateMachine2.__result0 ) ), //BF ME - IS THIS LINE IS THE CULPRIT??
+                Assign( //BF ME - JUNK CODE BUT IT WORKS
                     Field( smVar, nameof( StateMachine2.__result1 ) ),
                     Field( smVar, nameof( StateMachine2.__result0 ) )
                 ),
-
+#endif
                 // ***** SECOND AWAIT *****
 
 #if _WORKAROUND
