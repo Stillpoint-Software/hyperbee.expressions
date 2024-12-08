@@ -1,5 +1,5 @@
-﻿#define _WORKAROUND
-#define _REMOVE_JUNK
+﻿#define _WORKAROUND //BF ME
+#define _REMOVE_JUNK //BF ME
 
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -81,11 +81,13 @@ public class CompilerTests2
     public async Task Compiler_Test2_CompletedTask_Lowered( CompilerType compiler ) //BF ME
     {
         // MANUALLY LOWERED TEST WITH TASK.FromResult
-
-        //var block = BlockAsync(
-        //    Await( Constant( Task.FromResult( 10 ) ) ),
-        //    Await( Constant( Task.FromResult( 42 ) ) )
-        //);
+        // 
+        // Conceptually:
+        //
+        // var block = BlockAsync(
+        //     Await( Constant( Task.FromResult( 10 ) ) ),
+        //     Await( Constant( Task.FromResult( 42 ) ) )
+        // );
 
         try
         {
