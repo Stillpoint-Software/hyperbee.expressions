@@ -22,9 +22,9 @@ public class CompilerTests1
     {
         // this pattern now works
 
-        var block = BlockAsync( 
-            Await( 
-                Constant( Task.FromResult( 42 ) ) 
+        var block = BlockAsync(
+            Await(
+                Constant( Task.FromResult( 42 ) )
             )
         );
 
@@ -37,7 +37,7 @@ public class CompilerTests1
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public async Task Compiler_Test1_Lowered( CompilerType compiler ) 
+    public async Task Compiler_Test1_Lowered( CompilerType compiler )
     {
         //var block = ExpressionExtensions.BlockAsync(
         //    ExpressionExtensions.Await( Expression.Constant( Task.FromResult( 42 ) ) )
