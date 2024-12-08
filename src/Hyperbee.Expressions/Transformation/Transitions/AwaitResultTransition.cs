@@ -34,6 +34,7 @@ internal class AwaitResultTransition : Transition
             }
             else
             {
+                //BF ME - use static interceptors
                 var (_, getResultFixMethod) = AwaitBinder.GetBinderFixupMethods( AwaitBinder );
                 getResultCall = Call( getResultFixMethod, AwaiterVariable );
             }

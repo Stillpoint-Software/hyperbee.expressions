@@ -146,9 +146,10 @@ internal class AwaitBinder
 
     //////////////////////////////////
 
+    //BF ME - Static interceptors to rule out instance methods
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static TAwaiter GetAwaiterFixup<TAwaitable, TAwaiter>( /*AwaitBinder binder,*/ ref TAwaitable awaitable, bool configureAwait )
+    internal static TAwaiter GetAwaiterFixup<TAwaitable, TAwaiter>( ref TAwaitable awaitable, bool configureAwait )
     {
         var binder = AwaitBinderFactory.GetOrCreate( typeof( TAwaiter ) );
 
@@ -160,7 +161,7 @@ internal class AwaitBinder
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static void GetResultFixup<TAwaiter>( /*AwaitBinder binder,*/ ref TAwaiter awaiter )
+    internal static void GetResultFixup<TAwaiter>( ref TAwaiter awaiter )
     {
         var binder = AwaitBinderFactory.GetOrCreate( typeof( TAwaiter ) );
 
@@ -172,7 +173,7 @@ internal class AwaitBinder
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    internal static TResult GetResultFixup<TAwaiter, TResult>( /*AwaitBinder binder,*/ ref TAwaiter awaiter )
+    internal static TResult GetResultFixup<TAwaiter, TResult>( ref TAwaiter awaiter )
     {
         var binder = AwaitBinderFactory.GetOrCreate( typeof( TAwaiter ) );
 

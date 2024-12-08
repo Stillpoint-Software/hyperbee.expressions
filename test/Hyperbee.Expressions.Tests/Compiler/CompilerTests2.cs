@@ -18,6 +18,7 @@ public class CompilerTests2
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     public async Task Compiler_Test2_CustomAwaitable( CompleterType completer, CompilerType compiler )
     {
+        // REAL-WORLD TEST WITH CUSTOM AWAITABLE
         try
         {
             var block = BlockAsync(
@@ -50,6 +51,7 @@ public class CompilerTests2
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     public async Task Compiler_Test2_CompletedTask( CompleterType completer, CompilerType compiler )
     {
+        // REAL-WORLD TEST WITH TASK.FromResult
         try
         {
             var block = BlockAsync(
@@ -76,6 +78,8 @@ public class CompilerTests2
     [DataRow( CompilerType.System )]
     public async Task Compiler_Test2_CompletedTask_Lowered( CompilerType compiler ) //BF ME
     {
+        // MANUALLY LOWERED TEST WITH TASK.FromResult
+
         //var block = BlockAsync(
         //    Await( Constant( Task.FromResult( 10 ) ) ),
         //    Await( Constant( Task.FromResult( 42 ) ) )

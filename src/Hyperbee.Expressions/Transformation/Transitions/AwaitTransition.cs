@@ -31,8 +31,8 @@ internal class AwaitTransition : Transition
             var localAwaiter = Variable( Target.Type, "localAwaiter" );
 
             //var getAwaiterCall = getAwaiterMethod.IsStatic
-            //    ? Call( getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) )
-            //    : Call( Constant( AwaitBinder ), getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) );
+            //    ? Call( getAwaiterMethod, /*Target*/ localAwaiter, Constant( ConfigureAwait ) )
+            //    : Call( Constant( AwaitBinder ), getAwaiterMethod, /*Target*/ localAwaiter, Constant( ConfigureAwait ) );
 
             Expression getAwaiterCall;
 
@@ -42,6 +42,7 @@ internal class AwaitTransition : Transition
             }
             else
             {
+                //BF ME - use static interceptors
                 var (getAwaiterFixMethod, _) = AwaitBinder.GetBinderFixupMethods( AwaitBinder );
                 getAwaiterCall = Call( getAwaiterFixMethod, localAwaiter, Constant( ConfigureAwait ) );
             }
