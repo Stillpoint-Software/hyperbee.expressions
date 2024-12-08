@@ -1,4 +1,4 @@
-#define USE_LOCAL_AWAITER
+﻿#define USE_LOCAL_AWAITER
 
 using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;

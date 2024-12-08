@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
@@ -35,7 +35,7 @@ internal class AwaitResultTransition : Transition
             else
             {
                 var (_, getResultFixMethod) = AwaitBinder.GetBinderFixupMethods( AwaitBinder );
-                getResultCall = Call( getResultFixMethod, AwaiterVariable ); 
+                getResultCall = Call( getResultFixMethod, AwaiterVariable );
             }
 
             if ( ResultVariable == null )

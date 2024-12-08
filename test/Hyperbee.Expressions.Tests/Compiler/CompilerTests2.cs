@@ -252,8 +252,8 @@ public class CompilerTests2
         var smVar = Variable( typeof( StateMachine2 ), "sm" );
 
 #if _WORKAROUND
-        var completedTask0 = Variable( typeof(Task<int>), "completedTask0" );
-        var completedTask1 = Variable( typeof(Task<int>), "completedTask1" );
+        var completedTask0 = Variable( typeof( Task<int> ), "completedTask0" );
+        var completedTask1 = Variable( typeof( Task<int> ), "completedTask1" );
 #endif
 
         // Build the MoveNext delegate
@@ -294,10 +294,10 @@ public class CompilerTests2
 #if _WORKAROUND
                 Assign(
                     completedTask0,
-                    Call( typeof(Task), nameof(Task.FromResult), [typeof(int)], Constant( 10 ) )
+                    Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 10 ) )
                 ),
                 Assign(
-                    Field( smVar, nameof(StateMachine2.__awaiter0) ),
+                    Field( smVar, nameof( StateMachine2.__awaiter0 ) ),
                     Call(
                         binder.GetAwaiterMethod,
                         completedTask0, // immediate result
@@ -362,10 +362,10 @@ public class CompilerTests2
 #if _WORKAROUND
                 Assign(
                     completedTask1,
-                    Call( typeof(Task), nameof(Task.FromResult), [typeof(int)], Constant( 42 ) )
+                    Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) )
                 ),
                 Assign(
-                    Field( smVar, nameof(StateMachine2.__awaiter1) ),
+                    Field( smVar, nameof( StateMachine2.__awaiter1 ) ),
                     Call(
                         binder.GetAwaiterMethod,
                         completedTask1, // immediate result

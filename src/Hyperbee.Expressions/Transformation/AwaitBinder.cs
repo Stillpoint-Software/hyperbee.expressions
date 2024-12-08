@@ -150,10 +150,10 @@ internal class AwaitBinder
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal static TAwaiter GetAwaiterFixup<TAwaitable, TAwaiter>( /*AwaitBinder binder,*/ ref TAwaitable awaitable, bool configureAwait )
     {
-        var binder = AwaitBinderFactory.GetOrCreate( typeof(TAwaiter) );
+        var binder = AwaitBinderFactory.GetOrCreate( typeof( TAwaiter ) );
 
         if ( binder.GetAwaiterImplDelegate == null )
-            throw new InvalidOperationException( $"The {nameof(GetAwaiterImplDelegate)} is not set for {awaitable.GetType()}." );
+            throw new InvalidOperationException( $"The {nameof( GetAwaiterImplDelegate )} is not set for {awaitable.GetType()}." );
 
         var getAwaiter = (AwaitBinderGetAwaiterDelegate<TAwaitable, TAwaiter>) binder.GetAwaiterImplDelegate;
         return getAwaiter( ref awaitable, configureAwait );
@@ -162,10 +162,10 @@ internal class AwaitBinder
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal static void GetResultFixup<TAwaiter>( /*AwaitBinder binder,*/ ref TAwaiter awaiter )
     {
-        var binder = AwaitBinderFactory.GetOrCreate( typeof(TAwaiter) );
+        var binder = AwaitBinderFactory.GetOrCreate( typeof( TAwaiter ) );
 
         if ( binder.GetResultImplDelegate == null )
-            throw new InvalidOperationException( $"The {nameof(GetResultImplDelegate)} is not set for {awaiter.GetType()}." );
+            throw new InvalidOperationException( $"The {nameof( GetResultImplDelegate )} is not set for {awaiter.GetType()}." );
 
         var getResult = (AwaitBinderGetResultDelegate<TAwaiter, IVoidResult>) binder.GetResultImplDelegate;
         getResult( ref awaiter );
@@ -174,10 +174,10 @@ internal class AwaitBinder
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal static TResult GetResultFixup<TAwaiter, TResult>( /*AwaitBinder binder,*/ ref TAwaiter awaiter )
     {
-        var binder = AwaitBinderFactory.GetOrCreate( typeof(TAwaiter) );
+        var binder = AwaitBinderFactory.GetOrCreate( typeof( TAwaiter ) );
 
         if ( binder.GetResultImplDelegate == null )
-            throw new InvalidOperationException( $"The {nameof(GetResultImplDelegate)} is not set for {awaiter.GetType()}." );
+            throw new InvalidOperationException( $"The {nameof( GetResultImplDelegate )} is not set for {awaiter.GetType()}." );
 
         var getResult = (AwaitBinderGetResultDelegate<TAwaiter, TResult>) binder.GetResultImplDelegate;
         var result = getResult( ref awaiter );
@@ -189,33 +189,33 @@ internal class AwaitBinder
     {
         const BindingFlags bindingFlags = BindingFlags.NonPublic | BindingFlags.Static;
 
-        var getAwaiterMethod = typeof(AwaitBinder).GetMethod( nameof(GetAwaiterFixup), bindingFlags )!
+        var getAwaiterMethod = typeof( AwaitBinder ).GetMethod( nameof( GetAwaiterFixup ), bindingFlags )!
             .MakeGenericMethod( binder.GetAwaiterMethod.GetGenericArguments() );
 
         if ( getAwaiterMethod == null )
-            throw new InvalidOperationException( $"Method {nameof(GetAwaiterFixup)} not found." );
+            throw new InvalidOperationException( $"Method {nameof( GetAwaiterFixup )} not found." );
 
         MethodInfo getResultMethod;
 
-        if ( binder.TargetType == typeof(void) )
+        if ( binder.TargetType == typeof( void ) )
         {
-            getResultMethod = typeof(AwaitBinder)
+            getResultMethod = typeof( AwaitBinder )
                 .GetMethods( bindingFlags )
-                .FirstOrDefault( m => m.Name == nameof(GetResultFixup) && m.GetGenericArguments().Length == 1 )!
+                .FirstOrDefault( m => m.Name == nameof( GetResultFixup ) && m.GetGenericArguments().Length == 1 )!
                 .MakeGenericMethod( binder.GetResultMethod.GetGenericArguments() );
 
             if ( getResultMethod == null )
-                throw new InvalidOperationException( $"Method {nameof(GetResultFixup)} without a return type not found." );
+                throw new InvalidOperationException( $"Method {nameof( GetResultFixup )} without a return type not found." );
         }
         else
         {
-            getResultMethod = typeof(AwaitBinder)
+            getResultMethod = typeof( AwaitBinder )
                 .GetMethods( bindingFlags )
-                .FirstOrDefault( m => m.Name == nameof(GetResultFixup) && m.GetGenericArguments().Length == 2 )!
+                .FirstOrDefault( m => m.Name == nameof( GetResultFixup ) && m.GetGenericArguments().Length == 2 )!
                 .MakeGenericMethod( binder.GetResultMethod.GetGenericArguments() );
 
             if ( getResultMethod == null )
-                throw new InvalidOperationException( $"Method {nameof(GetResultFixup)} with a return type not found." );
+                throw new InvalidOperationException( $"Method {nameof( GetResultFixup )} with a return type not found." );
         }
 
         return (getAwaiterMethod, getResultMethod);
