@@ -97,6 +97,7 @@ internal static class AwaitBinderFactory
         var awaiterType = typeof( ConfiguredTaskAwaitable<>.ConfiguredTaskAwaiter ).MakeGenericType( awaiterResultType );
 
         return new AwaitBinder(
+            awaitableType,
             WaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType ),
             GetAwaiterTaskResultMethod.MakeGenericMethod( awaiterResultType ),
             GetResultTaskResultMethod.MakeGenericMethod( awaiterResultType ) );
@@ -108,6 +109,7 @@ internal static class AwaitBinderFactory
         var awaiterType = typeof( ConfiguredValueTaskAwaitable<>.ConfiguredValueTaskAwaiter ).MakeGenericType( awaiterResultType );
 
         return new AwaitBinder(
+            awaitableType,
             WaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType ),
             GetAwaiterValueTaskResultMethod.MakeGenericMethod( awaiterResultType ),
             GetResultValueTaskResultMethod.MakeGenericMethod( awaiterResultType ) );
@@ -118,6 +120,7 @@ internal static class AwaitBinderFactory
         var awaiterType = typeof( ConfiguredTaskAwaitable.ConfiguredTaskAwaiter );
 
         return new AwaitBinder(
+            awaitableType,
             WaitMethod.MakeGenericMethod( awaitableType, awaiterType ),
             GetAwaiterTaskMethod,
             GetResultTaskMethod );
@@ -128,6 +131,7 @@ internal static class AwaitBinderFactory
         var awaiterType = typeof( ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter );
 
         return new AwaitBinder(
+            awaitableType,
             WaitMethod.MakeGenericMethod( awaitableType, awaiterType ),
             GetAwaiterValueTaskMethod,
             GetResultValueTaskMethod );
@@ -180,6 +184,7 @@ internal static class AwaitBinderFactory
         // Return the AwaitBinder
 
         return new AwaitBinder(
+            awaitableType,
             waitMethod,
             getAwaiterMethod,
             getResultMethod,

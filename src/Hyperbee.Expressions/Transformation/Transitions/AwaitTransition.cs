@@ -27,11 +27,14 @@ internal class AwaitTransition : Transition
         {
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
             var source = context.StateMachineInfo;
+            
             var localAwaiter = Variable( Target.Type, "localAwaiter" );
+
+            var getBinderCall = Call( typeof(AwaitBinderFactory).GetMethod( nameof(AwaitBinderFactory.GetOrCreate), [typeof( Type )] )!, Constant( AwaitBinder.TargetType ) ); //BF ME - Test to bypass Constant(AwaitBinder)
 
             var getAwaiterCall = getAwaiterMethod.IsStatic
                 ? Call( getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) )
-                : Call( Constant( AwaitBinder ), getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) );
+                : Call( /*Constant( AwaitBinder )*/ getBinderCall, getAwaiterMethod, localAwaiter, Constant( ConfigureAwait ) ); //BF ME - Bypass Constant(AwaitBinder)
 
             // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
             var awaitUnsafeOnCompleted = source.BuilderField.Type

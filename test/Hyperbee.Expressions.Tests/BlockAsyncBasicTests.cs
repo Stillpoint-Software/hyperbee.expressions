@@ -1,6 +1,5 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using FastExpressionCompiler;
 using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
@@ -67,14 +66,17 @@ public class BlockAsyncBasicTests
     public async Task BlockAsync_ShouldAwaitMultipleSuccessfully_WithCompletedTask( CompleterType completer, CompilerType compiler )
     {
         // Arrange
-        var block = BlockAsync( Await( AsyncHelper.Completer(
-                        Constant( completer ),
-                        Constant( 1 )
-                    ) ),
-                    Await( AsyncHelper.Completer(
-                        Constant( completer ),
-                        Constant( 2 )
-                    ) ) );
+        var block = BlockAsync(
+            Await( AsyncHelper.Completer(
+                Constant( completer ),
+                Constant( 1 )
+            ) ),
+            Await( AsyncHelper.Completer(
+                Constant( completer ),
+                Constant( 2 )
+            ) )
+        );
+
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile( compiler );
 
