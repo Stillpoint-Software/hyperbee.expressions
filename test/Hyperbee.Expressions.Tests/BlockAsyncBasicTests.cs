@@ -444,26 +444,27 @@ public class BlockAsyncBasicTests
         var var1 = Variable( typeof( int ), "var1" );
         var param1 = Parameter( typeof( Func<Task<int>> ), "param1" );
 
-        var parameterAsync = Lambda<Func<Task<int>>>(
-            BlockAsync(
-                Await( AsyncHelper.Completer(
-                        Constant( completer ),
-                        Constant( 15 )
-                    ) )
-            )
-        );
-
-        var innerLambda = Lambda<Func<Func<Task<int>>, Task<int>>>(
-            BlockAsync(
-                [var1],
-                Assign( var1, Await( Invoke( param1 ) ) ),
-                var1
-            ),
-            parameters: [param1]
-        );
-
         var asyncBlock = BlockAsync(
-            Await( Invoke( innerLambda, parameterAsync ) )
+            Await( 
+                Invoke(
+                    Lambda<Func<Func<Task<int>>, Task<int>>>(
+                        BlockAsync(
+                            [var1],
+                            Assign( var1, Await( Invoke( param1 ) ) ),
+                            var1
+                        ),
+                        parameters: [param1]
+                    ),
+                    Lambda<Func<Task<int>>>(
+                        BlockAsync(
+                            Await( AsyncHelper.Completer(
+                                Constant( completer ),
+                                Constant( 15 ) ) 
+                            )
+                        )
+                    )
+                )
+            )
         );
 
         var lambda = Lambda<Func<Task<int>>>( asyncBlock );

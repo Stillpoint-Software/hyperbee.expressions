@@ -307,7 +307,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
 
-        var switchTransition = new SwitchTransition{ SwitchValue = updatedSwitchValue };
+        var switchTransition = new SwitchTransition { SwitchValue = updatedSwitchValue };
 
         if ( node.DefaultBody != null )
         {

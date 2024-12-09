@@ -75,7 +75,7 @@ public class CompilerTests3
                     Catch(
                         typeof( Exception ),
                         Block(
-                            typeof(void),
+                            typeof( void ),
                             Assign( variable, Constant( 10 ) )
                         )
                     )
@@ -125,7 +125,7 @@ public class CompilerTests3
                 Label( stResume0Label ),
 
                 TryCatch(
-                    Block( 
+                    Block(
                         typeof( void ),
                         Switch(
                             state,
@@ -153,7 +153,7 @@ public class CompilerTests3
                             Assign( variable, Constant( 20 ) )
                         )
                     )
-                ), 
+                ),
                 Switch(
                     state,
                     Empty(), // Default case: do nothing
@@ -162,12 +162,12 @@ public class CompilerTests3
                         Constant( 1 ) // Case for 1
                     )
                 ),
-                    
+
                 Label( stResume2Label ),
 
                 variable
             )
-        ); 
+        );
 
         return Block( Invoke( lambda ) );
     }
@@ -240,7 +240,7 @@ public class CompilerTests3
                         ),
 
                         Goto( stResume3Label )
-                    ),  
+                    ),
                     Catch(
                         typeof( Exception ),
                         Block(
