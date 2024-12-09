@@ -22,7 +22,7 @@ public class BlockAsyncTryCatchTests
                     Constant( completer ),
                     Constant( 10 )
                 ) ),
-                Catch( exceptionParam, Constant(0) )
+                Catch( exceptionParam, Constant( 0 ) )
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
