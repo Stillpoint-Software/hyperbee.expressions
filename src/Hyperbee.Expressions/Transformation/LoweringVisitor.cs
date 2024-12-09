@@ -116,7 +116,8 @@ internal class LoweringVisitor : ExpressionVisitor
 
         if ( visited is not StateExpression )
         {
-            tailState.Expressions.Add( visited );
+            AppendToState( tailState, visited ); //BF ME - DISCUSS
+            //tailState.Expressions.Add( visited );
         }
 
         // transition handling
@@ -135,6 +136,17 @@ internal class LoweringVisitor : ExpressionVisitor
         {
             tailState.Transition = new GotoTransition { TargetNode = defaultTarget };
         }
+    }
+
+    private static void AppendToState( StateExpression targetState, Expression value )
+    {
+        if ( targetState.Expressions.Count > 0 && targetState.Expressions.Last() is ParameterExpression ) //BF ME - HACK DISCUSS
+        {
+            targetState.Expressions[^1] = value;
+            return;
+        }
+
+        targetState.Expressions.Add( value );
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -188,7 +200,8 @@ internal class LoweringVisitor : ExpressionVisitor
             }
             else
             {
-                currentSource.Expressions.Add( _variableResolver.Resolve( Visit( expression ) ) );
+                //currentSource.Expressions.Add( _variableResolver.Resolve( Visit( expression ) ) );
+                AppendToState( currentSource, _variableResolver.Resolve( Visit( expression ) ) ); //BF ME - DISCUSS
             }
         }
 
