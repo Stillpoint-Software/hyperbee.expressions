@@ -445,7 +445,7 @@ public class BlockAsyncBasicTests
         var param1 = Parameter( typeof( Func<Task<int>> ), "param1" );
 
         var asyncBlock = BlockAsync(
-            Await( 
+            Await(
                 Invoke(
                     Lambda<Func<Func<Task<int>>, Task<int>>>(
                         BlockAsync(
@@ -459,7 +459,7 @@ public class BlockAsyncBasicTests
                         BlockAsync(
                             Await( AsyncHelper.Completer(
                                 Constant( completer ),
-                                Constant( 15 ) ) 
+                                Constant( 15 ) )
                             )
                         )
                     )
