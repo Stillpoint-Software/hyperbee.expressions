@@ -24,9 +24,9 @@ internal sealed class StateOptimizer
     {
         var nodes = scope.States;
 
-        var visited = new HashSet<IStateNode>( nodes.Count );
+        var visited = new HashSet<StateNode>( nodes.Count );
 
-        IStateNode finalNode = null;
+        StateNode finalNode = null;
 
         // Add scope references to the set
 

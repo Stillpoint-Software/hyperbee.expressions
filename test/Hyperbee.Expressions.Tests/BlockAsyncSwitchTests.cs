@@ -289,4 +289,26 @@ public class BlockAsyncSwitchTests
         // Assert
         Assert.AreEqual( 15, result ); // The last awaited value should be 15
     }
+
+    [DataTestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    public void Block_ShouldSuccessed_WithSimpleSwitchValue( CompleterType completer, CompilerType compiler )
+    {
+        var label = Label( "label" );
+        var block = Block(
+            Switch(
+                Constant( 1 ),
+                SwitchCase( Goto( label ), Constant( 1 ) )
+            ),
+            Label( label ),
+            Constant( 2 )
+        );
+
+        var lambda = Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        var result = compiledLambda();
+
+        Assert.AreEqual( 2, result );
+    }
 }

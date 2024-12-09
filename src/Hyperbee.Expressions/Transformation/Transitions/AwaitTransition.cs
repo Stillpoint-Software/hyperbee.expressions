@@ -11,11 +11,11 @@ internal class AwaitTransition : Transition
 
     public Expression Target { get; set; }
     public Expression AwaiterVariable { get; set; }
-    public IStateNode CompletionNode { get; set; }
+    public StateNode CompletionNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
     public bool ConfigureAwait { get; set; }
 
-    internal override IStateNode FallThroughNode => CompletionNode;
+    internal override StateNode FallThroughNode => CompletionNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {

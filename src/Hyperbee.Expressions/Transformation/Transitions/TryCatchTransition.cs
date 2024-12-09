@@ -6,8 +6,8 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 internal class TryCatchTransition : Transition
 {
     internal List<CatchBlockDefinition> CatchBlocks = [];
-    public IStateNode TryNode { get; set; }
-    public IStateNode FinallyNode { get; set; }
+    public StateNode TryNode { get; set; }
+    public StateNode FinallyNode { get; set; }
 
     public Expression TryStateVariable { get; set; }
     public Expression ExceptionVariable { get; set; }
@@ -15,7 +15,7 @@ internal class TryCatchTransition : Transition
     public StateContext.Scope StateScope { get; init; }
     public List<StateContext.Scope> Scopes { get; init; }
 
-    internal override IStateNode FallThroughNode => TryNode;
+    internal override StateNode FallThroughNode => TryNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
@@ -63,8 +63,7 @@ internal class TryCatchTransition : Transition
 
         for ( var index = 0; index < CatchBlocks.Count; index++ )
         {
-            if ( CatchBlocks[index].UpdateBody is IStateNode state )
-                references.Add( state.NodeLabel );
+            references.Add( CatchBlocks[index].UpdateBody.NodeLabel );
         }
     }
 
@@ -83,9 +82,7 @@ internal class TryCatchTransition : Transition
             catches[index] = catchBlock.Reduce( ExceptionVariable, TryStateVariable );
 
             switchCases[index] = SwitchCase(
-                (catchBlock.UpdateBody is not IStateNode node)
-                    ? Block( typeof( void ), catchBlock.UpdateBody )
-                    : GotoOrFallThrough( order, node ),
+                GotoOrFallThrough( order, catchBlock.UpdateBody ),
                 Constant( catchBlock.CatchState ) );
         }
 
@@ -106,12 +103,12 @@ internal class TryCatchTransition : Transition
         );
     }
 
-    public void AddCatchBlock( CatchBlock handler, Expression updateBody, int catchState )
+    public void AddCatchBlock( CatchBlock handler, StateNode updateBody, int catchState )
     {
         CatchBlocks.Add( new CatchBlockDefinition( handler, updateBody, catchState ) );
     }
 
-    internal class CatchBlockDefinition( CatchBlock handler, Expression updateBody, int catchState )
+    internal class CatchBlockDefinition( CatchBlock handler, StateNode updateBody, int catchState )
     {
         public CatchBlock Reduce( Expression exceptionVariable, Expression tryStateVariable )
         {
@@ -135,7 +132,7 @@ internal class TryCatchTransition : Transition
         }
 
         public CatchBlock Handler { get; init; } = handler;
-        public Expression UpdateBody { get; internal set; } = updateBody;
+        public StateNode UpdateBody { get; internal set; } = updateBody;
         public int CatchState { get; init; } = catchState;
     }
 }
