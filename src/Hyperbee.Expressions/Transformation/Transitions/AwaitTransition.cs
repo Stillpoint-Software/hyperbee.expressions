@@ -1,4 +1,4 @@
-﻿#define USE_LOCAL_AWAITER
+﻿#define _FEC_COMPATIBILE
 
 using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
@@ -22,17 +22,28 @@ internal class AwaitTransition : Transition
         base.AddExpressions( expressions, context );
         expressions.AddRange( Expressions() );
         return;
-#if USE_LOCAL_AWAITER
+
         List<Expression> Expressions()
         {
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
             var source = context.StateMachineInfo;
 
-            var localAwaiter = Variable( Target.Type, "localAwaiter" );
+#if _FEC_COMPATIBILE
+            // FEC: Use local variable for ref Target.
+            //
+            // Directly using ref Target as a param (e.g. Call(.., ref Target))
+            // results in an Invalid Program Exception.
+            //
+            // Use a local variable as workaround.
+
+            var target = Variable( Target.Type, "awaiter" );
+#else
+            var target = Target;
+#endif
 
             var getAwaiterCall = getAwaiterMethod.IsStatic
-                ? Call( getAwaiterMethod, /*Target*/ localAwaiter, Constant( ConfigureAwait ) )
-                : Call( Constant( AwaitBinder ), getAwaiterMethod, /*Target*/ localAwaiter, Constant( ConfigureAwait ) );
+                ? Call( getAwaiterMethod, target, Constant( ConfigureAwait ) )
+                : Call( Constant( AwaitBinder ), getAwaiterMethod, target, Constant( ConfigureAwait ) );
 
             // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
             var awaitUnsafeOnCompleted = source.BuilderField.Type
@@ -42,7 +53,9 @@ internal class AwaitTransition : Transition
 
             var body = new List<Expression>
             {
-                Assign( localAwaiter, Target ),
+#if _FEC_COMPATIBILE
+                Assign( target, Target ),
+#endif
                 Assign(
                     AwaiterVariable,
                     getAwaiterCall
@@ -67,58 +80,17 @@ internal class AwaitTransition : Transition
             if ( fallThrough != null )
                 body.Add( fallThrough );
 
+#if _FEC_COMPATIBILE
             return [
                 Block(
-                    [localAwaiter],
+                    [target],
                     body
                 )
             ];
-        }
 #else
-        List<Expression> Expressions()
-        {
-            var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
-            var source = context.StateMachineInfo;
-
-            var getAwaiterCall = getAwaiterMethod.IsStatic
-                ? Call( getAwaiterMethod, Target, Constant( ConfigureAwait ) )
-                : Call( Constant( AwaitBinder ), getAwaiterMethod, Target, Constant( ConfigureAwait ) );
-
-            // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
-            var awaitUnsafeOnCompleted = source.BuilderField.Type
-                .GetMethods()
-                .Single( methodInfo => methodInfo.Name == "AwaitUnsafeOnCompleted" && methodInfo.IsGenericMethodDefinition )
-                .MakeGenericMethod( AwaiterVariable.Type, source.StateMachine.Type );
-
-            var body = new List<Expression>
-            {
-                Assign(
-                    AwaiterVariable,
-                    getAwaiterCall
-                ),
-                IfThen(
-                    IsFalse( Property( AwaiterVariable, "IsCompleted" ) ),
-                    Block(
-                        Assign( source.StateField, Constant( StateId ) ),
-                        Call(
-                            source.BuilderField,
-                            awaitUnsafeOnCompleted,
-                            AwaiterVariable,
-                            source.StateMachine
-                        ),
-                        Return( source.ExitLabel )
-                    )
-                )
-            };
-
-            var fallThrough = GotoOrFallThrough( context.StateNode.StateOrder, CompletionNode, true );
-
-            if ( fallThrough != null )
-                body.Add( fallThrough );
-
             return body;
-        }
 #endif
+        }
     }
 
     internal override void Optimize( HashSet<LabelTarget> references )

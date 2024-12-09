@@ -1,5 +1,4 @@
-﻿//#define _INCLUDE_ALL_TESTS
-#define _WORKAROUND //BF ME
+﻿#define _FEC_COMPATIBILE
 
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -70,20 +69,20 @@ public class CompilerTests1
         var stateMachineVar = Variable( typeof( StateMachine1 ), "stateMachine" );
         var smVar = Variable( typeof( StateMachine1 ), "sm" );
 
-#if _WORKAROUND
+#if _FEC_COMPATIBILE
         var completedTask = Variable( typeof( Task<int> ), "completedTask" );
 #endif
 
         // Build the MoveNext delegate
         var moveNextLambda = Lambda<MoveNextDelegate<StateMachine1>>(
             Block(
-#if _WORKAROUND
+#if _FEC_COMPATIBILE
                 [completedTask],
 #endif
 
                 // ***** FIRST AWAIT *****
 
-#if _WORKAROUND //BF ME
+#if _FEC_COMPATIBILE
                 Assign(
                     completedTask,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) )

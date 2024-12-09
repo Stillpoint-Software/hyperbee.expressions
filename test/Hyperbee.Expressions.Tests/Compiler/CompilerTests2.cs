@@ -1,5 +1,4 @@
-﻿#define _WORKAROUND //BF ME
-#define _REMOVE_JUNK //BF ME
+﻿#define _FEC_COMPATIBILE
 
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -116,7 +115,7 @@ public class CompilerTests2
         var stateMachineVar = Variable( typeof( StateMachine2 ), "stateMachine" );
         var smVar = Variable( typeof( StateMachine2 ), "sm" );
 
-#if _WORKAROUND
+#if _FEC_COMPATIBILE //use-local
         var completedTask0 = Variable( typeof( Task<int> ), "completedTask0" );
         var completedTask1 = Variable( typeof( Task<int> ), "completedTask1" );
 #endif
@@ -124,13 +123,13 @@ public class CompilerTests2
         // Build the MoveNext delegate
         var moveNextLambda = Lambda<MoveNextDelegate<StateMachine2>>(
             Block(
-#if _WORKAROUND
+#if _FEC_COMPATIBILE //use-local
                 [completedTask0, completedTask1],
 #endif
 
 
                 // ***** FIRST AWAIT *****
-#if _WORKAROUND
+#if _FEC_COMPATIBILE //use-local
                 Assign(
                     completedTask0,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 10 ) )
@@ -163,17 +162,13 @@ public class CompilerTests2
                     )
                 ),
 
-#if !_REMOVE_JUNK
-                Field( smVar, nameof( StateMachine2.__result0 ) ), //BF ME - IS THIS LINE IS THE CULPRIT??
-                //Assign( //BF ME - JUNK CODE BUT IT WORKS
-                //    Field( smVar, nameof( StateMachine2.__result1 ) ),
-                //    Field( smVar, nameof( StateMachine2.__result0 ) )
-                //),
+#if !_FEC_COMPATIBILE // remove-unary-variable-expression (e.g. `someVar;`)
+                Field( smVar, nameof( StateMachine2.__result0 ) ), // THIS LINE IS THE CULPRIT
 #endif
 
                 // ***** SECOND AWAIT *****
 
-#if _WORKAROUND
+#if _FEC_COMPATIBILE //use-local
                 Assign(
                     completedTask1,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) )
@@ -267,7 +262,7 @@ public class CompilerTests2
 
         var smVar = Variable( typeof( StateMachine2 ), "sm" );
 
-#if _WORKAROUND
+#if _FEC_COMPATIBILE // use-local
         var completedTask0 = Variable( typeof( Task<int> ), "completedTask0" );
         var completedTask1 = Variable( typeof( Task<int> ), "completedTask1" );
 #endif
@@ -275,7 +270,7 @@ public class CompilerTests2
         // Build the MoveNext delegate
         var moveNextLambda = Lambda<MoveNextDelegate<StateMachine2>>(
             Block(
-#if _WORKAROUND
+#if _FEC_COMPATIBILE // use-local
                 [completedTask0, completedTask1],
 #endif
 
@@ -307,7 +302,7 @@ public class CompilerTests2
 
                 // ***** FIRST AWAIT *****
 
-#if _WORKAROUND
+#if _FEC_COMPATIBILE // use-local
                 Assign(
                     completedTask0,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 10 ) )
@@ -367,16 +362,12 @@ public class CompilerTests2
                     )
                 ),
 
-#if !_REMOVE_JUNK
-                Field( smVar, nameof( StateMachine2.__result0 ) ), //BF ME - IS THIS LINE IS THE CULPRIT??
-                Assign( //BF ME - JUNK CODE BUT IT WORKS
-                    Field( smVar, nameof( StateMachine2.__result1 ) ),
-                    Field( smVar, nameof( StateMachine2.__result0 ) )
-                ),
+#if !_FEC_COMPATIBILE // remove-unary-variable-expression (e.g. `someVar;`)
+                Field( smVar, nameof( StateMachine2.__result0 ) ), // THIS LINE IS THE CULPRIT
 #endif
                 // ***** SECOND AWAIT *****
 
-#if _WORKAROUND
+#if _FEC_COMPATIBILE // use-local
                 Assign(
                     completedTask1,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) )

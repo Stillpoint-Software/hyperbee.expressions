@@ -332,13 +332,8 @@ public class StateMachine3 : IAsyncStateMachine
     public AsyncTaskMethodBuilder<int> __builder;
     public MoveNextDelegate<StateMachine3> __moveNextDelegate;
 
-    //public ConfiguredTaskAwaitable<int>.ConfiguredTaskAwaiter __awaiter0;
-    //public ConfiguredTaskAwaitable<int>.ConfiguredTaskAwaiter __awaiter1;
-
     public int __try;
-
     public int __result0;
-    //public int __result1;
 
     public void MoveNext()
     {
