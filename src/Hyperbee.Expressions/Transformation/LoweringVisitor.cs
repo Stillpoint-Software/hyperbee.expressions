@@ -75,18 +75,16 @@ internal class LoweringVisitor : ExpressionVisitor
 
         // update the final state
 
-        var tailState = _states.TailState;
-
         if ( !_hasFinalResultVariable )
         {
             // assign the final result variable if not already assigned for state-machine builder.
             // this is the case when the last expression is not a return statement.
             // this will ensure that the state-machine builder will have a final result field.
 
-            tailState.Result.Variable = _finalResultVariable;
+            _states.TailState.Result.Variable = _finalResultVariable;
         }
 
-        tailState.Transition = new FinalTransition();
+        _states.TailState.Transition = new FinalTransition();
     }
 
     private StateNode VisitBranch( Expression expression, StateNode joinState, Expression resultVariable = null, Action<StateNode> init = null )
@@ -153,7 +151,6 @@ internal class LoweringVisitor : ExpressionVisitor
         return new ResultExpression( stateNode.Result );
     }
 
-
     // Override methods for specific expression types
 
     protected override Expression VisitLambda<T>( Expression<T> node )
@@ -175,10 +172,10 @@ internal class LoweringVisitor : ExpressionVisitor
         _variableResolver.AddLocalVariables( node.Variables );
 
         var currentSource = sourceState;
-        StateNode firstGoto = null;
+        var previousVariable = resultVariable;
 
+        StateNode firstGoto = null;
         StateNode previousTail = null;
-        Expression previousVariable = resultVariable;
 
         foreach ( var expression in node.Expressions )
         {
@@ -394,7 +391,7 @@ internal class LoweringVisitor : ExpressionVisitor
         {
             AwaitExpression awaitExpression => VisitAwaitExtension( awaitExpression ),
 
-            // Nested blocks should be visited by their own visitor,
+            // Nested async blocks should be visited by their own visitor,
             // but nested variables must be replaced
             AsyncBlockExpression => _variableResolver.Resolve( node ),
 
@@ -451,15 +448,12 @@ internal class LoweringVisitor : ExpressionVisitor
         return ConvertToExpression( sourceState );
     }
 
-    private class ResultExpression( StateResult result ) : Expression
+    private sealed class ResultExpression( StateResult result ) : Expression
     {
         public override ExpressionType NodeType => ExpressionType.Extension;
         public override Type Type => result.Variable?.Type ?? typeof( void );
         public override bool CanReduce => true;
 
-        public override Expression Reduce()
-        {
-            return result.Variable ?? Empty();
-        }
+        public override Expression Reduce() => result.Variable ?? Empty();
     }
 }

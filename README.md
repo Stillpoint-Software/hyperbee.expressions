@@ -21,8 +21,6 @@ workflows and other language constructs.
     * `StringFormatExpression`: An expression that creates a string using a supplied format string and parameters.
     * `DebugExpression`: An expression that helps when debugging expression trees.
 
-* Supports Fast Expression Compiler (FEC) for improved performance.
-
 ## Examples
 
 ### Asynchronous Expressions
