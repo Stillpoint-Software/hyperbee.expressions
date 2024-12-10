@@ -75,21 +75,19 @@ internal class LoweringVisitor : ExpressionVisitor
 
         // update the final state
 
-        var tailState = _states.TailState;
-
         if ( !_hasFinalResultVariable )
         {
             // assign the final result variable if not already assigned for state-machine builder.
             // this is the case when the last expression is not a return statement.
             // this will ensure that the state-machine builder will have a final result field.
 
-            tailState.Result.Variable = _finalResultVariable;
+            _states.TailState.Result.Variable = _finalResultVariable;
         }
 
-        tailState.Transition = new FinalTransition();
+        _states.TailState.Transition = new FinalTransition();
     }
 
-    private StateExpression VisitBranch( Expression expression, StateExpression joinState, Expression resultVariable = null, Action<StateExpression> init = null )
+    private StateNode VisitBranch( Expression expression, StateNode joinState, Expression resultVariable = null, Action<StateNode> init = null )
     {
         // Create a new state for the branch
 
@@ -108,16 +106,13 @@ internal class LoweringVisitor : ExpressionVisitor
         return branchState;
     }
 
-    private void UpdateTailState( Expression visited, StateExpression defaultTarget = null )
+    private void UpdateTailState( Expression visited, StateNode defaultTarget = null )
     {
         var tailState = _states.TailState;
 
         // add unhandled the expressions to the tail state
 
-        if ( visited is not StateExpression )
-        {
-            tailState.Expressions.Add( visited );
-        }
+        AppendToState( tailState, visited );
 
         // transition handling
 
@@ -138,9 +133,22 @@ internal class LoweringVisitor : ExpressionVisitor
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    private static void AppendToState( StateNode targetState, Expression value )
+    {
+        if ( value is not ResultExpression )
+            targetState.Expressions.Add( value );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private bool RequiresLowering( Expression node )
     {
         return _expressionMatcher.HasMatch( node );
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    private static ResultExpression ConvertToExpression( StateNode stateNode )
+    {
+        return new ResultExpression( stateNode.Result );
     }
 
     // Override methods for specific expression types
@@ -164,10 +172,10 @@ internal class LoweringVisitor : ExpressionVisitor
         _variableResolver.AddLocalVariables( node.Variables );
 
         var currentSource = sourceState;
-        StateExpression firstGoto = null;
+        var previousVariable = resultVariable;
 
-        StateExpression previousTail = null;
-        Expression previousVariable = resultVariable;
+        StateNode firstGoto = null;
+        StateNode previousTail = null;
 
         foreach ( var expression in node.Expressions )
         {
@@ -188,7 +196,7 @@ internal class LoweringVisitor : ExpressionVisitor
             }
             else
             {
-                currentSource.Expressions.Add( _variableResolver.Resolve( Visit( expression ) ) );
+                AppendToState( currentSource, _variableResolver.Resolve( Visit( expression ) ) );
             }
         }
 
@@ -199,7 +207,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, blockTransition );
 
-        return sourceState;
+        return ConvertToExpression( sourceState );
     }
 
     protected override Expression VisitConditional( ConditionalExpression node )
@@ -207,7 +215,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( !RequiresLowering( node ) )
             return _variableResolver.Resolve( node );
 
-        var updatedTest = base.Visit( node.Test );
+        var updatedTest = Visit( node.Test );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
@@ -227,7 +235,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, conditionalTransition );
 
-        return sourceState;
+        return ConvertToExpression( sourceState );
     }
 
     protected override Expression VisitGoto( GotoExpression node )
@@ -268,11 +276,11 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, loopTransition );
 
-        return sourceState;
+        return ConvertToExpression( sourceState );
 
         // Helper function for assigning loop labels
 
-        void InitializeLabels( StateExpression branchState )
+        void InitializeLabels( StateNode branchState )
         {
             _variableResolver.ResolveLabel( node.ContinueLabel, branchState.NodeLabel );
             _variableResolver.ResolveLabel( node.BreakLabel, joinState.NodeLabel );
@@ -289,7 +297,7 @@ internal class LoweringVisitor : ExpressionVisitor
         if ( !RequiresLowering( node ) )
             return _variableResolver.Resolve( node );
 
-        var updatedSwitchValue = base.Visit( node.SwitchValue );
+        var updatedSwitchValue = Visit( node.SwitchValue );
 
         var joinState = _states.EnterGroup( out var sourceState );
 
@@ -315,7 +323,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, switchTransition );
 
-        return sourceState;
+        return ConvertToExpression( sourceState );
     }
 
     protected override Expression VisitTry( TryExpression node )
@@ -331,7 +339,7 @@ internal class LoweringVisitor : ExpressionVisitor
 
         // if there is a finally block then that is the join for a try/catch.
 
-        StateExpression finalExpression = null;
+        StateNode finalExpression = null;
 
         if ( node.Finally != null )
         {
@@ -372,41 +380,25 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, tryCatchTransition );
 
-        return sourceState;
-    }
-
-    protected override Expression VisitBinary( BinaryExpression node )
-    {
-        var updatedLeft = Visit( node.Left );
-        var updatedRight = Visit( node.Right );
-
-        if ( updatedRight is not StateExpression nodeExpression )
-        {
-            return node.Update( updatedLeft, node.Conversion, updatedRight );
-        }
-
-        return node.Update( updatedLeft, node.Conversion, nodeExpression.Result.Variable );
+        return ConvertToExpression( sourceState );
     }
 
     // Override method for extension expression types
 
     protected override Expression VisitExtension( Expression node )
     {
-        switch ( node )
+        return node switch
         {
-            case AwaitExpression awaitExpression:
-                return VisitAwaitExtension( awaitExpression );
+            AwaitExpression awaitExpression => VisitAwaitExtension( awaitExpression ),
 
-            case AsyncBlockExpression:
-                // Nested blocks should be visited by their own visitor,
-                // but nested variables must be replaced
-                return _variableResolver.Resolve( node );
+            // Nested async blocks should be visited by their own visitor,
+            // but nested variables must be replaced
+            AsyncBlockExpression => _variableResolver.Resolve( node ),
 
-            default:
-                // Lowering visitor shouldn't be used by extensions directly
-                // since it changes the shape of the code
-                return Visit( node.Reduce() );
-        }
+            // Lowering visitor shouldn't be used by extensions directly
+            // since it changes the shape of the code
+            _ => Visit( node.Reduce() )
+        };
     }
 
     protected Expression VisitAwaitExtension( AwaitExpression node )
@@ -438,16 +430,9 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
 
-        // if we already visited a branching node we only want to use the result variable
-        // else it is most likely directly awaitable (e.g. Task)
-
-        var targetNode = updatedNode is StateExpression nodeExpression
-            ? nodeExpression.Result.Variable
-            : updatedNode;
-
         var awaitTransition = new AwaitTransition
         {
-            Target = targetNode,
+            Target = updatedNode,
             StateId = sourceState.StateId,
             AwaiterVariable = awaiterVariable,
             CompletionNode = completionState,
@@ -460,6 +445,15 @@ internal class LoweringVisitor : ExpressionVisitor
 
         _states.ExitGroup( sourceState, awaitTransition );
 
-        return resultVariable ?? Expression.Empty();
+        return ConvertToExpression( sourceState );
+    }
+
+    private sealed class ResultExpression( StateResult result ) : Expression
+    {
+        public override ExpressionType NodeType => ExpressionType.Extension;
+        public override Type Type => result.Variable?.Type ?? typeof( void );
+        public override bool CanReduce => true;
+
+        public override Expression Reduce() => result.Variable ?? Empty();
     }
 }

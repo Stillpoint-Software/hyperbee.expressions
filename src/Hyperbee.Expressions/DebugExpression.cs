@@ -18,7 +18,7 @@ public class DebugExpression : Expression
 
         DebugDelegate = debugDelegate;
         DebugCondition = condition;
-        Arguments = arguments.ToList();
+        Arguments = [.. arguments];
     }
 
     public override Type Type => typeof( void );
