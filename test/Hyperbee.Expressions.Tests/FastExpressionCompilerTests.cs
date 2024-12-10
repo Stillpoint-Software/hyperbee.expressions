@@ -6,53 +6,30 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class FastExpressionCompilerTests
 {
+
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Block_TryCatch_WithGoto( CompilerType compiler )
+    public void Compile_ShouldSuccessed_WithRefParameter( CompilerType compiler )
     {
-        try
-        {
-            var stResume0Label = Label( "ST_RESUME_0" );
-            var variable = Variable( typeof( int ), "variable" );
-
-            var block = Block(
-                [variable],
-                TryCatch(
-                    Block(
-                        Assign( variable, Constant( 5 ) ),
-                        Goto( stResume0Label )
-                    ),
-                    Catch(
-                        typeof( Exception ),
-                        Block(
-                            typeof( void ),
-                            Assign( variable, Constant( 10 ) )
-                        )
-                    )
-                ),
-                Label( stResume0Label ),
-
-                variable
-            );
-
-            var lambda = Lambda<Func<int>>( block );
-            var compiledLambda = lambda.Compile( compiler );
-
-            compiledLambda();
-        }
-        catch ( Exception e )
-        {
-            Console.WriteLine( e );
-            throw;
-        }
+        // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
     }
 
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Block_ShouldSuccessed_WithSimpleSwitchValue( CompilerType compiler )
+    public void Compile_ShouldSuccessed_WithUnusedValue( CompilerType compiler )
     {
+        // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
+    }
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    public void Compile_ShouldSuccessed_WithSimpleSwitchValue( CompilerType compiler )
+    {
+        // TODO: FEC throws `System.NullReferenceException: Object reference not set to an instance of an object.`
+
         var label = Label( "label" );
         var block = Block(
             Switch(
@@ -74,8 +51,10 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Block_ShouldSuccessed_WithEmptySwitch( CompilerType compiler )
+    public void Compile_ShouldSuccessed_WithEmptySwitch( CompilerType compiler )
     {
+        // TODO: FEC throws `System.ArgumentOutOfRangeException: Index was out of range.`
+
         var block = Block(
             Switch(
                 Constant( 1 ),
@@ -95,7 +74,7 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Block_TryCatch_WithNestedTry( CompilerType compiler )
+    public void Compile_ShouldSuccessed_WithNestedTry( CompilerType compiler )
     {
         try
         {
@@ -120,6 +99,49 @@ public class FastExpressionCompilerTests
                     Catch( outerExceptionParam, Assign( resultValue, Constant( 50 ) ) )
                 ),
                 resultValue
+            );
+
+            var lambda = Lambda<Func<int>>( block );
+            var compiledLambda = lambda.Compile( compiler );
+
+            compiledLambda();
+        }
+        catch ( Exception e )
+        {
+            Console.WriteLine( e );
+            throw;
+        }
+    }
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    public void Compile_ShouldSuccessed_WithTryCatchGoto( CompilerType compiler )
+    {
+        // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
+        try
+        {
+            var stResume0Label = Label( "ST_RESUME_0" );
+            var variable = Variable( typeof( int ), "variable" );
+
+            var block = Block(
+                [variable],
+                TryCatch(
+                    Block(
+                        Assign( variable, Constant( 5 ) ),
+                        Goto( stResume0Label )
+                    ),
+                    Catch(
+                        typeof( Exception ),
+                        Block(
+                            typeof( void ),
+                            Assign( variable, Constant( 10 ) )
+                        )
+                    )
+                ),
+                Label( stResume0Label ),
+
+                variable
             );
 
             var lambda = Lambda<Func<int>>( block );
