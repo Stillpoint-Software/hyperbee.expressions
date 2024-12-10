@@ -10,7 +10,7 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSuccessed_WithRefParameter( CompilerType compiler )
+    public void Compile_ShouldSucceed_WithRefParameter( CompilerType compiler )
     {
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
     }
@@ -18,7 +18,7 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSuccessed_WithUnusedValue( CompilerType compiler )
+    public void Compile_ShouldSucceed_WithUnusedValue( CompilerType compiler )
     {
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
     }
@@ -26,7 +26,7 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSuccessed_WithSimpleSwitchValue( CompilerType compiler )
+    public void Compile_ShouldSucceed_WithSimpleSwitchValue( CompilerType compiler )
     {
         // TODO: FEC throws `System.NullReferenceException: Object reference not set to an instance of an object.`
 
@@ -51,7 +51,7 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSuccessed_WithEmptySwitch( CompilerType compiler )
+    public void Compile_ShouldSucceed_WithEmptySwitch( CompilerType compiler )
     {
         // TODO: FEC throws `System.ArgumentOutOfRangeException: Index was out of range.`
 
@@ -74,7 +74,7 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSuccessed_WithGotoInTry( CompilerType compiler )
+    public void Compile_ShouldSucceed_WithGotoInTry( CompilerType compiler )
     {
         // TODO: FEC throws `System.ArgumentException: Bad label content in ILGenerator.`
         var label = Label( "label" );
@@ -105,7 +105,7 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSuccessed_WithGotoLabelOutsideTry( CompilerType compiler )
+    public void Compile_ShouldSucceed_WithGotoLabelOutsideTry( CompilerType compiler )
     {
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
 
