@@ -8,23 +8,25 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockAsyncTryCatchTests
 {
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryBlock( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the try block
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
         var block = BlockAsync(
             TryCatch(
-                Await( AsyncHelper.Completable(
-                    Constant( immediateFlag ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 10 )
                 ) ),
                 Catch( exceptionParam, Constant( 0 ) )
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -34,9 +36,11 @@ public class BlockAsyncTryCatchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldCatchExceptionSuccessfully_WithAwaitInCatchBlock( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldCatchExceptionSuccessfully_WithAwaitInCatchBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the catch block
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
@@ -50,8 +54,8 @@ public class BlockAsyncTryCatchTests
                 ),
                 Catch(
                     exceptionParam,
-                    Assign( resultValue, Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Assign( resultValue, Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 99 )
                     ) ) )
                 )
@@ -59,7 +63,7 @@ public class BlockAsyncTryCatchTests
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -70,9 +74,11 @@ public class BlockAsyncTryCatchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldHandleExceptionSuccessfully_WithTryCatchFinally( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldHandleExceptionSuccessfully_WithTryCatchFinally( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in both catch and finally blocks
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
@@ -85,13 +91,13 @@ public class BlockAsyncTryCatchTests
                     Constant( 1 )
                 ),
                 Assign( resultValue,
-                    Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 50 )
                     ) ) ), // This Await will still be executed after the exception
                 Catch( exceptionParam,
-                    Assign( resultValue, Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Assign( resultValue, Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 30 )
                     ) ) )
                 )
@@ -99,7 +105,7 @@ public class BlockAsyncTryCatchTests
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -109,22 +115,24 @@ public class BlockAsyncTryCatchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryAndFinallyBlocks( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryAndFinallyBlocks( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in both try and finally blocks
         var resultValue = Parameter( typeof( int ) );
         var block = BlockAsync(
             [resultValue],
             TryFinally(
-                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 15 ) ) ) ), // Try block
+                Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 15 ) ) ) ), // Try block
                 Assign( resultValue, Constant( 25 ) ) // Finally block
             ),
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -134,9 +142,11 @@ public class BlockAsyncTryCatchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryCatchAndFinallyBlocks( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryCatchAndFinallyBlocks( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in Try, Catch, and Finally blocks
         var resultValue = Parameter( typeof( int ) );
@@ -144,16 +154,16 @@ public class BlockAsyncTryCatchTests
         var block = BlockAsync(
             [resultValue],
             TryCatchFinally(
-                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) ) ), // Try block
-                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 30 ) ) ) ), // Finally block
+                Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 10 ) ) ) ), // Try block
+                Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 30 ) ) ) ), // Finally block
                 Catch( exceptionParam,
-                    Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 20 ) ) ) ) // Catch block
+                    Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 20 ) ) ) ) // Catch block
                 )
             ),
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -163,9 +173,11 @@ public class BlockAsyncTryCatchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldCatchMultipleExceptionsInNestedTryBlocks( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldCatchMultipleExceptionsInNestedTryBlocks( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Multiple exceptions in nested Try-Catch blocks
         var resultValue = Parameter( typeof( int ) );
@@ -182,7 +194,7 @@ public class BlockAsyncTryCatchTests
                             Throw( Constant( new Exception( "Inner Exception" ) ) ),
                             Constant( 0 )
                         ),
-                        Catch( innerExceptionParam, Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 20 ) ) ) ) )
+                        Catch( innerExceptionParam, Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 20 ) ) ) ) )
                     ),
                     Constant( 0 )
                 ),
@@ -191,7 +203,7 @@ public class BlockAsyncTryCatchTests
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -201,33 +213,35 @@ public class BlockAsyncTryCatchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryBlock( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the try block
         var resultValue = Parameter( typeof( int ) );
         var block = BlockAsync(
             [resultValue],
-            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 0 ) ) ),
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 0 ) ) ),
             TryCatch(
                 Block(
-                    Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 10 ) ) ) ),
+                    Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 10 ) ) ) ),
                     TryCatch(
                         Block(
-                            Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 20 ) ) ) ),
+                            Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 20 ) ) ) ),
                             TryCatch(
-                                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 30 ) ) ) ),
+                                Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 30 ) ) ) ),
                                 Catch( typeof( Exception ), Assign( resultValue, Constant( 1 ) ) )
                             ) ),
                         Catch( typeof( Exception ), Assign( resultValue, Constant( 2 ) ) )
                     ),
-                    Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 40 ) ) ) ),
+                    Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 40 ) ) ) ),
                     TryCatch(
                         Block(
-                            Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 50 ) ) ) ),
+                            Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 50 ) ) ) ),
                             TryCatch(
-                                Assign( resultValue, Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 60 ) ) ) ),
+                                Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 60 ) ) ) ),
                                 Catch( typeof( Exception ), Assign( resultValue, Constant( 3 ) ) )
                             ) )
                         ,
@@ -239,7 +253,7 @@ public class BlockAsyncTryCatchTests
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -249,49 +263,51 @@ public class BlockAsyncTryCatchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryFinallyBlock( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryFinallyBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the try block
         var resultValue = Parameter( typeof( int ) );
         var block = BlockAsync(
             [resultValue],
-            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 0 ) ) ),
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 0 ) ) ),
             TryCatchFinally(
                 Block(
-                    Assign( resultValue, Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Assign( resultValue, Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 10 )
                     ) ) ),
                     TryCatch(
                         Block(
-                            Assign( resultValue, Await( AsyncHelper.Completable(
-                                Constant( immediateFlag ),
+                            Assign( resultValue, Await( AsyncHelper.Completer(
+                                Constant( completer ),
                                 Constant( 20 )
                             ) ) ),
                             TryCatch(
-                                Assign( resultValue, Await( AsyncHelper.Completable(
-                                    Constant( immediateFlag ),
+                                Assign( resultValue, Await( AsyncHelper.Completer(
+                                    Constant( completer ),
                                     Constant( 30 )
                                 ) ) ),
                                 Catch( typeof( Exception ), Assign( resultValue, Constant( 1 ) ) )
                             ) ),
                         Catch( typeof( Exception ), Assign( resultValue, Constant( 2 ) ) )
                     ),
-                    Assign( resultValue, Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Assign( resultValue, Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 40 )
                     ) ) ),
                     TryCatch(
                         Block(
-                            Assign( resultValue, Await( AsyncHelper.Completable(
-                                Constant( immediateFlag ),
+                            Assign( resultValue, Await( AsyncHelper.Completer(
+                                Constant( completer ),
                                 Constant( 50 )
                             ) ) ),
                             TryCatch(
-                                Assign( resultValue, Await( AsyncHelper.Completable(
-                                    Constant( immediateFlag ),
+                                Assign( resultValue, Await( AsyncHelper.Completer(
+                                    Constant( completer ),
                                     Constant( 60 )
                                 ) ) ),
                                 Catch( typeof( Exception ), Assign( resultValue, Constant( 3 ) ) )
@@ -301,8 +317,8 @@ public class BlockAsyncTryCatchTests
 
                     ) ),
                 TryCatch(
-                    Assign( resultValue, Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Assign( resultValue, Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 40 )
                     ) ) ),  // Finally block should be result
                     Catch( typeof( Exception ), Assign( resultValue, Constant( 5 ) ) )
@@ -312,7 +328,7 @@ public class BlockAsyncTryCatchTests
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -321,8 +337,10 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 40, result );
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedTryCatchAndDelayedAwait()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedTryCatchAndDelayedAwait( CompilerType compiler )
     {
         // Arrange: Nested TryCatch with delayed await tasks (non-completed)
         var resultValue = Parameter( typeof( int ) );
@@ -355,12 +373,96 @@ public class BlockAsyncTryCatchTests
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
 
         // Assert
         Assert.AreEqual( 30, result ); // Ensure the final delayed task completes and continues correctly
+    }
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    public void Block_TryCatch_WithGoto( CompilerType compiler )
+    {
+        try
+        {
+            var stResume0Label = Label( "ST_RESUME_0" );
+            var variable = Variable( typeof( int ), "variable" );
+
+            var block = Block(
+                [variable],
+                TryCatch(
+                    Block(
+                        Assign( variable, Constant( 5 ) ),
+                        Goto( stResume0Label )
+                    ),
+                    Catch(
+                        typeof( Exception ),
+                        Block(
+                            typeof( void ),
+                            Assign( variable, Constant( 10 ) )
+                        )
+                    )
+                ),
+                Label( stResume0Label ),
+
+                variable
+            );
+
+            var lambda = Lambda<Func<int>>( block );
+            var compiledLambda = lambda.Compile( compiler );
+
+            compiledLambda();
+        }
+        catch ( Exception e )
+        {
+            Console.WriteLine( e );
+            throw;
+        }
+    }
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    public void Block_TryCatch_WithNestedTry( CompilerType compiler )
+    {
+        try
+        {
+            var resultValue = Parameter( typeof( int ) );
+            var outerExceptionParam = Parameter( typeof( Exception ), "outerEx" );
+            var innerExceptionParam = Parameter( typeof( Exception ), "innerEx" );
+
+            var block = Block(
+                [resultValue],
+                TryCatch(
+                    Block(
+                        Throw( Constant( new Exception( "Outer Exception" ) ) ),
+                        TryCatch(
+                            Block(
+                                Throw( Constant( new Exception( "Inner Exception" ) ) ),
+                                Constant( 0 )
+                            ),
+                            Catch( innerExceptionParam, Assign( resultValue, Constant( 20 ) ) )
+                        ),
+                        Constant( 0 )
+                    ),
+                    Catch( outerExceptionParam, Assign( resultValue, Constant( 50 ) ) )
+                ),
+                resultValue
+            );
+
+            var lambda = Lambda<Func<int>>( block );
+            var compiledLambda = lambda.Compile( compiler );
+
+            compiledLambda();
+        }
+        catch ( Exception e )
+        {
+            Console.WriteLine( e );
+            throw;
+        }
     }
 }

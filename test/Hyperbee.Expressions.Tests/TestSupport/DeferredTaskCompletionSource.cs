@@ -65,7 +65,7 @@ internal sealed class DeferredTaskCompletionSource : ICriticalNotifyCompletion
     public DeferredTaskCompletionSource GetAwaiter() => this;
 }
 
-internal sealed class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletion
+internal class DeferredTaskCompletionSource<T> : ICriticalNotifyCompletion
 {
     private readonly ManualResetEventSlim _completedEvent = new();
     private readonly TaskCompletionSource<T> _tcs = new();
