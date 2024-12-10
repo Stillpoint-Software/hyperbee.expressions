@@ -51,6 +51,7 @@ public class StringFormatExpressionTests
 
         // Assert: Exception is expected
     }
+
     [TestMethod]
     public void StringFormatExpression_Should_Work_Within_Complex_Block()
     {

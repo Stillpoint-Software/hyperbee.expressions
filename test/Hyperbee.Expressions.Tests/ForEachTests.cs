@@ -89,9 +89,11 @@ public class ForEachExpressionTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task ForEachExpression_ShouldIterateOverCollection_WithAwaits( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task ForEachExpression_ShouldIterateOverCollection_WithAwaits( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
@@ -100,8 +102,8 @@ public class ForEachExpressionTests
 
         var body = Block(
                         Assign( result,
-                            Add( result, Await( AsyncHelper.Completable(
-                                Constant( immediateFlag ),
+                            Add( result, Await( AsyncHelper.Completer(
+                                Constant( completer ),
                                 Constant( 1 )
                             )
                         ) ) )
@@ -118,7 +120,7 @@ public class ForEachExpressionTests
 
         // Act
         var lambda = Lambda<Func<Task<int>>>( forEachExpr );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var total = await compiledLambda();
 
