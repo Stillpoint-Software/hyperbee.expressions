@@ -22,7 +22,7 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithConstantRefParameter( CompilerType compiler )
     {
-        // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
+        // FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
         // WORKAROUND: Assign to local variable and pass variable by ref
 
         var callRefMethod = typeof( TestClass ).GetMethod( nameof( TestClass.MethodThatTakesARef ) );
@@ -45,25 +45,25 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithUnusedValue( CompilerType compiler )
     {
-        // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
+        // FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
         // WORKAROUND: Remove the unused value from the block
 
-        var testClassParameter = Parameter( typeof( TestClass ), "testClass" );
+        var variable = Variable( typeof( TestClass ), "testClass" );
 
         var block = Block(
-            [testClassParameter],
+            [variable],
             Assign(
-                testClassParameter,
+                variable,
                 New( typeof( TestClass ) )
             ),
             Block(
-                Field( testClassParameter, nameof( TestClass.Result0 ) ), // Unused
+                Field( variable, nameof( TestClass.Result0 ) ), // Unused
                 Assign(
-                    Field( testClassParameter, nameof( TestClass.Result1 ) ),
-                    Field( testClassParameter, nameof( TestClass.Result0 ) )
+                    Field( variable, nameof( TestClass.Result1 ) ),
+                    Field( variable, nameof( TestClass.Result0 ) )
                 )
             ),
-            Field( testClassParameter, nameof( TestClass.Result1 ) )
+            Field( variable, nameof( TestClass.Result1 ) )
         );
 
         var lambda = Lambda<Func<int>>( block );
@@ -79,7 +79,7 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithSimpleSwitchValue( CompilerType compiler )
     {
-        // TODO: FEC throws `System.NullReferenceException: Object reference not set to an instance of an object.`
+        // FEC throws `System.NullReferenceException: Object reference not set to an instance of an object.`
 
         var label = Label( "label" );
         var block = Block(
@@ -104,7 +104,8 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithEmptySwitch( CompilerType compiler )
     {
-        // TODO: FEC throws `System.ArgumentOutOfRangeException: Index was out of range.`
+        // FEC throws `System.ArgumentOutOfRangeException: Index was out of range.`
+        // WORKAROUND: Do not use empty cases
 
         var block = Block(
             Switch(
@@ -127,23 +128,24 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithGotoInTry( CompilerType compiler )
     {
-        // TODO: FEC throws `System.ArgumentException: Bad label content in ILGenerator.`
+        // FEC throws `System.ArgumentException: Bad label content in ILGenerator.`
+
         var label = Label( "label" );
-        var resultValue = Parameter( typeof( int ) );
+        var variable = Variable( typeof( int ) );
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
         var block = Block(
-            [resultValue],
+            [variable],
             TryCatch(
                 Block(
                     Goto( label ),
                     Throw( Constant( new Exception( "Exception" ) ) ),
                     Label( label ),
-                    Assign( resultValue, Constant( 2 ) )
+                    Assign( variable, Constant( 2 ) )
                 ),
-                Catch( exceptionParam, Assign( resultValue, Constant( 50 ) ) )
+                Catch( exceptionParam, Assign( variable, Constant( 50 ) ) )
             ),
-            resultValue
+            variable
         );
 
         var lambda = Lambda<Func<int>>( block );
@@ -158,7 +160,7 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithGotoLabelOutsideTry( CompilerType compiler )
     {
-        // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
+        // FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
 
         var label = Label( "label" );
         var variable = Variable( typeof( int ), "variable" );
