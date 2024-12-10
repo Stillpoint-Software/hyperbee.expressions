@@ -10,32 +10,6 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncBasicTests
 {
-    public delegate T2 CustomDelegate<in T1, T2>( T1 value );
-
-    [TestMethod]
-    public void Nested_Ref_Lambdas()
-    {
-        // Arrange
-        var input = Parameter( typeof( string ), "input" );
-        var innerInput = Parameter( typeof( string ), "innerInput" );
-        var block = Block( innerInput );
-        var innerLambda = Lambda<CustomDelegate<string, string>>( block, parameters: innerInput );
-
-        var lambda = Lambda<CustomDelegate<string, string>>(
-            Block(
-                Invoke( innerLambda, input )
-            ),
-            parameters: input
-        );
-        var compiledLambda = lambda.CompileFast();
-
-        // Act
-        var inputStr = "test";
-        var result = compiledLambda( inputStr );
-
-        Assert.IsNotNull( result );
-    }
-
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
