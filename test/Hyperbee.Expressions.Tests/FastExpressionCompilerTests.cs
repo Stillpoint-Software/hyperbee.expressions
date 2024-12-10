@@ -80,7 +80,7 @@ public class FastExpressionCompilerTests
         var label = Label( "label" );
         var resultValue = Parameter( typeof( int ) );
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
-            
+
         var block = Block(
             [resultValue],
             TryCatch(
