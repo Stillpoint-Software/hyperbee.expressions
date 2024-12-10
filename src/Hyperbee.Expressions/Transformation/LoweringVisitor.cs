@@ -199,8 +199,7 @@ internal class LoweringVisitor : ExpressionVisitor
             }
             else
             {
-                //currentSource.Expressions.Add( _variableResolver.Resolve( Visit( expression ) ) );
-                AppendToState( currentSource, _variableResolver.Resolve( Visit( expression ) ) ); //BF ME - DISCUSS
+                AppendToState( currentSource, _variableResolver.Resolve( Visit( expression ) ) );
             }
         }
 

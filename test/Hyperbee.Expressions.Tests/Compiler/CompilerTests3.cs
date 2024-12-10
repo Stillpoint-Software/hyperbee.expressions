@@ -1,4 +1,4 @@
-﻿#define _WITH_GOTO //BF ME
+﻿#define _WITH_GOTO 
 
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;

@@ -1,4 +1,4 @@
-﻿#define _FEC_COMPATIBILE
+﻿#define FAST_COMPILER
 
 using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
@@ -28,7 +28,7 @@ internal class AwaitTransition : Transition
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
             var source = context.StateMachineInfo;
 
-#if _FEC_COMPATIBILE
+#if FAST_COMPILER
             // FEC: Use local variable for ref Target.
             //
             // Directly using ref Target as a param (e.g. Call(.., ref Target))
@@ -53,7 +53,7 @@ internal class AwaitTransition : Transition
 
             var body = new List<Expression>
             {
-#if _FEC_COMPATIBILE
+#if FAST_COMPILER
                 Assign( target, Target ),
 #endif
                 Assign(
@@ -80,7 +80,7 @@ internal class AwaitTransition : Transition
             if ( fallThrough != null )
                 body.Add( fallThrough );
 
-#if _FEC_COMPATIBILE
+#if FAST_COMPILER
             return [
                 Block(
                     [target],

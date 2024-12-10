@@ -1,4 +1,5 @@
-﻿#define FAST_EXPRESSION_COMPILER
+﻿#define FAST_COMPILER
+
 using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -116,10 +117,10 @@ internal sealed class VariableResolver : ExpressionVisitor
         return returnNode;
     }
 
-#if FAST_EXPRESSION_COMPILER
+#if FAST_COMPILER
     protected override Expression VisitLambda<T>( Expression<T> node )
     {
-        /// Add Params to Externals
+        // Add Params to Externals
         var newVars = CreateLocalVariables( node.Parameters );
 
         _variableBlockScope.Push( newVars );

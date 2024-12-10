@@ -1,4 +1,4 @@
-﻿#define _FEC_COMPATIBILE
+﻿#define FAST_COMPILER
 
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -77,7 +77,7 @@ public class CompilerTests2
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public async Task Compiler_Test2_CompletedTask_Lowered( CompilerType compiler ) //BF ME
+    public async Task Compiler_Test2_CompletedTask_Lowered( CompilerType compiler ) 
     {
         // MANUALLY LOWERED TEST WITH TASK.FromResult
         // 
@@ -91,7 +91,7 @@ public class CompilerTests2
         try
         {
             var block = CreateFullExpressionTree();
-            //var block = CreateMinimalFailureExpressionTree(); //BF ME - simplified representation of the full tree
+            //var block = CreateMinimalFailureExpressionTree(); 
 
             var lambda = Lambda<Func<Task<int>>>( block );
             var compiledLambda = lambda.Compile( compiler );
@@ -115,7 +115,7 @@ public class CompilerTests2
         var stateMachineVar = Variable( typeof( StateMachine2 ), "stateMachine" );
         var smVar = Variable( typeof( StateMachine2 ), "sm" );
 
-#if _FEC_COMPATIBILE //use-local
+#if FAST_COMPILER //use-local
         var completedTask0 = Variable( typeof( Task<int> ), "completedTask0" );
         var completedTask1 = Variable( typeof( Task<int> ), "completedTask1" );
 #endif
@@ -123,13 +123,13 @@ public class CompilerTests2
         // Build the MoveNext delegate
         var moveNextLambda = Lambda<MoveNextDelegate<StateMachine2>>(
             Block(
-#if _FEC_COMPATIBILE //use-local
+#if FAST_COMPILER //use-local
                 [completedTask0, completedTask1],
 #endif
 
 
                 // ***** FIRST AWAIT *****
-#if _FEC_COMPATIBILE //use-local
+#if FAST_COMPILER //use-local
                 Assign(
                     completedTask0,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 10 ) )
@@ -162,13 +162,13 @@ public class CompilerTests2
                     )
                 ),
 
-#if !_FEC_COMPATIBILE // remove-unary-variable-expression (e.g. `someVar;`)
+#if !FAST_COMPILER // remove-unary-variable-expression (e.g. `someVar;`)
                 Field( smVar, nameof( StateMachine2.__result0 ) ), // THIS LINE IS THE CULPRIT
 #endif
 
                 // ***** SECOND AWAIT *****
 
-#if _FEC_COMPATIBILE //use-local
+#if FAST_COMPILER //use-local
                 Assign(
                     completedTask1,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) )
@@ -262,7 +262,7 @@ public class CompilerTests2
 
         var smVar = Variable( typeof( StateMachine2 ), "sm" );
 
-#if _FEC_COMPATIBILE // use-local
+#if FAST_COMPILER // use-local
         var completedTask0 = Variable( typeof( Task<int> ), "completedTask0" );
         var completedTask1 = Variable( typeof( Task<int> ), "completedTask1" );
 #endif
@@ -270,7 +270,7 @@ public class CompilerTests2
         // Build the MoveNext delegate
         var moveNextLambda = Lambda<MoveNextDelegate<StateMachine2>>(
             Block(
-#if _FEC_COMPATIBILE // use-local
+#if FAST_COMPILER // use-local
                 [completedTask0, completedTask1],
 #endif
 
@@ -302,7 +302,7 @@ public class CompilerTests2
 
                 // ***** FIRST AWAIT *****
 
-#if _FEC_COMPATIBILE // use-local
+#if FAST_COMPILER // use-local
                 Assign(
                     completedTask0,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 10 ) )
@@ -362,12 +362,12 @@ public class CompilerTests2
                     )
                 ),
 
-#if !_FEC_COMPATIBILE // remove-unary-variable-expression (e.g. `someVar;`)
+#if !FAST_COMPILER // remove-unary-variable-expression (e.g. `someVar;`)
                 Field( smVar, nameof( StateMachine2.__result0 ) ), // THIS LINE IS THE CULPRIT
 #endif
                 // ***** SECOND AWAIT *****
 
-#if _FEC_COMPATIBILE // use-local
+#if FAST_COMPILER // use-local
                 Assign(
                     completedTask1,
                     Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) )
