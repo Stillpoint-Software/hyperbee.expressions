@@ -4,8 +4,8 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal class GotoTransition : Transition
 {
-    public IStateNode TargetNode { get; set; }
-    internal override IStateNode FallThroughNode => TargetNode;
+    public StateNode TargetNode { get; set; }
+    internal override StateNode FallThroughNode => TargetNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {

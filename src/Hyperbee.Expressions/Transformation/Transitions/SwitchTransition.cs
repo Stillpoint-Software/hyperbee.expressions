@@ -5,11 +5,11 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal class SwitchTransition : Transition
 {
-    public IStateNode DefaultNode { get; set; }
+    public StateNode DefaultNode { get; set; }
     public Expression SwitchValue { get; set; }
     internal List<SwitchCaseDefinition> CaseNodes = [];
 
-    internal override IStateNode FallThroughNode => DefaultNode;
+    internal override StateNode FallThroughNode => DefaultNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
@@ -33,7 +33,7 @@ internal class SwitchTransition : Transition
             }
             else
             {
-                defaultBody = null;
+                defaultBody = Empty();
             }
 
             var cases = CaseNodes
@@ -58,15 +58,15 @@ internal class SwitchTransition : Transition
         }
     }
 
-    public void AddSwitchCase( List<Expression> testValues, IStateNode body )
+    public void AddSwitchCase( List<Expression> testValues, StateNode body )
     {
         CaseNodes.Add( new SwitchCaseDefinition( testValues, body ) );
     }
 
-    internal sealed class SwitchCaseDefinition( List<Expression> testValues, IStateNode body )
+    internal sealed class SwitchCaseDefinition( List<Expression> testValues, StateNode body )
     {
         public List<Expression> TestValues = testValues;
-        public IStateNode Body { get; set; } = body;
+        public StateNode Body { get; set; } = body;
         public SwitchCase Reduce( int order ) => SwitchCase( GotoOrFallThrough( order, Body ), TestValues );
     }
 }

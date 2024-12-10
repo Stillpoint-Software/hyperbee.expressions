@@ -8,6 +8,7 @@ internal delegate TResult AwaitBinderGetResultDelegate<TAwaiter, out TResult>( r
 
 internal class AwaitBinder
 {
+    public Type TargetType { get; }
     public MethodInfo WaitMethod { get; }
     public MethodInfo GetAwaiterMethod { get; }
     public MethodInfo GetResultMethod { get; }
@@ -16,12 +17,14 @@ internal class AwaitBinder
     private Delegate GetResultImplDelegate { get; }
 
     internal AwaitBinder(
+        Type targetType,
         MethodInfo waitMethod,
         MethodInfo getAwaiterMethod,
         MethodInfo getResultMethod,
         Delegate getAwaiterImplDelegate = null,
         Delegate getResultImplDelegate = null )
     {
+        TargetType = targetType;
         WaitMethod = waitMethod;
         GetAwaiterMethod = getAwaiterMethod;
         GetResultMethod = getResultMethod;

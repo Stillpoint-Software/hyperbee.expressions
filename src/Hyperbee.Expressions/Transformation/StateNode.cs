@@ -1,11 +1,12 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Transformation.Transitions;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation;
 
 [DebuggerDisplay( "State = {NodeLabel?.Name,nq}, ScopeId = {ScopeId}, GroupId = {GroupId}, StateOrder = {StateOrder}, Transition = {Transition?.GetType().Name,nq}" )]
-internal sealed class StateExpression : Expression, IStateNode
+internal sealed class StateNode
 {
     public int StateId { get; }
     public int GroupId { get; }
@@ -20,19 +21,13 @@ internal sealed class StateExpression : Expression, IStateNode
 
     public Transition Transition { get; set; }
 
-    public StateExpression( int stateId, int scopeId, int groupId )
+    public StateNode( int stateId, int scopeId, int groupId )
     {
         StateId = stateId;
         ScopeId = scopeId;
         GroupId = groupId;
         NodeLabel = Label( $"ST_{StateId:0000}" );
     }
-
-    public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof( void );
-
-    public override bool CanReduce => false; // This should NEVER be reduced
-    public override Expression Reduce() => throw new NotSupportedException();
 
     public Expression GetExpression( StateMachineContext context )
     {
