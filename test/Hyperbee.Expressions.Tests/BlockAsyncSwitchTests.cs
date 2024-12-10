@@ -292,6 +292,7 @@ public class BlockAsyncSwitchTests
 
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
     public void Block_ShouldSuccessed_WithSimpleSwitchValue( CompleterType completer, CompilerType compiler )
     {
         var label = Label( "label" );
@@ -301,6 +302,27 @@ public class BlockAsyncSwitchTests
                 SwitchCase( Goto( label ), Constant( 1 ) )
             ),
             Label( label ),
+            Constant( 2 )
+        );
+
+        var lambda = Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        var result = compiledLambda();
+
+        Assert.AreEqual( 2, result );
+    }
+
+    [DataTestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    public void Block_ShouldSuccessed_WithEmptrySwitch( CompleterType completer, CompilerType compiler )
+    {
+        var block = Block(
+            Switch(
+                Constant( 1 ),
+                []  // empty cases
+            ),
             Constant( 2 )
         );
 
