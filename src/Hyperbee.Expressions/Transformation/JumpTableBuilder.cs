@@ -8,6 +8,10 @@ internal static class JumpTableBuilder
     public static Expression Build( StateContext.Scope current, IReadOnlyList<StateContext.Scope> scopes, Expression stateField )
     {
         var jumpCases = current.JumpCases;
+
+        if ( jumpCases.Count == 0 )
+            return Empty();
+
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
 
         foreach ( var jumpCase in jumpCases )

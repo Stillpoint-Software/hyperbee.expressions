@@ -5,7 +5,7 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal class FinalTransition : Transition
 {
-    internal override IStateNode FallThroughNode => null;
+    internal override StateNode FallThroughNode => null;
 
     internal override void Optimize( HashSet<LabelTarget> references )
     {
