@@ -20,14 +20,14 @@ public class FastExpressionCompilerTests
     {
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
 
-        var testClassParameter = Parameter( typeof(TestClass), "testClass" );
+        var testClassParameter = Parameter( typeof( TestClass ), "testClass" );
 
         var nestedLambda = Lambda(
             Block(
-                Field( testClassParameter, nameof(TestClass.Result0) ), // Unused
+                Field( testClassParameter, nameof( TestClass.Result0 ) ), // Unused
                 Assign(
-                    Field( testClassParameter, nameof(TestClass.Result1) ),
-                    Field( testClassParameter, nameof(TestClass.Result0) )
+                    Field( testClassParameter, nameof( TestClass.Result1 ) ),
+                    Field( testClassParameter, nameof( TestClass.Result0 ) )
                 )
             ),
             testClassParameter
@@ -37,10 +37,10 @@ public class FastExpressionCompilerTests
             [testClassParameter],
             Assign(
                 testClassParameter,
-                New( typeof(TestClass) )
+                New( typeof( TestClass ) )
             ),
             Invoke( nestedLambda, testClassParameter ),
-            Field( testClassParameter, nameof(TestClass.Result1) )
+            Field( testClassParameter, nameof( TestClass.Result1 ) )
         );
 
         var lambda = Lambda<Func<int>>( block );
@@ -58,22 +58,22 @@ public class FastExpressionCompilerTests
     {
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
 
-        var testClassParameter = Parameter( typeof(TestClass), "testClass" );
+        var testClassParameter = Parameter( typeof( TestClass ), "testClass" );
 
         var block = Block(
             [testClassParameter],
             Assign(
                 testClassParameter,
-                New( typeof(TestClass) )
+                New( typeof( TestClass ) )
             ),
             Block(
-                Field( testClassParameter, nameof(TestClass.Result0) ), // Unused
+                Field( testClassParameter, nameof( TestClass.Result0 ) ), // Unused
                 Assign(
-                    Field( testClassParameter, nameof(TestClass.Result1) ),
-                    Field( testClassParameter, nameof(TestClass.Result0) )
+                    Field( testClassParameter, nameof( TestClass.Result1 ) ),
+                    Field( testClassParameter, nameof( TestClass.Result0 ) )
                 )
             ),
-            Field( testClassParameter, nameof(TestClass.Result1) )
+            Field( testClassParameter, nameof( TestClass.Result1 ) )
         );
 
         var lambda = Lambda<Func<int>>( block );
