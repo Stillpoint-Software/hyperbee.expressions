@@ -1,4 +1,4 @@
-﻿using Hyperbee.Expressions.Tests.TestSupport;
+using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Tests;
@@ -59,22 +59,22 @@ public class FastExpressionCompilerTests
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
         // WORKAROUND: Remove the unused value from the block
 
-        var testClassParameter = Parameter( typeof(TestClass), "testClass" );
+        var testClassParameter = Parameter( typeof( TestClass ), "testClass" );
 
         var block = Block(
             [testClassParameter],
             Assign(
                 testClassParameter,
-                New( typeof(TestClass) )
+                New( typeof( TestClass ) )
             ),
             Block(
-                Field( testClassParameter, nameof(TestClass.Result0) ), // Unused
+                Field( testClassParameter, nameof( TestClass.Result0 ) ), // Unused
                 Assign(
-                    Field( testClassParameter, nameof(TestClass.Result1) ),
-                    Field( testClassParameter, nameof(TestClass.Result0) )
+                    Field( testClassParameter, nameof( TestClass.Result1 ) ),
+                    Field( testClassParameter, nameof( TestClass.Result0 ) )
                 )
             ),
-            Field( testClassParameter, nameof(TestClass.Result1) )
+            Field( testClassParameter, nameof( TestClass.Result1 ) )
         );
 
         var lambda = Lambda<Func<int>>( block );
