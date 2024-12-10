@@ -25,10 +25,10 @@ public class FastExpressionCompilerTests
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
         // WORKAROUND: Assign to local variable and pass variable by ref
 
-        var callRefMethod = typeof(TestClass).GetMethod( nameof(TestClass.MethodThatTakesARef) );
+        var callRefMethod = typeof( TestClass ).GetMethod( nameof( TestClass.MethodThatTakesARef ) );
 
         var block = Block(
-            typeof(int),
+            typeof( int ),
             Call( callRefMethod!, Constant( 42 ) )
         );
 
