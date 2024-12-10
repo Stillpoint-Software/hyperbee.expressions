@@ -77,7 +77,7 @@ public class CompilerTests2
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public async Task Compiler_Test2_CompletedTask_Lowered( CompilerType compiler ) 
+    public async Task Compiler_Test2_CompletedTask_Lowered( CompilerType compiler )
     {
         // MANUALLY LOWERED TEST WITH TASK.FromResult
         // 
