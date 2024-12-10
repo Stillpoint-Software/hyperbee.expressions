@@ -194,7 +194,7 @@ public class BlockAsyncTryCatchTests
                     Await( AsyncHelper.Completer( Constant( completer ), Constant( 20 ) ) )
                 ),
                 Catch( exceptionParam, Assign( resultValue, Constant( 50 ) ) )
-            ), 
+            ),
             resultValue
         );
         var lambda = Lambda<Func<Task<int>>>( block );
