@@ -172,6 +172,41 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 30, result ); // Finally block should execute and return 30
     }
 
+
+    [DataTestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterThrow( CompleterType completer, CompilerType compiler )
+    {
+        var resultValue = Parameter( typeof( int ) );
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+
+        var block = BlockAsync(
+            [resultValue],
+            TryCatch(
+                Block(
+                    Assign( resultValue, Constant( 10 ) ),
+                    Throw( Constant( new Exception( "Exception" ) ) ),
+
+                    // pointless code
+                    Await( AsyncHelper.Completer( Constant( completer ), Constant( 20 ) ) )
+                ),
+                Catch( exceptionParam, Assign( resultValue, Constant( 50 ) ) )
+            ), 
+            resultValue
+        );
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 50, result ); // Outer catch handles the exception
+    }
+
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
@@ -188,7 +223,6 @@ public class BlockAsyncTryCatchTests
             [resultValue],
             TryCatch(
                 Block(
-                    Throw( Constant( new Exception( "Outer Exception" ) ) ),
                     TryCatch(
                         Block(
                             Throw( Constant( new Exception( "Inner Exception" ) ) ),
@@ -196,6 +230,7 @@ public class BlockAsyncTryCatchTests
                         ),
                         Catch( innerExceptionParam, Assign( resultValue, Await( AsyncHelper.Completer( Constant( completer ), Constant( 20 ) ) ) ) )
                     ),
+                    Throw( Constant( new Exception( "Outer Exception" ) ) ),
                     Constant( 0 )
                 ),
                 Catch( outerExceptionParam, Assign( resultValue, Constant( 50 ) ) )

@@ -74,85 +74,68 @@ public class FastExpressionCompilerTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSuccessed_WithNestedTry( CompilerType compiler )
+    public void Compile_ShouldSuccessed_WithGotoInTry( CompilerType compiler )
     {
-        try
-        {
-            var resultValue = Parameter( typeof( int ) );
-            var outerExceptionParam = Parameter( typeof( Exception ), "outerEx" );
-            var innerExceptionParam = Parameter( typeof( Exception ), "innerEx" );
-
-            var block = Block(
-                [resultValue],
-                TryCatch(
-                    Block(
-                        Throw( Constant( new Exception( "Outer Exception" ) ) ),
-                        TryCatch(
-                            Block(
-                                Throw( Constant( new Exception( "Inner Exception" ) ) ),
-                                Constant( 0 )
-                            ),
-                            Catch( innerExceptionParam, Assign( resultValue, Constant( 20 ) ) )
-                        ),
-                        Constant( 0 )
-                    ),
-                    Catch( outerExceptionParam, Assign( resultValue, Constant( 50 ) ) )
+        // TODO: FEC throws `System.ArgumentException: Bad label content in ILGenerator.`
+        var label = Label( "label" );
+        var resultValue = Parameter( typeof( int ) );
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+            
+        var block = Block(
+            [resultValue],
+            TryCatch(
+                Block(
+                    Goto( label ),
+                    Throw( Constant( new Exception( "Exception" ) ) ),
+                    Label( label ),
+                    Assign( resultValue, Constant( 2 ) )
                 ),
-                resultValue
-            );
+                Catch( exceptionParam, Assign( resultValue, Constant( 50 ) ) )
+            ),
+            resultValue
+        );
 
-            var lambda = Lambda<Func<int>>( block );
-            var compiledLambda = lambda.Compile( compiler );
+        var lambda = Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile( compiler );
 
-            compiledLambda();
-        }
-        catch ( Exception e )
-        {
-            Console.WriteLine( e );
-            throw;
-        }
+        var result = compiledLambda();
+        Assert.AreEqual( 2, result );
     }
 
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSuccessed_WithTryCatchGoto( CompilerType compiler )
+    public void Compile_ShouldSuccessed_WithGotoLabelOutsideTry( CompilerType compiler )
     {
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
-        try
-        {
-            var stResume0Label = Label( "ST_RESUME_0" );
-            var variable = Variable( typeof( int ), "variable" );
 
-            var block = Block(
-                [variable],
-                TryCatch(
-                    Block(
-                        Assign( variable, Constant( 5 ) ),
-                        Goto( stResume0Label )
-                    ),
-                    Catch(
-                        typeof( Exception ),
-                        Block(
-                            typeof( void ),
-                            Assign( variable, Constant( 10 ) )
-                        )
-                    )
+        var label = Label( "label" );
+        var variable = Variable( typeof( int ), "variable" );
+
+        var block = Block(
+            [variable],
+            TryCatch(
+                Block(
+                    Assign( variable, Constant( 5 ) ),
+                    Goto( label )
                 ),
-                Label( stResume0Label ),
+                Catch(
+                    typeof( Exception ),
+                    Block(
+                        typeof( void ),
+                        Assign( variable, Constant( 10 ) )
+                    )
+                )
+            ),
+            Label( label ),
+            variable
+        );
 
-                variable
-            );
+        var lambda = Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile( compiler );
 
-            var lambda = Lambda<Func<int>>( block );
-            var compiledLambda = lambda.Compile( compiler );
+        var result = compiledLambda();
+        Assert.AreEqual( 5, result );
 
-            compiledLambda();
-        }
-        catch ( Exception e )
-        {
-            Console.WriteLine( e );
-            throw;
-        }
     }
 }
