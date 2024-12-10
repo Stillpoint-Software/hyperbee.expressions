@@ -1,4 +1,4 @@
-using Hyperbee.Expressions.Tests.TestSupport;
+﻿using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Tests;
@@ -10,45 +10,34 @@ public class FastExpressionCompilerTests
     {
         public int Result0 = 42;
         public int Result1;
+
+        public static int MethodThatTakesARef( ref int argument )
+        {
+            return argument;
+        }
     }
 
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    public void Compile_ShouldSucceed_WithInnerNestedRefParameter( CompilerType compiler )
+    public void Compile_ShouldSucceed_WithConstantRefParameter( CompilerType compiler )
     {
         // TODO: FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
         // WORKAROUND: Assign to local variable and pass variable by ref
 
-        //var testClassParameter = Parameter( typeof(TestClass), "testClass" );
+        var callRefMethod = typeof(TestClass).GetMethod( nameof(TestClass.MethodThatTakesARef) );
 
-        //var nestedLambda = Lambda(
-        //    Block(
-        //        Field( testClassParameter, nameof(TestClass.Result0) ), // Unused
-        //        Assign(
-        //            Field( testClassParameter, nameof(TestClass.Result1) ),
-        //            Field( testClassParameter, nameof(TestClass.Result0) )
-        //        )
-        //    ),
-        //    testClassParameter
-        //);
+        var block = Block(
+            typeof(int),
+            Call( callRefMethod!, Constant( 42 ) )
+        );
 
-        //var block = Block(
-        //    [testClassParameter],
-        //    Assign(
-        //        testClassParameter,
-        //        New( typeof(TestClass) )
-        //    ),
-        //    Invoke( nestedLambda, testClassParameter ),
-        //    Field( testClassParameter, nameof(TestClass.Result1) )
-        //);
+        var lambda = Lambda<Func<int>>( block );
+        var compiledLambda = lambda.Compile( compiler );
 
-        //var lambda = Lambda<Func<int>>( block );
-        //var compiledLambda = lambda.Compile( compiler );
+        var result = compiledLambda();
 
-        //var result = compiledLambda();
-
-        //Assert.AreEqual( 42, result );
+        Assert.AreEqual( 42, result );
     }
 
     [DataTestMethod]
