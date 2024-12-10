@@ -9,7 +9,7 @@ internal static class JumpTableBuilder
     {
         var jumpCases = current.JumpCases;
 
-        if(jumpCases.Count == 0 )
+        if ( jumpCases.Count == 0 )
             return Empty();
 
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
