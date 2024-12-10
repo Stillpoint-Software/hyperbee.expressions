@@ -21,8 +21,6 @@ workflows and other language constructs.
     * `StringFormatExpression`: An expression that creates a string using a supplied format string and parameters.
     * `DebugExpression`: An expression that helps when debugging expression trees.
 
-* Supports Fast Expression Compiler (FEC) for improved performance.
-
 ## Examples
 
 ### Asynchronous Expressions
@@ -115,7 +113,6 @@ public class UsingExample
 Special thanks to:
 
 - Sergey Tepliakov - [Dissecting the async methods in C#](https://devblogs.microsoft.com/premier-developer/dissecting-the-async-methods-in-c/).
-- [Fast Expression Compiler](https://github.com/dadhi/FastExpressionCompiler) for improved performance.
 - [Just The Docs](https://github.com/just-the-docs/just-the-docs) for the documentation theme.
 
 ## Contributing
