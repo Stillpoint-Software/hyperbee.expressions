@@ -2,8 +2,8 @@
 using System.Linq.Expressions;
 using BenchmarkDotNet.Attributes;
 using DotNext.Linq.Expressions;
-using FastExpressionCompiler;
 using DotNext.Metaprogramming;
+using FastExpressionCompiler;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
