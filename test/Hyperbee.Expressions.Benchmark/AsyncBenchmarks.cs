@@ -1,6 +1,9 @@
-﻿using System.Linq.Expressions;
+﻿using System;
+using System.Linq.Expressions;
 using BenchmarkDotNet.Attributes;
+using DotNext.Linq.Expressions;
 using FastExpressionCompiler;
+using DotNext.Metaprogramming;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -10,7 +13,10 @@ public class AsyncBenchmarks
 {
     private Func<Task<int>> _compiledLambda = null!;
     private Func<Task<int>> _fastCompiledLambda = null!;
+    private Func<Task<int>> _nextCompiledLambda = null!;
+    private Func<Task<int>> _fastNextCompiledLambda = null!;
     private Expression<Func<Task<int>>> _lambda = null!;
+    private Expression<Func<Task<int>>> _nextlambda = null!;
 
     private Expression _expression = null!;
 
@@ -32,11 +38,26 @@ public class AsyncBenchmarks
                         Await( Call( asyncAddMethodInfo, variable, variable ) ) ) ),
                 variable );
 
-        _lambda = (Lambda<Func<Task<int>>>( _expression ).Reduce() as Expression<Func<Task<int>>>)!;
+        _lambda = Lambda<Func<Task<int>>>( _expression );
+
+        _nextlambda = CodeGenerator.AsyncLambda<Func<Task<int>>>( ( fun, result ) =>
+        {
+            var var = CodeGenerator.DeclareVariable( "variable", typeof( int ).New() );
+            Assign( var, Call( asyncInitVariableMethodInfo ).Await() );
+            IfThen( Call( asyncIsTrueMethodInfo ).Await(),
+                        Assign( var,
+                            Call( asyncAddMethodInfo, var, var ).Await() ) );
+
+            Assign( result, var );
+        } );
 
         _compiledLambda = _lambda.Compile();
 
         _fastCompiledLambda = _lambda.CompileFast();
+
+        _nextCompiledLambda = _nextlambda.Compile();
+
+        //_fastNextCompiledLambda = _nextlambda.CompileFast();
     }
 
     [Benchmark]
@@ -75,6 +96,45 @@ public class AsyncBenchmarks
     public async Task Hyperbee_AsyncBlock_FastExecute()
     {
         await _fastCompiledLambda();
+    }
+
+    [Benchmark]
+    public async Task DotNext_AsyncLambda_First_CompileAndExecute()
+    {
+        var compiled = _nextlambda.Compile();
+        await compiled();
+    }
+
+    [Benchmark]
+    public void DotNext_AsyncLambda_Compile()
+    {
+        _nextlambda.Compile();
+    }
+
+    [Benchmark]
+    public async Task DotNext_AsyncLambda_Execute()
+    {
+        await _nextCompiledLambda();
+    }
+
+    [Benchmark]
+    public void DotNext_AsyncLambda_FastCompile()
+    {
+        _nextlambda.CompileFast();
+    }
+
+
+    [Benchmark]
+    public async Task DotNext_AsyncLambda_First_FastCompileAndExecute()
+    {
+        var compiled = _nextlambda.CompileFast();
+        await compiled();
+    }
+
+    [Benchmark]
+    public async Task DotNext_AsyncLambda_Fast_First_Execute()
+    {
+        await _fastNextCompiledLambda();
     }
 
     [Benchmark]
