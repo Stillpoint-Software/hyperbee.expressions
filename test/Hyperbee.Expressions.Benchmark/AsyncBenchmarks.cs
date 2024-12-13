@@ -26,7 +26,7 @@ public class AsyncBenchmarks
 
     private Expression _expression = null!;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
         var asyncAddMethodInfo = typeof( AsyncBenchmarks ).GetMethod( nameof( AddAsync ) )!;
@@ -48,20 +48,26 @@ public class AsyncBenchmarks
 
         _nextlambda = CodeGenerator.AsyncLambda<Func<Task<int>>>( ( fun, result ) =>
         {
-            var var = CodeGenerator.DeclareVariable( "variable", typeof( int ).New() );
-            Assign( var, Call( asyncInitVariableMethodInfo ).Await() );
-            IfThen( Call( asyncIsTrueMethodInfo ).Await(),
-                        Assign( var,
-                            Call( asyncAddMethodInfo, var, var ).Await() ) );
+            var isTrue = CodeGenerator.DeclareVariable( "isTrue", typeof( bool ).New() );
 
-            Assign( result, var );
+            CodeGenerator.Assign( result, typeof( AsyncBenchmarks )
+                .CallStatic( nameof( InitVariableAsync ) )
+                .Await() 
+            );
+
+            CodeGenerator.Assign( isTrue, typeof( AsyncBenchmarks )
+                .CallStatic( nameof( IsTrueAsync ) )
+                .Await() 
+            );
+
+            CodeGenerator.IfThen( isTrue, () =>
+            {
+                CodeGenerator.Assign( result, typeof( AsyncBenchmarks )
+                    .CallStatic( nameof( AddAsync ), result, result )
+                    .Await() 
+                );
+            } );
         } );
-
-        // build and don't call - to capture first time hit
-        _firstCompiled = _lambda.Compile();
-        _firstFastCompiled = _lambda.CompileFast();
-        _firstNextCompiled = _nextlambda.Compile();
-        //_firstFastNextCompiled = _nextlambda.CompileFast();
 
         // build and call once for warmup
         _warmCompiled = _lambda.Compile();
@@ -94,6 +100,16 @@ public class AsyncBenchmarks
             GC.WaitForPendingFinalizers();
             GC.Collect();
         }
+    }
+
+    [IterationSetup]
+    public void IterationSetup()
+    {
+        // build and don't call - to capture first time hit
+        _firstCompiled = _lambda.Compile();
+        _firstFastCompiled = _lambda.CompileFast();
+        _firstNextCompiled = _nextlambda.Compile();
+        //_firstFastNextCompiled = _nextlambda.CompileFast();
     }
 
     // Compile
@@ -182,8 +198,7 @@ public class AsyncBenchmarks
 
     public static Task<bool> IsTrueAsync()
     {
-        var value = Random.Shared.Next( 0, 10 );
-        return Task.FromResult( value % 2 == 0 );
+        return Task.FromResult( true );
     }
 
     public static Task<int> AddAsync( int a, int b )
