@@ -418,7 +418,7 @@ internal class LoweringVisitor : ExpressionVisitor
             sourceState.StateId
         );
 
-        var resumeLabel = Expression.Label( $"ST_{sourceState.StateId:0000}_RESUME" );
+        var resumeLabel = Expression.Label( $"{joinState.NodeLabel.Name}_RESUME" );
 
         var awaitTransition = new AwaitTransition
         {
