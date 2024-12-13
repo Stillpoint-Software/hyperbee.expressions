@@ -41,7 +41,7 @@ internal class SwitchTransition : Transition
                 .Select( switchCase => switchCase.Reduce( stateOrder ) )
                 .ToArray();
 
-            return Switch( 
+            return Switch(
                 SwitchValue,
 #if FAST_COMPILER
                 defaultBody,
