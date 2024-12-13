@@ -75,6 +75,11 @@ public class AsyncBenchmarks
         _warmNextCompiled = _nextlambda.Compile();
         //_warmFastNextCompiled = _nextlambda.CompileFast();
 
+        _firstCompiled = _lambda.Compile();
+        _firstFastCompiled = _lambda.CompileFast();
+        _firstNextCompiled = _nextlambda.Compile();
+        //_firstNextFastCompiled = _nextlambda.CompileFast();
+
         Warmup( _warmCompiled, _warmFastCompiled, _warmNextCompiled );
 
         RuntimeHelpers.PrepareDelegate( _firstCompiled );
@@ -102,18 +107,7 @@ public class AsyncBenchmarks
         }
     }
 
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        // build and don't call - to capture first time hit
-        _firstCompiled = _lambda.Compile();
-        _firstFastCompiled = _lambda.CompileFast();
-        _firstNextCompiled = _nextlambda.Compile();
-        //_firstFastNextCompiled = _nextlambda.CompileFast();
-    }
-
     // Compile
-
 
     [BenchmarkCategory( "Compile" )]
     [Benchmark( Description = "Hyperbee Compile" )]

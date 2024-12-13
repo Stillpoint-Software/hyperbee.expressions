@@ -1,6 +1,4 @@
-﻿#define FAST_COMPILER
-
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 
 #if FAST_COMPILER
 using FastExpressionCompiler;

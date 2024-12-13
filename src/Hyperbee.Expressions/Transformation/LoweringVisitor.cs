@@ -347,7 +347,7 @@ internal class LoweringVisitor : ExpressionVisitor
             joinState = finalExpression;
         }
 
-        var nodeScope = _states.EnterScope( sourceState );
+        var nodeScope = _states.EnterTryScope( sourceState );
 
         var tryCatchTransition = new TryCatchTransition
         {
@@ -359,7 +359,7 @@ internal class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes
         };
 
-        _states.ExitScope();
+        _states.ExitTryScope();
 
         for ( var index = 0; index < node.Handlers.Count; index++ )
         {
@@ -408,7 +408,6 @@ internal class LoweringVisitor : ExpressionVisitor
         var joinState = _states.EnterState( out var sourceState );
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
-        sourceState.Result.Variable = resultVariable;
 
         _awaitCount++;
 
@@ -419,13 +418,13 @@ internal class LoweringVisitor : ExpressionVisitor
             sourceState.StateId
         );
 
-        var resultLabel = Expression.Label( $"ST_{sourceState.StateId:0000}_Result" );
+        var resumeLabel = Expression.Label( $"ST_{sourceState.StateId:0000}_RESUME" );
 
         var awaitTransition = new AwaitTransition
         {
             Target = updatedNode,
             StateId = sourceState.StateId,
-            ResultLabel = resultLabel,
+            ResumeLabel = resumeLabel,
             TargetNode = joinState,
             AwaiterVariable = awaiterVariable,
             ResultVariable = resultVariable,
@@ -433,7 +432,7 @@ internal class LoweringVisitor : ExpressionVisitor
             ConfigureAwait = node.ConfigureAwait
         };
 
-        _states.AddJumpCase( resultLabel, sourceState.StateId );
+        _states.AddJumpCase( resumeLabel, sourceState.StateId );
 
         sourceState.Result.Variable = resultVariable;
         joinState.Result.Value = resultVariable;

@@ -19,10 +19,7 @@ internal static class JumpTableBuilder
             // Go to the result of awaiter
 
             var resultJumpExpression = SwitchCase(
-                Block(
-                    Assign( stateField, Constant( -1 ) ),
-                    Goto( label )
-                ),
+                Goto( label ),
                 Constant( stateId )
             );
 
@@ -48,7 +45,9 @@ internal static class JumpTableBuilder
 
         return Switch(
             stateField,
+#if FAST_COMPILER
             Empty(),
+#endif
             [.. jumpTable]
         );
     }

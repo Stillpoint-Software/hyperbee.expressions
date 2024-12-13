@@ -1,6 +1,4 @@
-﻿#define FAST_COMPILER
-
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Tests.TestSupport;
 using Hyperbee.Expressions.Transformation;

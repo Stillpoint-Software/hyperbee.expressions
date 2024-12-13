@@ -50,7 +50,7 @@ internal sealed class StateContext
         AddState();
     }
 
-    public Scope EnterScope( StateNode initialState )
+    public Scope EnterTryScope( StateNode initialState )
     {
         var parentScope = CurrentScope;
 
@@ -64,7 +64,7 @@ internal sealed class StateContext
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void ExitScope()
+    public void ExitTryScope()
     {
         _scopeIndexes.Pop();
     }

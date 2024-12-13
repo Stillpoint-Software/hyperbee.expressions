@@ -31,16 +31,23 @@ internal class SwitchTransition : Transition
                     allowNull: true
                 );
             }
+#if FAST_COMPILER
             else
             {
                 defaultBody = Empty();
             }
-
+#endif
             var cases = CaseNodes
                 .Select( switchCase => switchCase.Reduce( stateOrder ) )
                 .ToArray();
 
-            return Switch( SwitchValue, defaultBody, cases );
+            return Switch( 
+                SwitchValue,
+#if FAST_COMPILER
+                defaultBody,
+#endif
+                cases
+             );
         }
     }
 

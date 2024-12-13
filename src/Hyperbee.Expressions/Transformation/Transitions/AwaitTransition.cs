@@ -1,6 +1,4 @@
-﻿#define FAST_COMPILER
-
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.Transformation.Transitions;
@@ -11,7 +9,7 @@ internal class AwaitTransition : Transition
     public Expression ResultVariable { get; set; }
     public StateNode TargetNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
-    public LabelTarget ResultLabel { get; internal set; }
+    public LabelTarget ResumeLabel { get; internal set; }
     public Expression Target { get; internal set; }
     public bool ConfigureAwait { get; set; }
     public int StateId { get; internal set; }
@@ -75,7 +73,7 @@ internal class AwaitTransition : Transition
                     )
                 ),
 
-                Label( ResultLabel )
+                Label( ResumeLabel )
             };
 
             var getResultMethod = AwaitBinder.GetResultMethod;
