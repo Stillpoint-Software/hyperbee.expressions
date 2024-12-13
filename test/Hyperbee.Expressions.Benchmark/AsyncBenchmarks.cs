@@ -100,21 +100,21 @@ public class AsyncBenchmarks
 
 
     [BenchmarkCategory( "Compile" )]
-    [Benchmark]
+    [Benchmark( Description = "Hyperbee Compile") ]
     public void Hyperbee_AsyncBlock_Compile()
     {
         _lambda.Compile();
     }
 
     [BenchmarkCategory( "Compile" )]
-    [Benchmark]
+    [Benchmark( Description = "Hyperbee Fast Compile" )]
     public void Hyperbee_AsyncBlock_FastCompile()
     {
         _lambda.CompileFast();
     }
 
     [BenchmarkCategory( "Compile" )]
-    [Benchmark]
+    [Benchmark( Description = "DotNext Compile" )]
     public void DotNext_AsyncLambda_Compile()
     {
         _nextlambda.Compile();
@@ -123,21 +123,21 @@ public class AsyncBenchmarks
     // First Execute
 
     [BenchmarkCategory( "First Execute" )]
-    [Benchmark]
+    [Benchmark( Description = "Hyperbee First Execute" )]
     public async Task Hyperbee_AsyncBlock_FirstExecute()
     {
         await _firstCompiled();
     }
 
     [BenchmarkCategory( "First Execute" )]
-    [Benchmark]
+    [Benchmark( Description = "Hyperbee First Fast Execute" )]
     public async Task Hyperbee_AsyncBlock_FirstFastExecute()
     {
         await _firstFastCompiled();
     }
 
     [BenchmarkCategory( "First Execute" )]
-    [Benchmark]
+    [Benchmark( Description = "DotNext First Execute" )]
     public async Task DotNext_AsyncLambda_FirstExecute()
     {
         await _firstNextCompiled();
@@ -146,28 +146,28 @@ public class AsyncBenchmarks
     // Execute
 
     [BenchmarkCategory( "Execute" )]
-    [Benchmark]
+    [Benchmark( Description = "Native Execute" )]
     public async Task Native_Async_Execute()
     {
         await NativeTestAsync();
     }
 
     [BenchmarkCategory( "Execute" )]
-    [Benchmark]
+    [Benchmark( Description = "Hyperbee Execute" )]
     public async Task Hyperbee_AsyncBlock_Execute()
     {
         await _warmCompiled();
     }
 
     [BenchmarkCategory( "Execute" )]
-    [Benchmark]
+    [Benchmark( Description = "Hyperbee Fast Execute" )]
     public async Task Hyperbee_AsyncBlock_FastExecute()
     {
         await _warmFastCompiled();
     }
 
     [BenchmarkCategory( "Execute" )]
-    [Benchmark]
+    [Benchmark( Description = "DotNext Execute" )]
     public async Task DotNext_AsyncLambda_Execute()
     {
         await _warmNextCompiled();
