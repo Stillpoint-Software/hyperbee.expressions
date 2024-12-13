@@ -1,5 +1,5 @@
-﻿using System;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Attributes;
 using DotNext.Linq.Expressions;
 using DotNext.Metaprogramming;
@@ -11,16 +11,22 @@ namespace Hyperbee.Expressions.Benchmark;
 
 public class AsyncBenchmarks
 {
-    private Func<Task<int>> _compiledLambda = null!;
-    private Func<Task<int>> _fastCompiledLambda = null!;
-    private Func<Task<int>> _nextCompiledLambda = null!;
-    private Func<Task<int>> _fastNextCompiledLambda = null!;
+    private Func<Task<int>> _warmCompiled = null!;
+    private Func<Task<int>> _warmFastCompiled = null!;
+    private Func<Task<int>> _warmNextCompiled = null!;
+    private Func<Task<int>> _warmNextFastCompiled = null!;
+
+    private Func<Task<int>> _firstCompiled = null!;
+    private Func<Task<int>> _firstFastCompiled = null!;
+    private Func<Task<int>> _firstNextCompiled = null!;
+    private Func<Task<int>> _firstNextFastCompiled = null!;
+
     private Expression<Func<Task<int>>> _lambda = null!;
     private Expression<Func<Task<int>>> _nextlambda = null!;
 
     private Expression _expression = null!;
 
-    [GlobalSetup]
+    [IterationSetup]
     public void Setup()
     {
         var asyncAddMethodInfo = typeof( AsyncBenchmarks ).GetMethod( nameof( AddAsync ) )!;
@@ -51,97 +57,123 @@ public class AsyncBenchmarks
             Assign( result, var );
         } );
 
-        _compiledLambda = _lambda.Compile();
+        // build and don't call - to capture first time hit
+        _firstCompiled = _lambda.Compile();
+        _firstFastCompiled = _lambda.CompileFast();
+        _firstNextCompiled = _nextlambda.Compile();
+        //_firstFastNextCompiled = _nextlambda.CompileFast();
 
-        _fastCompiledLambda = _lambda.CompileFast();
+        // build and call once for warmup
+        _warmCompiled = _lambda.Compile();
+        _warmFastCompiled = _lambda.CompileFast();
+        _warmNextCompiled = _nextlambda.Compile();
+        //_warmFastNextCompiled = _nextlambda.CompileFast();
 
-        _nextCompiledLambda = _nextlambda.Compile();
+        Warmup( _warmCompiled, _warmFastCompiled, _warmNextCompiled );
 
-        //_fastNextCompiledLambda = _nextlambda.CompileFast();
+        RuntimeHelpers.PrepareDelegate( _firstCompiled );
+        RuntimeHelpers.PrepareDelegate( _firstFastCompiled );
+
+        GcCollect();
+
+        return;
+
+        // Helpers
+
+        void Warmup( params Func<Task<int>>[] funcs )
+        {
+            foreach( var func in funcs )
+            {
+                func().Wait();
+            }
+        }
+
+        void GcCollect()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
     }
 
-    [Benchmark]
-    public async Task Hyperbee_AsyncBlock_First_CompileAndExecute()
-    {
-        var compiled = _lambda.Compile();
-        await compiled();
-    }
+    // Compile
 
-    [Benchmark]
-    public async Task Hyperbee_AsyncBlock_First_FastCompileAndExecute()
-    {
-        var compiled = _lambda.CompileFast();
-        await compiled();
-    }
 
+    [BenchmarkCategory( "Compile" )]
     [Benchmark]
     public void Hyperbee_AsyncBlock_Compile()
     {
         _lambda.Compile();
     }
 
+    [BenchmarkCategory( "Compile" )]
     [Benchmark]
     public void Hyperbee_AsyncBlock_FastCompile()
     {
         _lambda.CompileFast();
     }
 
-    [Benchmark]
-    public async Task Hyperbee_AsyncBlock_Execute()
-    {
-        await _compiledLambda();
-    }
-
-    [Benchmark]
-    public async Task Hyperbee_AsyncBlock_FastExecute()
-    {
-        await _fastCompiledLambda();
-    }
-
-    [Benchmark]
-    public async Task DotNext_AsyncLambda_First_CompileAndExecute()
-    {
-        var compiled = _nextlambda.Compile();
-        await compiled();
-    }
-
+    [BenchmarkCategory( "Compile" )]
     [Benchmark]
     public void DotNext_AsyncLambda_Compile()
     {
         _nextlambda.Compile();
     }
 
+    // First Execute
+
+    [BenchmarkCategory( "First Execute" )]
+    [Benchmark]
+    public async Task Hyperbee_AsyncBlock_FirstExecute()
+    {
+        await _firstCompiled();
+    }
+
+    [BenchmarkCategory( "First Execute" )]
+    [Benchmark]
+    public async Task Hyperbee_AsyncBlock_FirstFastExecute()
+    {
+        await _firstFastCompiled();
+    }
+
+    [BenchmarkCategory( "First Execute" )]
+    [Benchmark]
+    public async Task DotNext_AsyncLambda_FirstExecute()
+    {
+        await _firstNextCompiled();
+    }
+
+    // Execute
+
+    [BenchmarkCategory( "Execute" )]
+    [Benchmark]
+    public async Task Native_Async_Execute()
+    {
+        await NativeTestAsync();
+    }
+
+    [BenchmarkCategory( "Execute" )]
+    [Benchmark]
+    public async Task Hyperbee_AsyncBlock_Execute()
+    {
+        await _warmCompiled();
+    }
+
+    [BenchmarkCategory( "Execute" )]
+    [Benchmark]
+    public async Task Hyperbee_AsyncBlock_FastExecute()
+    {
+        await _warmFastCompiled();
+    }
+
+    [BenchmarkCategory( "Execute" )]
     [Benchmark]
     public async Task DotNext_AsyncLambda_Execute()
     {
-        await _nextCompiledLambda();
+        await _warmNextCompiled();
     }
 
-    [Benchmark]
-    public void DotNext_AsyncLambda_FastCompile()
-    {
-        _nextlambda.CompileFast();
-    }
-
-
-    [Benchmark]
-    public async Task DotNext_AsyncLambda_First_FastCompileAndExecute()
-    {
-        var compiled = _nextlambda.CompileFast();
-        await compiled();
-    }
-
-    [Benchmark]
-    public async Task DotNext_AsyncLambda_Fast_First_Execute()
-    {
-        await _fastNextCompiledLambda();
-    }
-
-    [Benchmark]
-    public async Task Compiled_Async_Execute()
-    {
-        await CompiledTestAsync();
-    }
+    // Helpers
 
     public static Task<int> InitVariableAsync()
     {
@@ -159,7 +191,7 @@ public class AsyncBenchmarks
         return Task.FromResult( a + b );
     }
 
-    public static async Task<int> CompiledTestAsync()
+    public static async Task<int> NativeTestAsync()
     {
         var variable = await InitVariableAsync();
         if ( await IsTrueAsync() )

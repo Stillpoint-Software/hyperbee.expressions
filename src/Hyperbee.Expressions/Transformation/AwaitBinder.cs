@@ -30,6 +30,18 @@ internal class AwaitBinder
         GetResultMethod = getResultMethod;
         GetAwaiterImplDelegate = getAwaiterImplDelegate;
         GetResultImplDelegate = getResultImplDelegate;
+
+        // Pre-jit methods and delegates
+
+        RuntimeHelpers.PrepareMethod( WaitMethod.MethodHandle );
+        RuntimeHelpers.PrepareMethod( GetAwaiterMethod.MethodHandle );
+        RuntimeHelpers.PrepareMethod( GetResultMethod.MethodHandle );
+
+        if ( getAwaiterImplDelegate != null )
+            RuntimeHelpers.PrepareDelegate( getAwaiterImplDelegate );
+
+        if ( getResultImplDelegate != null )
+            RuntimeHelpers.PrepareDelegate( getResultImplDelegate );
     }
 
     // Await methods

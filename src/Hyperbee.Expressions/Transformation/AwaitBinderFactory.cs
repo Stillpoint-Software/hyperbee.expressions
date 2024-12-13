@@ -112,7 +112,8 @@ internal static class AwaitBinderFactory
             awaitableType,
             WaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType ),
             GetAwaiterValueTaskResultMethod.MakeGenericMethod( awaiterResultType ),
-            GetResultValueTaskResultMethod.MakeGenericMethod( awaiterResultType ) );
+            GetResultValueTaskResultMethod.MakeGenericMethod( awaiterResultType )
+        );
     }
 
     private static AwaitBinder CreateTaskAwaitBinder( Type awaitableType )
