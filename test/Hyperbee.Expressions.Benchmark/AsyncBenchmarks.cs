@@ -100,7 +100,7 @@ public class AsyncBenchmarks
 
 
     [BenchmarkCategory( "Compile" )]
-    [Benchmark( Description = "Hyperbee Compile") ]
+    [Benchmark( Description = "Hyperbee Compile" )]
     public void Hyperbee_AsyncBlock_Compile()
     {
         _lambda.Compile();
