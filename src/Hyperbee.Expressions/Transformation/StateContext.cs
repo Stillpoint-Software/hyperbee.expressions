@@ -103,10 +103,10 @@ internal sealed class StateContext
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void AddJumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId )
+    public void AddJumpCase( LabelTarget resultLabel, int stateId )
     {
         var scope = CurrentScope;
-        var jumpCase = new JumpCase( resultLabel, continueLabel, stateId, scope.ScopeId );
+        var jumpCase = new JumpCase( resultLabel, stateId, scope.ScopeId );
         scope.JumpCases.Add( jumpCase );
     }
 
@@ -126,6 +126,19 @@ internal sealed class StateContext
         }
 
         return node != null;
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public StateNode EnterState( out StateNode sourceState )
+    {
+        sourceState = TailState;
+        return AddState();
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public void ExitState( StateNode sourceState, Transition transition )
+    {
+        sourceState.Transition = transition;
     }
 
     public sealed class Scope
@@ -170,20 +183,6 @@ internal sealed class StateContext
         }
     }
 
-    public readonly struct JumpCase
-    {
-        public LabelTarget ResultLabel { get; }
-        public LabelTarget ContinueLabel { get; }
+    public readonly record struct JumpCase( LabelTarget ResultLabel, int StateId, int? ParentId );
 
-        public int StateId { get; }
-        public int? ParentId { get; }
-
-        public JumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId, int? parentId )
-        {
-            ResultLabel = resultLabel;
-            ContinueLabel = continueLabel;
-            StateId = stateId;
-            ParentId = parentId;
-        }
-    }
 }

@@ -405,11 +405,10 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var updatedNode = Visit( node.Target );
 
-        var joinState = _states.EnterGroup( out var sourceState );
+        var joinState = _states.EnterState( out var sourceState );
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
-        var completionState = _states.AddState();
-        _states.TailState.Result.Variable = resultVariable;
+        sourceState.Result.Variable = resultVariable;
 
         _awaitCount++;
 
@@ -420,30 +419,26 @@ internal class LoweringVisitor : ExpressionVisitor
             sourceState.StateId
         );
 
-        completionState.Transition = new AwaitResultTransition
-        {
-            TargetNode = joinState,
-            AwaiterVariable = awaiterVariable,
-            ResultVariable = resultVariable,
-            AwaitBinder = awaitBinder
-        };
-
-        _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
+        var resultLabel = Expression.Label( $"ST_{sourceState.StateId:0000}_Result" );
 
         var awaitTransition = new AwaitTransition
         {
             Target = updatedNode,
             StateId = sourceState.StateId,
+            ResultLabel = resultLabel,
+            TargetNode = joinState,
             AwaiterVariable = awaiterVariable,
-            CompletionNode = completionState,
+            ResultVariable = resultVariable,
             AwaitBinder = awaitBinder,
             ConfigureAwait = node.ConfigureAwait
         };
 
+        _states.AddJumpCase( resultLabel, sourceState.StateId );
+
         sourceState.Result.Variable = resultVariable;
         joinState.Result.Value = resultVariable;
 
-        _states.ExitGroup( sourceState, awaitTransition );
+        _states.ExitState( sourceState, awaitTransition );
 
         return ConvertToExpression( sourceState );
     }

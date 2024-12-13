@@ -77,7 +77,6 @@ internal sealed class StateOptimizer
 
             foreach ( var jumpCase in scope.JumpCases ) // jump cases
             {
-                references.Add( jumpCase.ContinueLabel );
                 references.Add( jumpCase.ResultLabel );
             }
         }

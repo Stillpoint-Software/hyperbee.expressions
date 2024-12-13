@@ -7,15 +7,16 @@ namespace Hyperbee.Expressions.Transformation.Transitions;
 
 internal class AwaitTransition : Transition
 {
-    public int StateId { get; set; }
-
-    public Expression Target { get; set; }
     public Expression AwaiterVariable { get; set; }
-    public StateNode CompletionNode { get; set; }
+    public Expression ResultVariable { get; set; }
+    public StateNode TargetNode { get; set; }
     public AwaitBinder AwaitBinder { get; set; }
+    public LabelTarget ResultLabel { get; internal set; }
+    public Expression Target { get; internal set; }
     public bool ConfigureAwait { get; set; }
+    public int StateId { get; internal set; }
 
-    internal override StateNode FallThroughNode => CompletionNode;
+    internal override StateNode FallThroughNode => TargetNode;
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
@@ -72,13 +73,36 @@ internal class AwaitTransition : Transition
                         ),
                         Return( source.ExitLabel )
                     )
-                )
+                ),
+
+                Label( ResultLabel )
             };
 
-            var fallThrough = GotoOrFallThrough( context.StateNode.StateOrder, CompletionNode, true );
+            var getResultMethod = AwaitBinder.GetResultMethod;
 
-            if ( fallThrough != null )
-                body.Add( fallThrough );
+            var getResultCall = getResultMethod.IsStatic
+                ? Call( getResultMethod, AwaiterVariable )
+                : Call( Constant( AwaitBinder ), getResultMethod, AwaiterVariable );
+
+            if ( ResultVariable == null )
+            {
+                var transition = GotoOrFallThrough( context.StateNode.StateOrder, TargetNode );
+
+                if ( transition == Empty() )
+                {
+                    body.Add( getResultCall );
+                }
+                else
+                {
+                    body.Add( getResultCall );
+                    body.Add( transition );
+                }
+            }
+            else
+            {
+                body.Add( Assign( ResultVariable, getResultCall ) );
+                body.Add( GotoOrFallThrough( context.StateNode.StateOrder, TargetNode ) );
+            }
 
 #if FAST_COMPILER
             return [
@@ -93,9 +117,10 @@ internal class AwaitTransition : Transition
         }
     }
 
+
     internal override void Optimize( HashSet<LabelTarget> references )
     {
-        CompletionNode = OptimizeGotos( CompletionNode );
-        references.Add( CompletionNode.NodeLabel );
+        TargetNode = OptimizeGotos( TargetNode );
+        references.Add( TargetNode.NodeLabel );
     }
 }

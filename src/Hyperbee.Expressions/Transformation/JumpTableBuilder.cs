@@ -14,16 +14,16 @@ internal static class JumpTableBuilder
 
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
 
-        foreach ( var jumpCase in jumpCases )
+        foreach ( var (label, stateId, _) in jumpCases )
         {
             // Go to the result of awaiter
 
             var resultJumpExpression = SwitchCase(
                 Block(
                     Assign( stateField, Constant( -1 ) ),
-                    Goto( jumpCase.ResultLabel )
+                    Goto( label )
                 ),
-                Constant( jumpCase.StateId )
+                Constant( stateId )
             );
 
             jumpTable.Add( resultJumpExpression );
@@ -68,9 +68,9 @@ internal static class JumpTableBuilder
             if ( !stack.TryPop( out current ) )
                 break;
 
-            foreach ( var jumpCase in current.JumpCases )
+            foreach ( var (_, stateId, _) in current.JumpCases )
             {
-                testCases.Add( Constant( jumpCase.StateId ) );
+                testCases.Add( Constant( stateId ) );
             }
         }
 
