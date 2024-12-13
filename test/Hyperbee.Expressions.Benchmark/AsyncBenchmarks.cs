@@ -82,7 +82,7 @@ public class AsyncBenchmarks
 
         void Warmup( params Func<Task<int>>[] funcs )
         {
-            foreach( var func in funcs )
+            foreach ( var func in funcs )
             {
                 func().Wait();
             }
