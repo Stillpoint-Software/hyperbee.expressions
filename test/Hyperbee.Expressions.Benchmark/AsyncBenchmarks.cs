@@ -14,12 +14,12 @@ public class AsyncBenchmarks
     private Func<Task<int>> _warmCompiled = null!;
     private Func<Task<int>> _warmFastCompiled = null!;
     private Func<Task<int>> _warmNextCompiled = null!;
-    private Func<Task<int>> _warmNextFastCompiled = null!;
+    //private Func<Task<int>> _warmNextFastCompiled = null!;
 
     private Func<Task<int>> _firstCompiled = null!;
     private Func<Task<int>> _firstFastCompiled = null!;
     private Func<Task<int>> _firstNextCompiled = null!;
-    private Func<Task<int>> _firstNextFastCompiled = null!;
+    //private Func<Task<int>> _firstNextFastCompiled = null!;
 
     private Expression<Func<Task<int>>> _lambda = null!;
     private Expression<Func<Task<int>>> _nextlambda = null!;

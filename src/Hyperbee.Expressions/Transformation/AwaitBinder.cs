@@ -32,7 +32,7 @@ internal class AwaitBinder
         GetResultImplDelegate = getResultImplDelegate;
 
         // Pre-jit methods and delegates
-        // This saves time when the methods are called for the first time
+        // This saves a little time when the methods are called for the first time
 
         RuntimeHelpers.PrepareMethod( WaitMethod.MethodHandle );
         RuntimeHelpers.PrepareMethod( GetAwaiterMethod.MethodHandle );
