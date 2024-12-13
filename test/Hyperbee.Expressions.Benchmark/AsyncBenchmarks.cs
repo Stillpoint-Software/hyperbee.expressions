@@ -52,19 +52,19 @@ public class AsyncBenchmarks
 
             CodeGenerator.Assign( result, typeof( AsyncBenchmarks )
                 .CallStatic( nameof( InitVariableAsync ) )
-                .Await() 
+                .Await()
             );
 
             CodeGenerator.Assign( isTrue, typeof( AsyncBenchmarks )
                 .CallStatic( nameof( IsTrueAsync ) )
-                .Await() 
+                .Await()
             );
 
             CodeGenerator.IfThen( isTrue, () =>
             {
                 CodeGenerator.Assign( result, typeof( AsyncBenchmarks )
                     .CallStatic( nameof( AddAsync ), result, result )
-                    .Await() 
+                    .Await()
                 );
             } );
         } );
