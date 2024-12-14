@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
-using Hyperbee.Expressions.Transformation;
+using Hyperbee.Expressions.CompilerServices;
 
 namespace Hyperbee.Expressions;
 

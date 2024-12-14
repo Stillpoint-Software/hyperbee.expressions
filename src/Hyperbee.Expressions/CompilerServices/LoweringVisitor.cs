@@ -1,9 +1,9 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
-using Hyperbee.Expressions.Transformation.Transitions;
+using Hyperbee.Expressions.CompilerServices.Transitions;
 using Hyperbee.Expressions.Visitors;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal class LoweringVisitor : ExpressionVisitor
 {
@@ -418,7 +418,7 @@ internal class LoweringVisitor : ExpressionVisitor
             sourceState.StateId
         );
 
-        var resumeLabel = Expression.Label( $"{joinState.NodeLabel.Name}_RESUME" );
+        var resumeLabel = Expression.Label( $"{sourceState.NodeLabel.Name}_RESUME" );
 
         var awaitTransition = new AwaitTransition
         {

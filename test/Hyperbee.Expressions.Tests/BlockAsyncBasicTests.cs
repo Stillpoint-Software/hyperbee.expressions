@@ -87,13 +87,13 @@ public class BlockAsyncBasicTests
         // Arrange
         var block = BlockAsync(
             Await( AsyncHelper.Completer(
-                        Constant( completer ),
-                        Constant( 1 )
-                    ) ),
+                Constant( completer ),
+                Constant( 1 )
+            ) ),
             Await( AsyncHelper.Completer(
-                        Constant( completer ),
-                        Constant( 2 )
-                    ) )
+                Constant( completer ),
+                Constant( 2 )
+            ) )
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -114,6 +114,7 @@ public class BlockAsyncBasicTests
         var block = BlockAsync(
             Await( Constant( Task.FromException<int>( new InvalidOperationException( "Test Exception" ) ) ) )
         );
+
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile();
 
@@ -153,6 +154,7 @@ public class BlockAsyncBasicTests
             Await( AsyncHelper.Completer( Constant( completer ), Constant( 1 ) ) ),
             Await( innerBlock )
         );
+
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile( compiler );
 

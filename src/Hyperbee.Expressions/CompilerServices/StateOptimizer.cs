@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
-using Hyperbee.Expressions.Transformation.Transitions;
+using Hyperbee.Expressions.CompilerServices.Transitions;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal sealed class StateOptimizer
 {

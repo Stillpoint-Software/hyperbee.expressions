@@ -1,8 +1,8 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
-using Hyperbee.Expressions.Transformation.Transitions;
+using Hyperbee.Expressions.CompilerServices.Transitions;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal sealed class StateContext
 {

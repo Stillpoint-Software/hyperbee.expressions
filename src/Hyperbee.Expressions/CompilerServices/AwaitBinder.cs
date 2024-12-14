@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal delegate TAwaiter AwaitBinderGetAwaiterDelegate<TAwaitable, out TAwaiter>( ref TAwaitable awaitable, bool configureAwait );
 internal delegate TResult AwaitBinderGetResultDelegate<TAwaiter, out TResult>( ref TAwaiter awaiter );
@@ -154,5 +154,10 @@ internal class AwaitBinder
         var result = getResult( ref awaiter );
 
         return result;
+    }
+
+    public override string ToString()
+    {
+        return ".Binder";
     }
 }

@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal sealed class VariableResolver : ExpressionVisitor
 {

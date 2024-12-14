@@ -4,7 +4,7 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 public interface IVoidResult; // Marker interface for void Task results
 public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;

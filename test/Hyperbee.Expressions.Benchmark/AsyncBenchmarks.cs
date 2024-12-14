@@ -75,14 +75,10 @@ public class AsyncBenchmarks
         _preRunFastCompiled = _lambda.CompileFast();
         _preRunNextCompiled = _nextlambda.Compile();
 
-        _coldRunCompiled = _lambda.Compile();
-        _coldRunFastCompiled = _lambda.CompileFast();
-        _coldRunNextCompiled = _nextlambda.Compile();
-
         //_preRunFastNextCompiled = _nextlambda.CompileFast();
-        //_coldRunNextFastCompiled = _nextlambda.CompileFast();
 
         Warmup( _preRunCompiled, _preRunFastCompiled, _preRunNextCompiled );
+
         return;
 
         // Helpers
@@ -94,6 +90,19 @@ public class AsyncBenchmarks
                 func().Wait();
             }
         }
+    }
+
+    [IterationSetup( Targets = [
+        nameof(Hyperbee_AsyncBlock_FirstExecute), 
+        nameof(Hyperbee_AsyncBlock_FirstFastExecute),
+        nameof(DotNext_AsyncLambda_FirstExecute)
+    ] ) ]
+    public void IterationSetup()
+    {
+        _coldRunCompiled = _lambda.Compile();
+        _coldRunFastCompiled = _lambda.CompileFast();
+        _coldRunNextCompiled = _nextlambda.Compile();
+        //_coldRunNextFastCompiled = _nextlambda.CompileFast();
     }
 
     // Compile
