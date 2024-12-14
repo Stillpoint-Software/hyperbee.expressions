@@ -12,7 +12,7 @@ internal sealed class StateContext
 
     private readonly Stack<StateNode> _joinStates;
     private readonly Stack<int> _scopeIndexes;
-    
+
     public List<Scope> Scopes { get; }
     public StateNode TailState { get; private set; }
     private Scope CurrentScope => Scopes[_scopeIndexes.Peek()];
