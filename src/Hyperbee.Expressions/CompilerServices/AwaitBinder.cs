@@ -155,9 +155,4 @@ internal class AwaitBinder
 
         return result;
     }
-
-    public override string ToString()
-    {
-        return ".Binder";
-    }
 }
