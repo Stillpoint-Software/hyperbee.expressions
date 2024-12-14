@@ -11,15 +11,15 @@ namespace Hyperbee.Expressions.Benchmark;
 
 public class AsyncBenchmarks
 {
-    private Func<Task<int>> _warmCompiled = null!;
-    private Func<Task<int>> _warmFastCompiled = null!;
-    private Func<Task<int>> _warmNextCompiled = null!;
-    //private Func<Task<int>> _warmNextFastCompiled = null!;
+    private Func<Task<int>> _preRunCompiled = null!;
+    private Func<Task<int>> _preRunFastCompiled = null!;
+    private Func<Task<int>> _preRunNextCompiled = null!;
+    //private Func<Task<int>> _preRunNextFastCompiled = null!;
 
-    private Func<Task<int>> _firstCompiled = null!;
-    private Func<Task<int>> _firstFastCompiled = null!;
-    private Func<Task<int>> _firstNextCompiled = null!;
-    //private Func<Task<int>> _firstNextFastCompiled = null!;
+    private Func<Task<int>> _coldRunCompiled = null!;
+    private Func<Task<int>> _coldRunFastCompiled = null!;
+    private Func<Task<int>> _coldRunNextCompiled = null!;
+    //private Func<Task<int>> _coldRunNextFastCompiled = null!;
 
     private Expression<Func<Task<int>>> _lambda = null!;
     private Expression<Func<Task<int>>> _nextlambda = null!;
@@ -70,23 +70,19 @@ public class AsyncBenchmarks
         } );
 
         // build and call once for warmup
-        _warmCompiled = _lambda.Compile();
-        _warmFastCompiled = _lambda.CompileFast();
-        _warmNextCompiled = _nextlambda.Compile();
-        //_warmFastNextCompiled = _nextlambda.CompileFast();
 
-        _firstCompiled = _lambda.Compile();
-        _firstFastCompiled = _lambda.CompileFast();
-        _firstNextCompiled = _nextlambda.Compile();
-        //_firstNextFastCompiled = _nextlambda.CompileFast();
+        _preRunCompiled = _lambda.Compile();
+        _preRunFastCompiled = _lambda.CompileFast();
+        _preRunNextCompiled = _nextlambda.Compile();
 
-        Warmup( _warmCompiled, _warmFastCompiled, _warmNextCompiled );
+        _coldRunCompiled = _lambda.Compile();
+        _coldRunFastCompiled = _lambda.CompileFast();
+        _coldRunNextCompiled = _nextlambda.Compile();
 
-        RuntimeHelpers.PrepareDelegate( _firstCompiled );
-        RuntimeHelpers.PrepareDelegate( _firstFastCompiled );
+        //_preRunFastNextCompiled = _nextlambda.CompileFast();
+        //_coldRunNextFastCompiled = _nextlambda.CompileFast();
 
-        GcCollect();
-
+        Warmup( _preRunCompiled, _preRunFastCompiled, _preRunNextCompiled );
         return;
 
         // Helpers
@@ -97,13 +93,6 @@ public class AsyncBenchmarks
             {
                 func().Wait();
             }
-        }
-
-        void GcCollect()
-        {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
         }
     }
 
@@ -136,21 +125,21 @@ public class AsyncBenchmarks
     [Benchmark( Description = "Hyperbee First Execute" )]
     public async Task Hyperbee_AsyncBlock_FirstExecute()
     {
-        await _firstCompiled();
+        await _coldRunCompiled();
     }
 
     [BenchmarkCategory( "First Execute" )]
     [Benchmark( Description = "Hyperbee First Fast Execute" )]
     public async Task Hyperbee_AsyncBlock_FirstFastExecute()
     {
-        await _firstFastCompiled();
+        await _coldRunFastCompiled();
     }
 
     [BenchmarkCategory( "First Execute" )]
     [Benchmark( Description = "DotNext First Execute" )]
     public async Task DotNext_AsyncLambda_FirstExecute()
     {
-        await _firstNextCompiled();
+        await _coldRunNextCompiled();
     }
 
     // Execute
@@ -166,21 +155,21 @@ public class AsyncBenchmarks
     [Benchmark( Description = "Hyperbee Execute" )]
     public async Task Hyperbee_AsyncBlock_Execute()
     {
-        await _warmCompiled();
+        await _preRunCompiled();
     }
 
     [BenchmarkCategory( "Execute" )]
     [Benchmark( Description = "Hyperbee Fast Execute" )]
     public async Task Hyperbee_AsyncBlock_FastExecute()
     {
-        await _warmFastCompiled();
+        await _preRunFastCompiled();
     }
 
     [BenchmarkCategory( "Execute" )]
     [Benchmark( Description = "DotNext Execute" )]
     public async Task DotNext_AsyncLambda_Execute()
     {
-        await _warmNextCompiled();
+        await _preRunNextCompiled();
     }
 
     // Helpers
