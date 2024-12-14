@@ -93,10 +93,10 @@ public class AsyncBenchmarks
     }
 
     [IterationSetup( Targets = [
-        nameof(Hyperbee_AsyncBlock_FirstExecute), 
+        nameof(Hyperbee_AsyncBlock_FirstExecute),
         nameof(Hyperbee_AsyncBlock_FirstFastExecute),
         nameof(DotNext_AsyncLambda_FirstExecute)
-    ] ) ]
+    ] )]
     public void IterationSetup()
     {
         _coldRunCompiled = _lambda.Compile();
