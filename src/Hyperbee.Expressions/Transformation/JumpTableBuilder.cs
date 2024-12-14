@@ -75,5 +75,4 @@ internal static class JumpTableBuilder
 
         return testCases;
     }
-
 }

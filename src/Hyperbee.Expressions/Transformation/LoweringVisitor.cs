@@ -186,7 +186,7 @@ internal class LoweringVisitor : ExpressionVisitor
                 previousVariable = updated.Result.Variable;
                 joinState.Result.Variable = previousVariable;
 
-                // Fix tail link list of Transitions.
+                // Fix tail linked list of Transitions.
                 if ( previousTail != null )
                     previousTail.Transition = new GotoTransition { TargetNode = updated };
 

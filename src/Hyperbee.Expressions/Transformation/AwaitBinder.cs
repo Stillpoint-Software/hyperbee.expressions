@@ -32,7 +32,7 @@ internal class AwaitBinder
         GetResultImplDelegate = getResultImplDelegate;
 
         // Pre-jit methods and delegates
-        // This saves a little time when the methods are called for the first time
+        // This saves a little time when the methods are executed for the first time
 
         RuntimeHelpers.PrepareMethod( WaitMethod.MethodHandle );
         RuntimeHelpers.PrepareMethod( GetAwaiterMethod.MethodHandle );
@@ -45,7 +45,7 @@ internal class AwaitBinder
             RuntimeHelpers.PrepareDelegate( getResultImplDelegate );
     }
 
-    // Await methods
+    // Wait methods
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal void Wait<TAwaitable, TAwaiter>( ref TAwaitable awaitable, bool configureAwait )

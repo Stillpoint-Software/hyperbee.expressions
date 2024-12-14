@@ -123,9 +123,8 @@ internal static class ReflectionHelper
     {
         // Search for an extension method with the specified name that extends the specified target type.
         //
-        // Extension searching is a very expensive operation. To minimize the performance impact, we
-        // will search in a specific order to try and reduce the number of assemblies that need to be
-        // searched.
+        // Extension searching is an expensive operation. To minimize the performance impact, we will
+        // search in a specific order to try and reduce the number of assemblies that need to be searched.
         //
         // The search order is:
         //

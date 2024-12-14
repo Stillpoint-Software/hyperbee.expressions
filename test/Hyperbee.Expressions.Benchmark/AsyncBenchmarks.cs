@@ -174,6 +174,17 @@ public class AsyncBenchmarks
 
     // Helpers
 
+    public static async Task<int> NativeTestAsync()
+    {
+        var variable = await InitVariableAsync();
+        if ( await IsTrueAsync() )
+        {
+            variable = await AddAsync( variable, variable );
+        }
+
+        return variable;
+    }
+
     public static Task<int> InitVariableAsync()
     {
         return Task.FromResult( Random.Shared.Next( 0, 10 ) );
@@ -187,16 +198,5 @@ public class AsyncBenchmarks
     public static Task<int> AddAsync( int a, int b )
     {
         return Task.FromResult( a + b );
-    }
-
-    public static async Task<int> NativeTestAsync()
-    {
-        var variable = await InitVariableAsync();
-        if ( await IsTrueAsync() )
-        {
-            variable = await AddAsync( variable, variable );
-        }
-
-        return variable;
     }
 }
