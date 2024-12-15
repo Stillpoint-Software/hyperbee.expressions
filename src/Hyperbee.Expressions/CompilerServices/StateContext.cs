@@ -140,7 +140,7 @@ internal sealed class StateContext
         sourceState.Transition = transition;
     }
 
-    public sealed class Scope
+    internal sealed class Scope
     {
         public int ScopeId { get; }
         public LabelTarget InitialLabel { get; }

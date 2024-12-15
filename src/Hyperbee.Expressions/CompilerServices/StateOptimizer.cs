@@ -3,7 +3,7 @@ using Hyperbee.Expressions.CompilerServices.Transitions;
 
 namespace Hyperbee.Expressions.CompilerServices;
 
-internal sealed class StateOptimizer
+internal static class StateOptimizer
 {
     internal static void Optimize( StateContext states )
     {
