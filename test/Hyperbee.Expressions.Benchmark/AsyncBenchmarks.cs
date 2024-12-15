@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Attributes;
 using DotNext.Linq.Expressions;
 using DotNext.Metaprogramming;
@@ -11,6 +10,8 @@ namespace Hyperbee.Expressions.Benchmark;
 
 public class AsyncBenchmarks
 {
+    private const int IterationCount = 100;
+
     private Func<Task<int>> _preRunCompiled = null!;
     private Func<Task<int>> _preRunFastCompiled = null!;
     private Func<Task<int>> _preRunNextCompiled = null!;
@@ -132,6 +133,7 @@ public class AsyncBenchmarks
 
     [BenchmarkCategory( "First Execute" )]
     [Benchmark( Description = "Hyperbee First Execute" )]
+    [InvocationCount( invocationCount: IterationCount, unrollFactor: 1 )]
     public async Task Hyperbee_AsyncBlock_FirstExecute()
     {
         await _coldRunCompiled();
@@ -139,6 +141,7 @@ public class AsyncBenchmarks
 
     [BenchmarkCategory( "First Execute" )]
     [Benchmark( Description = "Hyperbee First Fast Execute" )]
+    [InvocationCount( invocationCount: IterationCount, unrollFactor: 1 )]
     public async Task Hyperbee_AsyncBlock_FirstFastExecute()
     {
         await _coldRunFastCompiled();
@@ -146,6 +149,7 @@ public class AsyncBenchmarks
 
     [BenchmarkCategory( "First Execute" )]
     [Benchmark( Description = "DotNext First Execute" )]
+    [InvocationCount( invocationCount: IterationCount, unrollFactor: 1 )]
     public async Task DotNext_AsyncLambda_FirstExecute()
     {
         await _coldRunNextCompiled();
