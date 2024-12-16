@@ -10,17 +10,10 @@ namespace Hyperbee.Expressions.Benchmark;
 
 public class AsyncBenchmarks
 {
-    private const int IterationCount = 100;
-
     private Func<Task<int>> _preRunCompiled = null!;
     private Func<Task<int>> _preRunFastCompiled = null!;
     private Func<Task<int>> _preRunNextCompiled = null!;
     //private Func<Task<int>> _preRunNextFastCompiled = null!;
-
-    private Func<Task<int>> _coldRunCompiled = null!;
-    private Func<Task<int>> _coldRunFastCompiled = null!;
-    private Func<Task<int>> _coldRunNextCompiled = null!;
-    //private Func<Task<int>> _coldRunNextFastCompiled = null!;
 
     private Expression<Func<Task<int>>> _lambda = null!;
     private Expression<Func<Task<int>>> _nextlambda = null!;
@@ -47,7 +40,7 @@ public class AsyncBenchmarks
 
         _lambda = Lambda<Func<Task<int>>>( _expression );
 
-        _nextlambda = CodeGenerator.AsyncLambda<Func<Task<int>>>( ( fun, result ) =>
+        _nextlambda = CodeGenerator.AsyncLambda<Func<Task<int>>>( ( _, result ) =>
         {
             var isTrue = CodeGenerator.DeclareVariable( "isTrue", typeof( bool ).New() );
 
@@ -93,19 +86,6 @@ public class AsyncBenchmarks
         }
     }
 
-    [IterationSetup( Targets = [
-        nameof(Hyperbee_AsyncBlock_FirstExecute),
-        nameof(Hyperbee_AsyncBlock_FirstFastExecute),
-        nameof(DotNext_AsyncLambda_FirstExecute)
-    ] )]
-    public void IterationSetup()
-    {
-        _coldRunCompiled = _lambda.Compile();
-        _coldRunFastCompiled = _lambda.CompileFast();
-        _coldRunNextCompiled = _nextlambda.Compile();
-        //_coldRunNextFastCompiled = _nextlambda.CompileFast();
-    }
-
     // Compile
 
     [BenchmarkCategory( "Compile" )]
@@ -127,32 +107,6 @@ public class AsyncBenchmarks
     public void DotNext_AsyncLambda_Compile()
     {
         _nextlambda.Compile();
-    }
-
-    // First Execute
-
-    [BenchmarkCategory( "First Execute" )]
-    [Benchmark( Description = "Hyperbee First Execute" )]
-    [InvocationCount( invocationCount: IterationCount, unrollFactor: 1 )]
-    public async Task Hyperbee_AsyncBlock_FirstExecute()
-    {
-        await _coldRunCompiled();
-    }
-
-    [BenchmarkCategory( "First Execute" )]
-    [Benchmark( Description = "Hyperbee First Fast Execute" )]
-    [InvocationCount( invocationCount: IterationCount, unrollFactor: 1 )]
-    public async Task Hyperbee_AsyncBlock_FirstFastExecute()
-    {
-        await _coldRunFastCompiled();
-    }
-
-    [BenchmarkCategory( "First Execute" )]
-    [Benchmark( Description = "DotNext First Execute" )]
-    [InvocationCount( invocationCount: IterationCount, unrollFactor: 1 )]
-    public async Task DotNext_AsyncLambda_FirstExecute()
-    {
-        await _coldRunNextCompiled();
     }
 
     // Execute
