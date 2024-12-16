@@ -27,7 +27,7 @@ workflows and other language constructs.
 
 The following example demonstrates how to create an asynchronous expression tree.
 
-When the expression tree is compiled, the `BlockAsyncExpression` will auto-generate a state machine that executes 
+When the expression tree is compiled, the `AsyncBlockExpression` will auto-generate a state machine that executes 
 `AwaitExpressions` in the block asynchronously.
 
 ```csharp
@@ -113,6 +113,7 @@ public class UsingExample
 Special thanks to:
 
 - Sergey Tepliakov - [Dissecting the async methods in C#](https://devblogs.microsoft.com/premier-developer/dissecting-the-async-methods-in-c/).
+- [Fast Expression Compiler](https://github.com/dadhi/FastExpressionCompiler) for improved performance. :heart:
 - [Just The Docs](https://github.com/just-the-docs/just-the-docs) for the documentation theme.
 
 ## Contributing
