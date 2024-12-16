@@ -68,7 +68,6 @@ public class AsyncBenchmarks
         _preRunCompiled = _lambda.Compile();
         _preRunFastCompiled = _lambda.CompileFast();
         _preRunNextCompiled = _nextlambda.Compile();
-
         //_preRunFastNextCompiled = _nextlambda.CompileFast();
 
         Warmup( _preRunCompiled, _preRunFastCompiled, _preRunNextCompiled );
@@ -96,7 +95,7 @@ public class AsyncBenchmarks
     }
 
     [BenchmarkCategory( "Compile" )]
-    [Benchmark( Description = "Hyperbee Fast Compile" )]
+    [Benchmark( Description = "Hyperbee Fast Compile", Baseline = true )]
     public void Hyperbee_AsyncBlock_FastCompile()
     {
         _lambda.CompileFast();
@@ -112,7 +111,7 @@ public class AsyncBenchmarks
     // Execute
 
     [BenchmarkCategory( "Execute" )]
-    [Benchmark( Description = "Native Execute" )]
+    [Benchmark( Description = "Native Execute", Baseline = true )]
     public async Task Native_Async_Execute()
     {
         await NativeTestAsync();
