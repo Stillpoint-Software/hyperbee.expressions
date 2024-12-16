@@ -33,7 +33,7 @@ public class FastExpressionCompilerTests
         var executeDelegate = typeof( TestClass2 ).GetMethod( nameof( TestClass2.ExecuteDelegate ) );
         var local = Variable( typeof( int ), "local" );
 
-        var innerLambda = 
+        var innerLambda =
             Lambda<Func<int>>(
                 Block(
                     [local],
@@ -47,7 +47,7 @@ public class FastExpressionCompilerTests
                 )
             );
 
-        var body = Lambda<Func<int>>( 
+        var body = Lambda<Func<int>>(
             Call( executeDelegate, innerLambda )
         );
 
