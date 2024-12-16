@@ -17,6 +17,47 @@ public class FastExpressionCompilerTests
         }
     }
 
+    public class TestClass2
+    {
+        public static int ExecuteDelegate( Func<int> action ) => action();
+    }
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    public void Compile_ShouldSucceed_WithCustomDelegateParameter( CompilerType compiler )
+    {
+        // ISSUE #443: https://github.com/dadhi/FastExpressionCompiler/issues/443
+        // FEC throws `FastExpressionCompiler.NotSupportedExpressionException: ParameterIsNotVariableNorInPassedParameters`
+
+        var executeDelegate = typeof( TestClass2 ).GetMethod( nameof( TestClass2.ExecuteDelegate ) );
+        var local = Variable( typeof( int ), "local" );
+
+        var innerLambda = 
+            Lambda<Func<int>>(
+                Block(
+                    [local],
+                    Assign( local, Constant( 42 ) ),
+
+                    // Invoke works
+                    //Invoke( Lambda<Func<int>>( local ) )
+
+                    // Call does not work
+                    Call( executeDelegate, Lambda<Func<int>>( local ) )
+                )
+            );
+
+        var body = Lambda<Func<int>>( 
+            Call( executeDelegate, innerLambda )
+        );
+
+        var compiledLambda = body.Compile( compiler );
+
+        var result = compiledLambda();
+
+        Assert.AreEqual( 42, result );
+    }
+
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
