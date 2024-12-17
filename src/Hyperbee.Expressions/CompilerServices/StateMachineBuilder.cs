@@ -84,10 +84,10 @@ internal class StateMachineBuilder<TResult>
         };
 
         bodyExpression.AddRange( // Assign extern variables to state-machine
-            loweringInfo.ExternVariables.Select( externVariable =>
+            loweringInfo.ExternScopes.Items().Select( externVariable =>
                 Assign(
-                    Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Name ) ),
-                    externVariable
+                    Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Value.Name ) ),
+                    externVariable.Value
                 )
             )
         );
@@ -163,7 +163,7 @@ internal class StateMachineBuilder<TResult>
 
         // variables from other state-machines
 
-        foreach ( var parameterExpression in context.LoweringInfo.ExternVariables )
+        foreach ( var parameterExpression in context.LoweringInfo.ExternScopes.Items().Select( x => x.Value ) )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),

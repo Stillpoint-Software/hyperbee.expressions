@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using Hyperbee.Expressions.CompilerServices.Collections;
 using Hyperbee.Expressions.CompilerServices.Transitions;
 using Hyperbee.Expressions.Visitors;
 
@@ -19,12 +20,16 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private VariableResolver _variableResolver;
 
-    public LoweringInfo Transform( Type resultType, ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] externVariables )
+    public LoweringInfo Transform( 
+        Type resultType, 
+        ParameterExpression[] variables, 
+        Expression[] expressions,
+        LinkedDictionary<ParameterExpression, ParameterExpression> externScopes = null )
     {
         ArgumentNullException.ThrowIfNull( expressions, nameof( expressions ) );
         ArgumentOutOfRangeException.ThrowIfZero( expressions.Length, nameof( expressions ) );
 
-        _variableResolver = new VariableResolver( variables, _states );
+        _variableResolver = new VariableResolver( variables, externScopes, _states );
         _finalResultVariable = CreateFinalResultVariable( resultType, _variableResolver );
 
         VisitExpressions( expressions );
@@ -39,7 +44,7 @@ internal class LoweringVisitor : ExpressionVisitor
             HasFinalResultVariable = _hasFinalResultVariable,
             AwaitCount = _awaitCount,
             Variables = _variableResolver.GetMappedVariables(),
-            ExternVariables = externVariables
+            ExternScopes = externScopes
         };
 
         // helpers

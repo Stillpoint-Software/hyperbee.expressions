@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using Hyperbee.Expressions.CompilerServices.Collections;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -33,20 +34,28 @@ internal sealed class VariableResolver : ExpressionVisitor
 
     private const int InitialCapacity = 8;
 
-    private readonly Dictionary<ParameterExpression, ParameterExpression> _variableMap = new( InitialCapacity );
-    private readonly Dictionary<ParameterExpression, ParameterExpression> _externVariableMap = new( InitialCapacity );
+    private readonly Dictionary<Type, ParameterExpression> _awaiters = new( InitialCapacity );
+
     private readonly HashSet<ParameterExpression> _variables;
-    private readonly Stack<ICollection<ParameterExpression>> _variableBlockScope = new( InitialCapacity );
+
     private readonly StateContext _states;
 
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
+    
+    private readonly LinkedDictionary<ParameterExpression, ParameterExpression> _scopedVariables;
 
     private int _variableId;
 
-    public VariableResolver( ParameterExpression[] variables, StateContext states )
+    private readonly Dictionary<ParameterExpression, ParameterExpression> _variableMap = new( InitialCapacity );
+
+    public VariableResolver( 
+        ParameterExpression[] variables, 
+        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables, 
+        StateContext states )
     {
-        _states = states;
         _variables = [.. variables];
+        _scopedVariables = scopedVariables ?? [];
+        _states = states;
     }
 
     // Helpers
@@ -63,7 +72,13 @@ internal sealed class VariableResolver : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public Expression GetAwaiterVariable( Type type, int stateId )
     {
-        return AddVariable( Variable( type, VariableName.Awaiter( stateId, ref _variableId ) ) );
+        if( _awaiters.ContainsKey( type ) )
+            return _awaiters[type];
+
+        var awaiter = AddVariable( Variable( type, VariableName.Awaiter( stateId, ref _variableId ) ) );
+        _awaiters[type] = awaiter;
+
+        return AddVariable( awaiter );
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -104,13 +119,12 @@ internal sealed class VariableResolver : ExpressionVisitor
 
     protected override Expression VisitBlock( BlockExpression node )
     {
-        var newVars = CreateLocalVariables( node.Variables );
+        _scopedVariables.Push();
 
-        _variableBlockScope.Push( newVars );
-
+        var newVars = CreateExternVariables( node.Variables );
         var returnNode = base.VisitBlock( node.Update( newVars, node.Expressions ) );
 
-        _variableBlockScope.Pop();
+        _scopedVariables.Pop();
 
         return returnNode;
     }
@@ -118,14 +132,12 @@ internal sealed class VariableResolver : ExpressionVisitor
 #if FAST_COMPILER
     protected override Expression VisitLambda<T>( Expression<T> node )
     {
-        // Add Params to Externals
-        var newVars = CreateLocalVariables( node.Parameters );
+        _scopedVariables.Push();
 
-        _variableBlockScope.Push( newVars );
+        var newParams = CreateExternVariables( node.Parameters );
+        var returnNode = base.VisitLambda( node.Update( node.Body, newParams ) );
 
-        var returnNode = base.VisitLambda( node );
-
-        _variableBlockScope.Pop();
+        _scopedVariables.Pop();
 
         return returnNode;
     }
@@ -142,10 +154,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     {
         if ( node is AsyncBlockExpression asyncBlockExpression )
         {
-            asyncBlockExpression.ExternVariables = _variableBlockScope
-                .SelectMany( x => x )
-                .ToList()
-                .AsReadOnly();
+            asyncBlockExpression.ScopedVariables = _scopedVariables;
         }
 
         return base.VisitExtension( node );
@@ -200,16 +209,14 @@ internal sealed class VariableResolver : ExpressionVisitor
         return variable;
     }
 
-    List<ParameterExpression> CreateLocalVariables( ReadOnlyCollection<ParameterExpression> parameters )
+    private IEnumerable<ParameterExpression> CreateExternVariables( ReadOnlyCollection<ParameterExpression> parameters )
     {
-        var vars = new List<ParameterExpression>();
-
         foreach ( var variable in parameters )
         {
             if ( variable.Name!.StartsWith( "__extern." ) )
             {
-                vars.Add( variable );
-                _externVariableMap.TryAdd( variable, variable );
+                _scopedVariables.TryAdd( variable, variable );
+                yield return variable;
                 continue;
             }
 
@@ -218,11 +225,9 @@ internal sealed class VariableResolver : ExpressionVisitor
                 VariableName.ExternVariable( variable.Name, _states.TailState.StateId, ref _variableId )
             );
 
-            _externVariableMap.TryAdd( variable, newVar );
-            vars.Add( newVar );
+            _scopedVariables.TryAdd( variable, newVar );
+            yield return newVar;
         }
-
-        return vars;
     }
 
     private bool TryAddVariable(
@@ -232,7 +237,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     )
     {
         if ( _variableMap.TryGetValue( parameter, out updatedParameterExpression ) ||
-             _externVariableMap.TryGetValue( parameter, out updatedParameterExpression ) )
+             _scopedVariables.TryGetValue( parameter, out updatedParameterExpression ) )
         {
             return true;
         }
