@@ -41,16 +41,16 @@ internal sealed class VariableResolver : ExpressionVisitor
     private readonly StateContext _states;
 
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
-    
+
     private readonly LinkedDictionary<ParameterExpression, ParameterExpression> _scopedVariables;
 
     private int _variableId;
 
     private readonly Dictionary<ParameterExpression, ParameterExpression> _variableMap = new( InitialCapacity );
 
-    public VariableResolver( 
-        ParameterExpression[] variables, 
-        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables, 
+    public VariableResolver(
+        ParameterExpression[] variables,
+        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables,
         StateContext states )
     {
         _variables = [.. variables];
@@ -72,7 +72,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public Expression GetAwaiterVariable( Type type, int stateId )
     {
-        if( _awaiters.ContainsKey( type ) )
+        if ( _awaiters.ContainsKey( type ) )
             return _awaiters[type];
 
         var awaiter = AddVariable( Variable( type, VariableName.Awaiter( stateId, ref _variableId ) ) );

@@ -20,9 +20,9 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private VariableResolver _variableResolver;
 
-    public LoweringInfo Transform( 
-        Type resultType, 
-        ParameterExpression[] variables, 
+    public LoweringInfo Transform(
+        Type resultType,
+        ParameterExpression[] variables,
         Expression[] expressions,
         LinkedDictionary<ParameterExpression, ParameterExpression> externScopes = null )
     {

@@ -182,7 +182,7 @@ public class CompilerTests2
 #else
                 // sm.__awaiter = AwaitBinder.GetAwaiter<int>(ref Task.FromResult(42), false);
                 Assign(
-                    Field( smVar, nameof(StateMachine2.__awaiter1) ),
+                    Field( smVar, nameof( StateMachine2.__awaiter1 ) ),
                     Call(
                         binder.GetAwaiterMethod,
                         Constant( Task.FromResult( 42 ) ), // immediate result
@@ -381,7 +381,7 @@ public class CompilerTests2
 #else
                 // sm.__awaiter = AwaitBinder.GetAwaiter<int>(ref Task.FromResult(42), false);
                 Assign(
-                    Field( smVar, nameof(StateMachine2.__awaiter1) ),
+                    Field( smVar, nameof( StateMachine2.__awaiter1 ) ),
                     Call(
                         binder.GetAwaiterMethod,
                         Constant( Task.FromResult( 42 ) ), // immediate result
