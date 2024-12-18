@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Hyperbee.Expressions.CompilerServices.Collections;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -84,7 +85,7 @@ internal class StateMachineBuilder<TResult>
         };
 
         bodyExpression.AddRange( // Assign extern variables to state-machine
-            loweringInfo.ExternScopes.Items().Select( externVariable =>
+            loweringInfo.ExternScopes.Items( KeyScope.All ).Select( externVariable =>
                 Assign(
                     Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Value.Name ) ),
                     externVariable.Value
@@ -163,7 +164,7 @@ internal class StateMachineBuilder<TResult>
 
         // variables from other state-machines
 
-        foreach ( var parameterExpression in context.LoweringInfo.ExternScopes.Items().Select( x => x.Value ) )
+        foreach ( var parameterExpression in context.LoweringInfo.ExternScopes.Items( KeyScope.All ).Select( x => x.Value ) )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
