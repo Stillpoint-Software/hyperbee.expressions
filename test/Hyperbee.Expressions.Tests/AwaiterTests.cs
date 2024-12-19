@@ -369,6 +369,6 @@ public class AwaiterTests
 
     private static MethodInfo GetMethodInfo( string name )
     {
-        return typeof(AwaiterTests).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
+        return typeof( AwaiterTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
     }
 }

@@ -18,11 +18,11 @@ public class BlockAsyncBasicTests
     public async Task BlockAsync_ShouldAwaitSuccessfully_WithCompletedTask( CompleterType completer, CompilerType compiler )
     {
         // Arrange
-        var block = BlockAsync( 
+        var block = BlockAsync(
             Await( AsyncHelper.Completer(
                 Constant( completer ),
                 Constant( 1 )
-            ) ) 
+            ) )
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -396,18 +396,18 @@ public class BlockAsyncBasicTests
 
         var asyncBlock = BlockAsync(
             [variable],
-            Assign( 
-                variable, 
-                Await( Invoke( initVariableAsync ) ) 
+            Assign(
+                variable,
+                Await( Invoke( initVariableAsync ) )
             ),
-            IfThen( 
+            IfThen(
                 Await( Invoke( isTrueAsync ) ),
-                Assign( 
+                Assign(
                     variable,
-                    Await( Invoke( addAsync, variable, variable ) ) 
-                ) 
+                    Await( Invoke( addAsync, variable, variable ) )
+                )
             ),
-            variable 
+            variable
         );
 
         var lambda = (Lambda<Func<Task<int>>>( asyncBlock ).Reduce() as Expression<Func<Task<int>>>)!;
