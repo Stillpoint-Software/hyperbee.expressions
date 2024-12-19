@@ -14,51 +14,6 @@ public enum ExpressionKind
 [TestClass]
 public class AwaiterTests
 {
-    private static async Task Delay()
-    {
-        await Task.Delay( 10 );
-    }
-
-    private static async Task<int> GetNumberAsync()
-    {
-        await Task.Delay( 10 );
-        return 42;
-    }
-
-    private static async Task<int> AddTwoNumbersAsync( int a, int b )
-    {
-        await Task.Delay( 10 );
-        return a + b;
-    }
-
-    private static async Task<int> AddThreeNumbersAsync( int a, int b, int c )
-    {
-        await Task.Delay( 10 );
-        return a + b + c;
-    }
-
-    private static async Task<string> SayHelloAsync( int a )
-    {
-        await Task.Delay( 10 );
-        return $"Hello {a}";
-    }
-
-    private static int IncrementValue( int a )
-    {
-        return a + 1;
-    }
-
-    private static async Task<int> ThrowExceptionAsync()
-    {
-        await Task.Delay( 10 );
-        throw new InvalidOperationException( "Simulated exception." );
-    }
-
-    private static MethodInfo GetMethodInfo( string name )
-    {
-        return typeof( AwaiterTests ).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
-    }
-
     [TestMethod]
     public void GetAwaiterResult_NoParameters()
     {
@@ -368,5 +323,52 @@ public class AwaiterTests
         {
             Assert.Fail( $"Unexpected exception of type {ex.GetType()} was thrown." );
         }
+    }
+
+    // Helpers
+
+    private static async Task Delay()
+    {
+        await Task.Delay( 10 );
+    }
+
+    private static async Task<int> GetNumberAsync()
+    {
+        await Task.Delay( 10 );
+        return 42;
+    }
+
+    private static async Task<int> AddTwoNumbersAsync( int a, int b )
+    {
+        await Task.Delay( 10 );
+        return a + b;
+    }
+
+    private static async Task<int> AddThreeNumbersAsync( int a, int b, int c )
+    {
+        await Task.Delay( 10 );
+        return a + b + c;
+    }
+
+    private static async Task<string> SayHelloAsync( int a )
+    {
+        await Task.Delay( 10 );
+        return $"Hello {a}";
+    }
+
+    private static int IncrementValue( int a )
+    {
+        return a + 1;
+    }
+
+    private static async Task<int> ThrowExceptionAsync()
+    {
+        await Task.Delay( 10 );
+        throw new InvalidOperationException( "Simulated exception." );
+    }
+
+    private static MethodInfo GetMethodInfo( string name )
+    {
+        return typeof(AwaiterTests).GetMethod( name, BindingFlags.Static | BindingFlags.NonPublic )!;
     }
 }

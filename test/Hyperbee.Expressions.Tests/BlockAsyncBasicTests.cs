@@ -18,10 +18,13 @@ public class BlockAsyncBasicTests
     public async Task BlockAsync_ShouldAwaitSuccessfully_WithCompletedTask( CompleterType completer, CompilerType compiler )
     {
         // Arrange
-        var block = BlockAsync( Await( AsyncHelper.Completer(
-                        Constant( completer ),
-                        Constant( 1 )
-                    ) ) );
+        var block = BlockAsync( 
+            Await( AsyncHelper.Completer(
+                Constant( completer ),
+                Constant( 1 )
+            ) ) 
+        );
+
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile( compiler );
 
@@ -292,6 +295,7 @@ public class BlockAsyncBasicTests
             ),
             Label( returnLabel, Constant( 30 ) )
         );
+
         var lambda = Lambda<Func<Task<int>>>( block );
         var compiledLambda = lambda.Compile( compiler );
 
@@ -390,14 +394,21 @@ public class BlockAsyncBasicTests
 
         var variable = Variable( typeof( int ), "variable" );
 
-        var asyncBlock =
-            BlockAsync(
-                [variable],
-                Assign( variable, Await( Invoke( initVariableAsync ) ) ),
-                IfThen( Await( Invoke( isTrueAsync ) ),
-                    Assign( variable,
-                        Await( Invoke( addAsync, variable, variable ) ) ) ),
-                variable );
+        var asyncBlock = BlockAsync(
+            [variable],
+            Assign( 
+                variable, 
+                Await( Invoke( initVariableAsync ) ) 
+            ),
+            IfThen( 
+                Await( Invoke( isTrueAsync ) ),
+                Assign( 
+                    variable,
+                    Await( Invoke( addAsync, variable, variable ) ) 
+                ) 
+            ),
+            variable 
+        );
 
         var lambda = (Lambda<Func<Task<int>>>( asyncBlock ).Reduce() as Expression<Func<Task<int>>>)!;
         var compiledLambda = lambda.Compile();

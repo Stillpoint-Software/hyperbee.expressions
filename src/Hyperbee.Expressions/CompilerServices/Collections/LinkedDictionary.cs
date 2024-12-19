@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Immutable;
 
 namespace Hyperbee.Expressions.CompilerServices.Collections;
 
@@ -41,7 +40,7 @@ public interface ILinkedDictionary<TKey, TValue> : IDictionary<TKey, TValue>
 
 public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
 {
-    private ImmutableStack<LinkedDictionaryNode<TKey, TValue>> _scopes = [];
+    private readonly ConcurrentStack<LinkedDictionaryNode<TKey, TValue>> _scopes = new();
 
     public IEqualityComparer<TKey> Comparer { get; }
 
@@ -77,7 +76,7 @@ public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
     public LinkedDictionary( ILinkedDictionary<TKey, TValue> inner, IEnumerable<KeyValuePair<TKey, TValue>> collection )
     {
         Comparer = inner.Comparer;
-        _scopes = ImmutableStack.CreateRange( inner.Scopes() );
+        _scopes = new ConcurrentStack<LinkedDictionaryNode<TKey, TValue>>( inner.Scopes() );
 
         if ( collection != null )
             Push( collection );
@@ -102,14 +101,7 @@ public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
             Dictionary = dictionary
         };
 
-        ImmutableStack<LinkedDictionaryNode<TKey, TValue>> original, updated;
-
-        do
-        {
-            original = _scopes;
-            updated = original?.Push( newNode );
-        }
-        while ( Interlocked.CompareExchange( ref _scopes, updated, original ) != original );
+        _scopes.Push( newNode );
     }
 
     public LinkedDictionaryNode<TKey, TValue> Pop()
@@ -120,22 +112,7 @@ public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
 
     public bool TryPop( out LinkedDictionaryNode<TKey, TValue> scope )
     {
-        ImmutableStack<LinkedDictionaryNode<TKey, TValue>> original, updated;
-
-        do
-        {
-            if ( _scopes == null || _scopes.IsEmpty )
-            {
-                scope = default;
-                return false;
-            }
-
-            original = _scopes;
-            updated = original.Pop( out scope );
-        }
-        while ( Interlocked.CompareExchange( ref _scopes, updated, original ) != original );
-
-        return true;
+        return _scopes.TryPop( out scope );
     }
 
     // Counting
@@ -144,10 +121,10 @@ public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
     {
         return keyScope switch
         {
-            KeyScope.Current => _scopes.IsEmpty ? 0 : _scopes.Peek().Dictionary.Count,
+            KeyScope.Current => _scopes.TryPeek( out var top ) ? top.Dictionary.Count : 0,
             KeyScope.Closest => GetUniqueCount(),
             KeyScope.All => GetTotalCount(),
-            _ => throw new ArgumentOutOfRangeException( nameof( keyScope ) )
+            _ => throw new ArgumentOutOfRangeException( nameof(keyScope) )
         };
     }
 
@@ -157,10 +134,10 @@ public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
 
         return keyScope switch
         {
-            KeyScope.Current => _scopes.IsEmpty ? 0 : _scopes.Peek().Dictionary.Count( predicate ),
+            KeyScope.Current => _scopes.TryPeek( out var top ) ? top.Dictionary.Count( predicate ) : 0,
             KeyScope.Closest => GetUniqueCount( predicate ),
             KeyScope.All => GetTotalCount( predicate ),
-            _ => throw new ArgumentOutOfRangeException( nameof( keyScope ) )
+            _ => throw new ArgumentOutOfRangeException( nameof(keyScope) )
         };
     }
 
@@ -207,7 +184,7 @@ public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
 
     // ILinkedDictionary
 
-    public string Name => _scopes.PeekRef().Name;
+    public string Name => _scopes.TryPeek( out var top ) ? top.Name : throw new InvalidOperationException( "No scopes available." );
 
     public TValue this[TKey key, KeyScope keyScope]
     {
@@ -232,7 +209,13 @@ public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
             }
 
             // set in current node
-            _scopes.Peek().Dictionary[key] = value;
+
+            if ( !_scopes.TryPeek( out var current ) )
+            {
+                throw new InvalidOperationException( "No scopes available to set the value." );
+            }
+
+            current.Dictionary[key] = value;
         }
     }
 
@@ -271,11 +254,19 @@ public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
     {
         if ( options != KeyScope.Current && options != KeyScope.Closest )
         {
-            _scopes.Pop( out var node );
-            _scopes = [node];
+            if ( _scopes.TryPeek( out var node ) )
+            {
+                _scopes.Clear();
+                _scopes.Push( node );
+            }
         }
 
-        _scopes.PeekRef().Dictionary.Clear();
+        if ( !_scopes.TryPeek( out var current ) )
+        {
+            throw new InvalidOperationException( "No scopes available to clear." );
+        }
+
+        current.Dictionary.Clear();
     }
 
     public bool Remove( TKey key, KeyScope keyScope )

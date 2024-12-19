@@ -50,7 +50,7 @@ internal sealed class VariableResolver : ExpressionVisitor
         _scopedVariables = scopedVariables ?? [];
         _states = states;
 
-        // intialize the scoped variables with the local variables
+        // initialize the scoped variables with the local variables
         _scopedVariables.Push( variables.ToDictionary( x => x, CreateParameter ) );
     }
 
