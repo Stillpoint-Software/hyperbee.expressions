@@ -30,6 +30,8 @@ public class BenchmarkConfig
 
             AddDiagnoser( MemoryDiagnoser.Default );
 
+            AddLogicalGroupRules( BenchmarkLogicalGroupRule.ByCategory );
+
             Orderer = new DefaultOrderer( SummaryOrderPolicy.FastestToSlowest );
             ArtifactsPath = "benchmark";
         }

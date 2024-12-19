@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal static class AwaitBinderFactory
 {
@@ -112,7 +112,8 @@ internal static class AwaitBinderFactory
             awaitableType,
             WaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType ),
             GetAwaiterValueTaskResultMethod.MakeGenericMethod( awaiterResultType ),
-            GetResultValueTaskResultMethod.MakeGenericMethod( awaiterResultType ) );
+            GetResultValueTaskResultMethod.MakeGenericMethod( awaiterResultType )
+        );
     }
 
     private static AwaitBinder CreateTaskAwaitBinder( Type awaitableType )

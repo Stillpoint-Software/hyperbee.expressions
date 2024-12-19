@@ -2,9 +2,10 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Hyperbee.Expressions.CompilerServices.Collections;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 public interface IVoidResult; // Marker interface for void Task results
 public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
@@ -83,14 +84,16 @@ internal class StateMachineBuilder<TResult>
             )
         };
 
+        /*
         bodyExpression.AddRange( // Assign extern variables to state-machine
-            loweringInfo.ExternVariables.Select( externVariable =>
+            loweringInfo.ScopedVariables.Items( KeyScope.All ).Where( x => x.Key.Type == VariableType.Extern ).Select( externVariable =>
                 Assign(
-                    Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Name ) ),
-                    externVariable
+                    Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Value.Name ) ),
+                    externVariable.Value
                 )
             )
         );
+        */
 
         bodyExpression.AddRange( [
             Assign( // Set the state-machine moveNextDelegate
@@ -150,9 +153,16 @@ internal class StateMachineBuilder<TResult>
             FieldAttributes.Public
         );
 
-        // variables from this state-machine
+        // local variables in the current scope for this state-machine
 
-        foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>() )
+        var localVariables = context.LoweringInfo.ScopedVariables
+            .Items( KeyScope.Current )
+#if WITH_EXTERN_VARIABLES
+            .Where( x => x.Key.Type == VariableType.Local )
+#endif
+            .Select( x => x.Value );
+
+        foreach ( var parameterExpression in localVariables )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -161,9 +171,15 @@ internal class StateMachineBuilder<TResult>
             );
         }
 
+#if WITH_EXTERN_VARIABLES
         // variables from other state-machines
 
-        foreach ( var parameterExpression in context.LoweringInfo.ExternVariables )
+        var externVariables = context.LoweringInfo.ScopedVariables
+            .Items( KeyScope.Closest )
+            .Where( x => x.Key.Type == VariableType.Extern )
+            .Select( x => x.Value );
+
+        foreach ( var parameterExpression in externVariables )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
@@ -171,6 +187,7 @@ internal class StateMachineBuilder<TResult>
                 FieldAttributes.Public
             );
         }
+#endif
 
         // Define: methods
 

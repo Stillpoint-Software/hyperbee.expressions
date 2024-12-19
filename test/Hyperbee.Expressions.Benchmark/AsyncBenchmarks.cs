@@ -1,5 +1,7 @@
 ﻿using System.Linq.Expressions;
 using BenchmarkDotNet.Attributes;
+using DotNext.Linq.Expressions;
+using DotNext.Metaprogramming;
 using FastExpressionCompiler;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
@@ -8,9 +10,13 @@ namespace Hyperbee.Expressions.Benchmark;
 
 public class AsyncBenchmarks
 {
-    private Func<Task<int>> _compiledLambda = null!;
-    private Func<Task<int>> _fastCompiledLambda = null!;
+    private Func<Task<int>> _preRunCompiled = null!;
+    private Func<Task<int>> _preRunFastCompiled = null!;
+    private Func<Task<int>> _preRunNextCompiled = null!;
+    //private Func<Task<int>> _preRunNextFastCompiled = null!;
+
     private Expression<Func<Task<int>>> _lambda = null!;
+    private Expression<Func<Task<int>>> _nextlambda = null!;
 
     private Expression _expression = null!;
 
@@ -32,55 +38,117 @@ public class AsyncBenchmarks
                         Await( Call( asyncAddMethodInfo, variable, variable ) ) ) ),
                 variable );
 
-        _lambda = (Lambda<Func<Task<int>>>( _expression ).Reduce() as Expression<Func<Task<int>>>)!;
+        _lambda = Lambda<Func<Task<int>>>( _expression );
 
-        _compiledLambda = _lambda.Compile();
+        _nextlambda = CodeGenerator.AsyncLambda<Func<Task<int>>>( ( _, result ) =>
+        {
+            var isTrue = CodeGenerator.DeclareVariable( "isTrue", typeof( bool ).New() );
 
-        _fastCompiledLambda = _lambda.CompileFast();
+            CodeGenerator.Assign( result, typeof( AsyncBenchmarks )
+                .CallStatic( nameof( InitVariableAsync ) )
+                .Await()
+            );
+
+            CodeGenerator.Assign( isTrue, typeof( AsyncBenchmarks )
+                .CallStatic( nameof( IsTrueAsync ) )
+                .Await()
+            );
+
+            CodeGenerator.IfThen( isTrue, () =>
+            {
+                CodeGenerator.Assign( result, typeof( AsyncBenchmarks )
+                    .CallStatic( nameof( AddAsync ), result, result )
+                    .Await()
+                );
+            } );
+        } );
+
+        // build and call once for warmup
+
+        _preRunCompiled = _lambda.Compile();
+        _preRunFastCompiled = _lambda.CompileFast();
+        _preRunNextCompiled = _nextlambda.Compile();
+        //_preRunFastNextCompiled = _nextlambda.CompileFast();
+
+        Warmup( _preRunCompiled, _preRunFastCompiled, _preRunNextCompiled );
+
+        return;
+
+        // Helpers
+
+        static void Warmup( params Func<Task<int>>[] funcs )
+        {
+            foreach ( var func in funcs )
+            {
+                func().Wait();
+            }
+        }
     }
 
-    [Benchmark]
-    public async Task Hyperbee_AsyncBlock_First_CompileAndExecute()
-    {
-        var compiled = _lambda.Compile();
-        await compiled();
-    }
+    // Compile
 
-    [Benchmark]
-    public async Task Hyperbee_AsyncBlock_First_FastCompileAndExecute()
-    {
-        var compiled = _lambda.CompileFast();
-        await compiled();
-    }
-
-    [Benchmark]
+    [BenchmarkCategory( "Compile" )]
+    [Benchmark( Description = "Hyperbee Compile" )]
     public void Hyperbee_AsyncBlock_Compile()
     {
         _lambda.Compile();
     }
 
-    [Benchmark]
+    [BenchmarkCategory( "Compile" )]
+    [Benchmark( Description = "Hyperbee Fast Compile", Baseline = true )]
     public void Hyperbee_AsyncBlock_FastCompile()
     {
         _lambda.CompileFast();
     }
 
-    [Benchmark]
+    [BenchmarkCategory( "Compile" )]
+    [Benchmark( Description = "DotNext Compile" )]
+    public void DotNext_AsyncLambda_Compile()
+    {
+        _nextlambda.Compile();
+    }
+
+    // Execute
+
+    [BenchmarkCategory( "Execute" )]
+    [Benchmark( Description = "Native Execute", Baseline = true )]
+    public async Task Native_Async_Execute()
+    {
+        await NativeTestAsync();
+    }
+
+    [BenchmarkCategory( "Execute" )]
+    [Benchmark( Description = "Hyperbee Execute" )]
     public async Task Hyperbee_AsyncBlock_Execute()
     {
-        await _compiledLambda();
+        await _preRunCompiled();
     }
 
-    [Benchmark]
+    [BenchmarkCategory( "Execute" )]
+    [Benchmark( Description = "Hyperbee Fast Execute" )]
     public async Task Hyperbee_AsyncBlock_FastExecute()
     {
-        await _fastCompiledLambda();
+        await _preRunFastCompiled();
     }
 
-    [Benchmark]
-    public async Task Compiled_Async_Execute()
+    [BenchmarkCategory( "Execute" )]
+    [Benchmark( Description = "DotNext Execute" )]
+    public async Task DotNext_AsyncLambda_Execute()
     {
-        await CompiledTestAsync();
+        await _preRunNextCompiled();
+    }
+
+    // Helpers
+
+    public static async Task<int> NativeTestAsync()
+    {
+        var variable = await InitVariableAsync();
+        if ( await IsTrueAsync() )
+        {
+            variable = await AddAsync( variable, variable );
+        }
+
+        return variable;
     }
 
     public static Task<int> InitVariableAsync()
@@ -90,23 +158,11 @@ public class AsyncBenchmarks
 
     public static Task<bool> IsTrueAsync()
     {
-        var value = Random.Shared.Next( 0, 10 );
-        return Task.FromResult( value % 2 == 0 );
+        return Task.FromResult( true );
     }
 
     public static Task<int> AddAsync( int a, int b )
     {
         return Task.FromResult( a + b );
-    }
-
-    public static async Task<int> CompiledTestAsync()
-    {
-        var variable = await InitVariableAsync();
-        if ( await IsTrueAsync() )
-        {
-            variable = await AddAsync( variable, variable );
-        }
-
-        return variable;
     }
 }

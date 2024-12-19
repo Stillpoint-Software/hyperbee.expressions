@@ -1,9 +1,9 @@
 ﻿using System.Linq.Expressions;
-using Hyperbee.Expressions.Transformation.Transitions;
+using Hyperbee.Expressions.CompilerServices.Transitions;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
-internal sealed class StateOptimizer
+internal static class StateOptimizer
 {
     internal static void Optimize( StateContext states )
     {
@@ -77,7 +77,6 @@ internal sealed class StateOptimizer
 
             foreach ( var jumpCase in scope.JumpCases ) // jump cases
             {
-                references.Add( jumpCase.ContinueLabel );
                 references.Add( jumpCase.ResultLabel );
             }
         }
