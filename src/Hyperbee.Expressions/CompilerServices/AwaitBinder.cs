@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal delegate TAwaiter AwaitBinderGetAwaiterDelegate<TAwaitable, out TAwaiter>( ref TAwaitable awaitable, bool configureAwait );
 internal delegate TResult AwaitBinderGetResultDelegate<TAwaiter, out TResult>( ref TAwaiter awaiter );
@@ -30,9 +30,22 @@ internal class AwaitBinder
         GetResultMethod = getResultMethod;
         GetAwaiterImplDelegate = getAwaiterImplDelegate;
         GetResultImplDelegate = getResultImplDelegate;
+
+        // Pre-jit methods and delegates
+        // This saves a little time when the methods are executed for the first time
+
+        RuntimeHelpers.PrepareMethod( WaitMethod.MethodHandle );
+        RuntimeHelpers.PrepareMethod( GetAwaiterMethod.MethodHandle );
+        RuntimeHelpers.PrepareMethod( GetResultMethod.MethodHandle );
+
+        if ( getAwaiterImplDelegate != null )
+            RuntimeHelpers.PrepareDelegate( getAwaiterImplDelegate );
+
+        if ( getResultImplDelegate != null )
+            RuntimeHelpers.PrepareDelegate( getResultImplDelegate );
     }
 
-    // Await methods
+    // Wait methods
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     internal void Wait<TAwaitable, TAwaiter>( ref TAwaitable awaitable, bool configureAwait )

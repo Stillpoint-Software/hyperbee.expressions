@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace Hyperbee.Expressions.Transformation.Transitions;
+namespace Hyperbee.Expressions.CompilerServices.Transitions;
 
 internal class GotoTransition : Transition
 {

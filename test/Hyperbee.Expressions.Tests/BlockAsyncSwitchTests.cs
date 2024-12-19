@@ -8,13 +8,15 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockAsyncSwitchTests
 {
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValue( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValue( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the switch value
-        var switchValue = Await( AsyncHelper.Completable(
-            Constant( immediateFlag ),
+        var switchValue = Await( AsyncHelper.Completer(
+            Constant( completer ),
             Constant( 1 )
         ) );
         var block = BlockAsync(
@@ -26,7 +28,7 @@ public class BlockAsyncSwitchTests
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -36,17 +38,19 @@ public class BlockAsyncSwitchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInDefaultBody( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInDefaultBody( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Default case contains an awaited task
         var switchValue = Constant( 3 ); // No case matches this value
         var block = BlockAsync(
             Switch(
                 switchValue,
-                Await( AsyncHelper.Completable(
-                    Constant( immediateFlag ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 99 )
                 ) ), // Default body
                 SwitchCase( Constant( 10 ), Constant( 1 ) ),
@@ -54,7 +58,7 @@ public class BlockAsyncSwitchTests
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -64,9 +68,11 @@ public class BlockAsyncSwitchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchCaseBody( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchCaseBody( CompleterType completer, CompilerType compiler )
     {
         // Arrange: One of the case bodies contains an awaited task
         var switchValue = Constant( 1 );
@@ -75,8 +81,8 @@ public class BlockAsyncSwitchTests
                 switchValue,
                 Constant( 0 ),
                 SwitchCase(
-                    Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 100 )
                     ) ),
                     Constant( 1 )
@@ -85,7 +91,7 @@ public class BlockAsyncSwitchTests
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -95,19 +101,21 @@ public class BlockAsyncSwitchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValueAndCaseBody( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValueAndCaseBody( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await both in switch value and case body
-        var switchValue = Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 2 ) ) );
+        var switchValue = Await( AsyncHelper.Completer( Constant( completer ), Constant( 2 ) ) );
         var block = BlockAsync(
             Switch(
                 switchValue,
                 Constant( 0 ),
                 SwitchCase(
-                    Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 50 )
                     ) ),
                     Constant( 2 )
@@ -116,7 +124,7 @@ public class BlockAsyncSwitchTests
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -126,9 +134,11 @@ public class BlockAsyncSwitchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedSwitchesAndAwaits( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedSwitchesAndAwaits( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Outer and inner switch cases involve awaited tasks
         var switchValue = Constant( 1 );
@@ -136,8 +146,8 @@ public class BlockAsyncSwitchTests
             Constant( 1 ),
             Constant( 0 ),
             SwitchCase(
-                Await( AsyncHelper.Completable(
-                    Constant( immediateFlag ),
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
                     Constant( 30 )
                 ) ),
                 Constant( 1 )
@@ -153,7 +163,7 @@ public class BlockAsyncSwitchTests
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -163,10 +173,12 @@ public class BlockAsyncSwitchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
     [ExpectedException( typeof( ArgumentException ) )]
-    public async Task AsyncBlock_ShouldThrowException_WithAwaitInSwitchCaseTestValues( bool immediateFlag )
+    public async Task AsyncBlock_ShouldThrowException_WithAwaitInSwitchCaseTestValues( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Switch case test values cannot contain awaited tasks
         var block = Switch(
@@ -175,8 +187,8 @@ public class BlockAsyncSwitchTests
             SwitchCase(
                 Constant( 10 ),
                 Await( BlockAsync(
-                    Await( AsyncHelper.Completable(
-                        Constant( immediateFlag ),
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
                         Constant( 1 )
                     ) )
                 ) )
@@ -184,21 +196,23 @@ public class BlockAsyncSwitchTests
             SwitchCase( Constant( 20 ), Constant( 2 ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         await compiledLambda();
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldUseAwaitedValue_WithComplexExpressionInSwitchTestValues( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldUseAwaitedValue_WithComplexExpressionInSwitchTestValues( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Complex expression affects the switch value
         var switchValue = Add(
-            Await( AsyncHelper.Completable(
-                Constant( immediateFlag ),
+            Await( AsyncHelper.Completer(
+                Constant( completer ),
                 Constant( 2 )
             ) ),
             Constant( 1 )
@@ -212,7 +226,7 @@ public class BlockAsyncSwitchTests
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -246,14 +260,16 @@ public class BlockAsyncSwitchTests
     }
 
     [DataTestMethod]
-    [DataRow( true )]
-    [DataRow( false )]
-    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeAndAfterSwitch( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeAndAfterSwitch( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Awaiting tasks before and after the switch expression
         var block = BlockAsync(
-            Await( AsyncHelper.Completable(
-                Constant( immediateFlag ),
+            Await( AsyncHelper.Completer(
+                Constant( completer ),
                 Constant( 5 )
             ) ),
             Switch(
@@ -262,10 +278,10 @@ public class BlockAsyncSwitchTests
                 SwitchCase( Constant( 10 ), Constant( 1 ) ),
                 SwitchCase( Constant( 20 ), Constant( 2 ) )
             ),
-            Await( AsyncHelper.Completable( Constant( immediateFlag ), Constant( 15 ) ) )
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 15 ) ) )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -273,4 +289,5 @@ public class BlockAsyncSwitchTests
         // Assert
         Assert.AreEqual( 15, result ); // The last awaited value should be 15
     }
+
 }

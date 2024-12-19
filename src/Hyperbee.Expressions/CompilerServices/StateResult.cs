@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal sealed class StateResult
 {

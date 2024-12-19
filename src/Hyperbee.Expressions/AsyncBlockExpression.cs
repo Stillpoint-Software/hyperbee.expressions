@@ -1,7 +1,8 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq.Expressions;
-using Hyperbee.Expressions.Transformation;
+using Hyperbee.Expressions.CompilerServices;
+using Hyperbee.Expressions.CompilerServices.Collections;
 
 namespace Hyperbee.Expressions;
 
@@ -13,7 +14,8 @@ public class AsyncBlockExpression : Expression
 
     public ReadOnlyCollection<Expression> Expressions { get; }
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
-    internal ReadOnlyCollection<ParameterExpression> ExternVariables { get; set; }
+
+    internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
 
     public Expression Result => Expressions[^1];
 
@@ -25,7 +27,7 @@ public class AsyncBlockExpression : Expression
     internal AsyncBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
         ReadOnlyCollection<Expression> expressions,
-        ReadOnlyCollection<ParameterExpression> externVariables
+        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables
     )
     {
         if ( expressions == null || expressions.Count == 0 )
@@ -33,7 +35,7 @@ public class AsyncBlockExpression : Expression
 
         Variables = variables;
         Expressions = expressions;
-        ExternVariables = externVariables;
+        ScopedVariables = scopedVariables;
 
         _taskType = GetTaskType( Result.Type );
     }
@@ -59,7 +61,7 @@ public class AsyncBlockExpression : Expression
                 Result.Type,
                 [.. Variables],
                 [.. Expressions],
-                ExternVariables != null ? [.. ExternVariables] : []
+                ScopedVariables ?? []
             );
         }
         catch ( LoweringException ex )
@@ -76,7 +78,7 @@ public class AsyncBlockExpression : Expression
         if ( Compare( newVariables, Variables ) && Compare( newExpressions, Expressions ) )
             return this;
 
-        return new AsyncBlockExpression( newVariables, newExpressions, ExternVariables );
+        return new AsyncBlockExpression( newVariables, newExpressions, ScopedVariables );
     }
 
     internal static bool Compare<T>( ICollection<T> compare, IReadOnlyList<T> current )

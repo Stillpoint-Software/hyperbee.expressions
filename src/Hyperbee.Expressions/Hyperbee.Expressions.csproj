@@ -21,6 +21,10 @@
     <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);FAST_COMPILER</DefineConstants>
+  </PropertyGroup>
+  
   <ItemGroup>
     <None Update="$(MSBuildProjectName).csproj.DotSettings" Visible="false" />
   </ItemGroup>
