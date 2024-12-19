@@ -76,7 +76,7 @@ public class AsyncBenchmarks
 
         // Helpers
 
-        void Warmup( params Func<Task<int>>[] funcs )
+        static void Warmup( params Func<Task<int>>[] funcs )
         {
             foreach ( var func in funcs )
             {

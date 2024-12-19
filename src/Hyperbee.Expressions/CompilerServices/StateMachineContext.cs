@@ -22,10 +22,22 @@ internal record StateMachineInfo(
 internal record LoweringInfo
 {
     public IReadOnlyList<StateContext.Scope> Scopes { get; init; }
-    public IReadOnlyCollection<Expression> Variables { get; init; }
-    public LinkedDictionary<ParameterExpression, ParameterExpression> ExternScopes { get; init; }
+
+#if WITH_EXTERN_VARIABLES
+    public LinkedDictionary<VariableKey, ParameterExpression> ScopedVariables { get; init; }
+#endif
+    public LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; init; }
 
     public int AwaitCount { get; init; }
     public bool HasFinalResultVariable { get; init; }
-
 }
+
+#if WITH_EXTERN_VARIABLES
+public enum VariableType
+{
+    Extern,
+    Local
+}
+
+public record struct VariableKey( VariableType Type, ParameterExpression Parameter );
+#endif

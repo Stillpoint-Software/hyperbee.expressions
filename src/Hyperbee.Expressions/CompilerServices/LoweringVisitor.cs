@@ -22,14 +22,19 @@ internal class LoweringVisitor : ExpressionVisitor
 
     public LoweringInfo Transform(
         Type resultType,
-        ParameterExpression[] variables,
+        ParameterExpression[] localVariables,
         Expression[] expressions,
-        LinkedDictionary<ParameterExpression, ParameterExpression> externScopes = null )
+#if WITH_EXTERN_VARIABLES
+        LinkedDictionary<VariableKey, ParameterExpression> scopedVariables = null 
+#else
+        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables = null
+#endif
+        )
     {
         ArgumentNullException.ThrowIfNull( expressions, nameof( expressions ) );
         ArgumentOutOfRangeException.ThrowIfZero( expressions.Length, nameof( expressions ) );
 
-        _variableResolver = new VariableResolver( variables, externScopes, _states );
+        _variableResolver = new VariableResolver( localVariables, scopedVariables, _states );
         _finalResultVariable = CreateFinalResultVariable( resultType, _variableResolver );
 
         VisitExpressions( expressions );
@@ -43,8 +48,7 @@ internal class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes,
             HasFinalResultVariable = _hasFinalResultVariable,
             AwaitCount = _awaitCount,
-            Variables = _variableResolver.GetMappedVariables(),
-            ExternScopes = externScopes
+            ScopedVariables = scopedVariables
         };
 
         // helpers

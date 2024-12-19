@@ -36,26 +36,38 @@ internal sealed class VariableResolver : ExpressionVisitor
 
     private readonly Dictionary<Type, ParameterExpression> _awaiters = new( InitialCapacity );
 
-    private readonly HashSet<ParameterExpression> _variables;
-
     private readonly StateContext _states;
 
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
 
+
+#if WITH_EXTERN_VARIABLES
+    private readonly LinkedDictionary<VariableKey, ParameterExpression> _scopedVariables;
+#else
     private readonly LinkedDictionary<ParameterExpression, ParameterExpression> _scopedVariables;
+#endif
 
     private int _variableId;
 
-    private readonly Dictionary<ParameterExpression, ParameterExpression> _variableMap = new( InitialCapacity );
-
     public VariableResolver(
         ParameterExpression[] variables,
+#if WITH_EXTERN_VARIABLES
+        LinkedDictionary<VariableKey, ParameterExpression> scopedVariables,
+#else
         LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables,
+#endif
         StateContext states )
     {
-        _variables = [.. variables];
         _scopedVariables = scopedVariables ?? [];
         _states = states;
+
+#if WITH_EXTERN_VARIABLES
+        // intialize the scoped variables with the local variables
+        _scopedVariables.Push( variables.ToDictionary( x => new VariableKey( VariableType.Local, x ), CreateParameter ) );
+#else
+        // intialize the scoped variables with the local variables
+        _scopedVariables.Push( variables.ToDictionary( x => x, CreateParameter ) );
+#endif
     }
 
     // Helpers
@@ -72,10 +84,10 @@ internal sealed class VariableResolver : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public Expression GetAwaiterVariable( Type type, int stateId )
     {
-        if ( _awaiters.ContainsKey( type ) )
-            return _awaiters[type];
+        if ( _awaiters.TryGetValue( type, out var awaiter ) )
+            return awaiter;
 
-        var awaiter = AddVariable( Variable( type, VariableName.Awaiter( stateId, ref _variableId ) ) );
+        awaiter = AddVariable( Variable( type, VariableName.Awaiter( stateId, ref _variableId ) ) );
         _awaiters[type] = awaiter;
 
         return AddVariable( awaiter );
@@ -117,6 +129,7 @@ internal sealed class VariableResolver : ExpressionVisitor
         return _labels.TryGetValue( node.Target, out label );
     }
 
+#if WITH_EXTERN_VARIABLES
     protected override Expression VisitBlock( BlockExpression node )
     {
         _scopedVariables.Push();
@@ -141,6 +154,7 @@ internal sealed class VariableResolver : ExpressionVisitor
 
         return returnNode;
     }
+#endif
 #endif
 
     protected override Expression VisitParameter( ParameterExpression node )
@@ -177,17 +191,15 @@ internal sealed class VariableResolver : ExpressionVisitor
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public IReadOnlyCollection<Expression> GetMappedVariables()
-    {
-        return _variableMap.Values;
-    }
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public void AddLocalVariables( IEnumerable<ParameterExpression> variables )
     {
         foreach ( var variable in variables )
         {
-            _variables.Add( variable );
+#if WITH_EXTERN_VARIABLES
+            _scopedVariables.Add( new VariableKey( VariableType.Local, variable ), variable );
+#else
+            _scopedVariables.Add( variable, variable );
+#endif
         }
     }
 
@@ -202,20 +214,30 @@ internal sealed class VariableResolver : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     private ParameterExpression AddVariable( ParameterExpression variable )
     {
-        if ( _variableMap.TryGetValue( variable, out var existingVariable ) )
+#if WITH_EXTERN_VARIABLES
+        var key = new VariableKey( VariableType.Local, variable );
+        if ( _scopedVariables.TryGetValue( key, out var existingVariable ) )
             return existingVariable;
 
-        _variableMap[variable] = variable;
+        _scopedVariables[key] = variable;
         return variable;
+#else
+        if ( _scopedVariables.TryGetValue( variable, out var existingVariable ) )
+            return existingVariable;
+
+        _scopedVariables[variable] = variable;
+        return variable;
+#endif
     }
 
+#if WITH_EXTERN_VARIABLES
     private IEnumerable<ParameterExpression> CreateExternVariables( ReadOnlyCollection<ParameterExpression> parameters )
     {
         foreach ( var variable in parameters )
         {
             if ( variable.Name!.StartsWith( "__extern." ) )
             {
-                _scopedVariables.TryAdd( variable, variable );
+                _scopedVariables.TryAdd( new VariableKey( VariableType.Extern, variable), variable );
                 yield return variable;
                 continue;
             }
@@ -225,10 +247,11 @@ internal sealed class VariableResolver : ExpressionVisitor
                 VariableName.ExternVariable( variable.Name, _states.TailState.StateId, ref _variableId )
             );
 
-            _scopedVariables.TryAdd( variable, newVar );
+            _scopedVariables.TryAdd( new VariableKey(VariableType.Extern, variable), newVar );
             yield return newVar;
         }
     }
+#endif
 
     private bool TryAddVariable(
         ParameterExpression parameter,
@@ -236,20 +259,28 @@ internal sealed class VariableResolver : ExpressionVisitor
         out ParameterExpression updatedParameterExpression
     )
     {
-        if ( _variableMap.TryGetValue( parameter, out updatedParameterExpression ) ||
-             _scopedVariables.TryGetValue( parameter, out updatedParameterExpression ) )
+        if ( _scopedVariables.TryGetValue( parameter, out updatedParameterExpression ) )
         {
             return true;
         }
 
-        if ( _variables == null || !_variables.Contains( parameter ) )
+
+#if WITH_EXTERN_VARIABLES
+        var localKey = new VariableKey( VariableType.Local, parameter );
+
+        if ( _scopedVariables.TryGetValue( localKey, out updatedParameterExpression ) )
         {
-            return false;
+            return true;
         }
 
-        updatedParameterExpression = createParameter( parameter );
-        _variableMap[parameter] = updatedParameterExpression;
+        var externKey = new VariableKey( VariableType.Extern, parameter );
 
-        return true;
+        if ( _scopedVariables.TryGetValue( externKey, out updatedParameterExpression ) )
+        {
+            return true;
+        }
+#endif
+
+        return false;
     }
 }

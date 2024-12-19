@@ -13,7 +13,7 @@ public enum KeyScope
     All
 }
 
-public record LinkedDictionaryNode<TKey, TValue>
+public readonly record struct LinkedDictionaryNode<TKey, TValue>
 {
     public string Name { get; init; }
     public IDictionary<TKey, TValue> Dictionary { get; init; }
@@ -41,7 +41,7 @@ public interface ILinkedDictionary<TKey, TValue> : IDictionary<TKey, TValue>
 
 public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
 {
-    private ImmutableStack<LinkedDictionaryNode<TKey, TValue>> _scopes = ImmutableStack<LinkedDictionaryNode<TKey, TValue>>.Empty;
+    private ImmutableStack<LinkedDictionaryNode<TKey, TValue>> _scopes = [];
 
     public IEqualityComparer<TKey> Comparer { get; }
 

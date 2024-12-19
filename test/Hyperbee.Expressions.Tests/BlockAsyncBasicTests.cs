@@ -204,8 +204,7 @@ public class BlockAsyncBasicTests
         // Arrange
         var var1 = Variable( typeof( int ), "var1" );
         var var2 = Variable( typeof( int ), "var2" );
-        var t = Task.FromResult( 1 );
-        t.GetAwaiter();
+
         // uses variables from both outer blocks
         var mostInnerBlock = Lambda<Func<Task>>(
             BlockAsync(
@@ -455,9 +454,11 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    [DataRow( CompilerType.Fast )]
-    [DataRow( CompilerType.System )]
-    public async Task BlockAsync_ShouldAllowParallelBlocks_WithTaskWhenAll( CompilerType compiler )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task BlockAsync_ShouldAllowParallelBlocks_WithTaskWhenAll( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var tracker = Variable( typeof( int[] ), "tracker" );
@@ -466,13 +467,11 @@ public class BlockAsyncBasicTests
         var tasks = Variable( typeof( List<Task> ), "tasks" );
         var i = Variable( typeof( int ), "i" );
 
-        var delayMethod = typeof( Task ).GetMethod( nameof( Task.Delay ), BindingFlags.Public | BindingFlags.Static, [typeof( int )] );
-
         var taskRun = Call(
             typeof( Task ).GetMethod( nameof( Task.Run ), [typeof( Func<Task> )] )!,
             Lambda<Func<Task>>(
                 BlockAsync(
-                    Await( Call( delayMethod!, Constant( 10 ) ) ),
+                    Await( AsyncHelper.Completer( Constant( completer ) ) ),
                     Assign( ArrayAccess( tracker, temp ), temp )
                 )
             )

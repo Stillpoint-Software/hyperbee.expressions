@@ -14,8 +14,12 @@ public class AsyncBlockExpression : Expression
 
     public ReadOnlyCollection<Expression> Expressions { get; }
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
-    internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
 
+#if WITH_EXTERN_VARIABLES
+    internal LinkedDictionary<VariableKey, ParameterExpression> ScopedVariables { get; set; }
+#else
+    internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
+#endif
     public Expression Result => Expressions[^1];
 
     internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
@@ -26,7 +30,11 @@ public class AsyncBlockExpression : Expression
     internal AsyncBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
         ReadOnlyCollection<Expression> expressions,
+#if WITH_EXTERN_VARIABLES
+        LinkedDictionary<VariableKey, ParameterExpression> scopedVariables
+#else
         LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables
+#endif
     )
     {
         if ( expressions == null || expressions.Count == 0 )
@@ -56,14 +64,11 @@ public class AsyncBlockExpression : Expression
         {
             var visitor = new LoweringVisitor();
 
-            var scope = ScopedVariables ?? [];
-            scope.Push();
-
             return visitor.Transform(
                 Result.Type,
                 [.. Variables],
                 [.. Expressions],
-                scope
+                ScopedVariables ?? []
             );
         }
         catch ( LoweringException ex )
