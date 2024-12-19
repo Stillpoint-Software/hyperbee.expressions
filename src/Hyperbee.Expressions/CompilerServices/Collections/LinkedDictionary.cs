@@ -5,20 +5,20 @@ namespace Hyperbee.Expressions.CompilerServices.Collections;
 
 // a dictionary comprised of a stack of dictionaries
 
-public enum KeyScope
+internal enum KeyScope
 {
     Current,
     Closest,
     All
 }
 
-public readonly record struct LinkedDictionaryNode<TKey, TValue>
+internal readonly record struct LinkedDictionaryNode<TKey, TValue>
 {
     public string Name { get; init; }
     public IDictionary<TKey, TValue> Dictionary { get; init; }
 }
 
-public interface ILinkedDictionary<TKey, TValue> : IDictionary<TKey, TValue>
+internal interface ILinkedDictionary<TKey, TValue> : IDictionary<TKey, TValue>
 {
     IEqualityComparer<TKey> Comparer { get; }
 
@@ -38,7 +38,7 @@ public interface ILinkedDictionary<TKey, TValue> : IDictionary<TKey, TValue>
     bool TryPop( out LinkedDictionaryNode<TKey, TValue> scope );
 }
 
-public class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
+internal class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
 {
     private readonly ConcurrentStack<LinkedDictionaryNode<TKey, TValue>> _scopes = new();
 
