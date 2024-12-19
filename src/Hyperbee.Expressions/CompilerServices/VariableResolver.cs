@@ -51,8 +51,8 @@ internal sealed class VariableResolver : ExpressionVisitor
         _states = states;
 
         // initialize the scoped variables with the local variables
-        _scopedVariables.Push( 
-            variables.Select( x => new KeyValuePair<ParameterExpression, ParameterExpression>( x, CreateParameter(x) ) ) 
+        _scopedVariables.Push(
+            variables.Select( x => new KeyValuePair<ParameterExpression, ParameterExpression>( x, CreateParameter( x ) ) )
         );
     }
 
