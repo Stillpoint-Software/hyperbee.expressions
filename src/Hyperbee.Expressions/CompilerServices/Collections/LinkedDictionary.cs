@@ -29,6 +29,7 @@ internal interface ILinkedDictionary<TKey, TValue> : IDictionary<TKey, TValue>
     IEnumerable<KeyValuePair<TKey, TValue>> Items( KeyScope keyScope, Predicate<KeyValuePair<TKey, TValue>> filter );
 
     TValue this[TKey key, KeyScope keyScope] { set; }
+
     void Clear( KeyScope keyScope );
     bool Remove( TKey key, KeyScope keyScope );
 

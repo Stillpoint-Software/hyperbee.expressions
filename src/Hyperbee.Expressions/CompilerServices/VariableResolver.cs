@@ -25,8 +25,8 @@ internal sealed class VariableResolver : ExpressionVisitor
         [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
 
-        [MethodImpl( MethodImplOptions.AggressiveInlining )]
-        public static string ExternVariable( string name, int stateId, ref int variableId ) => $"__extern.{name}<{stateId}_{variableId++}>";
+        //[MethodImpl( MethodImplOptions.AggressiveInlining )]
+        //public static string ExternVariable( string name, int stateId, ref int variableId ) => $"__extern.{name}<{stateId}_{variableId++}>";
 
         public const string FinalResult = "__final<>";
     }
@@ -51,7 +51,9 @@ internal sealed class VariableResolver : ExpressionVisitor
         _states = states;
 
         // initialize the scoped variables with the local variables
-        _scopedVariables.Push( variables.ToDictionary( x => x, CreateParameter ) );
+        _scopedVariables.Push( 
+            variables.Select( x => new KeyValuePair<ParameterExpression, ParameterExpression>( x, CreateParameter(x) ) ) 
+        );
     }
 
     // Helpers
@@ -116,9 +118,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     protected override Expression VisitParameter( ParameterExpression node )
     {
         if ( _scopedVariables.TryGetValue( node, out var updatedParameter ) )
-        {
             return updatedParameter;
-        }
 
         return base.VisitParameter( node );
     }
@@ -126,9 +126,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     protected override Expression VisitExtension( Expression node )
     {
         if ( node is AsyncBlockExpression asyncBlockExpression )
-        {
             asyncBlockExpression.ScopedVariables = _scopedVariables;
-        }
 
         return base.VisitExtension( node );
     }
