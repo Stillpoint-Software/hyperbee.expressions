@@ -155,11 +155,9 @@ internal class StateMachineBuilder<TResult>
 
         // local variables in the current scope for this state-machine
 
-        var localVariables = context.LoweringInfo.ScopedVariables
+        var localVariables = context.LoweringInfo
+            .ScopedVariables
             .Items( KeyScope.Current )
-#if WITH_EXTERN_VARIABLES
-            .Where( x => x.Key.Type == VariableType.Local )
-#endif
             .Select( x => x.Value );
 
         foreach ( var parameterExpression in localVariables )
@@ -170,24 +168,6 @@ internal class StateMachineBuilder<TResult>
                 FieldAttributes.Public
             );
         }
-
-#if WITH_EXTERN_VARIABLES
-        // variables from other state-machines
-
-        var externVariables = context.LoweringInfo.ScopedVariables
-            .Items( KeyScope.Closest )
-            .Where( x => x.Key.Type == VariableType.Extern )
-            .Select( x => x.Value );
-
-        foreach ( var parameterExpression in externVariables )
-        {
-            typeBuilder.DefineField(
-                parameterExpression.Name ?? parameterExpression.ToString(),
-                parameterExpression.Type,
-                FieldAttributes.Public
-            );
-        }
-#endif
 
         // Define: methods
 

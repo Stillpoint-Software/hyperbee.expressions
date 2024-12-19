@@ -24,12 +24,7 @@ internal class LoweringVisitor : ExpressionVisitor
         Type resultType,
         ParameterExpression[] localVariables,
         Expression[] expressions,
-#if WITH_EXTERN_VARIABLES
-        LinkedDictionary<VariableKey, ParameterExpression> scopedVariables = null 
-#else
-        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables = null
-#endif
-        )
+        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables = null )
     {
         ArgumentNullException.ThrowIfNull( expressions, nameof( expressions ) );
         ArgumentOutOfRangeException.ThrowIfZero( expressions.Length, nameof( expressions ) );
