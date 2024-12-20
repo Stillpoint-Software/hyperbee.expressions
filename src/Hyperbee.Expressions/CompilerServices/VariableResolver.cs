@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.CompilerServices;
 
 internal sealed class VariableResolver : ExpressionVisitor
 {
-    internal static class VariableName
+    private static class VariableName
     {
         // use special names to prevent collisions
         [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -53,7 +53,16 @@ internal sealed class VariableResolver : ExpressionVisitor
         );
     }
 
-    // Helpers
+    // Variables
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public void AddLocalVariables( IEnumerable<ParameterExpression> variables )
+    {
+        foreach ( var variable in variables )
+        {
+            _scopedVariables.Add( variable, variable );
+        }
+    }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public Expression GetResultVariable( Expression node, int stateId )
@@ -94,7 +103,7 @@ internal sealed class VariableResolver : ExpressionVisitor
         return AddVariable( Variable( type, VariableName.FinalResult ) );
     }
 
-    // Resolving Visitor
+    // Resolver
 
     public Expression Resolve( Expression node )
     {
@@ -142,15 +151,6 @@ internal sealed class VariableResolver : ExpressionVisitor
             return label;
 
         return base.VisitGoto( node );
-    }
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void AddLocalVariables( IEnumerable<ParameterExpression> variables )
-    {
-        foreach ( var variable in variables )
-        {
-            _scopedVariables.Add( variable, variable );
-        }
     }
 
     // helpers
