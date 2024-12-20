@@ -66,8 +66,8 @@ public class AwaitExpression : Expression
 
     internal static bool IsAwaitable( Type type )
     {
-        return typeof( Task ).IsAssignableFrom( type ) || 
-               typeof( ValueTask ).IsAssignableFrom( type ) || 
+        return typeof( Task ).IsAssignableFrom( type ) ||
+               typeof( ValueTask ).IsAssignableFrom( type ) ||
                AwaitBinderFactory.TryGetOrCreate( type, out _ );
     }
 
