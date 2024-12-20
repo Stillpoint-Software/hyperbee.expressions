@@ -42,8 +42,7 @@ public class AwaitExpression : Expression
 
             var genericTypeDef = awaitableType.GetGenericTypeDefinition();
 
-            if ( genericTypeDef.IsSubclassOf( typeof( Task ) ) ||
-                 genericTypeDef.IsSubclassOf( typeof( ValueTask ) ) )
+            if ( genericTypeDef.IsSubclassOf( typeof( Task ) ) || genericTypeDef.IsSubclassOf( typeof( ValueTask ) ) )
             {
                 return awaitableType.GetGenericArguments()[0];
             }
@@ -67,7 +66,9 @@ public class AwaitExpression : Expression
 
     internal static bool IsAwaitable( Type type )
     {
-        return typeof( Task ).IsAssignableFrom( type ) || typeof( ValueTask ).IsAssignableFrom( type ) || AwaitBinderFactory.TryGetOrCreate( type, out _ );
+        return typeof( Task ).IsAssignableFrom( type ) || 
+               typeof( ValueTask ).IsAssignableFrom( type ) || 
+               AwaitBinderFactory.TryGetOrCreate( type, out _ );
     }
 
     private class AwaitExpressionDebuggerProxy( AwaitExpression node )

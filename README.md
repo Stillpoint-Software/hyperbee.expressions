@@ -32,7 +32,7 @@ When the expression tree is compiled, the `AsyncBlockExpression` will auto-gener
 
 ```csharp
 
-public class AsyncExample
+public class Example
 {
     public async Task ExampleAsync()
     {
@@ -79,7 +79,7 @@ public class AsyncExample
 The following example demonstrates how to create a Using expression.
 
 ```csharp
-public class UsingExample
+public class Example
 {
     private class DisposableResource : IDisposable
     {
@@ -87,7 +87,7 @@ public class UsingExample
         public void Dispose() => IsDisposed = true;
     }
 
-    public void UsingExpression_ShouldDisposeResource_AfterUse()
+    public void ExampleUsing()
     {
         var resource = new TestDisposableResource();
 
