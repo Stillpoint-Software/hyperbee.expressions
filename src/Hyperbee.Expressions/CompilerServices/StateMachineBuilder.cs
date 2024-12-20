@@ -84,17 +84,6 @@ internal class StateMachineBuilder<TResult>
             )
         };
 
-        /*
-        bodyExpression.AddRange( // Assign extern variables to state-machine
-            loweringInfo.ScopedVariables.Items( KeyScope.All ).Where( x => x.Key.Type == VariableType.Extern ).Select( externVariable =>
-                Assign(
-                    Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Value.Name ) ),
-                    externVariable.Value
-                )
-            )
-        );
-        */
-
         bodyExpression.AddRange( [
             Assign( // Set the state-machine moveNextDelegate
                 Field(
