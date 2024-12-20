@@ -48,7 +48,7 @@ internal class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
     // ctors
 
     public LinkedDictionary()
-        : this( default(IEqualityComparer<TKey>) )
+        : this( default( IEqualityComparer<TKey> ) )
     {
     }
 
