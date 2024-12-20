@@ -2,43 +2,48 @@
 using System.Reflection;
 
 namespace Hyperbee.Expressions.Tests.TestSupport;
+public enum CompleterType
+{
+    Immediate,
+    Deferred
+}
 
 internal static class AsyncHelper
 {
-    public static Expression Completable( Expression completeimmediateFlagExpression, Expression resultExpression )
+    public static Expression Completer( Expression completerFlagExpression, Expression resultExpression )
     {
         var resultType = resultExpression.Type;
 
         var asyncHelperMethod = typeof( AsyncHelper ).GetMethod(
-            nameof( CompletableResultAsync ),
+            nameof( CompleterResultAsync ),
             BindingFlags.Static | BindingFlags.NonPublic
         )!.MakeGenericMethod( resultType );
 
         return Expression.Call(
             asyncHelperMethod,
-            completeimmediateFlagExpression,
+            completerFlagExpression,
             resultExpression
         );
     }
 
-    public static Expression Completable( Expression completeimmediateFlagExpression )
+    public static Expression Completer( Expression completerFlagExpression )
     {
         var asyncHelperMethod = typeof( AsyncHelper ).GetMethod(
-            nameof( CompletableAsync ),
+            nameof( CompleterAsync ),
             BindingFlags.Static | BindingFlags.NonPublic
         );
 
         return Expression.Call(
             asyncHelperMethod!,
-            completeimmediateFlagExpression
+            completerFlagExpression
         );
     }
 
-    private static DeferredTaskCompletionSource CompletableAsync( bool completeimmediateFlag )
+    private static DeferredTaskCompletionSource CompleterAsync( CompleterType completer )
     {
         var deferredTcs = new DeferredTaskCompletionSource();
 
-        if ( completeimmediateFlag )
+        if ( completer == CompleterType.Immediate )
         {
             deferredTcs.SetResult();
             return deferredTcs;
@@ -53,11 +58,11 @@ internal static class AsyncHelper
         return deferredTcs;
     }
 
-    private static DeferredTaskCompletionSource<T> CompletableResultAsync<T>( bool completeimmediateFlag, T result )
+    private static DeferredTaskCompletionSource<T> CompleterResultAsync<T>( CompleterType completer, T result )
     {
         var deferredTcs = new DeferredTaskCompletionSource<T>();
 
-        if ( completeimmediateFlag )
+        if ( completer == CompleterType.Immediate )
         {
             deferredTcs.SetResult( result );
             return deferredTcs;

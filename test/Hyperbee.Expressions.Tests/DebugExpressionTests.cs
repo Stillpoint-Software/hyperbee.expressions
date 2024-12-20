@@ -86,7 +86,7 @@ public class DebugExpressionTests
     public void DebugExpression_Should_Throw_If_Condition_Is_Not_Boolean()
     {
         // Arrange
-        void DebugAction( int value )
+        static void DebugAction( int value )
         {
         }
 

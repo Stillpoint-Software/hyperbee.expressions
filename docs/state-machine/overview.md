@@ -21,7 +21,7 @@ operations that must suspend and resume execution.
 State machine creation occurs in two passes:
 
 ### Pass 1: Expression Tree Transformation
-The first pass uses a Lowering Technique to transform `BlockAsyncExpression`s into state trees, and handles the lowering of
+The first pass uses a Lowering Technique to transform `AsyncBlockExpression`s into state trees, and handles the lowering of
 complex flow control constructs (ifs, switches, loops, try/catch, and awaits) into more primitive representations. This step 
 also identifies variables that persist across states and require hoisting.
 

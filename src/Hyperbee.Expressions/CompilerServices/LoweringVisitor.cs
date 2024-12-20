@@ -1,9 +1,10 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
-using Hyperbee.Expressions.Transformation.Transitions;
+using Hyperbee.Expressions.CompilerServices.Collections;
+using Hyperbee.Expressions.CompilerServices.Transitions;
 using Hyperbee.Expressions.Visitors;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal class LoweringVisitor : ExpressionVisitor
 {
@@ -19,12 +20,16 @@ internal class LoweringVisitor : ExpressionVisitor
 
     private VariableResolver _variableResolver;
 
-    public LoweringInfo Transform( Type resultType, ParameterExpression[] variables, Expression[] expressions, ParameterExpression[] externVariables )
+    public LoweringInfo Transform(
+        Type resultType,
+        ParameterExpression[] localVariables,
+        Expression[] expressions,
+        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables = null )
     {
         ArgumentNullException.ThrowIfNull( expressions, nameof( expressions ) );
         ArgumentOutOfRangeException.ThrowIfZero( expressions.Length, nameof( expressions ) );
 
-        _variableResolver = new VariableResolver( variables, _states );
+        _variableResolver = new VariableResolver( localVariables, scopedVariables, _states );
         _finalResultVariable = CreateFinalResultVariable( resultType, _variableResolver );
 
         VisitExpressions( expressions );
@@ -38,8 +43,7 @@ internal class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes,
             HasFinalResultVariable = _hasFinalResultVariable,
             AwaitCount = _awaitCount,
-            Variables = _variableResolver.GetMappedVariables(),
-            ExternVariables = externVariables
+            ScopedVariables = scopedVariables
         };
 
         // helpers
@@ -186,7 +190,7 @@ internal class LoweringVisitor : ExpressionVisitor
                 previousVariable = updated.Result.Variable;
                 joinState.Result.Variable = previousVariable;
 
-                // Fix tail link list of Transitions.
+                // Fix tail linked list of Transitions.
                 if ( previousTail != null )
                     previousTail.Transition = new GotoTransition { TargetNode = updated };
 
@@ -347,7 +351,7 @@ internal class LoweringVisitor : ExpressionVisitor
             joinState = finalExpression;
         }
 
-        var nodeScope = _states.EnterScope( sourceState );
+        var nodeScope = _states.EnterTryScope( sourceState );
 
         var tryCatchTransition = new TryCatchTransition
         {
@@ -359,7 +363,7 @@ internal class LoweringVisitor : ExpressionVisitor
             Scopes = _states.Scopes
         };
 
-        _states.ExitScope();
+        _states.ExitTryScope();
 
         for ( var index = 0; index < node.Handlers.Count; index++ )
         {
@@ -405,11 +409,9 @@ internal class LoweringVisitor : ExpressionVisitor
     {
         var updatedNode = Visit( node.Target );
 
-        var joinState = _states.EnterGroup( out var sourceState );
+        var joinState = _states.EnterState( out var sourceState );
 
         var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
-        var completionState = _states.AddState();
-        _states.TailState.Result.Variable = resultVariable;
 
         _awaitCount++;
 
@@ -420,30 +422,26 @@ internal class LoweringVisitor : ExpressionVisitor
             sourceState.StateId
         );
 
-        completionState.Transition = new AwaitResultTransition
-        {
-            TargetNode = joinState,
-            AwaiterVariable = awaiterVariable,
-            ResultVariable = resultVariable,
-            AwaitBinder = awaitBinder
-        };
-
-        _states.AddJumpCase( completionState.NodeLabel, joinState.NodeLabel, sourceState.StateId );
+        var resumeLabel = Expression.Label( $"{sourceState.NodeLabel.Name}_RESUME" );
 
         var awaitTransition = new AwaitTransition
         {
             Target = updatedNode,
             StateId = sourceState.StateId,
+            ResumeLabel = resumeLabel,
+            TargetNode = joinState,
             AwaiterVariable = awaiterVariable,
-            CompletionNode = completionState,
+            ResultVariable = resultVariable,
             AwaitBinder = awaitBinder,
             ConfigureAwait = node.ConfigureAwait
         };
 
+        _states.AddJumpCase( resumeLabel, sourceState.StateId );
+
         sourceState.Result.Variable = resultVariable;
         joinState.Result.Value = resultVariable;
 
-        _states.ExitGroup( sourceState, awaitTransition );
+        _states.ExitState( sourceState, awaitTransition );
 
         return ConvertToExpression( sourceState );
     }
