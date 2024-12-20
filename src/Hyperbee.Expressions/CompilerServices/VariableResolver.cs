@@ -25,9 +25,6 @@ internal sealed class VariableResolver : ExpressionVisitor
         [MethodImpl( MethodImplOptions.AggressiveInlining )]
         public static string Variable( string name, int stateId, ref int variableId ) => $"__{name}<{stateId}_{variableId++}>";
 
-        //[MethodImpl( MethodImplOptions.AggressiveInlining )]
-        //public static string ExternVariable( string name, int stateId, ref int variableId ) => $"__extern.{name}<{stateId}_{variableId++}>";
-
         public const string FinalResult = "__final<>";
     }
 
