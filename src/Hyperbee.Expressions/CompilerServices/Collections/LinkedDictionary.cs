@@ -48,6 +48,7 @@ internal class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
     // ctors
 
     public LinkedDictionary()
+        : this( default(IEqualityComparer<TKey>) )
     {
     }
 
@@ -63,7 +64,7 @@ internal class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
 
     public LinkedDictionary( IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer )
     {
-        Comparer = comparer;
+        Comparer = comparer ?? EqualityComparer<TKey>.Default;
 
         if ( collection != null )
             Push( collection );
@@ -76,6 +77,8 @@ internal class LinkedDictionary<TKey, TValue> : ILinkedDictionary<TKey, TValue>
 
     public LinkedDictionary( ILinkedDictionary<TKey, TValue> inner, IEnumerable<KeyValuePair<TKey, TValue>> collection )
     {
+        ArgumentNullException.ThrowIfNull( inner );
+
         Comparer = inner.Comparer;
         _scopes = new ConcurrentStack<LinkedDictionaryNode<TKey, TValue>>( inner.Scopes() );
 
