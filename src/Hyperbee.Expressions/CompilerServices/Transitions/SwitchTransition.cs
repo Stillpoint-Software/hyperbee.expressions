@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.Expressions.Transformation.Transitions;
+namespace Hyperbee.Expressions.CompilerServices.Transitions;
 
 internal class SwitchTransition : Transition
 {
@@ -21,26 +21,14 @@ internal class SwitchTransition : Transition
         {
             var stateOrder = context.StateNode.StateOrder;
 
-            Expression defaultBody;
-
-            if ( DefaultNode != null )
-            {
-                defaultBody = GotoOrFallThrough(
-                    stateOrder,
-                    DefaultNode,
-                    allowNull: true
-                );
-            }
-            else
-            {
-                defaultBody = Empty();
-            }
-
             var cases = CaseNodes
                 .Select( switchCase => switchCase.Reduce( stateOrder ) )
                 .ToArray();
 
-            return Switch( SwitchValue, defaultBody, cases );
+            return Switch(
+                SwitchValue,
+                cases
+             );
         }
     }
 

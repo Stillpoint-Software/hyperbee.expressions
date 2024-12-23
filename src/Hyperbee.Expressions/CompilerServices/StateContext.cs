@@ -1,8 +1,8 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
-using Hyperbee.Expressions.Transformation.Transitions;
+using Hyperbee.Expressions.CompilerServices.Transitions;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 internal sealed class StateContext
 {
@@ -12,10 +12,9 @@ internal sealed class StateContext
 
     private readonly Stack<StateNode> _joinStates;
     private readonly Stack<int> _scopeIndexes;
+
     public List<Scope> Scopes { get; }
-
     public StateNode TailState { get; private set; }
-
     private Scope CurrentScope => Scopes[_scopeIndexes.Peek()];
 
     public StateContext( int initialCapacity )
@@ -50,7 +49,7 @@ internal sealed class StateContext
         AddState();
     }
 
-    public Scope EnterScope( StateNode initialState )
+    public Scope EnterTryScope( StateNode initialState )
     {
         var parentScope = CurrentScope;
 
@@ -64,7 +63,7 @@ internal sealed class StateContext
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void ExitScope()
+    public void ExitTryScope()
     {
         _scopeIndexes.Pop();
     }
@@ -103,10 +102,10 @@ internal sealed class StateContext
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public void AddJumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId )
+    public void AddJumpCase( LabelTarget resultLabel, int stateId )
     {
         var scope = CurrentScope;
-        var jumpCase = new JumpCase( resultLabel, continueLabel, stateId, scope.ScopeId );
+        var jumpCase = new JumpCase( resultLabel, stateId, scope.ScopeId );
         scope.JumpCases.Add( jumpCase );
     }
 
@@ -128,7 +127,20 @@ internal sealed class StateContext
         return node != null;
     }
 
-    public sealed class Scope
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public StateNode EnterState( out StateNode sourceState )
+    {
+        sourceState = TailState;
+        return AddState();
+    }
+
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public void ExitState( StateNode sourceState, Transition transition )
+    {
+        sourceState.Transition = transition;
+    }
+
+    internal sealed class Scope
     {
         public int ScopeId { get; }
         public LabelTarget InitialLabel { get; }
@@ -170,20 +182,5 @@ internal sealed class StateContext
         }
     }
 
-    public readonly struct JumpCase
-    {
-        public LabelTarget ResultLabel { get; }
-        public LabelTarget ContinueLabel { get; }
-
-        public int StateId { get; }
-        public int? ParentId { get; }
-
-        public JumpCase( LabelTarget resultLabel, LabelTarget continueLabel, int stateId, int? parentId )
-        {
-            ResultLabel = resultLabel;
-            ContinueLabel = continueLabel;
-            StateId = stateId;
-            ParentId = parentId;
-        }
-    }
+    public readonly record struct JumpCase( LabelTarget ResultLabel, int StateId, int? ParentId );
 }

@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.Expressions.Transformation.Transitions;
+namespace Hyperbee.Expressions.CompilerServices.Transitions;
 
 internal class TryCatchTransition : Transition
 {
@@ -47,7 +47,6 @@ internal class TryCatchTransition : Transition
                 ),
                 Switch( // Handle error
                     TryStateVariable,
-                    Empty(),
                     switchCases
                 )
             ];

@@ -20,7 +20,7 @@ The `LoweringVisitor` is responsible for transforming an expression tree into di
 to generate the final state machine. 
 
 The purpose of this visitor is to "lower" high-level constructs, such as `await`, `if/else`, `switch`, `try\catch`, and loops, 
-into individual `NodeExpression` objects that the state machine can later process.
+into individual `StateNode` objects that the state machine can later process.
 
 
 ## 1. Handling Control Flow Constructs (Branching and Loops)

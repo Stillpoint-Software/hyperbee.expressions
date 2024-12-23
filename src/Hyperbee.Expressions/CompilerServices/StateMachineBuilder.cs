@@ -2,9 +2,10 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Hyperbee.Expressions.CompilerServices.Collections;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.Expressions.Transformation;
+namespace Hyperbee.Expressions.CompilerServices;
 
 public interface IVoidResult; // Marker interface for void Task results
 public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
@@ -83,15 +84,6 @@ internal class StateMachineBuilder<TResult>
             )
         };
 
-        bodyExpression.AddRange( // Assign extern variables to state-machine
-            loweringInfo.ExternVariables.Select( externVariable =>
-                Assign(
-                    Field( stateMachineVariable, fields.First( field => field.Name == externVariable.Name ) ),
-                    externVariable
-                )
-            )
-        );
-
         bodyExpression.AddRange( [
             Assign( // Set the state-machine moveNextDelegate
                 Field(
@@ -150,20 +142,14 @@ internal class StateMachineBuilder<TResult>
             FieldAttributes.Public
         );
 
-        // variables from this state-machine
+        // local variables in the current scope for this state-machine
 
-        foreach ( var parameterExpression in context.LoweringInfo.Variables.OfType<ParameterExpression>() )
-        {
-            typeBuilder.DefineField(
-                parameterExpression.Name ?? parameterExpression.ToString(),
-                parameterExpression.Type,
-                FieldAttributes.Public
-            );
-        }
+        var localVariables = context.LoweringInfo
+            .ScopedVariables
+            .Items( KeyScope.Current )
+            .Select( x => x.Value );
 
-        // variables from other state-machines
-
-        foreach ( var parameterExpression in context.LoweringInfo.ExternVariables )
+        foreach ( var parameterExpression in localVariables )
         {
             typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),

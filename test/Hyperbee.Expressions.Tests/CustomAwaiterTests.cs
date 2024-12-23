@@ -6,13 +6,9 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
 
-public class LazyAwaiter<T> : ICriticalNotifyCompletion
+public class LazyAwaiter<T>( Lazy<T> lazy ) : ICriticalNotifyCompletion
 {
-    private readonly Lazy<T> _lazy;
-
-    public LazyAwaiter( Lazy<T> lazy ) => _lazy = lazy;
-
-    public T GetResult() => _lazy.Value;
+    public T GetResult() => lazy.Value;
     public bool IsCompleted => true;
     public void OnCompleted( Action continuation ) { }
     public void UnsafeOnCompleted( Action continuation ) { }
@@ -49,8 +45,10 @@ public class CustomAwaiterTests
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
-    [TestMethod]
-    public async Task TestCustomAwaiter_AsyncBlock()
+    [DataTestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    public async Task TestCustomAwaiter_AsyncBlock( CompilerType compiler )
     {
         // var lazy = new Lazy<int>( () => 42 );
         // var result = await lazy;
@@ -64,7 +62,7 @@ public class CustomAwaiterTests
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = await compiledLambda();
 
@@ -72,9 +70,11 @@ public class CustomAwaiterTests
     }
 
     [DataTestMethod]
-    [DataRow( true )] // Immediate completion
-    [DataRow( false )] // Deferred completion
-    public async Task TestCustomAwaiter_TaskLike( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task TestCustomAwaiter_TaskLike( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -83,8 +83,8 @@ public class CustomAwaiterTests
             [resultValue],
             Assign( resultValue, Constant( 5 ) ),
             Await(
-                AsyncHelper.Completable(
-                    Constant( immediateFlag )
+                AsyncHelper.Completer(
+                    Constant( completer )
                 )
             ),
             Assign( resultValue, Add( resultValue, Constant( 37 ) ) ),
@@ -92,7 +92,7 @@ public class CustomAwaiterTests
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -102,9 +102,11 @@ public class CustomAwaiterTests
     }
 
     [DataTestMethod]
-    [DataRow( true )] // Immediate completion
-    [DataRow( false )] // Deferred completion
-    public async Task TestCustomAwaiter_TaskResultLike( bool immediateFlag )
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    public async Task TestCustomAwaiter_TaskResultLike( CompleterType completer, CompilerType compiler )
     {
         // Arrange
         var resultValue = Parameter( typeof( int ), "result" );
@@ -114,8 +116,8 @@ public class CustomAwaiterTests
             Assign( resultValue,
                 Add(
                     Await(
-                        AsyncHelper.Completable(
-                            Constant( immediateFlag ),
+                        AsyncHelper.Completer(
+                            Constant( completer ),
                             Constant( 37 )
                         )
                     ),
@@ -126,7 +128,7 @@ public class CustomAwaiterTests
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
