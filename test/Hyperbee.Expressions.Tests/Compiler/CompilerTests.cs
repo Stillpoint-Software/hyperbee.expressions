@@ -10,7 +10,7 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 namespace Hyperbee.Expressions.Tests.Compiler;
 
 [TestClass]
-public class CompilerTests2
+public class CompilerTests
 {
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
