@@ -45,9 +45,6 @@ internal static class JumpTableBuilder
 
         return Switch(
             stateField,
-#if FAST_COMPILER
-            Empty(),
-#endif
             [.. jumpTable]
         );
     }
