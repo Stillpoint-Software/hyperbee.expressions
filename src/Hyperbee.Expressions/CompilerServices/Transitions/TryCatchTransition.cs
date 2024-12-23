@@ -47,9 +47,6 @@ internal class TryCatchTransition : Transition
                 ),
                 Switch( // Handle error
                     TryStateVariable,
-#if FAST_COMPILER
-                    Empty(),
-#endif
                     switchCases
                 )
             ];

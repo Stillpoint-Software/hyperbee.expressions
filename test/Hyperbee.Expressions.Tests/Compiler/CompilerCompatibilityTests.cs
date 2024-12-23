@@ -1,10 +1,13 @@
 ﻿using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.Expressions.Tests;
+namespace Hyperbee.Expressions.Tests.Compiler;
+
+// The following tests are to ensure compatibility with both SystemCompiler and FastExpressionCompiler.
+// The tests are based on the expression-tree patterns used in the generated state-machine.
 
 [TestClass]
-public class FastExpressionCompilerTests
+public class CompilerCompatibilityTests
 {
     public class TestClass
     {
@@ -27,9 +30,6 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithCustomDelegateParameter( CompilerType compiler )
     {
-        // ISSUE #443: https://github.com/dadhi/FastExpressionCompiler/issues/443
-        // FEC throws `FastExpressionCompiler.NotSupportedExpressionException: ParameterIsNotVariableNorInPassedParameters`
-
         var executeDelegate = typeof( TestClass2 ).GetMethod( nameof( TestClass2.ExecuteDelegate ) );
         var local = Variable( typeof( int ), "local" );
 
@@ -38,12 +38,7 @@ public class FastExpressionCompilerTests
                 Block(
                     [local],
                     Assign( local, Constant( 42 ) ),
-
-                    // Invoke works
-                    //Invoke( Lambda<Func<int>>( local ) )
-
-                    // Call does not work
-                    Call( executeDelegate, Lambda<Func<int>>( local ) )
+                    Call( executeDelegate!, Lambda<Func<int>>( local ) )
                 )
             );
 
@@ -86,9 +81,6 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithUnusedValue( CompilerType compiler )
     {
-        // FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
-        // WORKAROUND: Remove the unused value from the block
-
         var variable = Variable( typeof( TestClass ), "testClass" );
 
         var block = Block(
@@ -120,8 +112,6 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithSimpleSwitchValue( CompilerType compiler )
     {
-        // FEC throws `System.NullReferenceException: Object reference not set to an instance of an object.`
-
         var label = Label( "label" );
         var block = Block(
             Switch(
@@ -145,9 +135,6 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithEmptySwitch( CompilerType compiler )
     {
-        // FEC throws `System.ArgumentOutOfRangeException: Index was out of range.`
-        // WORKAROUND: Do not use empty cases
-
         var block = Block(
             Switch(
                 Constant( 1 ),
@@ -169,8 +156,6 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithGotoInTry( CompilerType compiler )
     {
-        // FEC throws `System.ArgumentException: Bad label content in ILGenerator.`
-
         var label = Label( "label" );
         var variable = Variable( typeof( int ) );
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
@@ -201,8 +186,6 @@ public class FastExpressionCompilerTests
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithGotoLabelOutsideTry( CompilerType compiler )
     {
-        // FEC throws `System.InvalidProgramException: Common Language Runtime detected an invalid program.`
-
         var label = Label( "label" );
         var variable = Variable( typeof( int ), "variable" );
 
@@ -230,6 +213,5 @@ public class FastExpressionCompilerTests
 
         var result = compiledLambda();
         Assert.AreEqual( 5, result );
-
     }
 }

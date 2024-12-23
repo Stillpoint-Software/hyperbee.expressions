@@ -115,7 +115,6 @@ internal class AwaitTransition : Transition
         }
     }
 
-
     internal override void Optimize( HashSet<LabelTarget> references )
     {
         TargetNode = OptimizeGotos( TargetNode );

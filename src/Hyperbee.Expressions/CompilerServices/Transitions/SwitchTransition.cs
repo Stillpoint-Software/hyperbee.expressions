@@ -21,31 +21,12 @@ internal class SwitchTransition : Transition
         {
             var stateOrder = context.StateNode.StateOrder;
 
-            Expression defaultBody;
-
-            if ( DefaultNode != null )
-            {
-                defaultBody = GotoOrFallThrough(
-                    stateOrder,
-                    DefaultNode,
-                    allowNull: true
-                );
-            }
-#if FAST_COMPILER
-            else
-            {
-                defaultBody = Empty();
-            }
-#endif
             var cases = CaseNodes
                 .Select( switchCase => switchCase.Reduce( stateOrder ) )
                 .ToArray();
 
             return Switch(
                 SwitchValue,
-#if FAST_COMPILER
-                defaultBody,
-#endif
                 cases
              );
         }
