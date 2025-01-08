@@ -38,7 +38,7 @@ public class UsingExpressionTests
         var disposableVariable = Variable( typeof( TestDisposableResource ) );
         var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
-        var bodyExpression = Condition( Property(disposableVariable, nameof( TestDisposableResource.IsDisposed ) ), Constant(true), Constant(false) );
+        var bodyExpression = Condition( Property( disposableVariable, nameof( TestDisposableResource.IsDisposed ) ), Constant( true ), Constant( false ) );
 
         // Act
         var usingExpression = Using( disposableVariable, disposableExpression, bodyExpression );
