@@ -4,14 +4,16 @@ namespace Hyperbee.Expressions;
 
 public class UsingExpression : Expression
 {
+    public ParameterExpression DisposeVariable { get; }
     public Expression Disposable { get; }
     public Expression Body { get; }
 
-    internal UsingExpression( Expression disposable, Expression body )
+    internal UsingExpression( ParameterExpression variable, Expression disposable, Expression body )
     {
         if ( !typeof( IDisposable ).IsAssignableFrom( disposable.Type ) )
             throw new ArgumentException( $"The disposable expression must return an {nameof( IDisposable )}.", nameof( disposable ) );
 
+        DisposeVariable = variable;
         Disposable = disposable;
         Body = body;
     }
@@ -23,16 +25,15 @@ public class UsingExpression : Expression
 
     public override Expression Reduce()
     {
-        var disposableVar = Variable( Disposable.Type, "disposable" );
-        var disposableAssignment = Assign( disposableVar, Disposable );
+        var disposableAssignment = Assign( DisposeVariable, Disposable );
 
         var finallyBlock = IfThen(
-            NotEqual( disposableVar, Constant( null ) ),
-            Call( disposableVar, nameof( IDisposable.Dispose ), Type.EmptyTypes )
+            NotEqual( DisposeVariable, Constant( null ) ),
+            Call( DisposeVariable, nameof( IDisposable.Dispose ), Type.EmptyTypes )
         );
 
         return Block(
-            [disposableVar],
+            [DisposeVariable],
             disposableAssignment,
             TryFinally( Body, finallyBlock )
         );
@@ -40,21 +41,28 @@ public class UsingExpression : Expression
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
+        var newDisposeVariable = visitor.VisitAndConvert( DisposeVariable, nameof( VisitChildren ) );
         var newDisposable = visitor.Visit( Disposable );
         var newBody = visitor.Visit( Body );
 
-        if ( newDisposable == Disposable && newBody == Body )
+        if ( newDisposeVariable == DisposeVariable && newDisposable == Disposable && newBody == Body )
             return this;
 
-        return new UsingExpression( newDisposable, newBody );
+        return new UsingExpression( newDisposeVariable, newDisposable, newBody );
 
     }
 }
 
 public static partial class ExpressionExtensions
 {
+    public static UsingExpression Using( ParameterExpression variable, Expression disposable, Expression body )
+    {
+        return new UsingExpression( variable, disposable, body );
+    }
+
     public static UsingExpression Using( Expression disposable, Expression body )
     {
-        return new UsingExpression( disposable, body );
+        var disposableVar = Expression.Variable( disposable.Type, "disposable" );
+        return new UsingExpression( disposableVar, disposable, body );
     }
 }
