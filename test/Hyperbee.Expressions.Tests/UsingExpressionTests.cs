@@ -35,19 +35,21 @@ public class UsingExpressionTests
     {
         // Arrange
         var resource = new TestDisposableResource();
+        var disposableVariable = Variable( typeof( TestDisposableResource ) );
         var disposableExpression = Constant( resource, typeof( TestDisposableResource ) );
 
-        var bodyExpression = Empty(); // Actual body is unimportant
+        var bodyExpression = Condition( Property( disposableVariable, nameof( TestDisposableResource.IsDisposed ) ), Constant( true ), Constant( false ) );
 
         // Act
-        var usingExpression = Using( disposableExpression, bodyExpression );
+        var usingExpression = Using( disposableVariable, disposableExpression, bodyExpression );
 
-        var lambda = Lambda<Action>( usingExpression );
+        var lambda = Lambda<Func<bool>>( usingExpression );
         var compiledLambda = lambda.Compile();
 
-        compiledLambda();
+        var result = compiledLambda();
 
         // Assert
+        Assert.IsFalse( result );
         Assert.IsTrue( resource.IsDisposed, "Resource should be disposed after using the expression." );
     }
 
