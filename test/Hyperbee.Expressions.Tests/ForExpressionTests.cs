@@ -1,4 +1,5 @@
-﻿using static System.Linq.Expressions.Expression;
+﻿using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -6,8 +7,12 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class ForExpressionTests
 {
-    [TestMethod]
-    public void ForExpression_ShouldLoopCorrectly()
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void ForExpression_ShouldLoopCorrectly( CompilerType compiler )
     {
         // Arrange
         var counter = Variable( typeof( int ), "counter" );
@@ -30,7 +35,7 @@ public class ForExpressionTests
 
         // Act
         var lambda = Lambda<Func<int>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = compiledLambda();
 
@@ -38,8 +43,11 @@ public class ForExpressionTests
         Assert.AreEqual( 5, result, "Counter should be 5 after the loop finishes." );
     }
 
-    [TestMethod]
-    public void ForExpression_ShouldSupportCustomBreak()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void ForExpression_ShouldSupportCustomBreak( CompilerType compiler )
     {
         // Arrange
         var writeLine = typeof( Console ).GetMethod( "WriteLine", [typeof( int )] )!;
@@ -65,7 +73,7 @@ public class ForExpressionTests
 
         // Act
         var lambda = Lambda<Func<int>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = compiledLambda();
 

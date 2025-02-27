@@ -10,8 +10,10 @@ public class BlockAsyncLoopTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeBreak( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await before break in a loop
@@ -50,8 +52,10 @@ public class BlockAsyncLoopTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterLoop( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await after break in a loop
@@ -91,8 +95,10 @@ public class BlockAsyncLoopTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeContinue( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await before continue in a loop
@@ -133,8 +139,10 @@ public class BlockAsyncLoopTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterContinue( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await after continue in a loop
@@ -175,8 +183,10 @@ public class BlockAsyncLoopTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithMultipleAwaitsInLoop( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Multiple awaits in a loop
@@ -216,8 +226,10 @@ public class BlockAsyncLoopTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithBreakAndContinueLabels( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Use both breakLabel and continueLabel in the loop

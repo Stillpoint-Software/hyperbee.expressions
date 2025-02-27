@@ -1,4 +1,5 @@
-﻿using static System.Linq.Expressions.Expression;
+﻿using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -6,29 +7,28 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class WhileExpressionTests
 {
-    [TestMethod]
-    public void WhileExpression_ShouldBreak_WhenConditionMet()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void WhileExpression_ShouldBreak_WhenConditionMet( CompilerType compiler )
     {
         // Arrange
         var counter = Variable( typeof( int ), "counter" );
-        var counterInit = Assign( counter, Constant( 0 ) );
-
-        var condition = LessThan( counter, Constant( 10 ) );
-
-        var whileExpr = While( condition,
-            PostIncrementAssign( counter )
-        );
 
         var block = Block(
             [counter],
-            counterInit,
-            whileExpr,
+            Assign( counter, Constant( 0 ) ),
+            While(
+                LessThan( counter, Constant( 10 ) ),
+                PostIncrementAssign( counter )
+            ),
             counter
         );
 
         // Act
         var lambda = Lambda<Func<int>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = compiledLambda();
 
@@ -36,8 +36,11 @@ public class WhileExpressionTests
         Assert.AreEqual( 10, result, "Loop should break when counter == 10." );
     }
 
-    [TestMethod]
-    public void WhileExpression_ShouldBreak()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void WhileExpression_ShouldBreak( CompilerType compiler )
     {
         // Arrange
         var counter = Variable( typeof( int ), "counter" );
@@ -62,7 +65,7 @@ public class WhileExpressionTests
 
         // Act
         var lambda = Lambda<Func<int>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = compiledLambda();
 

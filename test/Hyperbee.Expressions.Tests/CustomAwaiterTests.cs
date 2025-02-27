@@ -48,6 +48,7 @@ public class CustomAwaiterTests
     [DataTestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Interpret )]
     public async Task TestCustomAwaiter_AsyncBlock( CompilerType compiler )
     {
         // var lazy = new Lazy<int>( () => 42 );
@@ -72,8 +73,10 @@ public class CustomAwaiterTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task TestCustomAwaiter_TaskLike( CompleterType completer, CompilerType compiler )
     {
         // Arrange
@@ -104,8 +107,10 @@ public class CustomAwaiterTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task TestCustomAwaiter_TaskResultLike( CompleterType completer, CompilerType compiler )
     {
         // Arrange
