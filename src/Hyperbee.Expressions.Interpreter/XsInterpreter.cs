@@ -38,8 +38,7 @@ public sealed class XsInterpreter : ExpressionVisitor
     {
         PrepareNavigationMap( expression );
 
-        DelegateCache.Get<TDelegate>( expression, this, out var delegateBinder, out var delegateHandler );
-        return (TDelegate) delegateBinder.Invoke( null, [delegateHandler, expression] )!;
+        return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
 
         void PrepareNavigationMap( Expression root )
         {
@@ -92,7 +91,7 @@ public sealed class XsInterpreter : ExpressionVisitor
         }
     }
 
-    internal void EvaluateAction( LambdaExpression lambda, params object[] values )
+    internal void Evaluate( LambdaExpression lambda, params object[] values )
     {
         _scope.EnterScope();
 
