@@ -1,6 +1,6 @@
 ﻿namespace Hyperbee.Expressions.Interpreter.Core;
 
-public sealed class TypeResolver
+public static class WideningConverter
 {
     private static readonly Dictionary<Type, HashSet<Type>> WideningConversions = new()
     {
@@ -16,7 +16,21 @@ public sealed class TypeResolver
         { typeof(float), [typeof(double)] }
     };
 
-    internal static bool IsWideningConversion( Type from, Type to )
+    internal static Type ToWidenedType( Type leftType, Type rightType )
+    {
+        if ( leftType == rightType )
+            return leftType;
+
+        if ( CanConvertTo( leftType, rightType ) )
+            return rightType;
+
+        if ( CanConvertTo( rightType, leftType ) )
+            return leftType;
+
+        throw new InvalidOperationException( $"No valid widening conversion between {leftType} and {rightType}." );
+    }
+
+    internal static bool CanConvertTo( Type from, Type to )
     {
         return WideningConversions.TryGetValue( from, out var targets ) && targets.Contains( to );
     }

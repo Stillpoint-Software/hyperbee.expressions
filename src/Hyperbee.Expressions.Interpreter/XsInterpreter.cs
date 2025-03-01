@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Interpreter.Core;
+using Hyperbee.Expressions.Interpreter.Evaluators;
 
 namespace Hyperbee.Expressions.Interpreter;
 
@@ -58,8 +59,10 @@ public sealed class XsInterpreter : ExpressionVisitor
         if ( _navigation != null && rebuild == false )
             return;
 
-        var navigator = new NavigationVisitor();
-        _navigation = navigator.Analyze( root, _extensions );
+        var analyzer = new AnalyzerVisitor();
+        analyzer.Analyze( root, _extensions );
+
+        _navigation = analyzer.Navigation;
     }
 
     delegate int MyDelegate( int arg1, string arg2 );

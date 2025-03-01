@@ -3,7 +3,7 @@ using System.Numerics;
 using System.Reflection;
 using Hyperbee.Expressions.Interpreter.Core;
 
-namespace Hyperbee.Expressions.Interpreter;
+namespace Hyperbee.Expressions.Interpreter.Evaluators;
 
 internal sealed class BinaryEvaluator
 {
@@ -52,7 +52,7 @@ internal sealed class BinaryEvaluator
         object leftInstance = null;
         object[] index = null;
 
-        object rightValue = _interpreter.ResultStack.Pop();
+        var rightValue = _interpreter.ResultStack.Pop();
 
         switch ( binary.Left )
         {
@@ -176,7 +176,7 @@ internal sealed class BinaryEvaluator
         if ( binary.NodeType == ExpressionType.LeftShiftAssign || binary.NodeType == ExpressionType.RightShiftAssign )
             return ShiftOperation( operation );
 
-        var widenedType = GetWidenedType( leftValue.GetType(), rightValue.GetType() );
+        var widenedType = WideningConverter.ToWidenedType( leftValue.GetType(), rightValue.GetType() );
 
         return widenedType switch
         {
@@ -209,7 +209,7 @@ internal sealed class BinaryEvaluator
     {
         var (binary, leftValue, rightValue) = operation;
 
-        var widenedType = GetWidenedType( leftValue.GetType(), rightValue.GetType() );
+        var widenedType = WideningConverter.ToWidenedType( leftValue.GetType(), rightValue.GetType() );
 
         return widenedType switch
         {
@@ -259,20 +259,6 @@ internal sealed class BinaryEvaluator
             sbyte sbyteValue => shiftLeft ? (sbyte) (sbyteValue << shiftAmount) : (sbyte) (sbyteValue >> shiftAmount),
             _ => throw new InterpreterException( $"Unsupported type for shift assignment: {leftValue.GetType()}", binary )
         };
-    }
-
-    private static Type GetWidenedType( Type leftType, Type rightType )
-    {
-        if ( leftType == rightType )
-            return leftType;
-
-        if ( TypeResolver.IsWideningConversion( leftType, rightType ) )
-            return rightType;
-
-        if ( TypeResolver.IsWideningConversion( rightType, leftType ) )
-            return leftType;
-
-        throw new InvalidOperationException( $"No valid widening conversion between {leftType} and {rightType}." );
     }
 
     private readonly ref struct BinaryOperation

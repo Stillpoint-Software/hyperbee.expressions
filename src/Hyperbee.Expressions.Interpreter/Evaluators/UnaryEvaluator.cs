@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Numerics;
 
-namespace Hyperbee.Expressions.Interpreter;
+namespace Hyperbee.Expressions.Interpreter.Evaluators;
 
 internal sealed class UnaryEvaluator
 {

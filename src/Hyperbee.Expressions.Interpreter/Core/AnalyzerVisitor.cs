@@ -1,28 +1,28 @@
 ﻿using System.Linq.Expressions;
 
-namespace Hyperbee.Expressions.Interpreter;
+namespace Hyperbee.Expressions.Interpreter.Core;
 
-public sealed class NavigationVisitor : ExpressionVisitor
+internal sealed class AnalyzerVisitor : ExpressionVisitor
 {
     private readonly List<Expression> _currentPath = new( 8 );
 
     private readonly Dictionary<LabelTarget, List<Expression>> _labelPaths = new();
     private readonly Dictionary<GotoExpression, List<Expression>> _gotoPaths = new();
-    private readonly Dictionary<GotoExpression, Navigation> _navigation = new();
+
+    public Dictionary<GotoExpression, Navigation> Navigation { get; } = new();
+
     private Dictionary<Expression, Expression> _extensions;
 
-    public Dictionary<GotoExpression, Navigation> Analyze( Expression root, Dictionary<Expression, Expression> extensions )
+    public void Analyze( Expression root, Dictionary<Expression, Expression> extensions )
     {
         _gotoPaths.Clear();
         _labelPaths.Clear();
-        _navigation.Clear();
+        Navigation.Clear();
 
         _extensions = extensions;
 
         Visit( root );
         ResolveNavigationPaths();
-
-        return _navigation;
     }
 
     public override Expression Visit( Expression node )
@@ -89,7 +89,7 @@ public sealed class NavigationVisitor : ExpressionVisitor
                 throw new InvalidOperationException( $"Label target {gotoExpr.Target.Name} not found." );
             }
 
-            _navigation[gotoExpr] = CreateNavigationExpression( gotoPath, labelPath, gotoExpr.Target );
+            Navigation[gotoExpr] = CreateNavigationExpression( gotoPath, labelPath, gotoExpr.Target );
         }
     }
 
@@ -113,7 +113,7 @@ public sealed class NavigationVisitor : ExpressionVisitor
     }
 }
 
-public sealed class Navigation
+internal sealed class Navigation
 {
     public Expression CommonAncestor { get; }
     public List<Expression> Steps { get; }
