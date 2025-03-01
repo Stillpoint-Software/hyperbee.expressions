@@ -25,5 +25,4 @@ public class InterpretScope
         Variables.Pop();
         Values.Pop();
     }
-
 }

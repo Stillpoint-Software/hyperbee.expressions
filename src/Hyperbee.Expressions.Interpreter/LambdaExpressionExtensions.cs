@@ -49,7 +49,4 @@ public static class LambdaExpressionExtensions
 
         return interpretedDelegate;
     }
-
 }
-
-

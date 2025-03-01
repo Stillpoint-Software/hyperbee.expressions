@@ -39,15 +39,27 @@ public sealed class XsInterpreter : ExpressionVisitor
         PrepareNavigationMap( expression );
 
         return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
+    }
 
-        void PrepareNavigationMap( Expression root )
-        {
-            if ( _navigation != null )
-                return;
+    public T Invoke<T>( LambdaExpression lambda, params object[] values ) // BF ME discuss
+    {
+        PrepareNavigationMap( lambda, rebuild: true );
+        return Evaluate<T>( lambda, values );
+    }
 
-            var navigator = new NavigationVisitor();
-            _navigation = navigator.Analyze( root, _extensions );
-        }
+    public void Invoke( LambdaExpression lambda, params object[] values ) // BF ME discuss
+    {
+        PrepareNavigationMap( lambda, rebuild: true );
+        Evaluate( lambda, values );
+    }
+
+    private void PrepareNavigationMap( Expression root, bool rebuild = false )
+    {
+        if ( _navigation != null && rebuild == false )
+            return;
+
+        var navigator = new NavigationVisitor();
+        _navigation = navigator.Analyze( root, _extensions );
     }
 
     delegate int MyDelegate( int arg1, string arg2 );
