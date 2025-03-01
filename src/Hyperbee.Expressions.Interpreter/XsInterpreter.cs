@@ -37,30 +37,30 @@ public sealed class XsInterpreter : ExpressionVisitor
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
         where TDelegate : Delegate
     {
-        PrepareNavigationMap( expression );
+        AnalyzeExpression( expression );
 
         return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
     }
 
     public T Invoke<T>( LambdaExpression lambda, params object[] values ) // BF ME discuss
     {
-        PrepareNavigationMap( lambda, rebuild: true );
+        AnalyzeExpression( lambda, rebuild: true );
         return Evaluate<T>( lambda, values );
     }
 
     public void Invoke( LambdaExpression lambda, params object[] values ) // BF ME discuss
     {
-        PrepareNavigationMap( lambda, rebuild: true );
+        AnalyzeExpression( lambda, rebuild: true );
         Evaluate( lambda, values );
     }
 
-    private void PrepareNavigationMap( Expression root, bool rebuild = false )
+    private void AnalyzeExpression( Expression expression, bool rebuild = false )
     {
         if ( _navigation != null && rebuild == false )
             return;
 
         var analyzer = new AnalyzerVisitor();
-        analyzer.Analyze( root, _extensions );
+        analyzer.Analyze( expression, _extensions );
 
         _navigation = analyzer.Navigation;
     }
