@@ -456,11 +456,11 @@ public class BlockAsyncBasicTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompleterType.Immediate, CompilerType.Fast )]
-    //[DataRow( CompleterType.Immediate, CompilerType.System )]
-    //[DataRow( CompleterType.Immediate, CompilerType.Interpret )]
-    //[DataRow( CompleterType.Deferred, CompilerType.Fast )]
-    //[DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
     [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task BlockAsync_ShouldAllowLambdaParameters( CompleterType completer, CompilerType compiler )
     {

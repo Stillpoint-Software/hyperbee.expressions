@@ -57,6 +57,7 @@ internal sealed class BinaryEvaluator
         switch ( binary.Left )
         {
             case ParameterExpression paramExpr:
+                _interpreter.ResultStack.Pop();
                 leftValue = _interpreter.Scope.Values[paramExpr];
                 break;
 
@@ -114,21 +115,21 @@ internal sealed class BinaryEvaluator
                 return _interpreter.Scope.Values[Collections.LinkedNode.Single, paramExpr] = rightValue;
 
             case MemberExpression memberExpr:
-                switch ( rightValue )
-                {
-                    //case Closure closure:
-                    //    hasClosure = true;
-                    //    arguments[i] = this.Interpreter( closure.LambdaExpr );
-                    //    capturedValues[i] = closure.CapturedScope;
-                    //    break;
+                return AssignToMember( memberExpr, leftInstance, rightValue );
 
-                    case LambdaExpression lambdaExpr:
-                        var rightLambda = _interpreter.Interpreter( lambdaExpr, lambdaExpr.Type );
-                        return AssignToMember( memberExpr, leftInstance, rightLambda );
+                //switch ( rightValue )
+                //{
+                //    case XsInterpreter.Closure closure:
+                //        var rightClosureLambda = _interpreter.Interpreter( closure.LambdaExpr, closure.LambdaExpr.Type );
+                //        return AssignToMember( memberExpr, leftInstance, rightClosureLambda );
 
-                    default:
-                        return AssignToMember( memberExpr, leftInstance, rightValue );
-                }
+                //    case LambdaExpression lambdaExpr:
+                //        var rightLambda = _interpreter.Interpreter( lambdaExpr, lambdaExpr.Type );
+                //        return AssignToMember( memberExpr, leftInstance, rightLambda );
+
+                //    default:
+                //        return AssignToMember( memberExpr, leftInstance, rightValue );
+                //}
 
             case IndexExpression indexExpr:
                 return AssignToIndex( indexExpr, leftInstance, indexArguments, rightValue );
