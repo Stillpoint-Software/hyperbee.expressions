@@ -68,7 +68,7 @@ internal class StateMachineBuilder<TResult>
             stateMachineType,
             $"stateMachine<{id}>"
         );
-
+        
         var bodyExpression = new List<Expression>
         {
             Assign( // Create the state-machine

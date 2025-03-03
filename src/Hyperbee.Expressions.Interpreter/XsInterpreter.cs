@@ -34,25 +34,31 @@ public sealed class XsInterpreter : ExpressionVisitor
         _evaluator = new Evaluator( this );
     }
 
+    private LambdaExpression _lowered;
+
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
         where TDelegate : Delegate
     {
-        AnalyzeExpression( expression );
+        if ( _lowered == null )
+        {
+            AnalyzeExpression( expression );
+            expression = _lowered;
+        }
 
         return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
     }
 
-    public T Invoke<T>( LambdaExpression lambda, params object[] values ) // BF ME discuss
-    {
-        AnalyzeExpression( lambda, rebuild: true );
-        return Evaluate<T>( lambda, values );
-    }
+    //public T Invoke<T>( LambdaExpression lambda, params object[] values ) // BF ME discuss
+    //{
+    //    AnalyzeExpression( lambda, rebuild: true );
+    //    return Evaluate<T>( lambda, values );
+    //}
 
-    public void Invoke( LambdaExpression lambda, params object[] values ) // BF ME discuss
-    {
-        AnalyzeExpression( lambda, rebuild: true );
-        Evaluate( lambda, values );
-    }
+    //public void Invoke( LambdaExpression lambda, params object[] values ) // BF ME discuss
+    //{
+    //    AnalyzeExpression( lambda, rebuild: true );
+    //    Evaluate( lambda, values );
+    //}
 
     private void AnalyzeExpression( Expression expression, bool rebuild = false )
     {
@@ -63,6 +69,7 @@ public sealed class XsInterpreter : ExpressionVisitor
         analyzer.Analyze( expression, _extensions );
 
         _navigation = analyzer.Navigation;
+        _lowered = (LambdaExpression) analyzer.Lowered;
     }
 
     delegate int MyDelegate( int arg1, string arg2 );
@@ -736,9 +743,19 @@ Navigate:
 
         if ( !hasClosure )
         {
-            var result = node.Method.Invoke( instance, arguments );
-            _resultStack.Push( result );
-            return node;
+            try
+            {
+                var result = node.Method.Invoke( instance, arguments );
+                _resultStack.Push( result );
+                return node;
+            }
+            catch ( Exception ex )
+            {
+                throw;
+            }
+            finally
+            {
+            }
         }
 
         try

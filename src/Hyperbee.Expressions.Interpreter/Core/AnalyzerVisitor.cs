@@ -10,6 +10,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
     private readonly Dictionary<GotoExpression, List<Expression>> _gotoPaths = new();
 
     public Dictionary<GotoExpression, Navigation> Navigation { get; } = new();
+    public Expression Lowered { get; private set; }
 
     private Dictionary<Expression, Expression> _extensions;
 
@@ -21,7 +22,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
 
         _extensions = extensions;
 
-        Visit( root );
+        Lowered = Visit( root );
         ResolveNavigationPaths();
     }
 
