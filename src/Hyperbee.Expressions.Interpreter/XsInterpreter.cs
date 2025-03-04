@@ -48,18 +48,6 @@ public sealed class XsInterpreter : ExpressionVisitor
         return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
     }
 
-    //public T Invoke<T>( LambdaExpression lambda, params object[] values ) // BF ME discuss
-    //{
-    //    AnalyzeExpression( lambda, rebuild: true );
-    //    return Evaluate<T>( lambda, values );
-    //}
-
-    //public void Invoke( LambdaExpression lambda, params object[] values ) // BF ME discuss
-    //{
-    //    AnalyzeExpression( lambda, rebuild: true );
-    //    Evaluate( lambda, values );
-    //}
-
     private void AnalyzeExpression( Expression expression, bool rebuild = false )
     {
         if ( _navigation != null && rebuild == false )
@@ -284,7 +272,7 @@ Navigate:
                     break;
 
                 case ConditionalState.HandleTest:
-                    var conditionValue = (bool) lastResult;  //_resultStack.Pop()
+                    var conditionValue = (bool) lastResult!;  //_resultStack.Pop()
                     expr = conditionValue ? node.IfTrue : node.IfFalse;
                     state = ConditionalState.Visit;
                     continuation = ConditionalState.Complete;
@@ -590,11 +578,11 @@ Navigate:
 
     protected override Expression VisitLoop( LoopExpression node )
     {
-        object lastResult = null;
         _scope.EnterScope();
 
         try
         {
+            object lastResult = null;
             while ( true )
             {
                 Visit( node.Body );
@@ -677,7 +665,7 @@ Navigate:
         var targetValue = _resultStack.Pop();
 
         //LambdaExpression lambda = null;
-        Delegate lambdaDelegate = null;
+        Delegate lambdaDelegate;
        // Dictionary<ParameterExpression, object> capturedScope = null;
 
         switch ( targetValue )
@@ -793,9 +781,6 @@ Navigate:
             catch ( Exception ex )
             {
                 throw;
-            }
-            finally
-            {
             }
         }
 
