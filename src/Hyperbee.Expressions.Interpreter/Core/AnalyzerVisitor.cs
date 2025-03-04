@@ -2,6 +2,17 @@
 
 namespace Hyperbee.Expressions.Interpreter.Core;
 
+
+
+internal sealed class LoweringVisitor : ExpressionVisitor
+{
+    protected override Expression VisitExtension( Expression node )
+    {
+        return base.Visit( node.ReduceAndCheck() );
+    }
+}
+
+
 internal sealed class AnalyzerVisitor : ExpressionVisitor
 {
     private readonly List<Expression> _currentPath = new( 8 );
@@ -22,7 +33,8 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
 
         _extensions = extensions;
 
-        Lowered = Visit( root );
+        var reduced = new LoweringVisitor().Visit( root );
+        Lowered = Visit( reduced );
         ResolveNavigationPaths();
     }
 
@@ -31,6 +43,9 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         if ( node == null )
             return null;
 
+        //if ( node.NodeType == ExpressionType.Extension )
+        //    return base.Visit( node );
+       
         _currentPath.Add( node );
         var result = base.Visit( node );
         _currentPath.RemoveAt( _currentPath.Count - 1 );
@@ -50,18 +65,22 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         return base.VisitGoto( node );
     }
 
-    protected override Expression VisitExtension( Expression node )
-    {
-        if ( _extensions.TryGetValue( node, out var reduced ) )
-        {
-            return base.Visit( reduced );
-        }
+    //protected override Expression VisitExtension( Expression node )
+    //{
+    //    if ( _extensions.TryGetValue( node, out var reduced ) )
+    //    {
+    //        return reduced;
+    //    }
 
-        reduced = node.ReduceAndCheck();
-        _extensions[node] = reduced;
+    //    reduced = node.ReduceAndCheck();
 
-        return base.Visit( reduced );
-    }
+    //    _currentPath.Add( reduced );
+    //    var loweredAndReduced = base.Visit( reduced );
+    //    _currentPath.RemoveAt( _currentPath.Count - 1 );
+
+    //    _extensions[node] = loweredAndReduced;
+    //    return loweredAndReduced;
+    //}
 
     protected override Expression VisitLoop( LoopExpression node )
     {

@@ -564,8 +564,10 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task BlockAsync_ShouldAllowNestedBlocks_WithoutAsync( CompleterType completer, CompilerType compiler )
     {
         // Arrange
@@ -614,8 +616,10 @@ public class BlockAsyncBasicTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task BlockAsync_ShouldAwaitSuccessfully_WithBlockConditional( CompleterType completer, CompilerType compiler )
     {
         // Arrange

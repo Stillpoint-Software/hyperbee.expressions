@@ -123,17 +123,18 @@ public sealed class XsInterpreter : ExpressionVisitor
         if ( !_navigation.TryGetValue( node, out var navigation ) )
             throw new InterpreterException( $"Undefined label target: {node.Target.Name}", node );
 
-        _resultStack.Clear();
+        object lastResult = null;
 
         if ( node.Kind == GotoExpressionKind.Return && node.Value != null )
         {
             Visit( node.Value );
-
-            var lastResult = _resultStack.Pop();
+            lastResult = _resultStack.Pop();
         }
 
         _mode = InterpreterMode.Navigating;
         _currentNavigation = navigation;
+
+        _resultStack.Push( lastResult );
 
         return node;
     }
@@ -209,6 +210,7 @@ Navigate:
                             if ( _currentNavigation.CommonAncestor == node )
                                 goto Navigate;
 
+                            _resultStack.Push( lastResult );
                             return node!;
                         }
 
@@ -288,6 +290,7 @@ Navigate:
                         if ( _currentNavigation.CommonAncestor == node )
                             goto Navigate;
 
+                        _resultStack.Push( lastResult );
                         return node;
                     }
 
@@ -409,6 +412,7 @@ Navigate:
                         if ( _currentNavigation.CommonAncestor == node )
                             goto Navigate;
 
+                        _resultStack.Push( lastResult );
                         return node;
                     }
 
@@ -518,12 +522,13 @@ Navigate:
 
                         Visit( expr! );
 
-                        lastResult = _resultStack.Pop();
                     }
                     finally
                     {
                         _scope.ExitScope();
                     }
+
+                    lastResult = _resultStack.Pop();
 
                     if ( _mode == InterpreterMode.Navigating )
                     {
@@ -562,6 +567,9 @@ Navigate:
                             state = TryCatchState.Catch;
                             break;
                         }
+
+                        _resultStack.Push( lastResult );
+                        return node;
                     }
 
                     state = continuation;
@@ -586,7 +594,6 @@ Navigate:
             while ( true )
             {
                 Visit( node.Body );
-
                 lastResult = _resultStack.Pop();
 
                 if ( _mode != InterpreterMode.Navigating )
@@ -606,6 +613,7 @@ Navigate:
                     continue;
                 }
 
+                _resultStack.Push( lastResult );
                 return node;
             }
 
@@ -613,7 +621,7 @@ Navigate:
         }
         catch( Exception ex )
         {
-            
+            return node;
         }
         finally
         {
@@ -724,6 +732,10 @@ Navigate:
 
             return node;
         }
+        catch ( Exception ex )
+        {
+            throw;
+        }
         finally
         {
             _scope.ExitScope();
@@ -830,9 +842,6 @@ Navigate:
                     }
 
                     break;
-                case ParameterExpression:
-                    // do nothing
-                    break;
                 default:
                     Visit( node.Left );
                     break;
@@ -903,18 +912,18 @@ Navigate:
         return node;
     }
 
-    protected override Expression VisitExtension( Expression node )
-    {
-        if ( _extensions.TryGetValue( node, out var reduced ) )
-        {
-            return Visit( reduced );
-        }
+    //protected override Expression VisitExtension( Expression node )
+    //{
+    //    if ( _extensions.TryGetValue( node, out var reduced ) )
+    //    {
+    //        return Visit( reduced );
+    //    }
 
-        reduced = node.ReduceAndCheck();
-        _extensions[node] = reduced;
+    //    reduced = node.ReduceAndCheck();
+    //    _extensions[node] = reduced;
 
-        return Visit( reduced );
-    }
+    //    return Visit( reduced );
+    //}
 
     protected override Expression VisitIndex( IndexExpression node )
     {
