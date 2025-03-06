@@ -50,7 +50,8 @@ internal class StateMachineBuilder<TResult>
         // Conceptually:
         //
         // var stateMachine = new StateMachine();
-        //
+        // 
+        // stateMachine.__builder<> = new AsyncInterpreterTaskBuilder<TResult>();
         // stateMachine.__state<> = -1;
         // stateMachine.<extern_fields> = <extern_fields>;
         //
@@ -62,18 +63,29 @@ internal class StateMachineBuilder<TResult>
         var stateMachineType = CreateStateMachineType( context, out var fields );
         var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
 
+        var taskBuilderConstructor = typeof(AsyncInterpreterTaskBuilder<>)
+            .MakeGenericType( typeof( TResult ) )
+            .GetConstructor( Type.EmptyTypes )!;
+
         // Initialize the state machine
 
         var stateMachineVariable = Variable(
             stateMachineType,
             $"stateMachine<{id}>"
         );
-        
+
         var bodyExpression = new List<Expression>
         {
             Assign( // Create the state-machine
                 stateMachineVariable,
                 New( stateMachineType )
+            ),
+            Assign( // Set the state-machine builder to new AsyncInterpreterTaskBuilder
+                Field(
+                    stateMachineVariable,
+                    stateMachineType.GetField( FieldName.Builder )!
+                ),
+                New( taskBuilderConstructor )
             ),
             Assign( // Set the state-machine state to -1
                 Field(
@@ -99,7 +111,8 @@ internal class StateMachineBuilder<TResult>
                     .MakeGenericMethod( stateMachineType ),
                 stateMachineVariable
             ),
-            Property( // Return the state-machine task
+            //stateMachineTask
+            Property(
                 Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
                 stateMachineType.GetField( FieldName.Builder )!.FieldType.GetProperty( "Task" )!
             )
@@ -138,7 +151,7 @@ internal class StateMachineBuilder<TResult>
 
         var builderField = typeBuilder.DefineField(
             FieldName.Builder,
-            typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ),
+            typeof( AsyncInterpreterTaskBuilder<> ).MakeGenericType( typeof( TResult ) ), //typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ),
             FieldAttributes.Public
         );
 
@@ -277,7 +290,7 @@ internal class StateMachineBuilder<TResult>
                             Assign( stateField, Constant( -2 ) ),
                             Call(
                                 builderField,
-                                nameof( AsyncTaskMethodBuilder<TResult>.SetResult ),
+                                nameof( AsyncInterpreterTaskBuilder<TResult>.SetResult ),
                                 null,
                                 finalResultField
                             )
@@ -289,7 +302,7 @@ internal class StateMachineBuilder<TResult>
                             Assign( stateField, Constant( -2 ) ),
                             Call(
                                 builderField,
-                                nameof( AsyncTaskMethodBuilder<TResult>.SetException ),
+                                nameof( AsyncInterpreterTaskBuilder<TResult>.SetException ),
                                 null,
                                 exceptionParam
                             )

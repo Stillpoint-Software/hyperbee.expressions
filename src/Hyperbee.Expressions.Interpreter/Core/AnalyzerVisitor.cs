@@ -3,13 +3,10 @@
 namespace Hyperbee.Expressions.Interpreter.Core;
 
 
-
+// Temp hack to make sure all nodes are reduced before analyzing
 internal sealed class LoweringVisitor : ExpressionVisitor
 {
-    protected override Expression VisitExtension( Expression node )
-    {
-        return base.Visit( node.ReduceAndCheck() );
-    }
+    protected override Expression VisitExtension( Expression node ) => Visit( node.ReduceAndCheck() );
 }
 
 
@@ -23,7 +20,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
     public Dictionary<GotoExpression, Navigation> Navigation { get; } = new();
     public Expression Lowered { get; private set; }
 
-    private Dictionary<Expression, Expression> _extensions;
+    private Dictionary<Expression, Expression> _extensions;  // not needed if always reduced?
 
     public void Analyze( Expression root, Dictionary<Expression, Expression> extensions )
     {
@@ -33,7 +30,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
 
         _extensions = extensions;
 
-        var reduced = new LoweringVisitor().Visit( root );
+        var reduced = new LoweringVisitor().Visit( root );  // TOOD: fix
         Lowered = Visit( reduced );
         ResolveNavigationPaths();
     }

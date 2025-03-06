@@ -1,26 +1,64 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Hyperbee.Expressions.Interpreter.Core;
 using Hyperbee.Expressions.Interpreter.Evaluators;
 
 namespace Hyperbee.Expressions.Interpreter;
+
+public class ThreadLocalStack<T>
+{
+    private readonly ThreadLocal<Stack<T>> _threadStacks;
+
+    public ThreadLocalStack()
+    {
+        _threadStacks = new ThreadLocal<Stack<T>>( () =>
+        {
+            if( _threadStacks?.Values.Count > 0)
+                return new(_threadStacks?.Values[0]?.Reverse() ?? []);
+
+            return [];
+        }, trackAllValues: true );
+    }
+
+    public void Push( T item )
+    {
+        GetStack().Push( item );
+    }
+
+    public T Pop()
+    {
+        return GetStack().Pop();
+    }
+
+    public int Count => GetStack().Count;
+
+    private Stack<T> GetStack()
+    {
+        return _threadStacks.Value;
+    }
+}
 
 public sealed class XsInterpreter : ExpressionVisitor
 {
     private readonly InterpretScope _scope;
     private readonly Evaluator _evaluator;
 
-    private readonly Stack<object> _resultStack = new();
+    private readonly ThreadLocalStack<object> _resultStack = new();
 
     private Dictionary<GotoExpression, Navigation> _navigation;
-    private Navigation _currentNavigation;
-    private InterpreterMode _mode;
+    private ThreadLocal<Navigation> _currentNavigation;
+    private ThreadLocal<InterpreterMode> _mode;
 
     private readonly Dictionary<Expression, Expression> _extensions = new();
 
     internal InterpretScope Scope => _scope;
-    internal Stack<object> ResultStack => _resultStack;
+    internal ThreadLocalStack<object> ResultStack => _resultStack;
 
     private enum InterpreterMode
     {
@@ -32,6 +70,10 @@ public sealed class XsInterpreter : ExpressionVisitor
     {
         _scope = new InterpretScope();
         _evaluator = new Evaluator( this );
+
+        _mode = new ThreadLocal<InterpreterMode>();
+        _currentNavigation = new ThreadLocal<Navigation>();
+
     }
 
     private LambdaExpression _lowered;
@@ -104,11 +146,11 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     private void ThrowIfNavigating()
     {
-        if ( _mode != InterpreterMode.Navigating )
+        if ( _mode.Value != InterpreterMode.Navigating )
             return;
 
-        if ( _currentNavigation.Exception != null )
-            throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", _currentNavigation.Exception );
+        if ( _currentNavigation.Value.Exception != null )
+            throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", _currentNavigation.Value.Exception );
 
         throw new InvalidOperationException( "Interpreter failed to navigate to next expression." );
     }
@@ -117,9 +159,6 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     protected override Expression VisitGoto( GotoExpression node )
     {
-        if ( _mode == InterpreterMode.Navigating )
-            return node;
-
         if ( !_navigation.TryGetValue( node, out var navigation ) )
             throw new InterpreterException( $"Undefined label target: {node.Target.Name}", node );
 
@@ -131,8 +170,8 @@ public sealed class XsInterpreter : ExpressionVisitor
             lastResult = _resultStack.Pop();
         }
 
-        _mode = InterpreterMode.Navigating;
-        _currentNavigation = navigation;
+        _mode.Value = InterpreterMode.Navigating;
+        _currentNavigation.Value = navigation;
 
         _resultStack.Push( lastResult );
 
@@ -141,11 +180,11 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     protected override Expression VisitLabel( LabelExpression node )
     {
-        if ( _mode == InterpreterMode.Navigating && _currentNavigation!.TargetLabel == node.Target )
+        if ( _mode.Value == InterpreterMode.Navigating && _currentNavigation!.Value.TargetLabel == node.Target )
         {
-            _mode = InterpreterMode.Evaluating;
-            _currentNavigation.Reset();
-            _currentNavigation = null;
+            _mode.Value = InterpreterMode.Evaluating;
+            _currentNavigation.Value.Reset();
+            _currentNavigation.Value = null;
         }
 
         _resultStack.Push( null );
@@ -174,9 +213,9 @@ public sealed class XsInterpreter : ExpressionVisitor
         {
 Navigate:
 
-            if ( _mode == InterpreterMode.Navigating )
+            if ( _mode.Value == InterpreterMode.Navigating )
             {
-                var nextStep = _currentNavigation.GetNextStep();
+                var nextStep = _currentNavigation.Value.GetNextStep();
                 statementIndex = node.Expressions.IndexOf( nextStep );
             }
 
@@ -205,9 +244,9 @@ Navigate:
 
                         lastResult = _resultStack.Pop();
 
-                        if ( _mode == InterpreterMode.Navigating )
+                        if ( _mode.Value == InterpreterMode.Navigating )
                         {
-                            if ( _currentNavigation.CommonAncestor == node )
+                            if ( _currentNavigation.Value.CommonAncestor == node )
                                 goto Navigate;
 
                             _resultStack.Push( lastResult );
@@ -256,9 +295,9 @@ Navigate:
 
 Navigate:
 
-        if ( _mode == InterpreterMode.Navigating )
+        if ( _mode.Value == InterpreterMode.Navigating )
         {
-            expr = _currentNavigation.GetNextStep();
+            expr = _currentNavigation.Value.GetNextStep();
             state = ConditionalState.Visit;
             continuation = expr == node.Test ? ConditionalState.HandleTest : ConditionalState.Complete;
         }
@@ -285,9 +324,9 @@ Navigate:
 
                     lastResult = _resultStack.Pop();
 
-                    if ( _mode == InterpreterMode.Navigating )
+                    if ( _mode.Value == InterpreterMode.Navigating )
                     {
-                        if ( _currentNavigation.CommonAncestor == node )
+                        if ( _currentNavigation.Value.CommonAncestor == node )
                             goto Navigate;
 
                         _resultStack.Push( lastResult );
@@ -329,9 +368,9 @@ Navigate:
 
 Navigate:
 
-        if ( _mode == InterpreterMode.Navigating )
+        if ( _mode.Value == InterpreterMode.Navigating )
         {
-            expr = _currentNavigation.GetNextStep();
+            expr = _currentNavigation.Value.GetNextStep();
 
             if ( expr == node.SwitchValue )
             {
@@ -407,9 +446,9 @@ Navigate:
 
                     lastResult = _resultStack.Pop();
 
-                    if ( _mode == InterpreterMode.Navigating )
+                    if ( _mode.Value == InterpreterMode.Navigating )
                     {
-                        if ( _currentNavigation.CommonAncestor == node )
+                        if ( _currentNavigation.Value.CommonAncestor == node )
                             goto Navigate;
 
                         _resultStack.Push( lastResult );
@@ -450,9 +489,9 @@ Navigate:
 
 Navigate:
 
-        if ( _mode == InterpreterMode.Navigating )
+        if ( _mode.Value == InterpreterMode.Navigating )
         {
-            expr = _currentNavigation.GetNextStep();
+            expr = _currentNavigation.Value.GetNextStep();
 
             if ( expr == node.Body )
             {
@@ -494,7 +533,7 @@ Navigate:
                     }
 
                     var handler = node.Handlers[catchIndex];
-                    var exceptionType = _currentNavigation.Exception?.GetType();
+                    var exceptionType = _currentNavigation?.Value.Exception?.GetType();
 
                     if ( handler.Test.IsAssignableFrom( exceptionType ) )
                     {
@@ -513,12 +552,12 @@ Navigate:
                 case TryCatchState.HandleCatch:
 
                     // found matching catch, clear navigation
-                    _mode = InterpreterMode.Evaluating;
+                    _mode.Value = InterpreterMode.Evaluating;
 
                     try
                     {
                         _scope.EnterScope();
-                        _scope.Values[exceptionVariable] = _currentNavigation.Exception;
+                        _scope.Values[exceptionVariable] = _currentNavigation.Value.Exception;
 
                         Visit( expr! );
 
@@ -530,9 +569,9 @@ Navigate:
 
                     lastResult = _resultStack.Pop();
 
-                    if ( _mode == InterpreterMode.Navigating )
+                    if ( _mode.Value == InterpreterMode.Navigating )
                     {
-                        if ( _currentNavigation?.CommonAncestor == node )
+                        if ( _currentNavigation?.Value?.CommonAncestor == node )
                             goto Navigate;
                     }
 
@@ -557,12 +596,12 @@ Navigate:
 
                     lastResult = _resultStack.Pop();
 
-                    if ( _mode == InterpreterMode.Navigating )
+                    if ( _mode.Value == InterpreterMode.Navigating )
                     {
-                        if ( _currentNavigation?.CommonAncestor == node )
+                        if ( _currentNavigation?.Value?.CommonAncestor == node )
                             goto Navigate;
 
-                        if ( _currentNavigation.Exception != null )
+                        if ( _currentNavigation.Value.Exception != null )
                         {
                             state = TryCatchState.Catch;
                             break;
@@ -596,20 +635,20 @@ Navigate:
                 Visit( node.Body );
                 lastResult = _resultStack.Pop();
 
-                if ( _mode != InterpreterMode.Navigating )
+                if ( _mode.Value != InterpreterMode.Navigating )
                 {
                     continue;
                 }
 
-                if ( _currentNavigation.TargetLabel == node.BreakLabel )
+                if ( _currentNavigation.Value.TargetLabel == node.BreakLabel )
                 {
-                    _mode = InterpreterMode.Evaluating;
+                    _mode.Value = InterpreterMode.Evaluating;
                     break;
                 }
 
-                if ( _currentNavigation.TargetLabel == node.ContinueLabel )
+                if ( _currentNavigation.Value.TargetLabel == node.ContinueLabel )
                 {
-                    _mode = InterpreterMode.Evaluating;
+                    _mode.Value = InterpreterMode.Evaluating;
                     continue;
                 }
 
@@ -717,7 +756,8 @@ Navigate:
 
             //    Visit( lambda.Body );
             //} 
-
+            Delegate d;
+            
             var arguments = new object[node.Arguments.Count];
 
             for ( var i = 0; i < node.Arguments.Count; i++ )
@@ -741,6 +781,8 @@ Navigate:
             _scope.ExitScope();
         }
     }
+
+    //private static object _object = new();
 
     protected override Expression VisitMethodCall( MethodCallExpression node )
     {
@@ -786,7 +828,28 @@ Navigate:
         {
             try
             {
+                if ( node.Method.Name == "SetResult" )
+                {
+                    Debugger.Break();
+                }
+
+                if ( node.Method.Name == "Start" )
+                {
+                    Debugger.Break();
+                }
+
                 var result = node.Method.Invoke( instance, arguments );
+
+                if ( node.Method.Name == "SetResult" )
+                {
+                    Debugger.Break();
+                }
+
+                if ( node.Method.Name == "Start" )
+                {
+                    Debugger.Break();
+                }
+
                 _resultStack.Push( result );
                 return node;
             }
@@ -879,13 +942,13 @@ Navigate:
         {
             var exception = _resultStack.Pop() as Exception;
 
-            if ( _currentNavigation != null && exception == null )
+            if ( _currentNavigation.Value != null && exception == null )
             {
-                exception = _currentNavigation.Exception;
+                exception = _currentNavigation.Value.Exception;
             }
 
-            _mode = InterpreterMode.Navigating;
-            _currentNavigation = new Navigation( exception: exception );
+            _mode.Value = InterpreterMode.Navigating;
+            _currentNavigation.Value = new Navigation( exception: exception );
 
             return node;
         }
@@ -970,12 +1033,24 @@ Navigate:
         Visit( node.Expression );
         var instance = _resultStack.Pop();
 
-        var result = node.Member switch
+        object result;
+        switch ( node.Member )
         {
-            PropertyInfo prop => prop.GetValue( instance ),
-            FieldInfo field => field.GetValue( instance ),
-            _ => throw new InterpreterException( $"Unsupported member access: {node.Member.Name}", node )
-        };
+            case PropertyInfo prop:
+                result = prop.GetValue( instance );
+                break;
+            case FieldInfo field:
+                //if ( field.FieldType.IsValueType )
+                //{
+                //    var typeReference = __makeref(instance);
+                //    result = field.GetValueDirect( typeReference );
+                //    break;
+                //}
+                result = field.GetValue( instance );
+                break;
+            default:
+                throw new InterpreterException( $"Unsupported member access: {node.Member.Name}", node );
+        }
 
         _resultStack.Push( result );
         return node;

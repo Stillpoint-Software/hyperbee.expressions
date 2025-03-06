@@ -46,7 +46,8 @@ public static class ExpressionCompilerExtensions
 #endif
         if( compilerType == CompilerType.Interpret )
         {
-            return expression.Interpreter();
+           return expression.Interpreter();
+           return expression.Compile( preferInterpretation: true );
         }
 
         return expression.Compile();
