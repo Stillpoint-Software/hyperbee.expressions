@@ -16,12 +16,10 @@ internal sealed class BinaryEvaluator
 
     public object Binary( BinaryExpression binary )
     {
-        var operation = GetOperation( binary );
-
         switch ( binary.NodeType )
         {
             case ExpressionType.Coalesce:
-                return CoalesceOperation( operation );
+                return CoalesceOperation( GetOperation( binary, true ) );
 
             case ExpressionType.Assign:
             case ExpressionType.AddAssign:
@@ -31,7 +29,7 @@ internal sealed class BinaryEvaluator
             case ExpressionType.ModuloAssign:
             case ExpressionType.LeftShiftAssign:
             case ExpressionType.RightShiftAssign:
-                return AssignOperation( operation );
+                return AssignOperation( GetOperation( binary, false ) );
 
             case ExpressionType.Equal:
             case ExpressionType.NotEqual:
@@ -39,47 +37,53 @@ internal sealed class BinaryEvaluator
             case ExpressionType.GreaterThan:
             case ExpressionType.LessThanOrEqual:
             case ExpressionType.GreaterThanOrEqual:
-                return LogicalOperation( operation );
+                return LogicalOperation( GetOperation( binary, true ) );
 
             default:
-                return ArithmeticOperation( operation );
+                return ArithmeticOperation( GetOperation( binary, true ) );
         }
     }
 
-    private BinaryOperation GetOperation( BinaryExpression binary )
+    private BinaryOperation GetOperation( BinaryExpression binary, bool valueOnly )
     {
         object leftValue;
         object leftInstance = null;
         object[] index = null;
 
-        var rightValue = _interpreter.ResultStack.Pop();
+        var rightValue = XsInterpreter.ResultStack.Pop();
 
-        switch ( binary.Left )
+        if ( valueOnly )
         {
-            case ParameterExpression paramExpr:
-                _interpreter.ResultStack.Pop();
-                leftValue = _interpreter.Scope.Values[paramExpr];
-                break;
+            leftValue = XsInterpreter.ResultStack.Pop();
+        }
+        else
+        {
+            switch ( binary.Left )
+            {
+                case ParameterExpression paramExpr:
+                    leftValue = _interpreter.Scope.Values[paramExpr];
+                    break;
 
-            case MemberExpression memberExpr:
-                leftInstance = _interpreter.ResultStack.Pop();
-                leftValue = GetMemberValue( leftInstance, memberExpr );
-                break;
+                case MemberExpression memberExpr:
+                    leftInstance = XsInterpreter.ResultStack.Pop();
+                    leftValue = GetMemberValue( leftInstance, memberExpr );
+                    break;
 
-            case IndexExpression indexExpr:
-                index = new object[indexExpr.Arguments.Count];
-                for ( var i = indexExpr.Arguments.Count - 1; i >= 0; i-- )
-                {
-                    index[i] = _interpreter.ResultStack.Pop();
-                }
+                case IndexExpression indexExpr:
+                    index = new object[indexExpr.Arguments.Count];
+                    for ( var i = indexExpr.Arguments.Count - 1; i >= 0; i-- )
+                    {
+                        index[i] = XsInterpreter.ResultStack.Pop();
+                    }
 
-                leftInstance = _interpreter.ResultStack.Pop();
-                leftValue = GetIndexValue( leftInstance, indexExpr, index );
-                break;
+                    leftInstance = XsInterpreter.ResultStack.Pop();
+                    leftValue = GetIndexValue( leftInstance, indexExpr, index );
+                    break;
 
-            default:
-                leftValue = _interpreter.ResultStack.Pop();
-                break;
+                default:
+                    leftValue = XsInterpreter.ResultStack.Pop();
+                    break;
+            }
         }
 
         return new BinaryOperation( binary, leftValue, rightValue, leftInstance, index );

@@ -1,91 +1,68 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
-using System.Reflection.Metadata;
+
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 using Hyperbee.Expressions.Interpreter.Core;
 using Hyperbee.Expressions.Interpreter.Evaluators;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Hyperbee.Expressions.Interpreter;
 
-public class ThreadLocalStack<T>
-{
-    private readonly ThreadLocal<Stack<T>> _threadStacks;
-
-    public ThreadLocalStack()
-    {
-        _threadStacks = new ThreadLocal<Stack<T>>( () =>
-        {
-            if( _threadStacks?.Values.Count > 0)
-                return new(_threadStacks?.Values[0]?.Reverse() ?? []);
-
-            return [];
-        }, trackAllValues: true );
-    }
-
-    public void Push( T item )
-    {
-        GetStack().Push( item );
-    }
-
-    public T Pop()
-    {
-        return GetStack().Pop();
-    }
-
-    public int Count => GetStack().Count;
-
-    private Stack<T> GetStack()
-    {
-        return _threadStacks.Value;
-    }
-}
-
 public sealed class XsInterpreter : ExpressionVisitor
 {
-    private readonly InterpretScope _scope;
     private readonly Evaluator _evaluator;
 
-    private readonly ThreadLocalStack<object> _resultStack = new();
-
     private Dictionary<GotoExpression, Navigation> _navigation;
-    private ThreadLocal<Navigation> _currentNavigation;
-    private ThreadLocal<InterpreterMode> _mode;
 
     private readonly Dictionary<Expression, Expression> _extensions = new();
 
-    internal InterpretScope Scope => _scope;
-    internal ThreadLocalStack<object> ResultStack => _resultStack;
+    private LambdaExpression _lowered;
 
-    private enum InterpreterMode
+    private readonly StatePreservingSynchronizationContext _syncContext;
+
+    internal InterpretScope Scope => InterpreterContextAccessor.Current.Scope;
+    internal static Stack<object> ResultStack => InterpreterContextAccessor.Current.ResultStack;
+
+    internal InterpreterMode Mode
     {
-        Evaluating,
-        Navigating
+        get
+        {
+            return InterpreterContextAccessor.Current.Mode;
+        }
+        set
+        {
+            InterpreterContextAccessor.Current.Mode = value;
+        }
     }
+
+    internal Navigation Navigation
+    {
+        get
+        {
+            return InterpreterContextAccessor.Current.Navigation;
+        }
+        set
+        {
+            InterpreterContextAccessor.Current.Navigation = value;
+        }
+    } 
 
     public XsInterpreter()
     {
-        _scope = new InterpretScope();
         _evaluator = new Evaluator( this );
-
-        _mode = new ThreadLocal<InterpreterMode>();
-        _currentNavigation = new ThreadLocal<Navigation>();
-
+        _syncContext = new StatePreservingSynchronizationContext();
     }
-
-    private LambdaExpression _lowered;
 
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
         where TDelegate : Delegate
     {
-        if ( _lowered == null )
+        if ( _lowered != null )
         {
-            AnalyzeExpression( expression );
-            expression = _lowered;
+            return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
         }
+
+        AnalyzeExpression( expression );
+        expression = _lowered;
 
         return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
     }
@@ -104,53 +81,76 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     internal T Evaluate<T>( LambdaExpression lambda, params object[] values )
     {
-        _scope.EnterScope();
+        var prevContext = SynchronizationContext.Current;
 
         try
         {
-            for ( var i = 0; i < lambda.Parameters.Count; i++ )
-                _scope.Values[lambda.Parameters[i]] = values[i];
+            SynchronizationContext.SetSynchronizationContext( _syncContext );
 
-            Visit( lambda.Body );
+            Scope.EnterScope();
 
-            ThrowIfNavigating();
+            try
+            {
+                for ( var i = 0; i < lambda.Parameters.Count; i++ )
+                    Scope.Values[lambda.Parameters[i]] = values[i];
 
-            return (T) _resultStack.Pop();
+                Visit( lambda.Body );
+
+                ThrowIfNavigating();
+
+                return (T) ResultStack.Pop();
+            }
+            finally
+            {
+                Scope.ExitScope();
+            }
         }
         finally
         {
-            _scope.ExitScope();
+            SynchronizationContext.SetSynchronizationContext( prevContext );
         }
+
     }
 
     internal void Evaluate( LambdaExpression lambda, params object[] values )
     {
-        _scope.EnterScope();
+        var prevContext = SynchronizationContext.Current;
 
         try
         {
-            for ( var i = 0; i < lambda.Parameters.Count; i++ )
-                _scope.Values[lambda.Parameters[i]] = values[i];
+            SynchronizationContext.SetSynchronizationContext( _syncContext );
 
-            Visit( lambda.Body );
+            Scope.EnterScope();
 
-            ThrowIfNavigating();
+            try
+            {
+                for ( var i = 0; i < lambda.Parameters.Count; i++ )
+                    Scope.Values[lambda.Parameters[i]] = values[i];
 
-            _resultStack.Pop();
+                Visit( lambda.Body );
+
+                ThrowIfNavigating();
+
+                ResultStack.Pop();
+            }
+            finally
+            {
+                Scope.ExitScope();
+            }
         }
         finally
         {
-            _scope.ExitScope();
+            SynchronizationContext.SetSynchronizationContext(prevContext );
         }
     }
 
     private void ThrowIfNavigating()
     {
-        if ( _mode.Value != InterpreterMode.Navigating )
+        if ( Mode != InterpreterMode.Navigating )
             return;
 
-        if ( _currentNavigation.Value.Exception != null )
-            throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", _currentNavigation.Value.Exception );
+        if ( Navigation.Exception != null )
+            throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", Navigation.Exception );
 
         throw new InvalidOperationException( "Interpreter failed to navigate to next expression." );
     }
@@ -167,27 +167,27 @@ public sealed class XsInterpreter : ExpressionVisitor
         if ( node.Kind == GotoExpressionKind.Return && node.Value != null )
         {
             Visit( node.Value );
-            lastResult = _resultStack.Pop();
+            lastResult = ResultStack.Pop();
         }
 
-        _mode.Value = InterpreterMode.Navigating;
-        _currentNavigation.Value = navigation;
+        Mode = InterpreterMode.Navigating;
+        Navigation = navigation;
 
-        _resultStack.Push( lastResult );
+        ResultStack.Push( lastResult );
 
         return node;
     }
 
     protected override Expression VisitLabel( LabelExpression node )
     {
-        if ( _mode.Value == InterpreterMode.Navigating && _currentNavigation!.Value.TargetLabel == node.Target )
+        if ( Mode == InterpreterMode.Navigating && Navigation.TargetLabel == node.Target )
         {
-            _mode.Value = InterpreterMode.Evaluating;
-            _currentNavigation.Value.Reset();
-            _currentNavigation.Value = null;
+            Mode = InterpreterMode.Evaluating;
+            Navigation.Reset();
+            Navigation = null;
         }
 
-        _resultStack.Push( null );
+        ResultStack.Push( null );
 
         return node;
     }
@@ -207,15 +207,15 @@ public sealed class XsInterpreter : ExpressionVisitor
         var statementIndex = 0;
         object lastResult = null;
 
-        _scope.EnterScope();
+        Scope.EnterScope();
 
         try
         {
 Navigate:
 
-            if ( _mode.Value == InterpreterMode.Navigating )
+            if ( Mode == InterpreterMode.Navigating )
             {
-                var nextStep = _currentNavigation.Value.GetNextStep();
+                var nextStep = Navigation.GetNextStep();
                 statementIndex = node.Expressions.IndexOf( nextStep );
             }
 
@@ -226,8 +226,8 @@ Navigate:
                     case BlockState.InitializeVariables:
                         foreach ( var variable in node.Variables )
                         {
-                            _scope.Variables[variable.Name!] = variable;
-                            _scope.Values[variable] = Default( variable.Type );
+                            Scope.Variables[variable.Name!] = variable;
+                            Scope.Values[variable] = Default( variable.Type );
                         }
 
                         state = BlockState.HandleStatements;
@@ -242,14 +242,14 @@ Navigate:
 
                         Visit( node.Expressions[statementIndex] );
 
-                        lastResult = _resultStack.Pop();
+                        lastResult = ResultStack.Pop();
 
-                        if ( _mode.Value == InterpreterMode.Navigating )
+                        if ( Mode == InterpreterMode.Navigating )
                         {
-                            if ( _currentNavigation.Value.CommonAncestor == node )
+                            if ( Navigation.CommonAncestor == node )
                                 goto Navigate;
 
-                            _resultStack.Push( lastResult );
+                            ResultStack.Push( lastResult );
                             return node!;
                         }
 
@@ -257,18 +257,18 @@ Navigate:
                         break;
 
                     case BlockState.Complete:
-                        _resultStack.Push( lastResult );
+                        ResultStack.Push( lastResult );
                         return node;
                 }
             }
         }
         catch ( Exception ex )
         {
-            return node;
+            throw;
         }
         finally
         {
-            _scope.ExitScope();
+            Scope.ExitScope();
         }
 
         static object Default( Type type ) =>
@@ -295,9 +295,9 @@ Navigate:
 
 Navigate:
 
-        if ( _mode.Value == InterpreterMode.Navigating )
+        if ( Mode == InterpreterMode.Navigating )
         {
-            expr = _currentNavigation.Value.GetNextStep();
+            expr = Navigation.GetNextStep();
             state = ConditionalState.Visit;
             continuation = expr == node.Test ? ConditionalState.HandleTest : ConditionalState.Complete;
         }
@@ -313,7 +313,7 @@ Navigate:
                     break;
 
                 case ConditionalState.HandleTest:
-                    var conditionValue = (bool) lastResult!;  //_resultStack.Pop()
+                    var conditionValue = (bool) lastResult!;  //ResultStack.Pop()
                     expr = conditionValue ? node.IfTrue : node.IfFalse;
                     state = ConditionalState.Visit;
                     continuation = ConditionalState.Complete;
@@ -322,14 +322,14 @@ Navigate:
                 case ConditionalState.Visit:
                     Visit( expr );
 
-                    lastResult = _resultStack.Pop();
+                    lastResult = ResultStack.Pop();
 
-                    if ( _mode.Value == InterpreterMode.Navigating )
+                    if ( Mode == InterpreterMode.Navigating )
                     {
-                        if ( _currentNavigation.Value.CommonAncestor == node )
+                        if ( Navigation.CommonAncestor == node )
                             goto Navigate;
 
-                        _resultStack.Push( lastResult );
+                        ResultStack.Push( lastResult );
                         return node;
                     }
 
@@ -337,7 +337,7 @@ Navigate:
                     break;
 
                 case ConditionalState.Complete:
-                    _resultStack.Push( lastResult );
+                    ResultStack.Push( lastResult );
                     return node;
             }
         }
@@ -352,7 +352,6 @@ Navigate:
         MatchCase,
         HandleMatchCase,
         Visit,
-        VisitCaseBody,
         Complete
     }
 
@@ -368,9 +367,9 @@ Navigate:
 
 Navigate:
 
-        if ( _mode.Value == InterpreterMode.Navigating )
+        if ( Mode == InterpreterMode.Navigating )
         {
-            expr = _currentNavigation.Value.GetNextStep();
+            expr = Navigation.GetNextStep();
 
             if ( expr == node.SwitchValue )
             {
@@ -397,7 +396,7 @@ Navigate:
                     break;
 
                 case SwitchState.HandleSwitchValue:
-                    switchValue = lastResult; //_resultStack.Pop();
+                    switchValue = lastResult; //ResultStack.Pop();
                     caseIndex = 0;
                     testIndex = 0;
                     state = SwitchState.MatchCase;
@@ -427,7 +426,7 @@ Navigate:
                     break;
 
                 case SwitchState.HandleMatchCase:
-                    var testValue = lastResult; //_resultStack.Pop();
+                    var testValue = lastResult; //ResultStack.Pop();
 
                     if ( (switchValue != null && !switchValue.Equals( testValue )) || (switchValue == null && testValue != null) )
                     {
@@ -444,14 +443,14 @@ Navigate:
                 case SwitchState.Visit:
                     Visit( expr! );
 
-                    lastResult = _resultStack.Pop();
+                    lastResult = ResultStack.Pop();
 
-                    if ( _mode.Value == InterpreterMode.Navigating )
+                    if ( Mode == InterpreterMode.Navigating )
                     {
-                        if ( _currentNavigation.Value.CommonAncestor == node )
+                        if ( Navigation.CommonAncestor == node )
                             goto Navigate;
 
-                        _resultStack.Push( lastResult );
+                        ResultStack.Push( lastResult );
                         return node;
                     }
 
@@ -459,7 +458,7 @@ Navigate:
                     break;
 
                 case SwitchState.Complete:
-                    _resultStack.Push( lastResult );
+                    ResultStack.Push( lastResult );
                     return node;
             }
         }
@@ -489,9 +488,9 @@ Navigate:
 
 Navigate:
 
-        if ( _mode.Value == InterpreterMode.Navigating )
+        if ( Mode == InterpreterMode.Navigating )
         {
-            expr = _currentNavigation.Value.GetNextStep();
+            expr = Navigation.GetNextStep();
 
             if ( expr == node.Body )
             {
@@ -533,7 +532,7 @@ Navigate:
                     }
 
                     var handler = node.Handlers[catchIndex];
-                    var exceptionType = _currentNavigation?.Value.Exception?.GetType();
+                    var exceptionType = Navigation.Exception?.GetType();
 
                     if ( handler.Test.IsAssignableFrom( exceptionType ) )
                     {
@@ -552,26 +551,26 @@ Navigate:
                 case TryCatchState.HandleCatch:
 
                     // found matching catch, clear navigation
-                    _mode.Value = InterpreterMode.Evaluating;
+                    Mode = InterpreterMode.Evaluating;
 
                     try
                     {
-                        _scope.EnterScope();
-                        _scope.Values[exceptionVariable] = _currentNavigation.Value.Exception;
+                        Scope.EnterScope();
+                        Scope.Values[exceptionVariable] = Navigation.Exception;
 
                         Visit( expr! );
 
                     }
                     finally
                     {
-                        _scope.ExitScope();
+                        Scope.ExitScope();
                     }
 
-                    lastResult = _resultStack.Pop();
+                    lastResult = ResultStack.Pop();
 
-                    if ( _mode.Value == InterpreterMode.Navigating )
+                    if ( Mode == InterpreterMode.Navigating )
                     {
-                        if ( _currentNavigation?.Value?.CommonAncestor == node )
+                        if ( Navigation.CommonAncestor == node )
                             goto Navigate;
                     }
 
@@ -594,20 +593,20 @@ Navigate:
                 case TryCatchState.Visit:
                     Visit( expr! );
 
-                    lastResult = _resultStack.Pop();
+                    lastResult = ResultStack.Pop();
 
-                    if ( _mode.Value == InterpreterMode.Navigating )
+                    if ( Mode == InterpreterMode.Navigating )
                     {
-                        if ( _currentNavigation?.Value?.CommonAncestor == node )
+                        if ( Navigation.CommonAncestor == node )
                             goto Navigate;
 
-                        if ( _currentNavigation.Value.Exception != null )
+                        if ( Navigation.Exception != null )
                         {
                             state = TryCatchState.Catch;
                             break;
                         }
 
-                        _resultStack.Push( lastResult );
+                        ResultStack.Push( lastResult );
                         return node;
                     }
 
@@ -615,7 +614,7 @@ Navigate:
                     break;
 
                 case TryCatchState.Complete:
-                    _resultStack.Push( lastResult );
+                    ResultStack.Push( lastResult );
                     return node;
             }
         }
@@ -625,46 +624,46 @@ Navigate:
 
     protected override Expression VisitLoop( LoopExpression node )
     {
-        _scope.EnterScope();
+        Scope.EnterScope();
 
         try
         {
-            object lastResult = null;
+            object lastResult;
             while ( true )
             {
                 Visit( node.Body );
-                lastResult = _resultStack.Pop();
+                lastResult = ResultStack.Pop();
 
-                if ( _mode.Value != InterpreterMode.Navigating )
+                if ( Mode != InterpreterMode.Navigating )
                 {
                     continue;
                 }
 
-                if ( _currentNavigation.Value.TargetLabel == node.BreakLabel )
+                if ( Navigation.TargetLabel == node.BreakLabel )
                 {
-                    _mode.Value = InterpreterMode.Evaluating;
+                    Mode = InterpreterMode.Evaluating;
                     break;
                 }
 
-                if ( _currentNavigation.Value.TargetLabel == node.ContinueLabel )
+                if ( Navigation.TargetLabel == node.ContinueLabel )
                 {
-                    _mode.Value = InterpreterMode.Evaluating;
+                    Mode = InterpreterMode.Evaluating;
                     continue;
                 }
 
-                _resultStack.Push( lastResult );
+                ResultStack.Push( lastResult );
                 return node;
             }
 
-            _resultStack.Push( lastResult );
+            ResultStack.Push( lastResult );
         }
         catch( Exception ex )
         {
-            return node;
+            throw;
         }
         finally
         {
-            _scope.ExitScope();
+            Scope.ExitScope();
         }
 
         return node;
@@ -674,12 +673,12 @@ Navigate:
 
     protected override Expression VisitLambda<T>( Expression<T> node )
     {
-        _resultStack.Push( this.Interpreter( node, node.Type ) );
+        ResultStack.Push( this.Interpreter( node, node.Type ) );
         return node;
 
-        //if ( _scope.Depth == 0 )
+        //if ( Scope.Depth == 0 )
         //{
-        //    _resultStack.Push( node );
+        //    ResultStack.Push( node );
         //    return node;
         //}
 
@@ -687,7 +686,7 @@ Navigate:
 
         //if ( freeVariables.Count == 0 )
         //{
-        //    _resultStack.Push( node );
+        //    ResultStack.Push( node );
         //    return node;
         //}
 
@@ -695,13 +694,13 @@ Navigate:
 
         //foreach ( var variable in freeVariables )
         //{
-        //    if ( !_scope.Values.TryGetValue( variable, out var value ) )
+        //    if ( !Scope.Values.TryGetValue( variable, out var value ) )
         //        throw new InterpreterException( $"Captured variable '{variable.Name}' is not defined.", node );
 
         //    capturedScope[variable] = value;
         //}
 
-        //_resultStack.Push( new Closure( node, capturedScope ) );
+        //ResultStack.Push( new Closure( node, capturedScope ) );
 
         //return node;
     }
@@ -709,7 +708,7 @@ Navigate:
     protected override Expression VisitInvocation( InvocationExpression node )
     {
         Visit( node.Expression );
-        var targetValue = _resultStack.Pop();
+        var targetValue = ResultStack.Pop();
 
         //LambdaExpression lambda = null;
         Delegate lambdaDelegate;
@@ -736,14 +735,14 @@ Navigate:
                 throw new InterpreterException( "Invocation target is not a valid lambda or closure.", node );
         }
 
-        _scope.EnterScope();
+        Scope.EnterScope();
 
         try
         {
             //if ( capturedScope is not null )
             //{
             //    foreach ( var (param, value) in capturedScope )
-            //        _scope.Values[param] = value;
+            //        Scope.Values[param] = value;
             //}
 
             //if ( lambda != null )
@@ -751,24 +750,23 @@ Navigate:
             //    for ( var i = 0; i < node.Arguments.Count; i++ )
             //    {
             //        Visit( node.Arguments[i] );
-            //        _scope.Values[lambda.Parameters[i]] = _resultStack.Pop();
+            //        Scope.Values[lambda.Parameters[i]] = ResultStack.Pop();
             //    }
 
             //    Visit( lambda.Body );
             //} 
-            Delegate d;
-            
+
             var arguments = new object[node.Arguments.Count];
 
             for ( var i = 0; i < node.Arguments.Count; i++ )
             {
                 Visit( node.Arguments[i] );
-                arguments[i] = _resultStack.Pop();
+                arguments[i] = ResultStack.Pop();
             }
 
             var result = lambdaDelegate.DynamicInvoke( arguments );
 
-            _resultStack.Push( result );
+            ResultStack.Push( result );
 
             return node;
         }
@@ -778,11 +776,9 @@ Navigate:
         }
         finally
         {
-            _scope.ExitScope();
+            Scope.ExitScope();
         }
     }
-
-    //private static object _object = new();
 
     protected override Expression VisitMethodCall( MethodCallExpression node )
     {
@@ -792,7 +788,7 @@ Navigate:
         if ( !isStatic )
         {
             Visit( node.Object );
-            instance = _resultStack.Pop();
+            instance = ResultStack.Pop();
         }
 
         var arguments = new object[node.Arguments.Count];
@@ -802,7 +798,7 @@ Navigate:
         for ( var i = 0; i < node.Arguments.Count; i++ )
         {
             Visit( node.Arguments[i] );
-            var argValue = _resultStack.Pop();
+            var argValue = ResultStack.Pop();
 
             switch ( argValue )
             {
@@ -828,30 +824,13 @@ Navigate:
         {
             try
             {
-                if ( node.Method.Name == "SetResult" )
-                {
-                    Debugger.Break();
-                }
-
-                if ( node.Method.Name == "Start" )
-                {
-                    Debugger.Break();
-                }
-
                 var result = node.Method.Invoke( instance, arguments );
-
-                if ( node.Method.Name == "SetResult" )
-                {
-                    Debugger.Break();
-                }
-
-                if ( node.Method.Name == "Start" )
-                {
-                    Debugger.Break();
-                }
-
-                _resultStack.Push( result );
+                ResultStack.Push( result );
                 return node;
+            }
+            catch ( TargetInvocationException invocationException )
+            {
+                throw invocationException.InnerException ?? invocationException;
             }
             catch ( Exception ex )
             {
@@ -861,21 +840,21 @@ Navigate:
 
         try
         {
-            _scope.EnterScope();
+            Scope.EnterScope();
 
             foreach ( var capturedScope in capturedValues.Values )
             {
                 foreach ( var (param, value) in capturedScope )
-                    _scope.Values[param] = value;
+                    Scope.Values[param] = value;
             }
 
             var result = node.Method.Invoke( instance, arguments );
-            _resultStack.Push( result );
+            ResultStack.Push( result );
             return node;
         }
         finally
         {
-            _scope.ExitScope();
+            Scope.ExitScope();
         }
     }
 
@@ -905,9 +884,6 @@ Navigate:
                     }
 
                     break;
-                default:
-                    Visit( node.Left );
-                    break;
             }
         }
         else
@@ -918,7 +894,7 @@ Navigate:
         Visit( node.Right ); // Visit and push rightValue
 
         var result = _evaluator.Binary( node );
-        _resultStack.Push( result );
+        ResultStack.Push( result );
 
         return node;
     }
@@ -926,11 +902,11 @@ Navigate:
     protected override Expression VisitTypeBinary( TypeBinaryExpression node )
     {
         Visit( node.Expression );
-        var operand = _resultStack.Pop();
+        var operand = ResultStack.Pop();
 
         var result = operand is not null && node.TypeOperand.IsAssignableFrom( operand.GetType() );
 
-        _resultStack.Push( result );
+        ResultStack.Push( result );
         return node;
     }
 
@@ -940,28 +916,28 @@ Navigate:
 
         if ( node.NodeType == ExpressionType.Throw )
         {
-            var exception = _resultStack.Pop() as Exception;
+            var exception = ResultStack.Pop() as Exception;
 
-            if ( _currentNavigation.Value != null && exception == null )
+            if ( Navigation != null && exception == null )
             {
-                exception = _currentNavigation.Value.Exception;
+                exception = Navigation.Exception;
             }
 
-            _mode.Value = InterpreterMode.Navigating;
-            _currentNavigation.Value = new Navigation( exception: exception );
+            Mode = InterpreterMode.Navigating;
+            Navigation = new Navigation( exception: exception );
 
             return node;
         }
 
         var result = _evaluator.Unary( node );
-        _resultStack.Push( result );
+        ResultStack.Push( result );
 
         return node;
     }
 
     protected override Expression VisitConstant( ConstantExpression node )
     {
-        _resultStack.Push( node.Value );
+        ResultStack.Push( node.Value );
         return node;
     }
 
@@ -971,7 +947,7 @@ Navigate:
             ? RuntimeHelpers.GetUninitializedObject( node.Type )
             : null;
 
-        _resultStack.Push( defaultValue );
+        ResultStack.Push( defaultValue );
         return node;
     }
 
@@ -994,14 +970,14 @@ Navigate:
         for ( var i = 0; i < node.Arguments.Count; i++ )
         {
             Visit( node.Arguments[i] );
-            arguments[i] = _resultStack.Pop();
+            arguments[i] = ResultStack.Pop();
         }
 
         Visit( node.Object );
-        var instance = _resultStack.Pop();
+        var instance = ResultStack.Pop();
 
         var result = node.Indexer!.GetValue( instance, arguments );
-        _resultStack.Push( result );
+        ResultStack.Push( result );
 
         return node;
     }
@@ -1009,7 +985,7 @@ Navigate:
     protected override Expression VisitListInit( ListInitExpression node )
     {
         Visit( node.NewExpression );
-        var instance = _resultStack.Pop();
+        var instance = ResultStack.Pop();
 
         foreach ( var initializer in node.Initializers )
         {
@@ -1018,20 +994,20 @@ Navigate:
             for ( var index = 0; index < initializer.Arguments.Count; index++ )
             {
                 Visit( initializer.Arguments[index] );
-                arguments[index] = _resultStack.Pop();
+                arguments[index] = ResultStack.Pop();
             }
 
             initializer.AddMethod.Invoke( instance, arguments );
         }
 
-        _resultStack.Push( instance );
+        ResultStack.Push( instance );
         return node;
     }
 
     protected override Expression VisitMember( MemberExpression node )
     {
         Visit( node.Expression );
-        var instance = _resultStack.Pop();
+        var instance = ResultStack.Pop();
 
         object result;
         switch ( node.Member )
@@ -1052,7 +1028,7 @@ Navigate:
                 throw new InterpreterException( $"Unsupported member access: {node.Member.Name}", node );
         }
 
-        _resultStack.Push( result );
+        ResultStack.Push( result );
         return node;
     }
 
@@ -1065,7 +1041,7 @@ Navigate:
         for ( var index = 0; index < node.Arguments.Count; index++ )
         {
             Visit( node.Arguments[index] );
-            var argValue = _resultStack.Pop();
+            var argValue = ResultStack.Pop();
 
             switch ( argValue )
             {
@@ -1096,27 +1072,27 @@ Navigate:
         if ( !hasClosure )
         {
             var instance = constructor.Invoke( arguments );
-            _resultStack.Push( instance );
+            ResultStack.Push( instance );
             return node;
         }
 
-        _scope.EnterScope();
+        Scope.EnterScope();
 
         try
         {
             foreach ( var (_, capturedScope) in capturedValues )
             {
                 foreach ( var (param, value) in capturedScope )
-                    _scope.Values[param] = value;
+                    Scope.Values[param] = value;
             }
 
             var instance = constructor.Invoke( arguments );
-            _resultStack.Push( instance );
+            ResultStack.Push( instance );
             return node;
         }
         finally
         {
-            _scope.ExitScope();
+            Scope.ExitScope();
         }
     }
 
@@ -1134,7 +1110,7 @@ Navigate:
                     for ( var i = 0; i < node.Expressions.Count; i++ )
                     {
                         Visit( node.Expressions[i] );
-                        values[i] = _resultStack.Pop();
+                        values[i] = ResultStack.Pop();
                     }
 
                     var array = Array.CreateInstance( elementType!, values.Length );
@@ -1142,7 +1118,7 @@ Navigate:
                     for ( var i = 0; i < values.Length; i++ )
                         array.SetValue( values[i], i );
 
-                    _resultStack.Push( array );
+                    ResultStack.Push( array );
                     break;
                 }
             case ExpressionType.NewArrayBounds:
@@ -1153,11 +1129,11 @@ Navigate:
                     for ( var i = 0; i < node.Expressions.Count; i++ )
                     {
                         Visit( node.Expressions[i] );
-                        lengths[i] = (int) _resultStack.Pop();
+                        lengths[i] = (int) ResultStack.Pop();
                     }
 
                     var array = Array.CreateInstance( elementType!, lengths );
-                    _resultStack.Push( array );
+                    ResultStack.Push( array );
                     break;
                 }
             default:
@@ -1169,10 +1145,10 @@ Navigate:
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( !_scope.Values.TryGetValue( node, out var value ) )
+        if ( !Scope.Values.TryGetValue( node, out var value ) )
             throw new InterpreterException( $"Parameter '{node.Name}' not found.", node );
 
-        _resultStack.Push( value );
+        ResultStack.Push( value );
         return node;
     }
 

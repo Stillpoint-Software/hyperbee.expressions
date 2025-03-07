@@ -6,9 +6,9 @@ namespace Hyperbee.Expressions.Interpreter.Core;
 
 public class InterpretScope
 {
-    public int Depth { get; private set; }
-    public LinkedDictionary<string, ParameterExpression> Variables = new();
-    public LinkedDictionary<ParameterExpression, object> Values { get; } = new();
+    public int Depth { get; internal set; }
+    public LinkedDictionary<string, ParameterExpression> Variables { get; internal set; } = new();
+    public LinkedDictionary<ParameterExpression, object> Values { get; internal set; } = new();
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public void EnterScope()
