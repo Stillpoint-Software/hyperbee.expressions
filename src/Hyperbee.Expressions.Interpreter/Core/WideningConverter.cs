@@ -18,6 +18,9 @@ public static class WideningConverter
 
     internal static Type ToWidenedType( Type leftType, Type rightType )
     {
+        if ( leftType == null || rightType == null )
+            return null;
+
         if ( leftType == rightType )
             return leftType;
 

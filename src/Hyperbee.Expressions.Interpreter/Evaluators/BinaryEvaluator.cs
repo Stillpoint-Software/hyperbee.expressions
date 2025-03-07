@@ -33,6 +33,8 @@ internal sealed class BinaryEvaluator
 
             case ExpressionType.Equal:
             case ExpressionType.NotEqual:
+                return AssignEquality( GetOperation( binary, true ) );
+
             case ExpressionType.LessThan:
             case ExpressionType.GreaterThan:
             case ExpressionType.LessThanOrEqual:
@@ -43,6 +45,7 @@ internal sealed class BinaryEvaluator
                 return ArithmeticOperation( GetOperation( binary, true ) );
         }
     }
+
 
     private BinaryOperation GetOperation( BinaryExpression binary, bool valueOnly )
     {
@@ -181,16 +184,16 @@ internal sealed class BinaryEvaluator
         if ( binary.NodeType == ExpressionType.LeftShiftAssign || binary.NodeType == ExpressionType.RightShiftAssign )
             return ShiftOperation( operation );
 
-        var widenedType = WideningConverter.ToWidenedType( leftValue.GetType(), rightValue.GetType() );
+        var widenedType = WideningConverter.ToWidenedType( leftValue?.GetType(), rightValue?.GetType() );
 
         return widenedType switch
         {
-            Type when widenedType == typeof( int ) => ArithmeticOperation( binary, (int) leftValue!, (int) rightValue! ),
-            Type when widenedType == typeof( long ) => ArithmeticOperation( binary, (long) leftValue!, (long) rightValue! ),
-            Type when widenedType == typeof( short ) => ArithmeticOperation( binary, (short) leftValue!, (short) rightValue! ),
-            Type when widenedType == typeof( float ) => ArithmeticOperation( binary, (float) leftValue!, (float) rightValue! ),
-            Type when widenedType == typeof( double ) => ArithmeticOperation( binary, (double) leftValue!, (double) rightValue! ),
-            Type when widenedType == typeof( decimal ) => ArithmeticOperation( binary, (decimal) leftValue!, (decimal) rightValue! ),
+            not null when widenedType == typeof( int ) => ArithmeticOperation( binary, (int) leftValue!, (int) rightValue! ),
+            not null when widenedType == typeof( long ) => ArithmeticOperation( binary, (long) leftValue!, (long) rightValue! ),
+            not null when widenedType == typeof( short ) => ArithmeticOperation( binary, (short) leftValue!, (short) rightValue! ),
+            not null when widenedType == typeof( float ) => ArithmeticOperation( binary, (float) leftValue!, (float) rightValue! ),
+            not null when widenedType == typeof( double ) => ArithmeticOperation( binary, (double) leftValue!, (double) rightValue! ),
+            not null when widenedType == typeof( decimal ) => ArithmeticOperation( binary, (decimal) leftValue!, (decimal) rightValue! ),
             _ => throw new InterpreterException( $"Unsupported binary operation: {binary.NodeType}", binary )
         };
     }
@@ -210,20 +213,33 @@ internal sealed class BinaryEvaluator
         };
     }
 
+
+    private object AssignEquality( BinaryOperation operation )
+    {
+        var (binary, leftValue, rightValue) = operation;
+
+        return binary.NodeType switch
+        {
+            ExpressionType.Equal => leftValue?.Equals( rightValue ) ?? false,
+            ExpressionType.NotEqual => !(leftValue?.Equals( rightValue ) ?? false),
+            _ => throw new InterpreterException( $"Unsupported equality operation: {binary.NodeType}", binary )
+        };
+    }
+
     private static bool LogicalOperation( BinaryOperation operation )
     {
         var (binary, leftValue, rightValue) = operation;
 
-        var widenedType = WideningConverter.ToWidenedType( leftValue.GetType(), rightValue.GetType() );
+        var widenedType = WideningConverter.ToWidenedType( leftValue?.GetType(), rightValue?.GetType() );
 
         return widenedType switch
         {
-            Type when widenedType == typeof( int ) => LogicalOperation( binary, (int) leftValue!, (int) rightValue! ),
-            Type when widenedType == typeof( long ) => LogicalOperation( binary, (long) leftValue!, (long) rightValue! ),
-            Type when widenedType == typeof( short ) => LogicalOperation( binary, (short) leftValue!, (short) rightValue! ),
-            Type when widenedType == typeof( float ) => LogicalOperation( binary, (float) leftValue!, (float) rightValue! ),
-            Type when widenedType == typeof( double ) => LogicalOperation( binary, (double) leftValue!, (double) rightValue! ),
-            Type when widenedType == typeof( decimal ) => LogicalOperation( binary, (decimal) leftValue!, (decimal) rightValue! ),
+            not null when widenedType == typeof( int ) => LogicalOperation( binary, (int) leftValue!, (int) rightValue! ),
+            not null when widenedType == typeof( long ) => LogicalOperation( binary, (long) leftValue!, (long) rightValue! ),
+            not null when widenedType == typeof( short ) => LogicalOperation( binary, (short) leftValue!, (short) rightValue! ),
+            not null when widenedType == typeof( float ) => LogicalOperation( binary, (float) leftValue!, (float) rightValue! ),
+            not null when widenedType == typeof( double ) => LogicalOperation( binary, (double) leftValue!, (double) rightValue! ),
+            not null when widenedType == typeof( decimal ) => LogicalOperation( binary, (decimal) leftValue!, (decimal) rightValue! ),
             _ => throw new InterpreterException( $"Unsupported logical operation: {binary.NodeType}", binary )
         };
     }
@@ -236,9 +252,9 @@ internal sealed class BinaryEvaluator
             ExpressionType.LessThan => leftValue.CompareTo( rightValue ) < 0,
             ExpressionType.GreaterThan => leftValue.CompareTo( rightValue ) > 0,
             ExpressionType.LessThanOrEqual => leftValue.CompareTo( rightValue ) <= 0,
-            ExpressionType.GreaterThanOrEqual => leftValue.CompareTo( rightValue ) >= 0,
-            ExpressionType.Equal => leftValue.Equals( rightValue ),
-            ExpressionType.NotEqual => !leftValue.Equals( rightValue ),
+            //ExpressionType.GreaterThanOrEqual => leftValue.CompareTo( rightValue ) >= 0,
+            //ExpressionType.Equal => leftValue.Equals( rightValue ),
+            //ExpressionType.NotEqual => !leftValue.Equals( rightValue ),
             _ => throw new InterpreterException( $"Unsupported logical operation: {binary.NodeType}", binary )
         };
     }

@@ -135,7 +135,7 @@ internal sealed class Navigation
     public Expression CommonAncestor { get; }
     public List<Expression> Steps { get; }
     public LabelTarget TargetLabel { get; }
-    public Exception Exception { get; }
+    public Exception Exception { get; set; }
 
     private int _currentStepIndex;
 

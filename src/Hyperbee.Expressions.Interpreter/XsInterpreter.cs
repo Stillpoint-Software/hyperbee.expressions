@@ -226,7 +226,8 @@ Navigate:
                     case BlockState.InitializeVariables:
                         foreach ( var variable in node.Variables )
                         {
-                            Scope.Variables[variable.Name!] = variable;
+                            var name = variable.Name ?? variable.ToString();
+                            Scope.Variables[name] = variable;
                             Scope.Values[variable] = Default( variable.Type );
                         }
 
@@ -472,6 +473,7 @@ Navigate:
         Catch,
         HandleCatch,
         Finally,
+        HandleFinally,
         Visit,
         Complete
     }
@@ -560,6 +562,7 @@ Navigate:
 
                         Visit( expr! );
 
+                        Navigation.Exception = null;
                     }
                     finally
                     {
@@ -581,7 +584,7 @@ Navigate:
                     if ( node.Finally != null )
                     {
                         expr = node.Finally;
-                        state = TryCatchState.Visit;
+                        state = TryCatchState.HandleFinally;
                         continuation = TryCatchState.Complete;
                     }
                     else
@@ -590,10 +593,37 @@ Navigate:
                     }
                     break;
 
+                case TryCatchState.HandleFinally:
+
+                    var currentException = Navigation?.Exception;
+                    if ( currentException != null )
+                    {
+                        Mode = InterpreterMode.Evaluating;
+                    }
+
+                    Visit( expr! );
+                    ResultStack.Pop();
+
+                    if ( currentException != null )
+                        throw currentException;
+
+                    if ( Mode == InterpreterMode.Navigating )
+                    {
+                        if ( Navigation.CommonAncestor == node )
+                            goto Navigate;
+
+                        ResultStack.Push( lastResult );
+                        return node;
+                    }
+
+                    state = continuation;
+                    break;
+
                 case TryCatchState.Visit:
                     Visit( expr! );
 
-                    lastResult = ResultStack.Pop();
+                    if ( Navigation?.Exception == null )
+                        lastResult = ResultStack.Pop();
 
                     if ( Mode == InterpreterMode.Navigating )
                     {
