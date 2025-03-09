@@ -1,6 +1,6 @@
 ﻿namespace Hyperbee.Expressions.Interpreter.Core;
 
-internal sealed class InterpreterContext
+internal sealed class InterpretContext
 {
     public InterpretScope Scope { get; init; } = new();
     public Stack<object> Results { get; init; } = new();
@@ -31,8 +31,8 @@ internal sealed class InterpreterContext
         navigation = Navigation;
     }
 
-    private static readonly ThreadLocal<InterpreterContext> ThreadContext = new();
+    private static readonly ThreadLocal<InterpretContext> ThreadLocal = new();
 
-    public static InterpreterContext Current => ThreadContext.Value ??= new InterpreterContext();
-    internal static void SetThreadContext( InterpreterContext context ) => ThreadContext.Value = context;
+    public static InterpretContext Current => ThreadLocal.Value ??= new InterpretContext();
+    internal static void SetThreadInterpreterContext( InterpretContext context ) => ThreadLocal.Value = context;
 }

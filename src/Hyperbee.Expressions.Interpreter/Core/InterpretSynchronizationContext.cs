@@ -3,15 +3,15 @@ using Hyperbee.Collections;
 
 namespace Hyperbee.Expressions.Interpreter.Core;
 
-internal sealed class InterpreterSynchronizationContext : SynchronizationContext
+internal sealed class InterpretSynchronizationContext : SynchronizationContext
 {
     public override void Post( SendOrPostCallback callback, object state )
     {
         // collections are reference types, so we need to copy them
 
-        var currentContext = InterpreterContext.Current;
+        var currentContext = InterpretContext.Current;
 
-        var capturedContext = new InterpreterContext()
+        var capturedContext = new InterpretContext()
         {
             Scope = CopyScope( currentContext.Scope ),
             Results = new( currentContext.Results ),
@@ -20,7 +20,7 @@ internal sealed class InterpreterSynchronizationContext : SynchronizationContext
 
         base.Post( _ =>
         {
-            InterpreterContext.SetThreadContext( capturedContext );
+            InterpretContext.SetThreadInterpreterContext( capturedContext );
             callback( state );
         }, null );
 
@@ -55,8 +55,8 @@ internal sealed class InterpreterSynchronizationContext : SynchronizationContext
 
     public override void Send( SendOrPostCallback callback, object state )
     {
-        var capturedContext = InterpreterContext.Current;
-        InterpreterContext.SetThreadContext( capturedContext );
+        var capturedContext = InterpretContext.Current;
+        InterpretContext.SetThreadInterpreterContext( capturedContext );
         callback( state );
     }
 }

@@ -10,25 +10,25 @@ public sealed class XsInterpreter : ExpressionVisitor
 {
     private readonly Evaluator _evaluator;
     private readonly Dictionary<Expression, Expression> _extensions = new();
-    private readonly InterpreterSynchronizationContext _syncContext;
+    private readonly InterpretSynchronizationContext _syncContext;
 
     private LambdaExpression _lowered;
     private Dictionary<GotoExpression, Navigation> _navigation;
 
-    internal InterpreterContext CurrentContext => InterpreterContext.Current;
+    internal InterpretContext CurrentContext => InterpretContext.Current;
 
-    //internal InterpretScope Scope => CurrentContext.Scope;
-    //internal Stack<object> Results => CurrentContext.Results;
-    //internal Navigation Navigation
-    //{
-    //    get => CurrentContext.Navigation;
-    //    set => CurrentContext.Navigation = value;
-    //}
+    internal InterpretScope Scope => CurrentContext.Scope;
+    internal Stack<object> Results => CurrentContext.Results;
+    internal Navigation Navigation
+    {
+        get => CurrentContext.Navigation;
+        set => CurrentContext.Navigation = value;
+    }
 
     public XsInterpreter()
     {
         _evaluator = new Evaluator( this );
-        _syncContext = new InterpreterSynchronizationContext();
+        _syncContext = new InterpretSynchronizationContext();
     }
 
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
@@ -60,22 +60,25 @@ public sealed class XsInterpreter : ExpressionVisitor
         {
             SynchronizationContext.SetSynchronizationContext( _syncContext );
 
-            Scope.EnterScope();
+            var (scope, _) = CurrentContext;
+
+            scope.EnterScope();
 
             try
             {
                 for ( var i = 0; i < lambda.Parameters.Count; i++ )
-                    Scope.Values[lambda.Parameters[i]] = values[i];
+                    scope.Values[lambda.Parameters[i]] = values[i];
 
                 Visit( lambda.Body );
+                (scope, var results) = CurrentContext;
 
                 ThrowIfNavigating();
 
-                return (T) Results.Pop();
+                return (T) results.Pop();
             }
             finally
             {
-                Scope.ExitScope();
+                scope.ExitScope();
             }
         }
         finally
@@ -93,22 +96,24 @@ public sealed class XsInterpreter : ExpressionVisitor
         {
             SynchronizationContext.SetSynchronizationContext( _syncContext );
 
-            Scope.EnterScope();
+            var (scope, _) = CurrentContext;
+            scope.EnterScope();
 
             try
             {
                 for ( var i = 0; i < lambda.Parameters.Count; i++ )
-                    Scope.Values[lambda.Parameters[i]] = values[i];
+                    scope.Values[lambda.Parameters[i]] = values[i];
 
                 Visit( lambda.Body );
+                (scope, var results) = CurrentContext;
 
                 ThrowIfNavigating();
 
-                Results.Pop();
+                results.Pop();
             }
             finally
             {
-                Scope.ExitScope();
+                scope.ExitScope();
             }
         }
         finally
