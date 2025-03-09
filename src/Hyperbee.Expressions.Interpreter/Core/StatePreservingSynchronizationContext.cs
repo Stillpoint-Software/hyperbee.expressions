@@ -5,20 +5,23 @@ namespace Hyperbee.Expressions.Interpreter.Core;
 
 internal sealed class StatePreservingSynchronizationContext : SynchronizationContext
 {
-    public override void Post(SendOrPostCallback callback, object state)
+    public override void Post( SendOrPostCallback callback, object state )
     {
         // collections are reference types, so we need to copy them
+
+        var currentContext = InterpreterContext.Current;
+
         var capturedContext = new InterpreterContext()
         {
-            Scope = CopyScope( InterpreterContextAccessor.Current.Scope ),
-            ResultStack = new( InterpreterContextAccessor.Current.ResultStack ),
-            Mode = InterpreterContextAccessor.Current.Mode,
-            Navigation = InterpreterContextAccessor.Current.Navigation,
+            Scope = CopyScope( currentContext.Scope ),
+            Results = new( currentContext.Results ),
+            Mode = currentContext.Mode,
+            Navigation = currentContext.Navigation,
         };
 
         base.Post( _ =>
         {
-            InterpreterContextAccessor.Set(capturedContext);
+            InterpreterContext.SetThreadContext( capturedContext );
             callback( state );
         }, null );
 
@@ -51,10 +54,10 @@ internal sealed class StatePreservingSynchronizationContext : SynchronizationCon
         }
     }
 
-    public override void Send(SendOrPostCallback callback, object state)
+    public override void Send( SendOrPostCallback callback, object state )
     {
-        var capturedContext = InterpreterContextAccessor.Current;
-        InterpreterContextAccessor.Set(capturedContext);
-        callback(state);
+        var capturedContext = InterpreterContext.Current;
+        InterpreterContext.SetThreadContext( capturedContext );
+        callback( state );
     }
 }

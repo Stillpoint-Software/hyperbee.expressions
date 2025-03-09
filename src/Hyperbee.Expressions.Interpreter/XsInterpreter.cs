@@ -4,7 +4,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Interpreter.Core;
 using Hyperbee.Expressions.Interpreter.Evaluators;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Hyperbee.Expressions.Interpreter;
 
@@ -20,32 +19,22 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     private readonly StatePreservingSynchronizationContext _syncContext;
 
-    internal InterpretScope Scope => InterpreterContextAccessor.Current.Scope;
-    internal static Stack<object> ResultStack => InterpreterContextAccessor.Current.ResultStack;
+    internal InterpreterContext State => InterpreterContext.Current;
 
+    internal InterpretScope Scope => InterpreterContext.Current.Scope;
+    internal static Stack<object> Results => InterpreterContext.Current.Results;
+    
     internal InterpreterMode Mode
     {
-        get
-        {
-            return InterpreterContextAccessor.Current.Mode;
-        }
-        set
-        {
-            InterpreterContextAccessor.Current.Mode = value;
-        }
+        get => InterpreterContext.Current.Mode;
+        set => InterpreterContext.Current.Mode = value;
     }
 
     internal Navigation Navigation
     {
-        get
-        {
-            return InterpreterContextAccessor.Current.Navigation;
-        }
-        set
-        {
-            InterpreterContextAccessor.Current.Navigation = value;
-        }
-    } 
+        get => InterpreterContext.Current.Navigation;
+        set => InterpreterContext.Current.Navigation = value;
+    }
 
     public XsInterpreter()
     {
@@ -98,7 +87,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
                 ThrowIfNavigating();
 
-                return (T) ResultStack.Pop();
+                return (T) Results.Pop();
             }
             finally
             {
@@ -131,7 +120,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
                 ThrowIfNavigating();
 
-                ResultStack.Pop();
+                Results.Pop();
             }
             finally
             {
@@ -167,13 +156,13 @@ public sealed class XsInterpreter : ExpressionVisitor
         if ( node.Kind == GotoExpressionKind.Return && node.Value != null )
         {
             Visit( node.Value );
-            lastResult = ResultStack.Pop();
+            lastResult = Results.Pop();
         }
 
         Mode = InterpreterMode.Navigating;
         Navigation = navigation;
 
-        ResultStack.Push( lastResult );
+        Results.Push( lastResult );
 
         return node;
     }
@@ -187,7 +176,7 @@ public sealed class XsInterpreter : ExpressionVisitor
             Navigation = null;
         }
 
-        ResultStack.Push( null );
+        Results.Push( null );
 
         return node;
     }
@@ -243,14 +232,14 @@ Navigate:
 
                         Visit( node.Expressions[statementIndex] );
 
-                        lastResult = ResultStack.Pop();
+                        lastResult = Results.Pop();
 
                         if ( Mode == InterpreterMode.Navigating )
                         {
                             if ( Navigation.CommonAncestor == node )
                                 goto Navigate;
 
-                            ResultStack.Push( lastResult );
+                            Results.Push( lastResult );
                             return node!;
                         }
 
@@ -258,7 +247,7 @@ Navigate:
                         break;
 
                     case BlockState.Complete:
-                        ResultStack.Push( lastResult );
+                        Results.Push( lastResult );
                         return node;
                 }
             }
@@ -323,14 +312,14 @@ Navigate:
                 case ConditionalState.Visit:
                     Visit( expr );
 
-                    lastResult = ResultStack.Pop();
+                    lastResult = Results.Pop();
 
                     if ( Mode == InterpreterMode.Navigating )
                     {
                         if ( Navigation.CommonAncestor == node )
                             goto Navigate;
 
-                        ResultStack.Push( lastResult );
+                        Results.Push( lastResult );
                         return node;
                     }
 
@@ -338,7 +327,7 @@ Navigate:
                     break;
 
                 case ConditionalState.Complete:
-                    ResultStack.Push( lastResult );
+                    Results.Push( lastResult );
                     return node;
             }
         }
@@ -444,14 +433,14 @@ Navigate:
                 case SwitchState.Visit:
                     Visit( expr! );
 
-                    lastResult = ResultStack.Pop();
+                    lastResult = Results.Pop();
 
                     if ( Mode == InterpreterMode.Navigating )
                     {
                         if ( Navigation.CommonAncestor == node )
                             goto Navigate;
 
-                        ResultStack.Push( lastResult );
+                        Results.Push( lastResult );
                         return node;
                     }
 
@@ -459,7 +448,7 @@ Navigate:
                     break;
 
                 case SwitchState.Complete:
-                    ResultStack.Push( lastResult );
+                    Results.Push( lastResult );
                     return node;
             }
         }
@@ -569,7 +558,7 @@ Navigate:
                         Scope.ExitScope();
                     }
 
-                    lastResult = ResultStack.Pop();
+                    lastResult = Results.Pop();
 
                     if ( Mode == InterpreterMode.Navigating )
                     {
@@ -602,7 +591,7 @@ Navigate:
                     }
 
                     Visit( expr! );
-                    ResultStack.Pop();
+                    Results.Pop();
 
                     if ( currentException != null )
                         throw currentException;
@@ -612,7 +601,7 @@ Navigate:
                         if ( Navigation.CommonAncestor == node )
                             goto Navigate;
 
-                        ResultStack.Push( lastResult );
+                        Results.Push( lastResult );
                         return node;
                     }
 
@@ -623,7 +612,7 @@ Navigate:
                     Visit( expr! );
 
                     if ( Navigation?.Exception == null )
-                        lastResult = ResultStack.Pop();
+                        lastResult = Results.Pop();
 
                     if ( Mode == InterpreterMode.Navigating )
                     {
@@ -636,7 +625,7 @@ Navigate:
                             break;
                         }
 
-                        ResultStack.Push( lastResult );
+                        Results.Push( lastResult );
                         return node;
                     }
 
@@ -644,7 +633,7 @@ Navigate:
                     break;
 
                 case TryCatchState.Complete:
-                    ResultStack.Push( lastResult );
+                    Results.Push( lastResult );
                     return node;
             }
         }
@@ -662,7 +651,7 @@ Navigate:
             while ( true )
             {
                 Visit( node.Body );
-                lastResult = ResultStack.Pop();
+                lastResult = Results.Pop();
 
                 if ( Mode != InterpreterMode.Navigating )
                 {
@@ -681,11 +670,11 @@ Navigate:
                     continue;
                 }
 
-                ResultStack.Push( lastResult );
+                Results.Push( lastResult );
                 return node;
             }
 
-            ResultStack.Push( lastResult );
+            Results.Push( lastResult );
         }
         catch( Exception ex )
         {
@@ -703,7 +692,7 @@ Navigate:
 
     protected override Expression VisitLambda<T>( Expression<T> node )
     {
-        ResultStack.Push( this.Interpreter( node, node.Type ) );
+        Results.Push( this.Interpreter( node, node.Type ) );
         return node;
 
         //if ( Scope.Depth == 0 )
@@ -738,7 +727,7 @@ Navigate:
     protected override Expression VisitInvocation( InvocationExpression node )
     {
         Visit( node.Expression );
-        var targetValue = ResultStack.Pop();
+        var targetValue = Results.Pop();
 
         //LambdaExpression lambda = null;
         Delegate lambdaDelegate;
@@ -791,12 +780,12 @@ Navigate:
             for ( var i = 0; i < node.Arguments.Count; i++ )
             {
                 Visit( node.Arguments[i] );
-                arguments[i] = ResultStack.Pop();
+                arguments[i] = Results.Pop();
             }
 
             var result = lambdaDelegate.DynamicInvoke( arguments );
 
-            ResultStack.Push( result );
+            Results.Push( result );
 
             return node;
         }
@@ -818,7 +807,7 @@ Navigate:
         if ( !isStatic )
         {
             Visit( node.Object );
-            instance = ResultStack.Pop();
+            instance = Results.Pop();
         }
 
         var arguments = new object[node.Arguments.Count];
@@ -828,7 +817,7 @@ Navigate:
         for ( var i = 0; i < node.Arguments.Count; i++ )
         {
             Visit( node.Arguments[i] );
-            var argValue = ResultStack.Pop();
+            var argValue = Results.Pop();
 
             switch ( argValue )
             {
@@ -855,7 +844,7 @@ Navigate:
             try
             {
                 var result = node.Method.Invoke( instance, arguments );
-                ResultStack.Push( result );
+                Results.Push( result );
                 return node;
             }
             catch ( TargetInvocationException invocationException )
@@ -879,7 +868,7 @@ Navigate:
             }
 
             var result = node.Method.Invoke( instance, arguments );
-            ResultStack.Push( result );
+            Results.Push( result );
             return node;
         }
         finally
@@ -924,7 +913,7 @@ Navigate:
         Visit( node.Right ); // Visit and push rightValue
 
         var result = _evaluator.Binary( node );
-        ResultStack.Push( result );
+        Results.Push( result );
 
         return node;
     }
@@ -932,11 +921,11 @@ Navigate:
     protected override Expression VisitTypeBinary( TypeBinaryExpression node )
     {
         Visit( node.Expression );
-        var operand = ResultStack.Pop();
+        var operand = Results.Pop();
 
         var result = operand is not null && node.TypeOperand.IsAssignableFrom( operand.GetType() );
 
-        ResultStack.Push( result );
+        Results.Push( result );
         return node;
     }
 
@@ -946,7 +935,7 @@ Navigate:
 
         if ( node.NodeType == ExpressionType.Throw )
         {
-            var exception = ResultStack.Pop() as Exception;
+            var exception = Results.Pop() as Exception;
 
             if ( Navigation != null && exception == null )
             {
@@ -960,14 +949,14 @@ Navigate:
         }
 
         var result = _evaluator.Unary( node );
-        ResultStack.Push( result );
+        Results.Push( result );
 
         return node;
     }
 
     protected override Expression VisitConstant( ConstantExpression node )
     {
-        ResultStack.Push( node.Value );
+        Results.Push( node.Value );
         return node;
     }
 
@@ -977,7 +966,7 @@ Navigate:
             ? RuntimeHelpers.GetUninitializedObject( node.Type )
             : null;
 
-        ResultStack.Push( defaultValue );
+        Results.Push( defaultValue );
         return node;
     }
 
@@ -1000,14 +989,14 @@ Navigate:
         for ( var i = 0; i < node.Arguments.Count; i++ )
         {
             Visit( node.Arguments[i] );
-            arguments[i] = ResultStack.Pop();
+            arguments[i] = Results.Pop();
         }
 
         Visit( node.Object );
-        var instance = ResultStack.Pop();
+        var instance = Results.Pop();
 
         var result = node.Indexer!.GetValue( instance, arguments );
-        ResultStack.Push( result );
+        Results.Push( result );
 
         return node;
     }
@@ -1015,7 +1004,7 @@ Navigate:
     protected override Expression VisitListInit( ListInitExpression node )
     {
         Visit( node.NewExpression );
-        var instance = ResultStack.Pop();
+        var instance = Results.Pop();
 
         foreach ( var initializer in node.Initializers )
         {
@@ -1024,20 +1013,20 @@ Navigate:
             for ( var index = 0; index < initializer.Arguments.Count; index++ )
             {
                 Visit( initializer.Arguments[index] );
-                arguments[index] = ResultStack.Pop();
+                arguments[index] = Results.Pop();
             }
 
             initializer.AddMethod.Invoke( instance, arguments );
         }
 
-        ResultStack.Push( instance );
+        Results.Push( instance );
         return node;
     }
 
     protected override Expression VisitMember( MemberExpression node )
     {
         Visit( node.Expression );
-        var instance = ResultStack.Pop();
+        var instance = Results.Pop();
 
         object result;
         switch ( node.Member )
@@ -1058,7 +1047,7 @@ Navigate:
                 throw new InterpreterException( $"Unsupported member access: {node.Member.Name}", node );
         }
 
-        ResultStack.Push( result );
+        Results.Push( result );
         return node;
     }
 
@@ -1071,7 +1060,7 @@ Navigate:
         for ( var index = 0; index < node.Arguments.Count; index++ )
         {
             Visit( node.Arguments[index] );
-            var argValue = ResultStack.Pop();
+            var argValue = Results.Pop();
 
             switch ( argValue )
             {
@@ -1102,7 +1091,7 @@ Navigate:
         if ( !hasClosure )
         {
             var instance = constructor.Invoke( arguments );
-            ResultStack.Push( instance );
+            Results.Push( instance );
             return node;
         }
 
@@ -1117,7 +1106,7 @@ Navigate:
             }
 
             var instance = constructor.Invoke( arguments );
-            ResultStack.Push( instance );
+            Results.Push( instance );
             return node;
         }
         finally
@@ -1140,7 +1129,7 @@ Navigate:
                     for ( var i = 0; i < node.Expressions.Count; i++ )
                     {
                         Visit( node.Expressions[i] );
-                        values[i] = ResultStack.Pop();
+                        values[i] = Results.Pop();
                     }
 
                     var array = Array.CreateInstance( elementType!, values.Length );
@@ -1148,7 +1137,7 @@ Navigate:
                     for ( var i = 0; i < values.Length; i++ )
                         array.SetValue( values[i], i );
 
-                    ResultStack.Push( array );
+                    Results.Push( array );
                     break;
                 }
             case ExpressionType.NewArrayBounds:
@@ -1159,11 +1148,11 @@ Navigate:
                     for ( var i = 0; i < node.Expressions.Count; i++ )
                     {
                         Visit( node.Expressions[i] );
-                        lengths[i] = (int) ResultStack.Pop();
+                        lengths[i] = (int) Results.Pop();
                     }
 
                     var array = Array.CreateInstance( elementType!, lengths );
-                    ResultStack.Push( array );
+                    Results.Push( array );
                     break;
                 }
             default:
@@ -1178,7 +1167,7 @@ Navigate:
         if ( !Scope.Values.TryGetValue( node, out var value ) )
             throw new InterpreterException( $"Parameter '{node.Name}' not found.", node );
 
-        ResultStack.Push( value );
+        Results.Push( value );
         return node;
     }
 
