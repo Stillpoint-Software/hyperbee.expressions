@@ -5,16 +5,16 @@ internal sealed class InterpretContext
     public InterpretScope Scope { get; init; } = new();
     public Stack<object> Results { get; init; } = new();
 
-    public bool IsNavigating => Navigation != null;
+    public bool IsTransitioning => Transition != null;
 
-    private Navigation _navigation;
-    public Navigation Navigation
+    private Transition _transition;
+    public Transition Transition
     {
-        get => _navigation;
+        get => _transition;
         set 
         {
-            _navigation?.Reset();
-            _navigation = value;
+            _transition?.Reset();
+            _transition = value;
         }
     }
 
@@ -24,11 +24,11 @@ internal sealed class InterpretContext
         results = Results;
     }
 
-    public void Deconstruct( out InterpretScope scope, out Stack<object> results, out Navigation navigation )
+    public void Deconstruct( out InterpretScope scope, out Stack<object> results, out Transition transition )
     {
         scope = Scope;
         results = Results;
-        navigation = Navigation;
+        transition = Transition;
     }
 
     private static readonly ThreadLocal<InterpretContext> ThreadLocal = new();

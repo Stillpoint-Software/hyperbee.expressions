@@ -9,20 +9,19 @@ namespace Hyperbee.Expressions.Interpreter;
 public sealed class XsInterpreter : ExpressionVisitor
 {
     private readonly Evaluator _evaluator;
-    private readonly Dictionary<Expression, Expression> _extensions = new();
     private readonly InterpretSynchronizationContext _syncContext;
 
-    private LambdaExpression _lowered;
-    private Dictionary<GotoExpression, Navigation> _navigation;
+    private LambdaExpression _reduced;
+    private Dictionary<GotoExpression, Transition> _transitions;
 
     internal InterpretContext CurrentContext => InterpretContext.Current;
 
     internal InterpretScope Scope => CurrentContext.Scope;
     internal Stack<object> Results => CurrentContext.Results;
-    internal Navigation Navigation
+    internal Transition Transition
     {
-        get => CurrentContext.Navigation;
-        set => CurrentContext.Navigation = value;
+        get => CurrentContext.Transition;
+        set => CurrentContext.Transition = value;
     }
 
     public XsInterpreter()
@@ -34,25 +33,31 @@ public sealed class XsInterpreter : ExpressionVisitor
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
         where TDelegate : Delegate
     {
-        if ( _lowered == null )
+        if ( _reduced == null )
         {
-            AnalyzeExpression( expression );
-            expression = _lowered;
+            var analyzer = new AnalyzerVisitor();
+            analyzer.Analyze( expression );
+
+            _reduced = (LambdaExpression) analyzer.Reduced;
+            _transitions = analyzer.Transitions;
+
+            expression = _reduced;
         }
 
         return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
     }
 
-    private void AnalyzeExpression( Expression expression )
+    internal T Evaluate<T>( LambdaExpression lambda, params object[] values )
     {
-        var analyzer = new AnalyzerVisitor();
-        analyzer.Analyze( expression, _extensions );
-
-        _navigation = analyzer.Navigation;
-        _lowered = (LambdaExpression) analyzer.Lowered;
+        return EvaluateInternal<T>( lambda, true, values );
     }
 
-    internal T Evaluate<T>( LambdaExpression lambda, params object[] values )
+    internal void Evaluate( LambdaExpression lambda, params object[] values )
+    {
+        EvaluateInternal<object>( lambda, false, values );
+    }
+
+    private T EvaluateInternal<T>( LambdaExpression lambda, bool hasReturn, params object[] values )
     {
         var prevContext = SynchronizationContext.Current;
 
@@ -70,11 +75,14 @@ public sealed class XsInterpreter : ExpressionVisitor
                     scope.Values[lambda.Parameters[i]] = values[i];
 
                 Visit( lambda.Body );
-                (scope, var results) = CurrentContext;
+                var (_, results) = CurrentContext; // refresh after visit
 
-                ThrowIfNavigating();
+                ThrowIfTransitioning();
 
-                return (T) results.Pop();
+                if ( hasReturn )
+                    return (T) results.Pop();
+                else
+                    results.Pop();
             }
             finally
             {
@@ -86,58 +94,27 @@ public sealed class XsInterpreter : ExpressionVisitor
             SynchronizationContext.SetSynchronizationContext( prevContext );
         }
 
+        return default;
     }
 
-    internal void Evaluate( LambdaExpression lambda, params object[] values )
+    private void ThrowIfTransitioning()
     {
-        var prevContext = SynchronizationContext.Current;
+        var transition = CurrentContext.Transition;
 
-        try
-        {
-            SynchronizationContext.SetSynchronizationContext( _syncContext );
-
-            var (scope, _) = CurrentContext;
-            scope.EnterScope();
-
-            try
-            {
-                for ( var i = 0; i < lambda.Parameters.Count; i++ )
-                    scope.Values[lambda.Parameters[i]] = values[i];
-
-                Visit( lambda.Body );
-                (scope, var results) = CurrentContext;
-
-                ThrowIfNavigating();
-
-                results.Pop();
-            }
-            finally
-            {
-                scope.ExitScope();
-            }
-        }
-        finally
-        {
-            SynchronizationContext.SetSynchronizationContext(prevContext );
-        }
-    }
-
-    private void ThrowIfNavigating()
-    {
-        if ( !CurrentContext.IsNavigating )
+        if ( transition == null )
             return;
 
-        if ( Navigation.Exception != null )
-            throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", Navigation.Exception );
+        if ( transition.Exception != null )
+            throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", transition.Exception );
 
-        throw new InvalidOperationException( "Interpreter failed to navigate to next expression." );
+        throw new InvalidOperationException( "Interpreter failed to transition to next expression." );
     }
 
     // Goto
 
     protected override Expression VisitGoto( GotoExpression node )
     {
-        if ( !_navigation.TryGetValue( node, out var navigation ) )
+        if ( !_transitions.TryGetValue( node, out var transition ) )
             throw new InterpreterException( $"Undefined label target: {node.Target.Name}", node );
 
         object lastResult = null;
@@ -148,9 +125,7 @@ public sealed class XsInterpreter : ExpressionVisitor
             lastResult = Results.Pop();
         }
 
-        //Mode = InterpreterMode.Navigating;
-        Navigation = navigation;
-
+        Transition = transition;
         Results.Push( lastResult );
 
         return node;
@@ -158,12 +133,8 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     protected override Expression VisitLabel( LabelExpression node )
     {
-        if ( CurrentContext.IsNavigating && Navigation.TargetLabel == node.Target )
-        {
-            //Mode = InterpreterMode.Evaluating;
-            //Navigation.Reset();
-            Navigation = null;
-        }
+        if ( CurrentContext.IsTransitioning && Transition.TargetLabel == node.Target )
+            Transition = null;
 
         Results.Push( null );
 
@@ -189,12 +160,12 @@ public sealed class XsInterpreter : ExpressionVisitor
 
         try
         {
-Navigate:
+EntryPoint:
 
-            if ( CurrentContext.IsNavigating )
+            if ( CurrentContext.IsTransitioning )
             {
-                var nextStep = Navigation.GetNextStep();
-                statementIndex = node.Expressions.IndexOf( nextStep );
+                var nextChild = Transition.GetNextChild();
+                statementIndex = node.Expressions.IndexOf( nextChild );
             }
 
             while ( true )
@@ -223,10 +194,10 @@ Navigate:
 
                         lastResult = Results.Pop();
 
-                        if ( CurrentContext.IsNavigating )
+                        if ( CurrentContext.IsTransitioning )
                         {
-                            if ( Navigation.CommonAncestor == node )
-                                goto Navigate;
+                            if ( Transition.CommonAncestor == node )
+                                goto EntryPoint;
 
                             Results.Push( lastResult );
                             return node!;
@@ -272,11 +243,11 @@ Navigate:
         Expression expr = null;
         object lastResult = null;
 
-Navigate:
+EntryPoint:
 
-        if ( CurrentContext.IsNavigating )
+        if ( CurrentContext.IsTransitioning )
         {
-            expr = Navigation.GetNextStep();
+            expr = Transition.GetNextChild();
             state = ConditionalState.Visit;
             continuation = expr == node.Test ? ConditionalState.HandleTest : ConditionalState.Complete;
         }
@@ -303,10 +274,10 @@ Navigate:
 
                     lastResult = Results.Pop();
 
-                    if ( CurrentContext.IsNavigating )
+                    if ( CurrentContext.IsTransitioning )
                     {
-                        if ( Navigation.CommonAncestor == node )
-                            goto Navigate;
+                        if ( Transition.CommonAncestor == node )
+                            goto EntryPoint;
 
                         Results.Push( lastResult );
                         return node;
@@ -344,11 +315,11 @@ Navigate:
         Expression expr = null;
         object lastResult = null;
 
-Navigate:
+EntryPoint:
 
-        if ( CurrentContext.IsNavigating )
+        if ( CurrentContext.IsTransitioning )
         {
-            expr = Navigation.GetNextStep();
+            expr = Transition.GetNextChild();
 
             if ( expr == node.SwitchValue )
             {
@@ -423,10 +394,10 @@ Navigate:
 
                     lastResult = Results.Pop();
 
-                    if ( CurrentContext.IsNavigating )
+                    if ( CurrentContext.IsTransitioning )
                     {
-                        if ( Navigation.CommonAncestor == node )
-                            goto Navigate;
+                        if ( Transition.CommonAncestor == node )
+                            goto EntryPoint;
 
                         Results.Push( lastResult );
                         return node;
@@ -463,13 +434,14 @@ Navigate:
 
         Expression expr = null;
         ParameterExpression exceptionVariable = null;
+        Exception exception = null;
         object lastResult = null;
 
-Navigate:
+EntryPoint:
 
-        if ( CurrentContext.IsNavigating )
+        if ( CurrentContext.IsTransitioning )
         {
-            expr = Navigation.GetNextStep();
+            expr = Transition.GetNextChild();
 
             if ( expr == node.Body )
             {
@@ -512,7 +484,7 @@ Navigate:
                     }
 
                     var handler = node.Handlers[catchIndex];
-                    var exceptionType = Navigation.Exception?.GetType();
+                    var exceptionType = Transition.Exception?.GetType();
 
                     if ( handler.Test.IsAssignableFrom( exceptionType ) )
                     {
@@ -530,20 +502,15 @@ Navigate:
 
                 case TryCatchState.HandleCatch:
 
-                    // found matching catch, clear navigation
-                    //Mode = InterpreterMode.Evaluating;
-
-                    var exception = Navigation.Exception; //BF
-                    Navigation = null; //BF
+                    exception = Transition.Exception;
+                    Transition = null;
 
                     try
                     {
                         Scope.EnterScope();
-                        Scope.Values[exceptionVariable] = exception; // Navigation.Exception; //BF
+                        Scope.Values[exceptionVariable] = exception; 
 
                         Visit( expr! );
-
-                        //Navigation.Exception = null; //BF
                     }
                     finally
                     {
@@ -552,10 +519,10 @@ Navigate:
 
                     lastResult = Results.Pop();
 
-                    if ( CurrentContext.IsNavigating )
+                    if ( CurrentContext.IsTransitioning )
                     {
-                        if ( Navigation.CommonAncestor == node )
-                            goto Navigate;
+                        if ( Transition.CommonAncestor == node )
+                            goto EntryPoint;
                     }
 
                     state = continuation;
@@ -576,24 +543,21 @@ Navigate:
 
                 case TryCatchState.HandleFinally:
 
-                    var currentException = Navigation?.Exception;
+                    exception = Transition?.Exception;
                     
-                    if ( currentException != null )
-                    {
-                        //Mode = InterpreterMode.Evaluating;
-                        Navigation = null; //BF
-                    }
+                    if ( exception != null )
+                        Transition = null; 
 
                     Visit( expr! );
                     Results.Pop();
 
-                    if ( currentException != null )
-                        throw currentException;
+                    if ( exception != null )
+                        throw exception;
 
-                    if ( CurrentContext.IsNavigating )
+                    if ( CurrentContext.IsTransitioning )
                     {
-                        if ( Navigation.CommonAncestor == node )
-                            goto Navigate;
+                        if ( Transition.CommonAncestor == node )
+                            goto EntryPoint;
 
                         Results.Push( lastResult );
                         return node;
@@ -605,15 +569,15 @@ Navigate:
                 case TryCatchState.Visit:
                     Visit( expr! );
 
-                    if ( Navigation?.Exception == null )
+                    if ( Transition?.Exception == null )
                         lastResult = Results.Pop();
 
-                    if ( CurrentContext.IsNavigating )
+                    if ( CurrentContext.IsTransitioning )
                     {
-                        if ( Navigation.CommonAncestor == node )
-                            goto Navigate;
+                        if ( Transition.CommonAncestor == node )
+                            goto EntryPoint;
 
-                        if ( Navigation.Exception != null )
+                        if ( Transition.Exception != null )
                         {
                             state = TryCatchState.Catch;
                             break;
@@ -648,22 +612,16 @@ Navigate:
                 Visit( node.Body );
                 lastResult = Results.Pop();
 
-                if ( !CurrentContext.IsNavigating )
+                if ( !CurrentContext.IsTransitioning )
                 {
                     continue;
                 }
 
-                if ( Navigation.TargetLabel == node.BreakLabel || Navigation.TargetLabel == node.ContinueLabel )
+                if ( Transition.TargetLabel == node.BreakLabel || Transition.TargetLabel == node.ContinueLabel )
                 {
-                    Navigation = null;
+                    Transition = null;
                     break;
                 }
-
-                //if ( Navigation.TargetLabel == node.BreakLabel || Navigation.TargetLabel == node.ContinueLabel )
-                //{
-                //    Mode = InterpreterMode.Evaluating;
-                //    break;
-                //}
 
                 Results.Push( lastResult );
                 return node;
@@ -932,13 +890,12 @@ Navigate:
         {
             var exception = Results.Pop() as Exception;
 
-            if ( Navigation != null && exception == null )
+            if ( Transition != null && exception == null )
             {
-                exception = Navigation.Exception;
+                exception = Transition.Exception;
             }
 
-            //Mode = InterpreterMode.Navigating;
-            Navigation = new Navigation( exception: exception );
+            Transition = new Transition( exception: exception );
 
             return node;
         }
@@ -964,19 +921,6 @@ Navigate:
         Results.Push( defaultValue );
         return node;
     }
-
-    //protected override Expression VisitExtension( Expression node )
-    //{
-    //    if ( _extensions.TryGetValue( node, out var reduced ) )
-    //    {
-    //        return Visit( reduced );
-    //    }
-
-    //    reduced = node.ReduceAndCheck();
-    //    _extensions[node] = reduced;
-
-    //    return Visit( reduced );
-    //}
 
     protected override Expression VisitIndex( IndexExpression node )
     {
@@ -1166,7 +1110,6 @@ Navigate:
         return node;
     }
 
-    //public record Closure( LambdaExpression LambdaExpr, Dictionary<ParameterExpression, object> CapturedScope );
     public record Closure( object Lambda, Dictionary<ParameterExpression, object> CapturedScope );
 
     private sealed class FreeVariableVisitor : ExpressionVisitor

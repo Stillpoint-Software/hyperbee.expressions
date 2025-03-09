@@ -15,7 +15,7 @@ internal sealed class InterpretSynchronizationContext : SynchronizationContext
         {
             Scope = CopyScope( currentContext.Scope ),
             Results = new( currentContext.Results ),
-            Navigation = currentContext.Navigation,
+            Transition = currentContext.Transition,
         };
 
         base.Post( _ =>

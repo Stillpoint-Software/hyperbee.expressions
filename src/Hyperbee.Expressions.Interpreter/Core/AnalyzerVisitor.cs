@@ -17,31 +17,26 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
     private readonly Dictionary<LabelTarget, List<Expression>> _labelPaths = new();
     private readonly Dictionary<GotoExpression, List<Expression>> _gotoPaths = new();
 
-    public Dictionary<GotoExpression, Navigation> Navigation { get; } = new();
-    public Expression Lowered { get; private set; }
+    public Dictionary<GotoExpression, Transition> Transitions { get; } = new();
+    public Expression Reduced { get; private set; }
 
-    //private Dictionary<Expression, Expression> _extensions;  // not needed if always reduced?
-
-    public void Analyze( Expression root, Dictionary<Expression, Expression> extensions )
+    public void Analyze( Expression root )
     {
         _gotoPaths.Clear();
         _labelPaths.Clear();
-        Navigation.Clear();
 
-        //_extensions = extensions;
+        Transitions.Clear();
 
-        var reduced = new LoweringVisitor().Visit( root );  // TOOD: fix
-        Lowered = Visit( reduced );
-        ResolveNavigationPaths();
+        var reduced = new LoweringVisitor().Visit( root );  // TODO: fix
+
+        Reduced = Visit( reduced );
+        ResolveTransitions();
     }
 
     public override Expression Visit( Expression node )
     {
         if ( node == null )
             return null;
-
-        //if ( node.NodeType == ExpressionType.Extension )
-        //    return base.Visit( node );
        
         _currentPath.Add( node );
         var result = base.Visit( node );
@@ -80,7 +75,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         return base.VisitLoop( node );
     }
 
-    private void ResolveNavigationPaths()
+    private void ResolveTransitions()
     {
         foreach ( var (gotoExpr, gotoPath) in _gotoPaths )
         {
@@ -89,11 +84,11 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
                 throw new InvalidOperationException( $"Label target {gotoExpr.Target.Name} not found." );
             }
 
-            Navigation[gotoExpr] = CreateNavigationExpression( gotoPath, labelPath, gotoExpr.Target );
+            Transitions[gotoExpr] = CreateTransition( gotoPath, labelPath, gotoExpr.Target );
         }
     }
 
-    private static Navigation CreateNavigationExpression( List<Expression> gotoPath, List<Expression> labelPath, LabelTarget targetLabel )
+    private static Transition CreateTransition( List<Expression> gotoPath, List<Expression> labelPath, LabelTarget targetLabel )
     {
         var minLength = Math.Min( gotoPath.Count, labelPath.Count );
         var ancestorIndex = 0;
@@ -106,9 +101,9 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         if ( ancestorIndex == 0 )
             throw new InvalidOperationException( "Could not determine a common ancestor." );
 
-        var commonAncestorExpr = labelPath[ancestorIndex - 1];
-        var steps = labelPath.Skip( ancestorIndex ).ToList();
+        var commonAncestor = labelPath[ancestorIndex - 1];
+        var children = labelPath.Skip( ancestorIndex ).ToList();
 
-        return new Navigation( commonAncestorExpr, steps, targetLabel );
+        return new Transition( commonAncestor, children, targetLabel );
     }
 }
