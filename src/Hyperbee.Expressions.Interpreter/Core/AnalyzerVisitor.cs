@@ -20,7 +20,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
     public Dictionary<GotoExpression, Navigation> Navigation { get; } = new();
     public Expression Lowered { get; private set; }
 
-    private Dictionary<Expression, Expression> _extensions;  // not needed if always reduced?
+    //private Dictionary<Expression, Expression> _extensions;  // not needed if always reduced?
 
     public void Analyze( Expression root, Dictionary<Expression, Expression> extensions )
     {
@@ -28,7 +28,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         _labelPaths.Clear();
         Navigation.Clear();
 
-        _extensions = extensions;
+        //_extensions = extensions;
 
         var reduced = new LoweringVisitor().Visit( root );  // TOOD: fix
         Lowered = Visit( reduced );
@@ -61,23 +61,6 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         _gotoPaths[node] = [.. _currentPath];
         return base.VisitGoto( node );
     }
-
-    //protected override Expression VisitExtension( Expression node )
-    //{
-    //    if ( _extensions.TryGetValue( node, out var reduced ) )
-    //    {
-    //        return reduced;
-    //    }
-
-    //    reduced = node.ReduceAndCheck();
-
-    //    _currentPath.Add( reduced );
-    //    var loweredAndReduced = base.Visit( reduced );
-    //    _currentPath.RemoveAt( _currentPath.Count - 1 );
-
-    //    _extensions[node] = loweredAndReduced;
-    //    return loweredAndReduced;
-    //}
 
     protected override Expression VisitLoop( LoopExpression node )
     {
@@ -129,33 +112,3 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         return new Navigation( commonAncestorExpr, steps, targetLabel );
     }
 }
-
-internal sealed class Navigation
-{
-    public Expression CommonAncestor { get; }
-    public List<Expression> Steps { get; }
-    public LabelTarget TargetLabel { get; }
-    public Exception Exception { get; set; }
-
-    private int _currentStepIndex;
-
-    public Navigation( Expression commonAncestor = null, List<Expression> steps = null, LabelTarget targetLabel = null, Exception exception = null )
-    {
-        CommonAncestor = commonAncestor;
-        Steps = steps ?? [];
-        TargetLabel = targetLabel;
-        Exception = exception;
-        _currentStepIndex = 0;
-    }
-
-    public void Reset() => _currentStepIndex = 0;
-
-    public Expression GetNextStep()
-    {
-        if ( _currentStepIndex >= Steps.Count )
-            throw new InvalidOperationException( "No more steps available." );
-
-        return Steps[_currentStepIndex++];
-    }
-}
-

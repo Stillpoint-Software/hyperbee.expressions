@@ -3,7 +3,7 @@ using Hyperbee.Collections;
 
 namespace Hyperbee.Expressions.Interpreter.Core;
 
-internal sealed class StatePreservingSynchronizationContext : SynchronizationContext
+internal sealed class InterpreterSynchronizationContext : SynchronizationContext
 {
     public override void Post( SendOrPostCallback callback, object state )
     {
@@ -15,7 +15,6 @@ internal sealed class StatePreservingSynchronizationContext : SynchronizationCon
         {
             Scope = CopyScope( currentContext.Scope ),
             Results = new( currentContext.Results ),
-            Mode = currentContext.Mode,
             Navigation = currentContext.Navigation,
         };
 

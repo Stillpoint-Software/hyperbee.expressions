@@ -4,8 +4,19 @@ internal sealed class InterpreterContext
 {
     public InterpretScope Scope { get; init; } = new();
     public Stack<object> Results { get; init; } = new();
-    public InterpreterMode Mode { get; set; } = InterpreterMode.Evaluating;
-    public Navigation Navigation { get; set; }
+
+    public bool IsNavigating => Navigation != null;
+
+    private Navigation _navigation;
+    public Navigation Navigation
+    {
+        get => _navigation;
+        set 
+        {
+            _navigation?.Reset();
+            _navigation = value;
+        }
+    }
 
     public void Deconstruct( out InterpretScope scope, out Stack<object> results )
     {
@@ -21,7 +32,7 @@ internal sealed class InterpreterContext
     }
 
     private static readonly ThreadLocal<InterpreterContext> ThreadContext = new();
-    
+
     public static InterpreterContext Current => ThreadContext.Value ??= new InterpreterContext();
     internal static void SetThreadContext( InterpreterContext context ) => ThreadContext.Value = context;
 }

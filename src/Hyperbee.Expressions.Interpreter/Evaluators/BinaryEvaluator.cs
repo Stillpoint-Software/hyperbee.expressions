@@ -45,19 +45,18 @@ internal sealed class BinaryEvaluator
                 return ArithmeticOperation( GetOperation( binary, true ) );
         }
     }
-
-
+    
     private BinaryOperation GetOperation( BinaryExpression binary, bool valueOnly )
     {
         object leftValue;
         object leftInstance = null;
         object[] index = null;
 
-        var rightValue = XsInterpreter.Results.Pop();
+        var rightValue = _interpreter.Results.Pop();
 
         if ( valueOnly )
         {
-            leftValue = XsInterpreter.Results.Pop();
+            leftValue = _interpreter.Results.Pop();
         }
         else
         {
@@ -68,7 +67,7 @@ internal sealed class BinaryEvaluator
                     break;
 
                 case MemberExpression memberExpr:
-                    leftInstance = XsInterpreter.Results.Pop();
+                    leftInstance = _interpreter.Results.Pop();
                     leftValue = GetMemberValue( leftInstance, memberExpr );
                     break;
 
@@ -76,15 +75,15 @@ internal sealed class BinaryEvaluator
                     index = new object[indexExpr.Arguments.Count];
                     for ( var i = indexExpr.Arguments.Count - 1; i >= 0; i-- )
                     {
-                        index[i] = XsInterpreter.Results.Pop();
+                        index[i] = _interpreter.Results.Pop();
                     }
 
-                    leftInstance = XsInterpreter.Results.Pop();
+                    leftInstance = _interpreter.Results.Pop();
                     leftValue = GetIndexValue( leftInstance, indexExpr, index );
                     break;
 
                 default:
-                    leftValue = XsInterpreter.Results.Pop();
+                    leftValue = _interpreter.Results.Pop();
                     break;
             }
         }

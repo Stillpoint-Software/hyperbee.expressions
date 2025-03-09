@@ -14,7 +14,7 @@ internal sealed class UnaryEvaluator
 
     public object Unary( UnaryExpression unary )
     {
-        var operand = XsInterpreter.Results.Pop();
+        var operand = _interpreter.Results.Pop();
 
         switch ( unary.NodeType )
         {

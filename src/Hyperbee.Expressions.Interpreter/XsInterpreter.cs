@@ -1,6 +1,5 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
-
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Interpreter.Core;
 using Hyperbee.Expressions.Interpreter.Evaluators;
@@ -10,57 +9,42 @@ namespace Hyperbee.Expressions.Interpreter;
 public sealed class XsInterpreter : ExpressionVisitor
 {
     private readonly Evaluator _evaluator;
-
-    private Dictionary<GotoExpression, Navigation> _navigation;
-
     private readonly Dictionary<Expression, Expression> _extensions = new();
+    private readonly InterpreterSynchronizationContext _syncContext;
 
     private LambdaExpression _lowered;
+    private Dictionary<GotoExpression, Navigation> _navigation;
 
-    private readonly StatePreservingSynchronizationContext _syncContext;
+    internal InterpreterContext CurrentContext => InterpreterContext.Current;
 
-    internal InterpreterContext State => InterpreterContext.Current;
-
-    internal InterpretScope Scope => InterpreterContext.Current.Scope;
-    internal static Stack<object> Results => InterpreterContext.Current.Results;
-    
-    internal InterpreterMode Mode
-    {
-        get => InterpreterContext.Current.Mode;
-        set => InterpreterContext.Current.Mode = value;
-    }
-
-    internal Navigation Navigation
-    {
-        get => InterpreterContext.Current.Navigation;
-        set => InterpreterContext.Current.Navigation = value;
-    }
+    //internal InterpretScope Scope => CurrentContext.Scope;
+    //internal Stack<object> Results => CurrentContext.Results;
+    //internal Navigation Navigation
+    //{
+    //    get => CurrentContext.Navigation;
+    //    set => CurrentContext.Navigation = value;
+    //}
 
     public XsInterpreter()
     {
         _evaluator = new Evaluator( this );
-        _syncContext = new StatePreservingSynchronizationContext();
+        _syncContext = new InterpreterSynchronizationContext();
     }
 
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
         where TDelegate : Delegate
     {
-        if ( _lowered != null )
+        if ( _lowered == null )
         {
-            return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
+            AnalyzeExpression( expression );
+            expression = _lowered;
         }
-
-        AnalyzeExpression( expression );
-        expression = _lowered;
 
         return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
     }
 
-    private void AnalyzeExpression( Expression expression, bool rebuild = false )
+    private void AnalyzeExpression( Expression expression )
     {
-        if ( _navigation != null && rebuild == false )
-            return;
-
         var analyzer = new AnalyzerVisitor();
         analyzer.Analyze( expression, _extensions );
 
@@ -135,7 +119,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     private void ThrowIfNavigating()
     {
-        if ( Mode != InterpreterMode.Navigating )
+        if ( !CurrentContext.IsNavigating )
             return;
 
         if ( Navigation.Exception != null )
@@ -159,7 +143,7 @@ public sealed class XsInterpreter : ExpressionVisitor
             lastResult = Results.Pop();
         }
 
-        Mode = InterpreterMode.Navigating;
+        //Mode = InterpreterMode.Navigating;
         Navigation = navigation;
 
         Results.Push( lastResult );
@@ -169,10 +153,10 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     protected override Expression VisitLabel( LabelExpression node )
     {
-        if ( Mode == InterpreterMode.Navigating && Navigation.TargetLabel == node.Target )
+        if ( CurrentContext.IsNavigating && Navigation.TargetLabel == node.Target )
         {
-            Mode = InterpreterMode.Evaluating;
-            Navigation.Reset();
+            //Mode = InterpreterMode.Evaluating;
+            //Navigation.Reset();
             Navigation = null;
         }
 
@@ -202,7 +186,7 @@ public sealed class XsInterpreter : ExpressionVisitor
         {
 Navigate:
 
-            if ( Mode == InterpreterMode.Navigating )
+            if ( CurrentContext.IsNavigating )
             {
                 var nextStep = Navigation.GetNextStep();
                 statementIndex = node.Expressions.IndexOf( nextStep );
@@ -234,7 +218,7 @@ Navigate:
 
                         lastResult = Results.Pop();
 
-                        if ( Mode == InterpreterMode.Navigating )
+                        if ( CurrentContext.IsNavigating )
                         {
                             if ( Navigation.CommonAncestor == node )
                                 goto Navigate;
@@ -285,7 +269,7 @@ Navigate:
 
 Navigate:
 
-        if ( Mode == InterpreterMode.Navigating )
+        if ( CurrentContext.IsNavigating )
         {
             expr = Navigation.GetNextStep();
             state = ConditionalState.Visit;
@@ -303,7 +287,7 @@ Navigate:
                     break;
 
                 case ConditionalState.HandleTest:
-                    var conditionValue = (bool) lastResult!;  //ResultStack.Pop()
+                    var conditionValue = (bool) lastResult!;  
                     expr = conditionValue ? node.IfTrue : node.IfFalse;
                     state = ConditionalState.Visit;
                     continuation = ConditionalState.Complete;
@@ -314,7 +298,7 @@ Navigate:
 
                     lastResult = Results.Pop();
 
-                    if ( Mode == InterpreterMode.Navigating )
+                    if ( CurrentContext.IsNavigating )
                     {
                         if ( Navigation.CommonAncestor == node )
                             goto Navigate;
@@ -357,7 +341,7 @@ Navigate:
 
 Navigate:
 
-        if ( Mode == InterpreterMode.Navigating )
+        if ( CurrentContext.IsNavigating )
         {
             expr = Navigation.GetNextStep();
 
@@ -386,7 +370,7 @@ Navigate:
                     break;
 
                 case SwitchState.HandleSwitchValue:
-                    switchValue = lastResult; //ResultStack.Pop();
+                    switchValue = lastResult; 
                     caseIndex = 0;
                     testIndex = 0;
                     state = SwitchState.MatchCase;
@@ -416,9 +400,8 @@ Navigate:
                     break;
 
                 case SwitchState.HandleMatchCase:
-                    var testValue = lastResult; //ResultStack.Pop();
 
-                    if ( (switchValue != null && !switchValue.Equals( testValue )) || (switchValue == null && testValue != null) )
+                    if ( (switchValue != null && !switchValue.Equals( lastResult )) || (switchValue == null && lastResult != null) )
                     {
                         testIndex++;
                         state = SwitchState.MatchCase;
@@ -435,7 +418,7 @@ Navigate:
 
                     lastResult = Results.Pop();
 
-                    if ( Mode == InterpreterMode.Navigating )
+                    if ( CurrentContext.IsNavigating )
                     {
                         if ( Navigation.CommonAncestor == node )
                             goto Navigate;
@@ -479,7 +462,7 @@ Navigate:
 
 Navigate:
 
-        if ( Mode == InterpreterMode.Navigating )
+        if ( CurrentContext.IsNavigating )
         {
             expr = Navigation.GetNextStep();
 
@@ -496,6 +479,7 @@ Navigate:
             else
             {
                 var exceptionHandler = node.Handlers.FirstOrDefault( c => c.Body == expr );
+
                 if ( exceptionHandler != null )
                 {
                     expr = exceptionHandler.Body;
@@ -542,16 +526,19 @@ Navigate:
                 case TryCatchState.HandleCatch:
 
                     // found matching catch, clear navigation
-                    Mode = InterpreterMode.Evaluating;
+                    //Mode = InterpreterMode.Evaluating;
+
+                    var exception = Navigation.Exception; //BF
+                    Navigation = null; //BF
 
                     try
                     {
                         Scope.EnterScope();
-                        Scope.Values[exceptionVariable] = Navigation.Exception;
+                        Scope.Values[exceptionVariable] = exception; // Navigation.Exception; //BF
 
                         Visit( expr! );
 
-                        Navigation.Exception = null;
+                        //Navigation.Exception = null; //BF
                     }
                     finally
                     {
@@ -560,7 +547,7 @@ Navigate:
 
                     lastResult = Results.Pop();
 
-                    if ( Mode == InterpreterMode.Navigating )
+                    if ( CurrentContext.IsNavigating )
                     {
                         if ( Navigation.CommonAncestor == node )
                             goto Navigate;
@@ -585,9 +572,11 @@ Navigate:
                 case TryCatchState.HandleFinally:
 
                     var currentException = Navigation?.Exception;
+                    
                     if ( currentException != null )
                     {
-                        Mode = InterpreterMode.Evaluating;
+                        //Mode = InterpreterMode.Evaluating;
+                        Navigation = null; //BF
                     }
 
                     Visit( expr! );
@@ -596,7 +585,7 @@ Navigate:
                     if ( currentException != null )
                         throw currentException;
 
-                    if ( Mode == InterpreterMode.Navigating )
+                    if ( CurrentContext.IsNavigating )
                     {
                         if ( Navigation.CommonAncestor == node )
                             goto Navigate;
@@ -614,7 +603,7 @@ Navigate:
                     if ( Navigation?.Exception == null )
                         lastResult = Results.Pop();
 
-                    if ( Mode == InterpreterMode.Navigating )
+                    if ( CurrentContext.IsNavigating )
                     {
                         if ( Navigation.CommonAncestor == node )
                             goto Navigate;
@@ -648,27 +637,28 @@ Navigate:
         try
         {
             object lastResult;
+
             while ( true )
             {
                 Visit( node.Body );
                 lastResult = Results.Pop();
 
-                if ( Mode != InterpreterMode.Navigating )
+                if ( !CurrentContext.IsNavigating )
                 {
                     continue;
                 }
 
-                if ( Navigation.TargetLabel == node.BreakLabel )
+                if ( Navigation.TargetLabel == node.BreakLabel || Navigation.TargetLabel == node.ContinueLabel )
                 {
-                    Mode = InterpreterMode.Evaluating;
+                    Navigation = null;
                     break;
                 }
 
-                if ( Navigation.TargetLabel == node.ContinueLabel )
-                {
-                    Mode = InterpreterMode.Evaluating;
-                    continue;
-                }
+                //if ( Navigation.TargetLabel == node.BreakLabel || Navigation.TargetLabel == node.ContinueLabel )
+                //{
+                //    Mode = InterpreterMode.Evaluating;
+                //    break;
+                //}
 
                 Results.Push( lastResult );
                 return node;
@@ -942,7 +932,7 @@ Navigate:
                 exception = Navigation.Exception;
             }
 
-            Mode = InterpreterMode.Navigating;
+            //Mode = InterpreterMode.Navigating;
             Navigation = new Navigation( exception: exception );
 
             return node;
