@@ -8,7 +8,6 @@ internal sealed class InterpretSynchronizationContext : SynchronizationContext
     public override void Post( SendOrPostCallback callback, object state )
     {
         // collections are reference types, so we need to copy them
-
         var currentContext = InterpretContext.Current;
 
         var capturedContext = new InterpretContext()
@@ -28,13 +27,6 @@ internal sealed class InterpretSynchronizationContext : SynchronizationContext
 
         static InterpretScope CopyScope( InterpretScope originalScope )
         {
-            var newVariables = new LinkedDictionary<string, ParameterExpression>();
-
-            foreach ( var node in originalScope.Variables.Nodes().Reverse() )
-            {
-                newVariables.Push( node.Name, node.Dictionary );
-            }
-
             var newValues = new LinkedDictionary<ParameterExpression, object>();
 
             foreach ( var node in originalScope.Values.Nodes().Reverse() )
@@ -45,7 +37,6 @@ internal sealed class InterpretSynchronizationContext : SynchronizationContext
             var newScope = new InterpretScope
             {
                 Depth = originalScope.Depth,
-                Variables = newVariables,
                 Values = newValues
             };
 

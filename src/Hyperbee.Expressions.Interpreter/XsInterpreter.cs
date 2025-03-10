@@ -175,8 +175,6 @@ EntryPoint:
                     case BlockState.InitializeVariables:
                         foreach ( var variable in node.Variables )
                         {
-                            var name = variable.Name ?? variable.ToString();
-                            Scope.Variables[name] = variable;
                             Scope.Values[variable] = Default( variable.Type );
                         }
 
@@ -434,7 +432,6 @@ EntryPoint:
 
         Expression expr = null;
         ParameterExpression exceptionVariable = null;
-        Exception exception = null;
         object lastResult = null;
 
 EntryPoint:
@@ -468,6 +465,7 @@ EntryPoint:
 
         while ( true )
         {
+            Exception exception = null;
             switch ( state )
             {
                 case TryCatchState.Try:
@@ -508,7 +506,8 @@ EntryPoint:
                     try
                     {
                         Scope.EnterScope();
-                        Scope.Values[exceptionVariable] = exception; 
+                        if(exceptionVariable != null)
+                            Scope.Values[exceptionVariable] = exception; 
 
                         Visit( expr! );
                     }
@@ -549,7 +548,8 @@ EntryPoint:
                         Transition = null; 
 
                     Visit( expr! );
-                    Results.Pop();
+
+                    Results.Pop(); // don't capture finally block result
 
                     if ( exception != null )
                         throw exception;
@@ -569,8 +569,7 @@ EntryPoint:
                 case TryCatchState.Visit:
                     Visit( expr! );
 
-                    if ( Transition?.Exception == null )
-                        lastResult = Results.Pop();
+                    lastResult = Results.Pop();
 
                     if ( CurrentContext.IsTransitioning )
                     {
@@ -845,14 +844,23 @@ EntryPoint:
             {
                 case MemberExpression memberExpr:
                     Visit( memberExpr.Expression ); // Visit and push instance
+
+                    if ( CurrentContext.IsTransitioning )
+                        return node;
+
                     break;
 
                 case IndexExpression indexExpr:
                     Visit( indexExpr.Object ); // Visit and push instance
+                    if ( CurrentContext.IsTransitioning )
+                        return node;
 
                     foreach ( var arg in indexExpr.Arguments )
                     {
                         Visit( arg ); // Visit and push index arguments
+
+                        if ( CurrentContext.IsTransitioning )
+                            return node;
                     }
 
                     break;
@@ -861,9 +869,15 @@ EntryPoint:
         else
         {
             Visit( node.Left ); // Visit and push leftValue
+
+            if ( CurrentContext.IsTransitioning )
+                return node;
         }
 
         Visit( node.Right ); // Visit and push rightValue
+
+        if ( CurrentContext.IsTransitioning )
+            return node;
 
         var result = _evaluator.Binary( node );
         Results.Push( result );
@@ -885,20 +899,6 @@ EntryPoint:
     protected override Expression VisitUnary( UnaryExpression node )
     {
         Visit( node.Operand ); // Visit and push operand
-
-        if ( node.NodeType == ExpressionType.Throw )
-        {
-            var exception = Results.Pop() as Exception;
-
-            if ( Transition != null && exception == null )
-            {
-                exception = Transition.Exception;
-            }
-
-            Transition = new Transition( exception: exception );
-
-            return node;
-        }
 
         var result = _evaluator.Unary( node );
         Results.Push( result );

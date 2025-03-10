@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Numerics;
+using Hyperbee.Expressions.Interpreter.Core;
 
 namespace Hyperbee.Expressions.Interpreter.Evaluators;
 
@@ -18,6 +19,9 @@ internal sealed class UnaryEvaluator
 
         switch ( unary.NodeType )
         {
+            case ExpressionType.Throw:
+                return ThrowOperation( operand as Exception );
+
             case ExpressionType.Convert:
                 return ConvertOperation( unary, operand );
 
@@ -42,6 +46,18 @@ internal sealed class UnaryEvaluator
             default:
                 throw new InterpreterException( $"Unsupported unary operation: {unary.NodeType}", unary );
         }
+    }
+
+    private Exception ThrowOperation( Exception exception )
+    {
+        if ( _interpreter.Transition != null && exception == null )
+        {
+            exception = _interpreter.Transition.Exception;
+        }
+
+        _interpreter.Transition = new Transition( exception: exception );
+
+        return exception;
     }
 
     private static object ConvertOperation( UnaryExpression unary, object operand )
