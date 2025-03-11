@@ -1,4 +1,7 @@
-﻿namespace Hyperbee.Expressions.Interpreter.Core;
+﻿using Hyperbee.Collections;
+using System.Linq.Expressions;
+
+namespace Hyperbee.Expressions.Interpreter.Core;
 
 internal sealed class InterpretContext
 {
@@ -31,8 +34,47 @@ internal sealed class InterpretContext
         transition = Transition;
     }
 
-    private static readonly ThreadLocal<InterpretContext> ThreadLocal = new();
+    private static readonly ThreadLocal<InterpretContext> ThreadLocal = new( () => AsyncContext.Current ?? new InterpretContext() );
 
-    public static InterpretContext Current => ThreadLocal.Value ??= new InterpretContext();
-    internal static void SetThreadInterpreterContext( InterpretContext context ) => ThreadLocal.Value = context;
+    public static InterpretContext Current
+    {
+        get
+        {
+            return ThreadLocal.Value;
+        }
+        set
+        {
+            ThreadLocal.Value = value;
+        }
+    }
+
+    internal InterpretContext Clone()
+    {
+        var clone = new InterpretContext
+        {
+            Scope = CloneScope( Scope ),
+            Results = new ( Results ),
+            Transition = Transition?.Clone()
+        };
+
+        return clone;
+
+        static InterpretScope CloneScope( InterpretScope originalScope )
+        {
+            var newValues = new LinkedDictionary<ParameterExpression, object>();
+
+            foreach ( var node in originalScope.Values.Nodes().Reverse() )
+            {
+                newValues.Push( node.Name, node.Dictionary );
+            }
+
+            var newScope = new InterpretScope
+            {
+                Depth = originalScope.Depth,
+                Values = newValues
+            };
+
+            return newScope;
+        }
+    }
 }

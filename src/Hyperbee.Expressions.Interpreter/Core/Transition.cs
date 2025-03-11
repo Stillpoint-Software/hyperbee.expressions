@@ -22,6 +22,19 @@ internal sealed class Transition
         _currentChildIndex = 0;
     }
 
+    public Transition Clone()
+    {
+        return new Transition(
+            CommonAncestor,
+            Children,
+            TargetLabel,
+            Exception
+        )
+        {
+            _currentChildIndex = _currentChildIndex
+        };
+    }
+
     public void Reset() => _currentChildIndex = 0;
 
     public Expression GetNextChild()

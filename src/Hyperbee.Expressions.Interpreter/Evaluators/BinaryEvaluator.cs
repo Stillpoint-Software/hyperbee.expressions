@@ -104,7 +104,13 @@ internal sealed class BinaryEvaluator
 
         static object GetIndexValue( object instance, IndexExpression indexExpr, object[] index )
         {
-            return indexExpr.Indexer!.GetValue( instance, index );
+            if( indexExpr.Indexer != null )
+                return indexExpr.Indexer.GetValue( instance, index );
+
+            if (instance is Array array)
+               return array.GetValue( index.Cast<int>().ToArray() );
+
+            throw new InterpreterException( $"Unsupported index access: {instance.GetType()}", indexExpr );
         }
     }
 
@@ -121,21 +127,19 @@ internal sealed class BinaryEvaluator
                 return _interpreter.Scope.Values[Collections.LinkedNode.Single, paramExpr] = rightValue;
 
             case MemberExpression memberExpr:
-                return AssignToMember( memberExpr, leftInstance, rightValue );
+                switch ( rightValue )
+                {
+                    case XsInterpreter.Closure closure:
+                        var rightClosureLambda = closure.Lambda;
+                        return AssignToMember( memberExpr, leftInstance, rightClosureLambda );
 
-                //switch ( rightValue )
-                //{
-                //    case XsInterpreter.Closure closure:
-                //        var rightClosureLambda = _interpreter.Interpreter( closure.LambdaExpr, closure.LambdaExpr.Type );
-                //        return AssignToMember( memberExpr, leftInstance, rightClosureLambda );
+                    case LambdaExpression lambdaExpr:
+                        var rightLambda = _interpreter.Interpreter( lambdaExpr, lambdaExpr.Type );
+                        return AssignToMember( memberExpr, leftInstance, rightLambda );
 
-                //    case LambdaExpression lambdaExpr:
-                //        var rightLambda = _interpreter.Interpreter( lambdaExpr, lambdaExpr.Type );
-                //        return AssignToMember( memberExpr, leftInstance, rightLambda );
-
-                //    default:
-                //        return AssignToMember( memberExpr, leftInstance, rightValue );
-                //}
+                    default:
+                        return AssignToMember( memberExpr, leftInstance, rightValue );
+                }
 
             case IndexExpression indexExpr:
                 return AssignToIndex( indexExpr, leftInstance, indexArguments, rightValue );
@@ -146,9 +150,21 @@ internal sealed class BinaryEvaluator
 
         // Helper methods
 
-        static object AssignToIndex( IndexExpression indexExpr, object leftInstance, object[] index, object rightValue )
+        static object AssignToIndex(IndexExpression indexExpr, object leftInstance, object[] index, object rightValue)
         {
-            indexExpr.Indexer!.SetValue( leftInstance, rightValue, index );
+            if (indexExpr.Indexer != null)
+            {
+                indexExpr.Indexer.SetValue(leftInstance, rightValue, index);
+            }
+            else if (leftInstance is Array array)
+            {
+                array.SetValue( rightValue, index.Cast<int>().ToArray() );
+            }
+            else
+            {
+                throw new InterpreterException($"Unsupported index assignment for type: {leftInstance.GetType()}", indexExpr);
+            }
+
             return rightValue;
         }
 

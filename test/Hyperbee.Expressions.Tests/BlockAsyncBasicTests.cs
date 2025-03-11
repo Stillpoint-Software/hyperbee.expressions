@@ -527,13 +527,15 @@ public class BlockAsyncBasicTests
             )
         );
 
+        const int threadCount = 5;
+
         var initIncrement = Assign( i, Constant( 0 ) );
-        var condition = LessThan( i, Constant( 5 ) );
+        var condition = LessThan( i, Constant( threadCount ) );
         var iteration = PostIncrementAssign( i );
 
         var block = BlockAsync(
             [tracker, tasks],
-            Assign( tracker, NewArrayBounds( typeof( int ), Constant( 5 ) ) ),
+            Assign( tracker, NewArrayBounds( typeof( int ), Constant( threadCount ) ) ),
             Assign( tasks, New( typeof( List<Task> ).GetConstructors()[0] ) ),
             For( [i], initIncrement, condition, iteration,
                 Block(
@@ -553,12 +555,11 @@ public class BlockAsyncBasicTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 5, result.Length );
-        Assert.AreEqual( 0, result[0] );
-        Assert.AreEqual( 1, result[1] );
-        Assert.AreEqual( 2, result[2] );
-        Assert.AreEqual( 3, result[3] );
-        Assert.AreEqual( 4, result[4] );
+        Assert.AreEqual( threadCount, result.Length );
+        for ( var tC = 0; tC < threadCount; tC++ )
+        {
+            Assert.AreEqual( tC, result[tC] );
+        }
     }
 
     [DataTestMethod]
