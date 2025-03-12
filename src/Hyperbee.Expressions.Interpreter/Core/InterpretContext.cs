@@ -34,20 +34,6 @@ internal sealed class InterpretContext
         transition = Transition;
     }
 
-    private static readonly ThreadLocal<InterpretContext> ThreadLocal = new( () => AsyncContext.Current ?? new InterpretContext() );
-
-    public static InterpretContext Current
-    {
-        get
-        {
-            return ThreadLocal.Value;
-        }
-        set
-        {
-            ThreadLocal.Value = value;
-        }
-    }
-
     internal InterpretContext Clone()
     {
         var clone = new InterpretContext

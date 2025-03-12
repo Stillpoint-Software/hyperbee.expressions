@@ -7,11 +7,11 @@ namespace Hyperbee.Expressions.Interpreter.Evaluators;
 
 internal sealed class BinaryEvaluator
 {
-    private readonly XsInterpreter _interpreter;
+    private readonly InterpretContext _context;
 
-    public BinaryEvaluator( XsInterpreter interpreter )
+    public BinaryEvaluator( InterpretContext context )
     {
-        _interpreter = interpreter;
+        _context = context;
     }
 
     public object Binary( BinaryExpression binary )
@@ -52,22 +52,22 @@ internal sealed class BinaryEvaluator
         object leftInstance = null;
         object[] index = null;
 
-        var rightValue = _interpreter.Results.Pop();
+        var rightValue = _context.Results.Pop();
 
         if ( valueOnly )
         {
-            leftValue = _interpreter.Results.Pop();
+            leftValue = _context.Results.Pop();
         }
         else
         {
             switch ( binary.Left )
             {
                 case ParameterExpression paramExpr:
-                    leftValue = _interpreter.Scope.Values[paramExpr];
+                    leftValue = _context.Scope.Values[paramExpr];
                     break;
 
                 case MemberExpression memberExpr:
-                    leftInstance = _interpreter.Results.Pop();
+                    leftInstance = _context.Results.Pop();
                     leftValue = GetMemberValue( leftInstance, memberExpr );
                     break;
 
@@ -75,15 +75,15 @@ internal sealed class BinaryEvaluator
                     index = new object[indexExpr.Arguments.Count];
                     for ( var i = indexExpr.Arguments.Count - 1; i >= 0; i-- )
                     {
-                        index[i] = _interpreter.Results.Pop();
+                        index[i] = _context.Results.Pop();
                     }
 
-                    leftInstance = _interpreter.Results.Pop();
+                    leftInstance = _context.Results.Pop();
                     leftValue = GetIndexValue( leftInstance, indexExpr, index );
                     break;
 
                 default:
-                    leftValue = _interpreter.Results.Pop();
+                    leftValue = _context.Results.Pop();
                     break;
             }
         }
@@ -124,7 +124,7 @@ internal sealed class BinaryEvaluator
         switch ( binary.Left )
         {
             case ParameterExpression paramExpr:
-                return _interpreter.Scope.Values[Collections.LinkedNode.Single, paramExpr] = rightValue;
+                return _context.Scope.Values[Collections.LinkedNode.Single, paramExpr] = rightValue;
 
             case MemberExpression memberExpr:
                 switch ( rightValue )
@@ -133,9 +133,9 @@ internal sealed class BinaryEvaluator
                         var rightClosureLambda = closure.Lambda;
                         return AssignToMember( memberExpr, leftInstance, rightClosureLambda );
 
-                    case LambdaExpression lambdaExpr:
-                        var rightLambda = _interpreter.Interpreter( lambdaExpr, lambdaExpr.Type );
-                        return AssignToMember( memberExpr, leftInstance, rightLambda );
+                    //case LambdaExpression lambdaExpr:
+                    //    var rightLambda = _interpreter.Interpreter( lambdaExpr, lambdaExpr.Type );
+                    //    return AssignToMember( memberExpr, leftInstance, rightLambda );
 
                     default:
                         return AssignToMember( memberExpr, leftInstance, rightValue );
@@ -267,9 +267,7 @@ internal sealed class BinaryEvaluator
             ExpressionType.LessThan => leftValue.CompareTo( rightValue ) < 0,
             ExpressionType.GreaterThan => leftValue.CompareTo( rightValue ) > 0,
             ExpressionType.LessThanOrEqual => leftValue.CompareTo( rightValue ) <= 0,
-            //ExpressionType.GreaterThanOrEqual => leftValue.CompareTo( rightValue ) >= 0,
-            //ExpressionType.Equal => leftValue.Equals( rightValue ),
-            //ExpressionType.NotEqual => !leftValue.Equals( rightValue ),
+            ExpressionType.GreaterThanOrEqual => leftValue.CompareTo( rightValue ) >= 0,
             _ => throw new InterpreterException( $"Unsupported logical operation: {binary.NodeType}", binary )
         };
     }

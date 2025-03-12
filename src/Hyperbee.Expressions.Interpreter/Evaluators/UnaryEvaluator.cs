@@ -6,16 +6,15 @@ namespace Hyperbee.Expressions.Interpreter.Evaluators;
 
 internal sealed class UnaryEvaluator
 {
-    private readonly XsInterpreter _interpreter;
-
-    public UnaryEvaluator( XsInterpreter interpreter )
+    private readonly InterpretContext _context;
+    public UnaryEvaluator( InterpretContext context )
     {
-        _interpreter = interpreter;
+        _context = context;
     }
 
     public object Unary( UnaryExpression unary )
     {
-        var operand = _interpreter.Results.Pop();
+        var operand = _context.Results.Pop();
 
         switch ( unary.NodeType )
         {
@@ -50,12 +49,12 @@ internal sealed class UnaryEvaluator
 
     private Exception ThrowOperation( Exception exception )
     {
-        if ( _interpreter.Transition != null && exception == null )
+        if ( _context.Transition != null && exception == null )
         {
-            exception = _interpreter.Transition.Exception;
+            exception = _context.Transition.Exception;
         }
 
-        _interpreter.Transition = new Transition( exception: exception );
+        _context.Transition = new Transition( exception: exception );
 
         return exception;
     }
@@ -107,22 +106,22 @@ internal sealed class UnaryEvaluator
         {
             case ExpressionType.PreIncrementAssign:
                 newValue = operand + T.One;
-                _interpreter.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
+                _context.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
                 return newValue;
 
             case ExpressionType.PreDecrementAssign:
                 newValue = operand - T.One;
-                _interpreter.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
+                _context.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
                 return newValue;
 
             case ExpressionType.PostIncrementAssign:
                 newValue = operand + T.One;
-                _interpreter.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
+                _context.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
                 return operand;
 
             case ExpressionType.PostDecrementAssign:
                 newValue = operand - T.One;
-                _interpreter.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
+                _context.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
                 return operand;
 
             default:

@@ -9,7 +9,27 @@ namespace Hyperbee.Expressions.Interpreter.Core;
 
 public static class EvaluateDelegateFactory
 {
-    record DelegateClosure( XsInterpreter Interpreter, LambdaExpression Lambda );
+    class DelegateClosure
+    {
+        private readonly XsInterpreter _interpreter;
+
+        public XsInterpreter Interpreter
+        {
+            get
+            {
+                var context = InterpretExecutionContext.Current ?? _interpreter.Context.Clone(); 
+                return new XsInterpreter( _interpreter, context );
+            }
+        }
+
+        public LambdaExpression Lambda { get; init; }
+
+        public DelegateClosure( XsInterpreter instance, LambdaExpression lambda )
+        {
+            _interpreter = instance;
+            Lambda = lambda;
+        }
+    }
 
     private static readonly ConcurrentDictionary<Type, DynamicMethod> CachedDynamicMethods = new();
 
@@ -34,7 +54,7 @@ public static class EvaluateDelegateFactory
         where TDelegate : Delegate
     {
         var dm = CachedDynamicMethods.GetOrAdd( typeof(TDelegate), _ => CreateDynamicMethod<TDelegate>() );
-        
+
         var closure = new DelegateClosure( instance, lambda );
         return (TDelegate) dm.CreateDelegate( typeof(TDelegate), closure );
     }

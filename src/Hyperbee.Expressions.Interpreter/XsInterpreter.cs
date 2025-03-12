@@ -9,8 +9,6 @@ namespace Hyperbee.Expressions.Interpreter;
 public sealed class XsInterpreter : ExpressionVisitor
 {
     private readonly Evaluator _evaluator;
-    private readonly InterpretSynchronizationContext _syncContext;
-
     private LambdaExpression _reduced;
     private Dictionary<GotoExpression, Transition> _transitions;
 
@@ -26,20 +24,17 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     public XsInterpreter()
     {
-        _evaluator = new Evaluator( this );
-        _syncContext = new InterpretSynchronizationContext();
-
         Context = new InterpretContext();
+        _evaluator = new Evaluator( Context );
     }
 
     internal XsInterpreter( XsInterpreter copy, InterpretContext context )
     {
-        _evaluator = new Evaluator( this );
-        _syncContext = copy._syncContext;
+        Context = context;
+
+        _evaluator = new Evaluator( Context );
         _reduced = copy._reduced;
         _transitions = copy._transitions;
-
-        Context = context;
     }
 
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
@@ -71,43 +66,27 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     private T EvaluateInternal<T>( LambdaExpression lambda, bool hasReturn, params object[] values )
     {
-        var prevContext = SynchronizationContext.Current;
+        var (scope, results) = Context;
 
-        // TODO: Fix hack to create new instance vs using the ThreadLocal
-        var interpreter = new XsInterpreter( this, 
-            AsyncContext.Current ?? Context.Clone() );
+        scope.EnterScope();
 
         try
         {
-            SynchronizationContext.SetSynchronizationContext( interpreter._syncContext );
+            for ( var i = 0; i < lambda.Parameters.Count; i++ )
+                scope.Values[lambda.Parameters[i]] = values[i];
 
-            var (scope, _) = interpreter.Context;
+            Visit( lambda.Body );
 
-            scope.EnterScope();
+            ThrowIfTransitioning();
 
-            try
-            {
-                for ( var i = 0; i < lambda.Parameters.Count; i++ )
-                    scope.Values[lambda.Parameters[i]] = values[i];
-
-                interpreter.Visit( lambda.Body );
-                var (_, results) = interpreter.Context; // refresh after visit
-
-                interpreter.ThrowIfTransitioning();
-
-                if ( hasReturn )
-                    return (T) results.Pop();
-                else
-                    results.Pop();
-            }
-            finally
-            {
-                scope.ExitScope();
-            }
+            if ( hasReturn )
+                return (T) results.Pop();
+            else
+                results.Pop();
         }
         finally
         {
-            SynchronizationContext.SetSynchronizationContext( prevContext );
+            scope.ExitScope();
         }
 
         return default;
@@ -141,7 +120,7 @@ public sealed class XsInterpreter : ExpressionVisitor
             lastResult = Results.Pop();
         }
 
-        Transition = transition;
+        Transition = transition.Clone();
         Results.Push( lastResult );
 
         return node;
@@ -203,7 +182,7 @@ EntryPoint:
                             state = BlockState.Complete;
                             break;
                         }
-
+                        
                         Visit( node.Expressions[statementIndex] );
 
                         lastResult = Results.Pop();
@@ -737,9 +716,9 @@ EntryPoint:
             }
 
             object result = null;
-            ContextExecutionWrapper.Run( () =>
+            InterpretExecutionContext.Run( () =>
             {
-                result = lambdaDelegate.DynamicInvoke( arguments );
+                result = lambdaDelegate?.DynamicInvoke( arguments );
             }, Context );
 
             Results.Push( result );
@@ -780,14 +759,8 @@ EntryPoint:
             {
                 case Closure closure:
                     hasClosure = true;
-                    //arguments[i] = this.Interpreter( closure.LambdaExpr );
                     arguments[i] = closure.Lambda;
                     capturedValues[i] = closure.CapturedScope;
-                    break;
-
-                case LambdaExpression lambdaExpr:
-                    //arguments[i] = this.Interpreter( lambdaExpr );
-                    arguments[i] = this.Interpreter( lambdaExpr );
                     break;
 
                 default:
@@ -801,7 +774,7 @@ EntryPoint:
             try
             {
                 object result = null;
-                ContextExecutionWrapper.Run( () =>
+                InterpretExecutionContext.Run( () =>
                 {
                     result = node.Method.Invoke( instance, arguments );
                 }, Context );
@@ -830,7 +803,7 @@ EntryPoint:
             }
 
             object result = null;
-            ContextExecutionWrapper.Run( () =>
+            InterpretExecutionContext.Run( () =>
             {
                 result = node.Method.Invoke( instance, arguments );
             }, Context );
@@ -1169,31 +1142,5 @@ EntryPoint:
 
             return base.VisitParameter( node );
         }
-    }
-}
-
-public static class AsyncContext
-{
-    private static readonly AsyncLocal<InterpretContext> Context = new();
-
-    internal static InterpretContext Current
-    {
-        get => Context.Value;
-        set => Context.Value = value;
-    }
-}
-
-internal static class ContextExecutionWrapper
-{
-    internal static void Run( Action action, InterpretContext context )
-    {
-        var executionContext = ExecutionContext.Capture();
-        var localCapture = context.Clone();
-
-        ExecutionContext.Run( executionContext, _ =>
-        {
-            AsyncContext.Current = localCapture;
-            action();
-        }, null );
     }
 }
