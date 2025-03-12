@@ -2,7 +2,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using Hyperbee.Expressions.CompilerServices.Collections;
+using Hyperbee.Collections;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -159,7 +159,7 @@ internal class StateMachineBuilder<TResult>
 
         var localVariables = context.LoweringInfo
             .ScopedVariables
-            .Items( KeyScope.Current )
+            .EnumerateItems( LinkedNode.Current )
             .Select( x => x.Value );
 
         foreach ( var parameterExpression in localVariables )
