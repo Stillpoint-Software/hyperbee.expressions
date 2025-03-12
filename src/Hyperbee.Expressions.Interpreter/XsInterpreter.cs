@@ -79,7 +79,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
             Visit( lambda.Body );
 
-            ThrowIfTransitioning();
+            ThrowIfTransitioning( Context.Transition );
 
             if ( hasReturn )
                 return (T) results.Pop();
@@ -92,19 +92,17 @@ public sealed class XsInterpreter : ExpressionVisitor
         }
 
         return default;
-    }
 
-    private void ThrowIfTransitioning()
-    {
-        var transition = Context.Transition;
+        static void ThrowIfTransitioning( Transition transition )
+        {
+            if ( transition == null )
+                return;
 
-        if ( transition == null )
-            return;
+            if ( transition.Exception != null )
+                throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", transition.Exception );
 
-        if ( transition.Exception != null )
-            throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", transition.Exception );
-
-        throw new InvalidOperationException( "Interpreter failed to transition to next expression." );
+            throw new InvalidOperationException( "Interpreter failed to transition to next expression." );
+        }
     }
 
     // Goto
@@ -124,7 +122,7 @@ public sealed class XsInterpreter : ExpressionVisitor
             lastResult = results.Pop();
         }
 
-        Transition = transition;//.Clone();
+        Transition = transition;
         results.Push( lastResult );
 
         return node;
@@ -163,7 +161,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
         try
         {
-EntryPoint:
+            EntryPoint:
 
             if ( Context.IsTransitioning )
             {
