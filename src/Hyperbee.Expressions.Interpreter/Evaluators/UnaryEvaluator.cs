@@ -55,6 +55,7 @@ internal sealed class UnaryEvaluator
         }
 
         _context.Transition = new Transition( exception: exception );
+        _context.TransitionChildIndex = 0;
 
         return exception;
     }

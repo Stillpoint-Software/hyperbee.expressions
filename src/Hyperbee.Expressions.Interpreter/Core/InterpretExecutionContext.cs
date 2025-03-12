@@ -17,7 +17,8 @@ internal static class InterpretExecutionContext
         if ( executionContext == null )
             return;
 
-        var localCapture = context.Clone();
+        // Clone the context to prevent side effects in different execution contexts
+        var localCapture = new InterpretContext( context );
 
         ExecutionContext.Run( executionContext, _ =>
         {

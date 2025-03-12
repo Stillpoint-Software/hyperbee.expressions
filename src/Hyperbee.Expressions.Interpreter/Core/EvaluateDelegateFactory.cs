@@ -17,7 +17,8 @@ public static class EvaluateDelegateFactory
         {
             get
             {
-                var context = InterpretExecutionContext.Current ?? _interpreter.Context.Clone(); 
+                // Clone the interpreter context to prevent side effects in different threads
+                var context = InterpretExecutionContext.Current ?? new InterpretContext( _interpreter.Context );
                 return new XsInterpreter( _interpreter, context );
             }
         }

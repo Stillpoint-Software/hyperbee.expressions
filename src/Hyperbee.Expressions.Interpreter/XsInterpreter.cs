@@ -14,12 +14,14 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     internal InterpretContext Context;
 
-    internal InterpretScope Scope => Context.Scope;
-    internal Stack<object> Results => Context.Results;
     internal Transition Transition
     {
         get => Context.Transition;
-        set => Context.Transition = value;
+        set
+        {
+            Context.TransitionChildIndex = 0;
+            Context.Transition = value;
+        }
     }
 
     public XsInterpreter()
@@ -112,16 +114,18 @@ public sealed class XsInterpreter : ExpressionVisitor
         if ( !_transitions.TryGetValue( node, out var transition ) )
             throw new InterpreterException( $"Undefined label target: {node.Target.Name}", node );
 
+        var (_, results) = Context;
+
         object lastResult = null;
 
         if ( node.Kind == GotoExpressionKind.Return && node.Value != null )
         {
             Visit( node.Value );
-            lastResult = Results.Pop();
+            lastResult = results.Pop();
         }
 
-        Transition = transition.Clone();
-        Results.Push( lastResult );
+        Transition = transition;//.Clone();
+        results.Push( lastResult );
 
         return node;
     }
@@ -129,9 +133,11 @@ public sealed class XsInterpreter : ExpressionVisitor
     protected override Expression VisitLabel( LabelExpression node )
     {
         if ( Context.IsTransitioning && Transition.TargetLabel == node.Target )
+        {
             Transition = null;
-
-        Results.Push( null );
+        }
+        
+        Context.Results.Push( null );
 
         return node;
     }
@@ -151,7 +157,9 @@ public sealed class XsInterpreter : ExpressionVisitor
         var statementIndex = 0;
         object lastResult = null;
 
-        Scope.EnterScope();
+        var (scope, results) = Context;
+
+        scope.EnterScope();
 
         try
         {
@@ -159,7 +167,7 @@ EntryPoint:
 
             if ( Context.IsTransitioning )
             {
-                var nextChild = Transition.GetNextChild();
+                var nextChild = Context.GetNextChild(); //Transition.GetNextChild();
                 statementIndex = node.Expressions.IndexOf( nextChild );
             }
 
@@ -170,7 +178,7 @@ EntryPoint:
                     case BlockState.InitializeVariables:
                         foreach ( var variable in node.Variables )
                         {
-                            Scope.Values[variable] = Default( variable.Type );
+                            scope.Values[variable] = Default( variable.Type );
                         }
 
                         state = BlockState.HandleStatements;
@@ -185,14 +193,14 @@ EntryPoint:
                         
                         Visit( node.Expressions[statementIndex] );
 
-                        lastResult = Results.Pop();
+                        lastResult = results.Pop();
 
                         if ( Context.IsTransitioning )
                         {
                             if ( Transition.CommonAncestor == node )
                                 goto EntryPoint;
 
-                            Results.Push( lastResult );
+                            results.Push( lastResult );
                             return node!;
                         }
 
@@ -200,18 +208,14 @@ EntryPoint:
                         break;
 
                     case BlockState.Complete:
-                        Results.Push( lastResult );
+                        results.Push( lastResult );
                         return node;
                 }
             }
         }
-        catch ( Exception ex )
-        {
-            throw;
-        }
         finally
         {
-            Scope.ExitScope();
+            scope.ExitScope();
         }
 
         static object Default( Type type ) =>
@@ -240,10 +244,12 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Transition.GetNextChild();
+            expr = Context.GetNextChild(); //Transition.GetNextChild();
             state = ConditionalState.Visit;
             continuation = expr == node.Test ? ConditionalState.HandleTest : ConditionalState.Complete;
         }
+
+        var (_, results) = Context;
 
         while ( true )
         {
@@ -265,14 +271,14 @@ EntryPoint:
                 case ConditionalState.Visit:
                     Visit( expr );
 
-                    lastResult = Results.Pop();
+                    lastResult = results.Pop();
 
                     if ( Context.IsTransitioning )
                     {
                         if ( Transition.CommonAncestor == node )
                             goto EntryPoint;
 
-                        Results.Push( lastResult );
+                        results.Push( lastResult );
                         return node;
                     }
 
@@ -280,7 +286,7 @@ EntryPoint:
                     break;
 
                 case ConditionalState.Complete:
-                    Results.Push( lastResult );
+                    results.Push( lastResult );
                     return node;
             }
         }
@@ -312,7 +318,7 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Transition.GetNextChild();
+            expr = Context.GetNextChild(); //Transition.GetNextChild();
 
             if ( expr == node.SwitchValue )
             {
@@ -327,6 +333,8 @@ EntryPoint:
                 continuation = SwitchState.Complete;
             }
         }
+
+        var (_, results) = Context;
 
         while ( true )
         {
@@ -385,14 +393,14 @@ EntryPoint:
                 case SwitchState.Visit:
                     Visit( expr! );
 
-                    lastResult = Results.Pop();
+                    lastResult = results.Pop();
 
                     if ( Context.IsTransitioning )
                     {
                         if ( Transition.CommonAncestor == node )
                             goto EntryPoint;
 
-                        Results.Push( lastResult );
+                        results.Push( lastResult );
                         return node;
                     }
 
@@ -400,7 +408,7 @@ EntryPoint:
                     break;
 
                 case SwitchState.Complete:
-                    Results.Push( lastResult );
+                    results.Push( lastResult );
                     return node;
             }
         }
@@ -433,7 +441,7 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Transition.GetNextChild();
+            expr = Context.GetNextChild(); //Transition.GetNextChild();
 
             if ( expr == node.Body )
             {
@@ -458,9 +466,11 @@ EntryPoint:
             }
         }
 
+        var (scope, results) = Context;
+
         while ( true )
         {
-            Exception exception = null;
+            Exception exception;
             switch ( state )
             {
                 case TryCatchState.Try:
@@ -500,18 +510,18 @@ EntryPoint:
 
                     try
                     {
-                        Scope.EnterScope();
+                        scope.EnterScope();
                         if(exceptionVariable != null)
-                            Scope.Values[exceptionVariable] = exception; 
+                            scope.Values[exceptionVariable] = exception; 
 
                         Visit( expr! );
                     }
                     finally
                     {
-                        Scope.ExitScope();
+                        scope.ExitScope();
                     }
 
-                    lastResult = Results.Pop();
+                    lastResult = results.Pop();
 
                     if ( Context.IsTransitioning )
                     {
@@ -544,7 +554,7 @@ EntryPoint:
 
                     Visit( expr! );
 
-                    Results.Pop(); // don't capture finally block result
+                    results.Pop(); // don't capture finally block result
 
                     if ( exception != null )
                         throw exception;
@@ -554,7 +564,7 @@ EntryPoint:
                         if ( Transition.CommonAncestor == node )
                             goto EntryPoint;
 
-                        Results.Push( lastResult );
+                        results.Push( lastResult );
                         return node;
                     }
 
@@ -564,7 +574,7 @@ EntryPoint:
                 case TryCatchState.Visit:
                     Visit( expr! );
 
-                    lastResult = Results.Pop();
+                    lastResult = results.Pop();
 
                     if ( Context.IsTransitioning )
                     {
@@ -577,7 +587,7 @@ EntryPoint:
                             break;
                         }
 
-                        Results.Push( lastResult );
+                        results.Push( lastResult );
                         return node;
                     }
 
@@ -585,7 +595,7 @@ EntryPoint:
                     break;
 
                 case TryCatchState.Complete:
-                    Results.Push( lastResult );
+                    results.Push( lastResult );
                     return node;
             }
         }
@@ -595,7 +605,9 @@ EntryPoint:
 
     protected override Expression VisitLoop( LoopExpression node )
     {
-        Scope.EnterScope();
+        var (scope, results) = Context;
+
+        scope.EnterScope();
 
         try
         {
@@ -604,7 +616,7 @@ EntryPoint:
             while ( true )
             {
                 Visit( node.Body );
-                lastResult = Results.Pop();
+                lastResult = results.Pop();
 
                 if ( !Context.IsTransitioning )
                 {
@@ -617,19 +629,15 @@ EntryPoint:
                     break;
                 }
 
-                Results.Push( lastResult );
+                results.Push( lastResult );
                 return node;
             }
 
-            Results.Push( lastResult );
-        }
-        catch( Exception ex )
-        {
-            throw;
+            results.Push( lastResult );
         }
         finally
         {
-            Scope.ExitScope();
+            scope.ExitScope();
         }
 
         return node;
@@ -639,13 +647,11 @@ EntryPoint:
 
     protected override Expression VisitLambda<T>( Expression<T> node )
     {
-        //Results.Push( this.Interpreter( node, node.Type ) );
-        //return node;
+        var (scope, results) = Context;
 
-        if ( Scope.Depth == 0 )
+        if ( scope.Values.Count == 0 )
         {
-            //Results.Push( node );
-            Results.Push( this.Interpreter( node, node.Type ) );
+            results.Push( this.Interpreter( node, node.Type ) );
             return node;
         }
 
@@ -653,8 +659,7 @@ EntryPoint:
 
         if ( freeVariables.Count == 0 )
         {
-            //Results.Push( node );
-            Results.Push( this.Interpreter( node, node.Type ) );
+            results.Push( this.Interpreter( node, node.Type ) );
             return node;
         }
 
@@ -662,14 +667,14 @@ EntryPoint:
 
         foreach ( var variable in freeVariables )
         {
-            if ( !Scope.Values.TryGetValue( variable, out var value ) )
+            if ( !scope.Values.TryGetValue( variable, out var value ) )
                 throw new InterpreterException( $"Captured variable '{variable.Name}' is not defined.", node );
 
             capturedScope[variable] = value;
         }
 
         var lambda = this.Interpreter( node, node.Type );
-        Results.Push( new Closure( lambda, capturedScope ) );
+        results.Push( new Closure( lambda, capturedScope ) );
 
         return node;
     }
@@ -677,7 +682,10 @@ EntryPoint:
     protected override Expression VisitInvocation( InvocationExpression node )
     {
         Visit( node.Expression );
-        var targetValue = Results.Pop();
+
+        var (scope, results) = Context;
+
+        var targetValue = results.Pop();
 
         Delegate lambdaDelegate;
         Dictionary<ParameterExpression, object> capturedScope = null;
@@ -697,14 +705,14 @@ EntryPoint:
                 throw new InterpreterException( "Invocation target is not a valid lambda or closure.", node );
         }
 
-        Scope.EnterScope();
+        scope.EnterScope();
 
         try
         {
             if ( capturedScope is not null )
             {
                 foreach ( var (param, value) in capturedScope )
-                    Scope.Values[param] = value;
+                    scope.Values[param] = value;
             }
 
             var arguments = new object[node.Arguments.Count];
@@ -712,7 +720,7 @@ EntryPoint:
             for ( var i = 0; i < node.Arguments.Count; i++ )
             {
                 Visit( node.Arguments[i] );
-                arguments[i] = Results.Pop();
+                arguments[i] = results.Pop();
             }
 
             object result = null;
@@ -721,17 +729,13 @@ EntryPoint:
                 result = lambdaDelegate?.DynamicInvoke( arguments );
             }, Context );
 
-            Results.Push( result );
+            results.Push( result );
 
             return node;
         }
-        catch ( Exception ex )
-        {
-            throw;
-        }
         finally
         {
-            Scope.ExitScope();
+            scope.ExitScope();
         }
     }
 
@@ -739,11 +743,13 @@ EntryPoint:
     {
         var isStatic = node.Method.IsStatic;
         object instance = null;
+        
+        var (scope, results) = Context;
 
         if ( !isStatic )
         {
             Visit( node.Object );
-            instance = Results.Pop();
+            instance = results.Pop();
         }
 
         var arguments = new object[node.Arguments.Count];
@@ -753,7 +759,7 @@ EntryPoint:
         for ( var i = 0; i < node.Arguments.Count; i++ )
         {
             Visit( node.Arguments[i] );
-            var argValue = Results.Pop();
+            var argValue = results.Pop();
 
             switch ( argValue )
             {
@@ -779,27 +785,23 @@ EntryPoint:
                     result = node.Method.Invoke( instance, arguments );
                 }, Context );
 
-                Results.Push( result );
+                results.Push( result );
                 return node;
             }
             catch ( TargetInvocationException invocationException )
             {
                 throw invocationException.InnerException ?? invocationException;
             }
-            catch ( Exception ex )
-            {
-                throw;
-            }
         }
 
         try
         {
-            Scope.EnterScope();
+            scope.EnterScope();
 
             foreach ( var capturedScope in capturedValues.Values )
             {
                 foreach ( var (param, value) in capturedScope )
-                    Scope.Values[param] = value;
+                    scope.Values[param] = value;
             }
 
             object result = null;
@@ -808,12 +810,12 @@ EntryPoint:
                 result = node.Method.Invoke( instance, arguments );
             }, Context );
 
-            Results.Push( result );
+            results.Push( result );
             return node;
         }
         finally
         {
-            Scope.ExitScope();
+            scope.ExitScope();
         }
     }
 
@@ -868,7 +870,8 @@ EntryPoint:
             return node;
 
         var result = _evaluator.Binary( node );
-        Results.Push( result );
+
+        Context.Results.Push( result );
 
         return node;
     }
@@ -876,11 +879,14 @@ EntryPoint:
     protected override Expression VisitTypeBinary( TypeBinaryExpression node )
     {
         Visit( node.Expression );
-        var operand = Results.Pop();
+        
+        var (_, results) = Context;
+
+        var operand = results.Pop();
 
         var result = operand is not null && node.TypeOperand.IsAssignableFrom( operand.GetType() );
 
-        Results.Push( result );
+        results.Push( result );
         return node;
     }
 
@@ -889,14 +895,14 @@ EntryPoint:
         Visit( node.Operand ); // Visit and push operand
 
         var result = _evaluator.Unary( node );
-        Results.Push( result );
+        Context.Results.Push( result );
 
         return node;
     }
 
     protected override Expression VisitConstant( ConstantExpression node )
     {
-        Results.Push( node.Value );
+        Context.Results.Push( node.Value );
         return node;
     }
 
@@ -906,24 +912,26 @@ EntryPoint:
             ? RuntimeHelpers.GetUninitializedObject( node.Type )
             : null;
 
-        Results.Push( defaultValue );
+        Context.Results.Push( defaultValue );
         return node;
     }
 
     protected override Expression VisitIndex( IndexExpression node )
     {
+        var (_, results) = Context;
+
         var arguments = new object[node.Arguments.Count];
         for ( var i = 0; i < node.Arguments.Count; i++ )
         {
             Visit( node.Arguments[i] );
-            arguments[i] = Results.Pop();
+            arguments[i] = results.Pop();
         }
 
         Visit( node.Object );
-        var instance = Results.Pop();
+        var instance = results.Pop();
 
         var result = node.Indexer!.GetValue( instance, arguments );
-        Results.Push( result );
+        results.Push( result );
 
         return node;
     }
@@ -931,7 +939,10 @@ EntryPoint:
     protected override Expression VisitListInit( ListInitExpression node )
     {
         Visit( node.NewExpression );
-        var instance = Results.Pop();
+        
+        var (_, results) = Context;
+
+        var instance = results.Pop();
 
         foreach ( var initializer in node.Initializers )
         {
@@ -940,20 +951,23 @@ EntryPoint:
             for ( var index = 0; index < initializer.Arguments.Count; index++ )
             {
                 Visit( initializer.Arguments[index] );
-                arguments[index] = Results.Pop();
+                arguments[index] = results.Pop();
             }
 
             initializer.AddMethod.Invoke( instance, arguments );
         }
 
-        Results.Push( instance );
+        results.Push( instance );
         return node;
     }
 
     protected override Expression VisitMember( MemberExpression node )
     {
         Visit( node.Expression );
-        var instance = Results.Pop();
+
+        var (_, results) = Context;
+
+        var instance = results.Pop();
 
         object result;
         switch ( node.Member )
@@ -962,19 +976,19 @@ EntryPoint:
                 result = prop.GetValue( instance );
                 break;
             case FieldInfo field:
-                //if ( field.FieldType.IsValueType )
-                //{
-                //    var typeReference = __makeref(instance);
-                //    result = field.GetValueDirect( typeReference );
-                //    break;
-                //}
+                if ( field.FieldType.IsValueType )
+                {
+                    var typeReference = __makeref(instance);
+                    result = field.GetValueDirect( typeReference );
+                    break;
+                }
                 result = field.GetValue( instance );
                 break;
             default:
                 throw new InterpreterException( $"Unsupported member access: {node.Member.Name}", node );
         }
 
-        Results.Push( result );
+        results.Push( result );
         return node;
     }
 
@@ -984,22 +998,20 @@ EntryPoint:
         var capturedValues = new Dictionary<int, Dictionary<ParameterExpression, object>>();
         var hasClosure = false;
 
+        var (scope, results) = Context;
+
         for ( var index = 0; index < node.Arguments.Count; index++ )
         {
             Visit( node.Arguments[index] );
-            var argValue = Results.Pop();
+
+            var argValue = results.Pop();
 
             switch ( argValue )
             {
                 case Closure closure:
                     hasClosure = true;
-                    //arguments[index] = this.Interpreter( closure.LambdaExpr );
                     arguments[index] = closure.Lambda;
                     capturedValues[index] = closure.CapturedScope;
-                    break;
-
-                case LambdaExpression lambdaExpr:
-                    arguments[index] = this.Interpreter( lambdaExpr );
                     break;
 
                 default:
@@ -1018,33 +1030,34 @@ EntryPoint:
         if ( !hasClosure )
         {
             var instance = constructor.Invoke( arguments );
-            Results.Push( instance );
+            results.Push( instance );
             return node;
         }
 
-        Scope.EnterScope();
+        scope.EnterScope();
 
         try
         {
             foreach ( var (_, capturedScope) in capturedValues )
             {
                 foreach ( var (param, value) in capturedScope )
-                    Scope.Values[param] = value;
+                    scope.Values[param] = value;
             }
 
             var instance = constructor.Invoke( arguments );
-            Results.Push( instance );
+            results.Push( instance );
             return node;
         }
         finally
         {
-            Scope.ExitScope();
+            scope.ExitScope();
         }
     }
 
     protected override Expression VisitNewArray( NewArrayExpression node )
     {
         var elementType = node.Type.GetElementType();
+        var (_, results) = Context;
 
         switch ( node.NodeType )
         {
@@ -1056,7 +1069,7 @@ EntryPoint:
                     for ( var i = 0; i < node.Expressions.Count; i++ )
                     {
                         Visit( node.Expressions[i] );
-                        values[i] = Results.Pop();
+                        values[i] = results.Pop();
                     }
 
                     var array = Array.CreateInstance( elementType!, values.Length );
@@ -1064,7 +1077,7 @@ EntryPoint:
                     for ( var i = 0; i < values.Length; i++ )
                         array.SetValue( values[i], i );
 
-                    Results.Push( array );
+                    results.Push( array );
                     break;
                 }
             case ExpressionType.NewArrayBounds:
@@ -1075,11 +1088,11 @@ EntryPoint:
                     for ( var i = 0; i < node.Expressions.Count; i++ )
                     {
                         Visit( node.Expressions[i] );
-                        lengths[i] = (int) Results.Pop();
+                        lengths[i] = (int) results.Pop();
                     }
 
                     var array = Array.CreateInstance( elementType!, lengths );
-                    Results.Push( array );
+                    results.Push( array );
                     break;
                 }
             default:
@@ -1091,10 +1104,12 @@ EntryPoint:
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( !Scope.Values.TryGetValue( node, out var value ) )
+        var (scope, results) = Context;
+
+        if ( !scope.Values.TryGetValue( node, out var value ) )
             throw new InterpreterException( $"Parameter '{node.Name}' not found.", node );
 
-        Results.Push( value );
+        results.Push( value );
         return node;
     }
 

@@ -10,7 +10,6 @@ internal sealed class Transition
     public LabelTarget TargetLabel { get; }
     public Exception Exception { get; set; }
 
-    private int _currentChildIndex;
 
     public Transition( Expression commonAncestor = null, List<Expression> children = null, LabelTarget targetLabel = null, Exception exception = null )
     {
@@ -18,30 +17,28 @@ internal sealed class Transition
         Children = children ?? [];
         TargetLabel = targetLabel;
         Exception = exception;
-
-        _currentChildIndex = 0;
     }
 
-    public Transition Clone()
-    {
-        return new Transition(
-            CommonAncestor,
-            Children,
-            TargetLabel,
-            Exception
-        )
-        {
-            _currentChildIndex = _currentChildIndex
-        };
-    }
+    //public Transition Clone()
+    //{
+    //    return new Transition(
+    //        CommonAncestor,
+    //        Children,
+    //        TargetLabel,
+    //        Exception
+    //    );
+    //    //{
+    //    //    _currentChildIndex = _currentChildIndex
+    //    //};
+    //}
 
-    public void Reset() => _currentChildIndex = 0;
+    //public void Reset() => _currentChildIndex = 0;
 
-    public Expression GetNextChild()
-    {
-        if ( _currentChildIndex >= Children.Count )
-            throw new InvalidOperationException( "No more child nodes." );
+    //public Expression GetNextChild()
+    //{
+    //    if ( _currentChildIndex >= Children.Count )
+    //        throw new InvalidOperationException( "No more child nodes." );
 
-        return Children[_currentChildIndex++];
-    }
+    //    return Children[_currentChildIndex++];
+    //}
 }

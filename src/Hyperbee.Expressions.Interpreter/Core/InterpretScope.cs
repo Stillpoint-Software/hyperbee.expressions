@@ -6,20 +6,24 @@ namespace Hyperbee.Expressions.Interpreter.Core;
 
 public class InterpretScope
 {
-    public int Depth { get; internal set; }
-    public LinkedDictionary<ParameterExpression, object> Values { get; internal set; } = new();
+    public LinkedDictionary<ParameterExpression, object> Values { get; internal set; }
+
+    public InterpretScope( LinkedDictionary<ParameterExpression, object> values = null )
+    {
+        Values = values == null 
+            ? new LinkedDictionary<ParameterExpression, object>()
+            : new LinkedDictionary<ParameterExpression, object>( values );
+    }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public void EnterScope()
     {
-        Depth++;
         Values.Push();
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public void ExitScope()
     {
-        Depth--;
         Values.Pop();
     }
 }

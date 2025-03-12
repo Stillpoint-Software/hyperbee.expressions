@@ -1,5 +1,4 @@
-﻿using Hyperbee.Collections;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 
 namespace Hyperbee.Expressions.Interpreter.Core;
 
@@ -10,15 +9,18 @@ internal sealed class InterpretContext
 
     public bool IsTransitioning => Transition != null;
 
-    private Transition _transition;
-    public Transition Transition
+    public int TransitionChildIndex;
+
+    public Transition Transition { get; set; }
+
+    public InterpretContext() { }
+
+    public InterpretContext( InterpretContext context )
     {
-        get => _transition;
-        set 
-        {
-            _transition?.Reset();
-            _transition = value;
-        }
+        Scope = new InterpretScope( context.Scope.Values );
+        Results = new Stack<object>( context.Results );
+        Transition = context.Transition;
+        TransitionChildIndex = 0;
     }
 
     public void Deconstruct( out InterpretScope scope, out Stack<object> results )
@@ -27,40 +29,11 @@ internal sealed class InterpretContext
         results = Results;
     }
 
-    public void Deconstruct( out InterpretScope scope, out Stack<object> results, out Transition transition )
+    public Expression GetNextChild()
     {
-        scope = Scope;
-        results = Results;
-        transition = Transition;
-    }
+        if ( TransitionChildIndex >= Transition.Children.Count )
+            throw new InvalidOperationException( "No more child nodes." );
 
-    internal InterpretContext Clone()
-    {
-        var clone = new InterpretContext
-        {
-            Scope = CloneScope( Scope ),
-            Results = new ( Results ),
-            Transition = Transition?.Clone()
-        };
-
-        return clone;
-
-        static InterpretScope CloneScope( InterpretScope originalScope )
-        {
-            var newValues = new LinkedDictionary<ParameterExpression, object>();
-
-            foreach ( var node in originalScope.Values.Nodes().Reverse() )
-            {
-                newValues.Push( node.Name, node.Dictionary );
-            }
-
-            var newScope = new InterpretScope
-            {
-                Depth = originalScope.Depth,
-                Values = newValues
-            };
-
-            return newScope;
-        }
+        return Transition.Children[TransitionChildIndex++];
     }
 }
