@@ -49,12 +49,12 @@ internal sealed class UnaryEvaluator
 
     private Exception ThrowOperation( Exception exception )
     {
-        if ( _context.Transition != null && exception == null )
+        if ( _context.Transition is TransitionException { Exception: not null } transitionException )
         {
-            exception = _context.Transition.Exception;
+            exception = transitionException.Exception;
         }
 
-        _context.Transition = new Transition( exception: exception );
+        _context.Transition = new TransitionException( exception );
         _context.TransitionChildIndex = 0;
 
         return exception;

@@ -88,8 +88,9 @@ public sealed class XsInterpreter : ExpressionVisitor
             if ( transition == null )
                 return;
 
-            if ( transition.Exception != null )
-                throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", transition.Exception );
+            var exception = GetException( transition );
+            if ( exception != null )
+                throw new InvalidOperationException( "Interpreter failed because of an unhandled exception.", exception );
 
             throw new InvalidOperationException( "Interpreter failed to transition to next expression." );
         }
@@ -475,7 +476,7 @@ EntryPoint:
                     }
 
                     var handler = node.Handlers[catchIndex];
-                    var exceptionType = Transition.Exception?.GetType();
+                    var exceptionType = GetException( Transition )?.GetType();
 
                     if ( handler.Test.IsAssignableFrom( exceptionType ) )
                     {
@@ -493,7 +494,7 @@ EntryPoint:
 
                 case TryCatchState.HandleCatch:
 
-                    exception = Transition.Exception;
+                    exception = GetException( Transition );
                     Transition = null;
 
                     try
@@ -535,7 +536,7 @@ EntryPoint:
 
                 case TryCatchState.HandleFinally:
 
-                    exception = Transition?.Exception;
+                    exception = GetException( Transition );
 
                     if ( exception != null )
                         Transition = null;
@@ -569,7 +570,7 @@ EntryPoint:
                         if ( Transition.CommonAncestor == node )
                             goto EntryPoint;
 
-                        if ( Transition.Exception != null )
+                        if ( GetException( Transition ) != null )
                         {
                             state = TryCatchState.Catch;
                             break;
@@ -1088,6 +1089,13 @@ EntryPoint:
         return node;
     }
 
+    private static Exception GetException( Transition transition )
+    {
+        if ( transition is TransitionException { Exception: not null } transitionException )
+            return transitionException.Exception;
+
+        return null;
+    }
     public record Closure( object Lambda, Dictionary<ParameterExpression, object> CapturedScope );
 
     private sealed class FreeVariableVisitor : ExpressionVisitor
