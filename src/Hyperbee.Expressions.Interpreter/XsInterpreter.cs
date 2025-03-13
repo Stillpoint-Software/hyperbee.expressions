@@ -56,17 +56,7 @@ public sealed class XsInterpreter : ExpressionVisitor
         return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
     }
 
-    internal T Evaluate<T>( LambdaExpression lambda, params object[] values )
-    {
-        return EvaluateInternal<T>( lambda, true, values );
-    }
-
-    internal void Evaluate( LambdaExpression lambda, params object[] values )
-    {
-        EvaluateInternal<object>( lambda, false, values );
-    }
-
-    private T EvaluateInternal<T>( LambdaExpression lambda, bool hasReturn, params object[] values )
+    internal T EvaluateInternal<T>( LambdaExpression lambda, bool hasReturn, params object[] values )
     {
         var (scope, results) = Context;
 
@@ -134,7 +124,7 @@ public sealed class XsInterpreter : ExpressionVisitor
         {
             Transition = null;
         }
-        
+
         Context.Results.Push( null );
 
         return node;
@@ -161,7 +151,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
         try
         {
-            EntryPoint:
+EntryPoint:
 
             if ( Context.IsTransitioning )
             {
@@ -188,7 +178,7 @@ public sealed class XsInterpreter : ExpressionVisitor
                             state = BlockState.Complete;
                             break;
                         }
-                        
+
                         Visit( node.Expressions[statementIndex] );
 
                         lastResult = results.Pop();
@@ -260,7 +250,7 @@ EntryPoint:
                     break;
 
                 case ConditionalState.HandleTest:
-                    var conditionValue = (bool) lastResult!;  
+                    var conditionValue = (bool) lastResult!;
                     expr = conditionValue ? node.IfTrue : node.IfFalse;
                     state = ConditionalState.Visit;
                     continuation = ConditionalState.Complete;
@@ -345,7 +335,7 @@ EntryPoint:
                     break;
 
                 case SwitchState.HandleSwitchValue:
-                    switchValue = lastResult; 
+                    switchValue = lastResult;
                     caseIndex = 0;
                     testIndex = 0;
                     state = SwitchState.MatchCase;
@@ -509,8 +499,8 @@ EntryPoint:
                     try
                     {
                         scope.EnterScope();
-                        if(exceptionVariable != null)
-                            scope.Values[exceptionVariable] = exception; 
+                        if ( exceptionVariable != null )
+                            scope.Values[exceptionVariable] = exception;
 
                         Visit( expr! );
                     }
@@ -546,9 +536,9 @@ EntryPoint:
                 case TryCatchState.HandleFinally:
 
                     exception = Transition?.Exception;
-                    
+
                     if ( exception != null )
-                        Transition = null; 
+                        Transition = null;
 
                     Visit( expr! );
 
@@ -721,11 +711,7 @@ EntryPoint:
                 arguments[i] = results.Pop();
             }
 
-            object result = null;
-            InterpretExecutionContext.Run( () =>
-            {
-                result = lambdaDelegate?.DynamicInvoke( arguments );
-            }, Context );
+            var result = InterpretDelegateClosure.Invoke( lambdaDelegate, Context, arguments );
 
             results.Push( result );
 
@@ -741,7 +727,7 @@ EntryPoint:
     {
         var isStatic = node.Method.IsStatic;
         object instance = null;
-        
+
         var (scope, results) = Context;
 
         if ( !isStatic )
@@ -777,12 +763,7 @@ EntryPoint:
         {
             try
             {
-                object result = null;
-                InterpretExecutionContext.Run( () =>
-                {
-                    result = node.Method.Invoke( instance, arguments );
-                }, Context );
-
+                var result = InterpretDelegateClosure.Invoke( node.Method, instance, Context, arguments );
                 results.Push( result );
                 return node;
             }
@@ -802,11 +783,7 @@ EntryPoint:
                     scope.Values[param] = value;
             }
 
-            object result = null;
-            InterpretExecutionContext.Run( () =>
-            {
-                result = node.Method.Invoke( instance, arguments );
-            }, Context );
+            var result = InterpretDelegateClosure.Invoke( node.Method, instance, Context, arguments );
 
             results.Push( result );
             return node;
@@ -877,7 +854,7 @@ EntryPoint:
     protected override Expression VisitTypeBinary( TypeBinaryExpression node )
     {
         Visit( node.Expression );
-        
+
         var (_, results) = Context;
 
         var operand = results.Pop();
@@ -937,7 +914,7 @@ EntryPoint:
     protected override Expression VisitListInit( ListInitExpression node )
     {
         Visit( node.NewExpression );
-        
+
         var (_, results) = Context;
 
         var instance = results.Pop();
@@ -1129,14 +1106,14 @@ EntryPoint:
         {
             _declaredVariables.UnionWith( node.Variables );
 
-            return base.VisitBlock(node);
+            return base.VisitBlock( node );
         }
 
         protected override CatchBlock VisitCatchBlock( CatchBlock node )
         {
             _declaredVariables.Add( node.Variable );
 
-            return base.VisitCatchBlock(node);
+            return base.VisitCatchBlock( node );
         }
 
         protected override Expression VisitLambda<T>( Expression<T> node )

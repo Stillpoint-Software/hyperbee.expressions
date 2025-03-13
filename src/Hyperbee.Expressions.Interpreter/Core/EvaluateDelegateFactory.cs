@@ -3,67 +3,35 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 
-// ReSharper disable NotAccessedPositionalProperty.Local
-
 namespace Hyperbee.Expressions.Interpreter.Core;
 
 public static class EvaluateDelegateFactory
 {
-    class DelegateClosure
-    {
-        private readonly XsInterpreter _interpreter;
-
-        public XsInterpreter Interpreter
-        {
-            get
-            {
-                // Clone the interpreter context to prevent side effects in different threads
-                var context = InterpretExecutionContext.Current ?? new InterpretContext( _interpreter.Context );
-                return new XsInterpreter( _interpreter, context );
-            }
-        }
-
-        public LambdaExpression Lambda { get; init; }
-
-        public DelegateClosure( XsInterpreter instance, LambdaExpression lambda )
-        {
-            _interpreter = instance;
-            Lambda = lambda;
-        }
-    }
-
     private static readonly ConcurrentDictionary<Type, DynamicMethod> CachedDynamicMethods = new();
 
     private static readonly MethodInfo EvaluateFuncMethod =
-        typeof(XsInterpreter)
+        typeof( InterpretDelegateClosure )
             .GetMethods( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
             .First( x => x.Name == "Evaluate" && x.IsGenericMethodDefinition );
 
     private static readonly MethodInfo EvaluateActionMethod =
-        typeof(XsInterpreter)
+        typeof( InterpretDelegateClosure )
             .GetMethods( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
             .First( x => x.Name == "Evaluate" && !x.IsGenericMethodDefinition );
-
-    private static readonly PropertyInfo InterpreterProperty = typeof(DelegateClosure)
-        .GetProperty( nameof(DelegateClosure.Interpreter), BindingFlags.Instance | BindingFlags.Public )!;
-
-    private static readonly PropertyInfo LambdaProperty = typeof(DelegateClosure)
-        .GetProperty( nameof(DelegateClosure.Lambda), BindingFlags.Instance | BindingFlags.Public )!;
-
 
     public static TDelegate CreateDelegate<TDelegate>( XsInterpreter instance, LambdaExpression lambda )
         where TDelegate : Delegate
     {
-        var dm = CachedDynamicMethods.GetOrAdd( typeof(TDelegate), _ => CreateDynamicMethod<TDelegate>() );
+        var dm = CachedDynamicMethods.GetOrAdd( typeof( TDelegate ), _ => CreateDynamicMethod<TDelegate>() );
 
-        var closure = new DelegateClosure( instance, lambda );
-        return (TDelegate) dm.CreateDelegate( typeof(TDelegate), closure );
+        var closure = new InterpretDelegateClosure( instance, lambda );
+        return (TDelegate) dm.CreateDelegate( typeof( TDelegate ), closure );
     }
 
     private static DynamicMethod CreateDynamicMethod<TDelegate>() where TDelegate : Delegate
     {
         var invokeMethod = typeof( TDelegate ).GetMethod( "Invoke" );
-        
+
         if ( invokeMethod is null )
             throw new InvalidOperationException( "Delegate type must have an Invoke method." );
 
@@ -72,21 +40,21 @@ public static class EvaluateDelegateFactory
         var returnType = invokeMethod.ReturnType;
         var paramInfos = invokeMethod.GetParameters();
         var paramTypes = new Type[paramInfos.Length + 1];
-        
-        paramTypes[0] = typeof( DelegateClosure );
+
+        paramTypes[0] = typeof( InterpretDelegateClosure );
 
         for ( var i = 0; i < paramInfos.Length; i++ )
             paramTypes[i + 1] = paramInfos[i].ParameterType;
 
         // Create a dynamic method
-        
+
         var dm = new DynamicMethod( string.Empty, returnType, paramTypes, typeof( EvaluateDelegateFactory ).Module, true );
         var il = dm.GetILGenerator();
 
         // Map delegate parameters to an object[] array
 
         var paramArray = il.DeclareLocal( typeof( object[] ) );
-        
+
         il.Emit( OpCodes.Ldc_I4, paramInfos.Length );
         il.Emit( OpCodes.Newarr, typeof( object ) );
         il.Emit( OpCodes.Stloc, paramArray );
@@ -107,12 +75,9 @@ public static class EvaluateDelegateFactory
         }
 
         // Load parameters and call Evaluate
-        
-        il.Emit( OpCodes.Ldarg_0 );
-        il.Emit( OpCodes.Callvirt, InterpreterProperty.GetMethod! );
-        il.Emit( OpCodes.Ldarg_0 );
-        il.Emit( OpCodes.Callvirt, LambdaProperty.GetMethod! );
-        il.Emit( OpCodes.Ldloc, paramArray );
+
+        il.Emit( OpCodes.Ldarg_0 );             // Load closure
+        il.Emit( OpCodes.Ldloc, paramArray );   // Load parameters
 
         if ( returnType == typeof( void ) )
         {
