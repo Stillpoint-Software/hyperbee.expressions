@@ -44,10 +44,10 @@ public static class ExpressionCompilerExtensions
             return compiledExpression;
         }
 #endif
-        if( compilerType == CompilerType.Interpret )
+        if ( compilerType == CompilerType.Interpret )
         {
-           return expression.Interpreter();
-           return expression.Compile( preferInterpretation: true );
+            return expression.Interpreter();
+            return expression.Compile( preferInterpretation: true );
         }
 
         return expression.Compile();

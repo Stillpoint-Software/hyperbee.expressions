@@ -63,7 +63,7 @@ internal class StateMachineBuilder<TResult>
         var stateMachineType = CreateStateMachineType( context, out var fields );
         var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
 
-        var taskBuilderConstructor = typeof(AsyncInterpreterTaskBuilder<>)
+        var taskBuilderConstructor = typeof( AsyncInterpreterTaskBuilder<> )
             .MakeGenericType( typeof( TResult ) )
             .GetConstructor( Type.EmptyTypes )!;
 

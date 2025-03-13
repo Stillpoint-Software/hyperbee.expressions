@@ -37,7 +37,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
     {
         if ( node == null )
             return null;
-       
+
         _currentPath.Add( node );
         var result = base.Visit( node );
         _currentPath.RemoveAt( _currentPath.Count - 1 );

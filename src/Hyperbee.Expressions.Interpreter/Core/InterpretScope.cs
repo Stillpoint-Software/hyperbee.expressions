@@ -10,7 +10,7 @@ public class InterpretScope
 
     public InterpretScope( LinkedDictionary<ParameterExpression, object> values = null )
     {
-        Values = values == null 
+        Values = values == null
             ? new LinkedDictionary<ParameterExpression, object>()
             : new LinkedDictionary<ParameterExpression, object>( values );
     }

@@ -18,9 +18,9 @@ public class ConditionalExpressionTests
         var block = Block(
             [variable],
             Assign( variable, Constant( 0 ) ),
-            IfThenElse( 
-                Constant( true ), 
-                Assign( variable, Constant( 10 ) ), 
+            IfThenElse(
+                Constant( true ),
+                Assign( variable, Constant( 10 ) ),
                 Assign( variable, Constant( 3 ) )
             ),
             variable

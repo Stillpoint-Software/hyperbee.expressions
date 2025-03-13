@@ -45,7 +45,7 @@ internal sealed class BinaryEvaluator
                 return ArithmeticOperation( GetOperation( binary, true ) );
         }
     }
-    
+
     private BinaryOperation GetOperation( BinaryExpression binary, bool valueOnly )
     {
         object leftValue;
@@ -104,11 +104,11 @@ internal sealed class BinaryEvaluator
 
         static object GetIndexValue( object instance, IndexExpression indexExpr, object[] index )
         {
-            if( indexExpr.Indexer != null )
+            if ( indexExpr.Indexer != null )
                 return indexExpr.Indexer.GetValue( instance, index );
 
-            if (instance is Array array)
-               return array.GetValue( index.Cast<int>().ToArray() );
+            if ( instance is Array array )
+                return array.GetValue( index.Cast<int>().ToArray() );
 
             throw new InterpreterException( $"Unsupported index access: {instance.GetType()}", indexExpr );
         }
@@ -150,19 +150,19 @@ internal sealed class BinaryEvaluator
 
         // Helper methods
 
-        static object AssignToIndex(IndexExpression indexExpr, object leftInstance, object[] index, object rightValue)
+        static object AssignToIndex( IndexExpression indexExpr, object leftInstance, object[] index, object rightValue )
         {
-            if (indexExpr.Indexer != null)
+            if ( indexExpr.Indexer != null )
             {
-                indexExpr.Indexer.SetValue(leftInstance, rightValue, index);
+                indexExpr.Indexer.SetValue( leftInstance, rightValue, index );
             }
-            else if (leftInstance is Array array)
+            else if ( leftInstance is Array array )
             {
                 array.SetValue( rightValue, index.Cast<int>().ToArray() );
             }
             else
             {
-                throw new InterpreterException($"Unsupported index assignment for type: {leftInstance.GetType()}", indexExpr);
+                throw new InterpreterException( $"Unsupported index assignment for type: {leftInstance.GetType()}", indexExpr );
             }
 
             return rightValue;

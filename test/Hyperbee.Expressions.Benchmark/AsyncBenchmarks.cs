@@ -82,7 +82,7 @@ public class AsyncBenchmarks
         {
             foreach ( var func in funcs )
             {
-                func().Wait();  
+                func().Wait();
             }
         }
     }
