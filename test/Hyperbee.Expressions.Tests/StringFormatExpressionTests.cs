@@ -1,12 +1,17 @@
 ﻿using System.Linq.Expressions;
+using Hyperbee.Expressions.Tests.TestSupport;
 
 namespace Hyperbee.Expressions.Tests;
 
 [TestClass]
 public class StringFormatExpressionTests
 {
-    [TestMethod]
-    public void StringFormatExpression_Should_Return_Format_When_No_Arguments()
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void StringFormatExpression_Should_Return_Format_When_No_Arguments( CompilerType compiler )
     {
         // Arrange
         var format = Expression.Constant( "Hello, world!" );
@@ -14,15 +19,18 @@ public class StringFormatExpressionTests
         var formatExpr = ExpressionExtensions.StringFormat( format, [] );
 
         // Act
-        var lambda = Expression.Lambda<Func<string>>( formatExpr ).Compile();
+        var lambda = Expression.Lambda<Func<string>>( formatExpr ).Compile( compiler );
         var result = lambda();
 
         // Assert
         Assert.AreEqual( "Hello, world!", result, "Should return the format string when no arguments are provided." );
     }
 
-    [TestMethod]
-    public void StringFormatExpression_Should_Format_String_With_Arguments()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void StringFormatExpression_Should_Format_String_With_Arguments( CompilerType compiler )
     {
         // Arrange
         var format = Expression.Constant( "Hello, {0}! You have {1} new messages." );
@@ -32,7 +40,7 @@ public class StringFormatExpressionTests
         var formatExpr = ExpressionExtensions.StringFormat( format, [arg1, arg2] );
 
         // Act
-        var lambda = Expression.Lambda<Func<string>>( formatExpr ).Compile();
+        var lambda = Expression.Lambda<Func<string>>( formatExpr ).Compile( compiler );
         var result = lambda();
 
         // Assert
@@ -52,8 +60,11 @@ public class StringFormatExpressionTests
         // Assert: Exception is expected
     }
 
-    [TestMethod]
-    public void StringFormatExpression_Should_Work_Within_Complex_Block()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void StringFormatExpression_Should_Work_Within_Complex_Block( CompilerType compiler )
     {
         // Arrange
         var format = Expression.Constant( "The sum of {0} and {1} is {2}" );
@@ -66,7 +77,7 @@ public class StringFormatExpressionTests
         var block = Expression.Block( formatExpr );
 
         // Act
-        var lambda = Expression.Lambda<Func<int, int, string>>( block, x, y ).Compile();
+        var lambda = Expression.Lambda<Func<int, int, string>>( block, x, y ).Compile( compiler );
         var result = lambda( 10, 20 );
 
         // Assert

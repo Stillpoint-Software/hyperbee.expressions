@@ -10,8 +10,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValue( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the switch value
@@ -40,8 +42,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInDefaultBody( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Default case contains an awaited task
@@ -70,8 +74,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchCaseBody( CompleterType completer, CompilerType compiler )
     {
         // Arrange: One of the case bodies contains an awaited task
@@ -103,8 +109,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInSwitchValueAndCaseBody( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await both in switch value and case body
@@ -136,8 +144,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedSwitchesAndAwaits( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Outer and inner switch cases involve awaited tasks
@@ -175,8 +185,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     [ExpectedException( typeof( ArgumentException ) )]
     public async Task AsyncBlock_ShouldThrowException_WithAwaitInSwitchCaseTestValues( CompleterType completer, CompilerType compiler )
     {
@@ -205,8 +217,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldUseAwaitedValue_WithComplexExpressionInSwitchTestValues( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Complex expression affects the switch value
@@ -235,8 +249,11 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 10, result ); // Matching case with complex awaited value should return 10
     }
 
-    [TestMethod]
-    public async Task AsyncBlock_ShouldHandleTaskDelaySuccessfully_InSwitchCase()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public async Task AsyncBlock_ShouldHandleTaskDelaySuccessfully_InSwitchCase( CompilerType compiler )
     {
         // Arrange: One of the switch cases has a delayed task
         var switchValue = Constant( 1 );
@@ -250,7 +267,7 @@ public class BlockAsyncSwitchTests
             )
         );
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Act
         var result = await compiledLambda();
@@ -262,8 +279,10 @@ public class BlockAsyncSwitchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeAndAfterSwitch( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Awaiting tasks before and after the switch expression

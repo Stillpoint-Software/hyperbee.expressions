@@ -13,6 +13,7 @@ public class AsyncBenchmarks
     private Func<Task<int>> _preRunCompiled = null!;
     private Func<Task<int>> _preRunFastCompiled = null!;
     private Func<Task<int>> _preRunNextCompiled = null!;
+    private Func<Task<int>> _preRunCompiledInterpret = null!;
     //private Func<Task<int>> _preRunNextFastCompiled = null!;
 
     private Expression<Func<Task<int>>> _lambda = null!;
@@ -66,6 +67,7 @@ public class AsyncBenchmarks
         // build and call once for warmup
 
         _preRunCompiled = _lambda.Compile();
+        _preRunCompiledInterpret = _lambda.Compile( preferInterpretation: true );
         _preRunFastCompiled = _lambda.CompileFast();
         _preRunNextCompiled = _nextlambda.Compile();
         //_preRunFastNextCompiled = _nextlambda.CompileFast();
@@ -92,6 +94,13 @@ public class AsyncBenchmarks
     public void Hyperbee_AsyncBlock_Compile()
     {
         _lambda.Compile();
+    }
+
+    [BenchmarkCategory( "Compile" )]
+    [Benchmark( Description = "Hyperbee Compile Interpret" )]
+    public void Hyperbee_AsyncBlock_CompileInterpret()
+    {
+        _lambda.Compile( preferInterpretation: true );
     }
 
     [BenchmarkCategory( "Compile" )]
@@ -122,6 +131,14 @@ public class AsyncBenchmarks
     public async Task Hyperbee_AsyncBlock_Execute()
     {
         await _preRunCompiled();
+    }
+
+    [BenchmarkCategory( "Compile" )]
+    [Benchmark( Description = "Hyperbee Execute Interpret" )]
+    public async Task Hyperbee_AsyncBlock_ExecuteInterpret()
+    {
+        _preRunCompiledInterpret = _lambda.Compile( preferInterpretation: true );
+        await _preRunCompiledInterpret();
     }
 
     [BenchmarkCategory( "Execute" )]

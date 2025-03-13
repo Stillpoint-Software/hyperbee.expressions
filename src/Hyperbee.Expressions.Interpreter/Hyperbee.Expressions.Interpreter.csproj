@@ -6,16 +6,16 @@
     <Nullable>disable</Nullable>
 
     <Authors>Stillpoint Software, Inc.</Authors>
-    <PackageId>Hyperbee.Expressions</PackageId>
+    <PackageId>Hyperbee.Expressions.Interepter</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>expression-tree;expressions;async;await;expression-extension</PackageTags>
+    <PackageTags>expression-tree;expressions;interepter</PackageTags>
 
     <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Stillpoint Software, Inc.</Copyright>
     <Title>Hyperbee Expressions</Title>
-    <Description>Async and Await for .NET Expression Trees.</Description>
+    <Description>Interepter for .NET Expression Trees.</Description>
     <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>

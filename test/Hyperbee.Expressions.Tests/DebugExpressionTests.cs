@@ -1,4 +1,5 @@
-﻿using static System.Linq.Expressions.Expression;
+﻿using Hyperbee.Expressions.Tests.TestSupport;
+using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Tests;
@@ -6,8 +7,12 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class DebugExpressionTests
 {
-    [TestMethod]
-    public void DebugExpression_Should_Invoke_DebugDelegate_Unconditionally()
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void DebugExpression_Should_Invoke_DebugDelegate_Unconditionally( CompilerType compiler )
     {
         // Arrange
         var called = false;
@@ -17,15 +22,18 @@ public class DebugExpressionTests
         var debugExpr = Debug( DebugAction, [message] );
 
         // Act
-        var lambda = Lambda<Action>( debugExpr ).Compile();
+        var lambda = Lambda<Action>( debugExpr ).Compile( compiler );
         lambda();
 
         // Assert
         Assert.IsTrue( called, "Debug delegate should have been invoked." );
     }
 
-    [TestMethod]
-    public void DebugExpression_Should_Invoke_DebugDelegate_Unconditionally1()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void DebugExpression_Should_Invoke_DebugDelegate_Unconditionally1( CompilerType compiler )
     {
         // Arrange
         var called = false;
@@ -36,15 +44,18 @@ public class DebugExpressionTests
         var debugExpr = Debug( DebugAction, [message1, message2] );
 
         // Act
-        var lambda = Lambda<Action>( debugExpr ).Compile();
+        var lambda = Lambda<Action>( debugExpr ).Compile( compiler );
         lambda();
 
         // Assert
         Assert.IsTrue( called, "Debug delegate should have been invoked." );
     }
 
-    [TestMethod]
-    public void DebugExpression_Should_Invoke_DebugDelegate_When_Condition_Is_True()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void DebugExpression_Should_Invoke_DebugDelegate_When_Condition_Is_True( CompilerType compiler )
     {
         // Arrange
         var called = false;
@@ -55,15 +66,18 @@ public class DebugExpressionTests
         var debugExpr = Debug( DebugAction, condition, value );
 
         // Act
-        var lambda = Lambda<Action>( debugExpr ).Compile();
+        var lambda = Lambda<Action>( debugExpr ).Compile( compiler );
         lambda();
 
         // Assert
         Assert.IsTrue( called, "Debug delegate should have been invoked when condition is true." );
     }
 
-    [TestMethod]
-    public void DebugExpression_Should_Not_Invoke_DebugDelegate_When_Condition_Is_False()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void DebugExpression_Should_Not_Invoke_DebugDelegate_When_Condition_Is_False( CompilerType compiler )
     {
         // Arrange
         var called = false;
@@ -74,7 +88,7 @@ public class DebugExpressionTests
         var debugExpr = Debug( DebugAction, condition, value );
 
         // Act
-        var lambda = Lambda<Action>( debugExpr ).Compile();
+        var lambda = Lambda<Action>( debugExpr ).Compile( compiler );
         lambda();
 
         // Assert
@@ -98,8 +112,11 @@ public class DebugExpressionTests
         // Assert: Exception is expected
     }
 
-    [TestMethod]
-    public void DebugExpression_Should_Work_Within_Complex_Block()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void DebugExpression_Should_Work_Within_Complex_Block( CompilerType compiler )
     {
         // Arrange
         var called = false;
@@ -114,7 +131,7 @@ public class DebugExpressionTests
         var block = Block( debugExpr, sum );
 
         // Act
-        var lambda = Lambda<Func<int, int, int>>( block, x, y ).Compile();
+        var lambda = Lambda<Func<int, int, int>>( block, x, y ).Compile( compiler );
         var result = lambda( 10, 5 );
 
         // Assert

@@ -1,8 +1,8 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices;
-using Hyperbee.Expressions.CompilerServices.Collections;
 
 namespace Hyperbee.Expressions;
 
