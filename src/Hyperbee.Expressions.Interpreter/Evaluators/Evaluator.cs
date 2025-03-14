@@ -4,20 +4,11 @@ using Hyperbee.Expressions.Interpreter.Core;
 
 namespace Hyperbee.Expressions.Interpreter.Evaluators;
 
-internal sealed class Evaluator
+internal static class Evaluator
 {
-    private readonly UnaryEvaluator _unary;
-    private readonly BinaryEvaluator _binary;
-
-    public Evaluator( InterpretContext context )
-    {
-        _unary = new( context );
-        _binary = new( context );
-    }
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public static object Unary( InterpretContext context, UnaryExpression unary ) => UnaryEvaluator.Unary( context, unary );
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public object Unary( UnaryExpression unary ) => _unary.Unary( unary );
-
-    [MethodImpl( MethodImplOptions.AggressiveInlining )]
-    public object Binary( BinaryExpression binary ) => _binary.Binary( binary );
+    public static object Binary( InterpretContext context, BinaryExpression binary ) => BinaryEvaluator.Binary( context, binary );
 }

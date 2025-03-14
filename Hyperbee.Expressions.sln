@@ -41,6 +41,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hyperbee.Expressions", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hyperbee.Expressions.Interpreter", "src\Hyperbee.Expressions.Interpreter\Hyperbee.Expressions.Interpreter.csproj", "{0CF7527C-DC7F-428C-8B41-A2564A9D2513}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hyperbee.Expressions.Interpreter.Tests", "test\Hyperbee.Expressions.Interpreter.Tests\Hyperbee.Expressions.Interpreter.Tests.csproj", "{E0DE3D72-A55E-969D-78A4-176CC8EBBE2E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{0CF7527C-DC7F-428C-8B41-A2564A9D2513}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0CF7527C-DC7F-428C-8B41-A2564A9D2513}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0CF7527C-DC7F-428C-8B41-A2564A9D2513}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E0DE3D72-A55E-969D-78A4-176CC8EBBE2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0DE3D72-A55E-969D-78A4-176CC8EBBE2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0DE3D72-A55E-969D-78A4-176CC8EBBE2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0DE3D72-A55E-969D-78A4-176CC8EBBE2E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -73,6 +79,7 @@ Global
 		{20E826AE-B347-4B31-979F-A58BD97ACDC7} = {6103145C-EC79-4B5F-9CE6-8F10BFC6ACC5}
 		{A5460634-68D6-4FBD-A2CF-6AF4083C11F1} = {FCA0C3C6-AA4C-4EB8-869B-9B12913518FF}
 		{306BEF61-1D2A-4069-B8FE-FA0405216962} = {FCA0C3C6-AA4C-4EB8-869B-9B12913518FF}
+		{E0DE3D72-A55E-969D-78A4-176CC8EBBE2E} = {FCA0C3C6-AA4C-4EB8-869B-9B12913518FF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9C364B22-809B-45B7-8A8F-2B7A66D3A098}
