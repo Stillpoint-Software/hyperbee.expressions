@@ -6,20 +6,14 @@ namespace Hyperbee.Expressions.Interpreter.Evaluators;
 
 internal sealed class UnaryEvaluator
 {
-    private readonly InterpretContext _context;
-    public UnaryEvaluator( InterpretContext context )
+    public static object Unary( InterpretContext context, UnaryExpression unary )
     {
-        _context = context;
-    }
-
-    public object Unary( UnaryExpression unary )
-    {
-        var operand = _context.Results.Pop();
+        var operand = context.Results.Pop();
 
         switch ( unary.NodeType )
         {
             case ExpressionType.Throw:
-                return ThrowOperation( operand as Exception );
+                return ThrowOperation( context, operand as Exception );
 
             case ExpressionType.Convert:
                 return ConvertOperation( unary, operand );
@@ -37,7 +31,7 @@ internal sealed class UnaryEvaluator
             case ExpressionType.PreDecrementAssign:
             case ExpressionType.PostIncrementAssign:
             case ExpressionType.PostDecrementAssign:
-                return NumericOperation( unary, operand );
+                return NumericOperation( context, unary, operand );
 
             case ExpressionType.OnesComplement:
                 return OnesComplement( unary, operand );
@@ -47,15 +41,15 @@ internal sealed class UnaryEvaluator
         }
     }
 
-    private Exception ThrowOperation( Exception exception )
+    private static Exception ThrowOperation( InterpretContext context, Exception exception )
     {
-        if ( _context.Transition is TransitionException { Exception: not null } transitionException )
+        if ( context.Transition is TransitionException { Exception: not null } transitionException )
         {
             exception = transitionException.Exception;
         }
 
-        _context.Transition = new TransitionException( exception );
-        _context.TransitionChildIndex = 0;
+        context.Transition = new TransitionException( exception );
+        context.TransitionChildIndex = 0;
 
         return exception;
     }
@@ -79,21 +73,21 @@ internal sealed class UnaryEvaluator
         };
     }
 
-    private object NumericOperation( UnaryExpression unary, object operand )
+    private static object NumericOperation( InterpretContext context, UnaryExpression unary, object operand )
     {
         return operand switch
         {
-            int intValue => NumericOperation( unary, intValue ),
-            long longValue => NumericOperation( unary, longValue ),
-            short shortValue => NumericOperation( unary, shortValue ),
-            float floatValue => NumericOperation( unary, floatValue ),
-            double doubleValue => NumericOperation( unary, doubleValue ),
-            decimal decimalValue => NumericOperation( unary, decimalValue ),
+            int intValue => NumericOperation( context.Scope, unary, intValue ),
+            long longValue => NumericOperation( context.Scope, unary, longValue ),
+            short shortValue => NumericOperation( context.Scope, unary, shortValue ),
+            float floatValue => NumericOperation( context.Scope, unary, floatValue ),
+            double doubleValue => NumericOperation( context.Scope, unary, doubleValue ),
+            decimal decimalValue => NumericOperation( context.Scope, unary, decimalValue ),
             _ => throw new InterpreterException( $"Unsupported unary operation for type {operand.GetType()}", unary )
         };
     }
 
-    private object NumericOperation<T>( UnaryExpression unary, T operand )
+    private static object NumericOperation<T>( InterpretScope scope, UnaryExpression unary, T operand )
         where T : INumber<T>
     {
         if ( unary.NodeType == ExpressionType.Negate )
@@ -107,22 +101,22 @@ internal sealed class UnaryEvaluator
         {
             case ExpressionType.PreIncrementAssign:
                 newValue = operand + T.One;
-                _context.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
+                scope.Values[Collections.LinkedNode.Single, variable] = newValue;
                 return newValue;
 
             case ExpressionType.PreDecrementAssign:
                 newValue = operand - T.One;
-                _context.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
+                scope.Values[Collections.LinkedNode.Single, variable] = newValue;
                 return newValue;
 
             case ExpressionType.PostIncrementAssign:
                 newValue = operand + T.One;
-                _context.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
+                scope.Values[Collections.LinkedNode.Single, variable] = newValue;
                 return operand;
 
             case ExpressionType.PostDecrementAssign:
                 newValue = operand - T.One;
-                _context.Scope.Values[Collections.LinkedNode.Single, variable] = newValue;
+                scope.Values[Collections.LinkedNode.Single, variable] = newValue;
                 return operand;
 
             default:

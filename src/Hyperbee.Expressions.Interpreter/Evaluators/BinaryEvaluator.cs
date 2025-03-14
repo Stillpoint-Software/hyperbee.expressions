@@ -7,19 +7,12 @@ namespace Hyperbee.Expressions.Interpreter.Evaluators;
 
 internal sealed class BinaryEvaluator
 {
-    private readonly InterpretContext _context;
-
-    public BinaryEvaluator( InterpretContext context )
-    {
-        _context = context;
-    }
-
-    public object Binary( BinaryExpression binary )
+    public static object Binary( InterpretContext context, BinaryExpression binary )
     {
         switch ( binary.NodeType )
         {
             case ExpressionType.Coalesce:
-                return CoalesceOperation( GetOperation( binary, true ) );
+                return CoalesceOperation( GetOperation( context, binary, true ) );
 
             case ExpressionType.Assign:
             case ExpressionType.AddAssign:
@@ -29,45 +22,47 @@ internal sealed class BinaryEvaluator
             case ExpressionType.ModuloAssign:
             case ExpressionType.LeftShiftAssign:
             case ExpressionType.RightShiftAssign:
-                return AssignOperation( GetOperation( binary, false ) );
+                return AssignOperation( context.Scope, GetOperation( context, binary, false ) );
 
             case ExpressionType.Equal:
             case ExpressionType.NotEqual:
-                return AssignEquality( GetOperation( binary, true ) );
+                return AssignEquality( GetOperation( context, binary, true ) );
 
             case ExpressionType.LessThan:
             case ExpressionType.GreaterThan:
             case ExpressionType.LessThanOrEqual:
             case ExpressionType.GreaterThanOrEqual:
-                return LogicalOperation( GetOperation( binary, true ) );
+                return LogicalOperation( GetOperation( context, binary, true ) );
 
             default:
-                return ArithmeticOperation( GetOperation( binary, true ) );
+                return ArithmeticOperation( GetOperation( context, binary, true ) );
         }
     }
 
-    private BinaryOperation GetOperation( BinaryExpression binary, bool valueOnly )
+    private static BinaryOperation GetOperation( InterpretContext context, BinaryExpression binary, bool valueOnly )
     {
         object leftValue;
         object leftInstance = null;
         object[] index = null;
 
-        var rightValue = _context.Results.Pop();
+        var (scope, results) = context;
+
+        var rightValue = results.Pop();
 
         if ( valueOnly )
         {
-            leftValue = _context.Results.Pop();
+            leftValue = results.Pop();
         }
         else
         {
             switch ( binary.Left )
             {
                 case ParameterExpression paramExpr:
-                    leftValue = _context.Scope.Values[paramExpr];
+                    leftValue = scope.Values[paramExpr];
                     break;
 
                 case MemberExpression memberExpr:
-                    leftInstance = _context.Results.Pop();
+                    leftInstance = results.Pop();
                     leftValue = GetMemberValue( leftInstance, memberExpr );
                     break;
 
@@ -75,15 +70,15 @@ internal sealed class BinaryEvaluator
                     index = new object[indexExpr.Arguments.Count];
                     for ( var i = indexExpr.Arguments.Count - 1; i >= 0; i-- )
                     {
-                        index[i] = _context.Results.Pop();
+                        index[i] = results.Pop();
                     }
 
-                    leftInstance = _context.Results.Pop();
+                    leftInstance = results.Pop();
                     leftValue = GetIndexValue( leftInstance, indexExpr, index );
                     break;
 
                 default:
-                    leftValue = _context.Results.Pop();
+                    leftValue = results.Pop();
                     break;
             }
         }
@@ -114,7 +109,7 @@ internal sealed class BinaryEvaluator
         }
     }
 
-    private object AssignOperation( BinaryOperation operation )
+    private static object AssignOperation( InterpretScope scope, BinaryOperation operation )
     {
         var (binary, rightValue, leftInstance, indexArguments) = operation;
 
@@ -124,7 +119,7 @@ internal sealed class BinaryEvaluator
         switch ( binary.Left )
         {
             case ParameterExpression paramExpr:
-                return _context.Scope.Values[Collections.LinkedNode.Single, paramExpr] = rightValue;
+                return scope.Values[Collections.LinkedNode.Single, paramExpr] = rightValue;
 
             case MemberExpression memberExpr:
                 switch ( rightValue )
@@ -132,10 +127,6 @@ internal sealed class BinaryEvaluator
                     case XsInterpreter.Closure closure:
                         var rightClosureLambda = closure.Lambda;
                         return AssignToMember( memberExpr, leftInstance, rightClosureLambda );
-
-                    //case LambdaExpression lambdaExpr:
-                    //    var rightLambda = _interpreter.Interpreter( lambdaExpr, lambdaExpr.Type );
-                    //    return AssignToMember( memberExpr, leftInstance, rightLambda );
 
                     default:
                         return AssignToMember( memberExpr, leftInstance, rightValue );
@@ -228,8 +219,7 @@ internal sealed class BinaryEvaluator
         };
     }
 
-
-    private object AssignEquality( BinaryOperation operation )
+    private static object AssignEquality( BinaryOperation operation )
     {
         var (binary, leftValue, rightValue) = operation;
 
@@ -297,15 +287,15 @@ internal sealed class BinaryEvaluator
 
     private readonly ref struct BinaryOperation
     {
-        public BinaryExpression Binary { get; }
+        public BinaryExpression BinaryExpression { get; }
         public object LeftValue { get; }
         public object RightValue { get; }
         public object LeftInstance { get; }
         public object[] IndexArguments { get; }
 
-        public BinaryOperation( BinaryExpression binary, object leftValue, object rightValue, object leftInstance = default, object[] indexArguments = default )
+        public BinaryOperation( BinaryExpression binary, object leftValue, object rightValue, object leftInstance, object[] indexArguments )
         {
-            Binary = binary;
+            BinaryExpression = binary;
             LeftValue = leftValue;
             RightValue = rightValue;
             LeftInstance = leftInstance;
@@ -320,14 +310,14 @@ internal sealed class BinaryEvaluator
 
         public void Deconstruct( out BinaryExpression binary, out object leftValue, out object rightValue )
         {
-            binary = Binary;
+            binary = BinaryExpression;
             leftValue = LeftValue;
             rightValue = RightValue;
         }
 
         public void Deconstruct( out BinaryExpression binary, out object rightValue, out object leftInstance, out object[] indexArguments )
         {
-            binary = Binary;
+            binary = BinaryExpression;
             rightValue = RightValue;
             leftInstance = LeftInstance;
             indexArguments = IndexArguments;

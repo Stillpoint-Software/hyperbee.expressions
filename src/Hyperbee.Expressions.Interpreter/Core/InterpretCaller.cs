@@ -3,39 +3,39 @@ using System.Reflection;
 
 namespace Hyperbee.Expressions.Interpreter.Core;
 
-internal sealed class InterpretDelegateClosure( XsInterpreter instance, LambdaExpression lambda )
+internal sealed class InterpretCaller( XsInterpreter instance, LambdaExpression lambda )
 {
     private static readonly AsyncLocal<InterpretContext> Context = new();
 
-    internal T Evaluate<T>( params object[] values )
+    internal T Interpret<T>( params object[] values )
     {
         return CreateInterpreter()
-            .EvaluateInternal<T>( lambda, true, values );
+            .Interpret<T>( lambda, true, values );
     }
 
-    internal void Evaluate( params object[] values )
+    internal void Interpret( params object[] values )
     {
         CreateInterpreter()
-            .EvaluateInternal<object>( lambda, false, values );
+            .Interpret<object>( lambda, false, values );
     }
 
-    internal static object Invoke( Delegate del, InterpretContext context, object[] arguments )
+    internal static object Invoke( Delegate target, InterpretContext context, object[] arguments )
     {
         object result = null;
         Run( () =>
         {
-            result = del?.DynamicInvoke( arguments );
+            result = target?.DynamicInvoke( arguments );
         }, context );
 
         return result;
     }
 
-    internal static object Invoke( MethodInfo methodInfo, object instance, InterpretContext context, object[] arguments )
+    internal static object Invoke( MethodInfo target, object instance, InterpretContext context, object[] arguments )
     {
         object result = null;
         Run( () =>
         {
-            result = methodInfo.Invoke( instance, arguments );
+            result = target.Invoke( instance, arguments );
         }, context );
 
         return result;
