@@ -13,6 +13,10 @@ internal sealed class InterpretContext
 
     public Transition Transition { get; set; }
 
+    public LambdaExpression Reduced { get; set; }
+
+    public Dictionary<GotoExpression, Transition> Transitions { get; set; }
+
     public InterpretContext() { }
 
     public InterpretContext( InterpretContext context )
@@ -21,6 +25,9 @@ internal sealed class InterpretContext
         Results = new Stack<object>( context.Results );
         Transition = context.Transition;
         TransitionChildIndex = 0;
+
+        Reduced = context.Reduced;
+        Transitions = context.Transitions;
     }
 
     public void Deconstruct( out InterpretScope scope, out Stack<object> results )

@@ -1,70 +1,46 @@
 ﻿using System.Linq.Expressions;
-using System.Reflection;
 
 namespace Hyperbee.Expressions.Interpreter.Core;
 
-internal sealed class InterpretDelegateClosure( XsInterpreter instance, LambdaExpression lambda )
+internal sealed class InterpretDelegateClosure
 {
-    private static readonly AsyncLocal<InterpretContext> Context = new();
+    private readonly InterpretContext _context;
+    private readonly LambdaExpression _lambda;
 
-    internal T Evaluate<T>( params object[] values )
+    public InterpretDelegateClosure( InterpretContext context, LambdaExpression lambda )
     {
-        return CreateInterpreter()
-            .EvaluateInternal<T>( lambda, true, values );
+        // clone current context with current variable closure at the time of creation
+        _context = new InterpretContext( context );
+        _lambda = lambda;
     }
 
-    internal void Evaluate( params object[] values )
+    internal T Interpret<T>( params object[] values )
     {
-        CreateInterpreter()
-            .EvaluateInternal<object>( lambda, false, values );
+        return Run<T>( values );
     }
 
-    internal static object Invoke( Delegate del, InterpretContext context, object[] arguments )
+    internal void Interpret( params object[] values )
     {
-        object result = null;
-        Run( () =>
-        {
-            result = del?.DynamicInvoke( arguments );
-        }, context );
-
-        return result;
+        Run<object>( values );
     }
 
-    internal static object Invoke( MethodInfo methodInfo, object instance, InterpretContext context, object[] arguments )
-    {
-        object result = null;
-        Run( () =>
-        {
-            result = methodInfo.Invoke( instance, arguments );
-        }, context );
-
-        return result;
-    }
-
-    private static void Run( Action action, InterpretContext context )
+    private T Run<T>( params object[] values )
     {
         var executionContext = ExecutionContext.Capture();
 
         if ( executionContext == null )
-            return;
+            return default;
 
         // Clone the context before running to capture current closure
-        var localCapture = new InterpretContext( context );
+        var local = new XsInterpreter( new InterpretContext( _context ) );
+        T result = default;
 
         ExecutionContext.Run( executionContext, _ =>
         {
             // Ensures the AsyncLocal is correct for this execution context
-            Context.Value = localCapture;
-            action();
+            result = local.Interpret<T>( _lambda, true, values );
         }, null );
-    }
 
-    private XsInterpreter CreateInterpreter()
-    {
-        // Clone the interpreter so each thread runs independently
-        return new XsInterpreter(
-            instance,
-            Context.Value ?? new InterpretContext( instance.Context ) );
+        return result;
     }
-
 }

@@ -8,10 +8,6 @@ namespace Hyperbee.Expressions.Interpreter;
 
 public sealed class XsInterpreter : ExpressionVisitor
 {
-    private readonly Evaluator _evaluator;
-    private LambdaExpression _reduced;
-    private Dictionary<GotoExpression, Transition> _transitions;
-
     internal InterpretContext Context;
 
     internal Transition Transition
@@ -24,39 +20,33 @@ public sealed class XsInterpreter : ExpressionVisitor
         }
     }
 
-    public XsInterpreter()
+    public XsInterpreter() : this( new InterpretContext() )
     {
-        Context = new InterpretContext();
-        _evaluator = new Evaluator( Context );
     }
 
-    internal XsInterpreter( XsInterpreter copy, InterpretContext context )
+    internal XsInterpreter( InterpretContext context )
     {
         Context = context;
-
-        _evaluator = new Evaluator( Context );
-        _reduced = copy._reduced;
-        _transitions = copy._transitions;
     }
 
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
         where TDelegate : Delegate
     {
-        if ( _reduced == null )
+        if ( Context.Reduced == null )
         {
             var analyzer = new AnalyzerVisitor();
             analyzer.Analyze( expression );
 
-            _reduced = (LambdaExpression) analyzer.Reduced;
-            _transitions = analyzer.Transitions;
+            Context.Reduced = (LambdaExpression) analyzer.Reduced;
+            Context.Transitions = analyzer.Transitions;
 
-            expression = _reduced;
+            expression = Context.Reduced;
         }
 
-        return EvaluateDelegateFactory.CreateDelegate<TDelegate>( this, expression );
+        return InterpretDelegateFactory.CreateDelegate<TDelegate>( this, expression );
     }
 
-    internal T EvaluateInternal<T>( LambdaExpression lambda, bool hasReturn, params object[] values )
+    internal T Interpret<T>( LambdaExpression lambda, bool hasReturn, params object[] values )
     {
         var (scope, results) = Context;
 
@@ -72,7 +62,13 @@ public sealed class XsInterpreter : ExpressionVisitor
             ThrowIfTransitioning( Context.Transition );
 
             if ( hasReturn )
-                return (T) results.Pop();
+            {
+                var result = results.Pop();
+
+                return result is Closure closure
+                    ? (T) closure.Lambda
+                    : (T) result;
+            }
             else
                 results.Pop();
         }
@@ -100,21 +96,18 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     protected override Expression VisitGoto( GotoExpression node )
     {
-        if ( !_transitions.TryGetValue( node, out var transition ) )
+        if ( !Context.Transitions.TryGetValue( node, out var transition ) )
             throw new InterpreterException( $"Undefined label target: {node.Target.Name}", node );
 
-        var (_, results) = Context;
-
-        object lastResult = null;
-
-        if ( node.Kind == GotoExpressionKind.Return && node.Value != null )
+        if ( node is { Kind: GotoExpressionKind.Return, Value: not null } )
         {
+            // Note: returns should not pop the result since it will be popped
+            // by the result of visiting the label in the common ancestor
             Visit( node.Value );
-            lastResult = results.Pop();
         }
 
         Transition = transition;
-        results.Push( lastResult );
+        Context.Results.Push( Default( node.Target.Type ) );
 
         return node;
     }
@@ -124,9 +117,12 @@ public sealed class XsInterpreter : ExpressionVisitor
         if ( Context.IsTransitioning && Transition.TargetLabel == node.Target )
         {
             Transition = null;
+
+            if ( node.Target.Type != typeof( void ) )
+                return node;
         }
 
-        Context.Results.Push( null );
+        Context.Results.Push( Default( node.Target.Type ) );
 
         return node;
     }
@@ -156,7 +152,7 @@ EntryPoint:
 
             if ( Context.IsTransitioning )
             {
-                var nextChild = Context.GetNextChild(); //Transition.GetNextChild();
+                var nextChild = Context.GetNextChild();
                 statementIndex = node.Expressions.IndexOf( nextChild );
             }
 
@@ -206,10 +202,6 @@ EntryPoint:
         {
             scope.ExitScope();
         }
-
-        static object Default( Type type ) =>
-            type == typeof( string ) ? string.Empty :
-            type.IsValueType ? RuntimeHelpers.GetUninitializedObject( type ) : null;
     }
 
     // Conditional
@@ -233,7 +225,7 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Context.GetNextChild(); //Transition.GetNextChild();
+            expr = Context.GetNextChild();
             state = ConditionalState.Visit;
             continuation = expr == node.Test ? ConditionalState.HandleTest : ConditionalState.Complete;
         }
@@ -307,7 +299,7 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Context.GetNextChild(); //Transition.GetNextChild();
+            expr = Context.GetNextChild();
 
             if ( expr == node.SwitchValue )
             {
@@ -430,7 +422,7 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Context.GetNextChild(); //Transition.GetNextChild();
+            expr = Context.GetNextChild();
 
             if ( expr == node.Body )
             {
@@ -690,29 +682,33 @@ EntryPoint:
                 lambdaDelegate = @delegate;
                 break;
 
+            case LambdaExpression lambda:
+                lambdaDelegate = (Delegate) this.Interpreter( lambda, lambda.Type );
+                break;
+
             default:
                 throw new InterpreterException( "Invocation target is not a valid lambda or closure.", node );
         }
 
-        scope.EnterScope();
+        var arguments = new object[node.Arguments.Count];
+
+        for ( var i = 0; i < node.Arguments.Count; i++ )
+        {
+            Visit( node.Arguments[i] );
+            arguments[i] = results.Pop();
+        }
 
         try
         {
+            scope.EnterScope();
+
             if ( capturedScope is not null )
             {
                 foreach ( var (param, value) in capturedScope )
                     scope.Values[param] = value;
             }
 
-            var arguments = new object[node.Arguments.Count];
-
-            for ( var i = 0; i < node.Arguments.Count; i++ )
-            {
-                Visit( node.Arguments[i] );
-                arguments[i] = results.Pop();
-            }
-
-            var result = InterpretDelegateClosure.Invoke( lambdaDelegate, Context, arguments );
+            var result = lambdaDelegate?.DynamicInvoke( arguments );
 
             results.Push( result );
 
@@ -754,6 +750,10 @@ EntryPoint:
                     capturedValues[i] = closure.CapturedScope;
                     break;
 
+                case LambdaExpression lambda:
+                    arguments[i] = this.Interpreter( lambda, lambda.Type );
+                    break;
+
                 default:
                     arguments[i] = argValue;
                     break;
@@ -764,7 +764,7 @@ EntryPoint:
         {
             try
             {
-                var result = InterpretDelegateClosure.Invoke( node.Method, instance, Context, arguments );
+                var result = node.Method.Invoke( instance, arguments );
                 results.Push( result );
                 return node;
             }
@@ -784,7 +784,7 @@ EntryPoint:
                     scope.Values[param] = value;
             }
 
-            var result = InterpretDelegateClosure.Invoke( node.Method, instance, Context, arguments );
+            var result = node.Method.Invoke( instance, arguments );
 
             results.Push( result );
             return node;
@@ -845,7 +845,7 @@ EntryPoint:
         if ( Context.IsTransitioning )
             return node;
 
-        var result = _evaluator.Binary( node );
+        var result = BinaryEvaluator.Binary( Context, node );
 
         Context.Results.Push( result );
 
@@ -870,7 +870,7 @@ EntryPoint:
     {
         Visit( node.Operand ); // Visit and push operand
 
-        var result = _evaluator.Unary( node );
+        var result = UnaryEvaluator.Unary( Context, node );
         Context.Results.Push( result );
 
         return node;
@@ -990,6 +990,10 @@ EntryPoint:
                     capturedValues[index] = closure.CapturedScope;
                     break;
 
+                case LambdaExpression lambda:
+                    arguments[index] = this.Interpreter( lambda, lambda.Type );
+                    break;
+
                 default:
                     arguments[index] = argValue;
                     break;
@@ -1096,6 +1100,20 @@ EntryPoint:
 
         return null;
     }
+
+    private static object Default( Type type )
+    {
+        if ( type == typeof( void ) )
+            return null;
+
+        if ( type == typeof( string ) )
+            return string.Empty;
+
+        return type.IsValueType
+            ? RuntimeHelpers.GetUninitializedObject( type )
+            : null;
+    }
+
     public record Closure( object Lambda, Dictionary<ParameterExpression, object> CapturedScope );
 
     private sealed class FreeVariableVisitor : ExpressionVisitor

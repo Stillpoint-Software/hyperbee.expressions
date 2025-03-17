@@ -5,26 +5,26 @@ using System.Reflection.Emit;
 
 namespace Hyperbee.Expressions.Interpreter.Core;
 
-public static class EvaluateDelegateFactory
+public static class InterpretDelegateFactory
 {
     private static readonly ConcurrentDictionary<Type, DynamicMethod> CachedDynamicMethods = new();
 
-    private static readonly MethodInfo EvaluateFuncMethod =
+    private static readonly MethodInfo InterpretFuncMethod =
         typeof( InterpretDelegateClosure )
             .GetMethods( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
-            .First( x => x.Name == "Evaluate" && x.IsGenericMethodDefinition );
+            .First( x => x.Name == nameof( InterpretDelegateClosure.Interpret ) && x.IsGenericMethodDefinition );
 
-    private static readonly MethodInfo EvaluateActionMethod =
+    private static readonly MethodInfo InterpretActionMethod =
         typeof( InterpretDelegateClosure )
             .GetMethods( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
-            .First( x => x.Name == "Evaluate" && !x.IsGenericMethodDefinition );
+            .First( x => x.Name == nameof( InterpretDelegateClosure.Interpret ) && !x.IsGenericMethodDefinition );
 
     public static TDelegate CreateDelegate<TDelegate>( XsInterpreter instance, LambdaExpression lambda )
         where TDelegate : Delegate
     {
         var dm = CachedDynamicMethods.GetOrAdd( typeof( TDelegate ), _ => CreateDynamicMethod<TDelegate>() );
 
-        var closure = new InterpretDelegateClosure( instance, lambda );
+        var closure = new InterpretDelegateClosure( instance.Context, lambda );
         return (TDelegate) dm.CreateDelegate( typeof( TDelegate ), closure );
     }
 
@@ -48,7 +48,7 @@ public static class EvaluateDelegateFactory
 
         // Create a dynamic method
 
-        var dm = new DynamicMethod( string.Empty, returnType, paramTypes, typeof( EvaluateDelegateFactory ).Module, true );
+        var dm = new DynamicMethod( string.Empty, returnType, paramTypes, typeof( InterpretDelegateFactory ).Module, true );
         var il = dm.GetILGenerator();
 
         // Map delegate parameters to an object[] array
@@ -81,11 +81,11 @@ public static class EvaluateDelegateFactory
 
         if ( returnType == typeof( void ) )
         {
-            il.Emit( OpCodes.Callvirt, EvaluateActionMethod );
+            il.Emit( OpCodes.Callvirt, InterpretActionMethod );
         }
         else
         {
-            var genericEvalMethod = EvaluateFuncMethod.MakeGenericMethod( returnType );
+            var genericEvalMethod = InterpretFuncMethod.MakeGenericMethod( returnType );
             il.Emit( OpCodes.Callvirt, genericEvalMethod );
         }
 
