@@ -1,5 +1,4 @@
-using System;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Interpreter.Core;
@@ -9,9 +8,6 @@ namespace Hyperbee.Expressions.Interpreter;
 
 public sealed class XsInterpreter : ExpressionVisitor
 {
-    private LambdaExpression _reduced;
-    private Dictionary<GotoExpression, Transition> _transitions;
-
     internal InterpretContext Context;
 
     internal Transition Transition
@@ -24,31 +20,27 @@ public sealed class XsInterpreter : ExpressionVisitor
         }
     }
 
-    public XsInterpreter()
+    public XsInterpreter() : this( new InterpretContext() )
     {
-        Context = new InterpretContext();
     }
 
-    internal XsInterpreter( XsInterpreter copy, InterpretContext context )
+    internal XsInterpreter( InterpretContext context )
     {
         Context = context;
-
-        _reduced = copy._reduced;
-        _transitions = copy._transitions;
     }
 
     public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
         where TDelegate : Delegate
     {
-        if ( _reduced == null )
+        if ( Context.Reduced == null )
         {
             var analyzer = new AnalyzerVisitor();
             analyzer.Analyze( expression );
 
-            _reduced = (LambdaExpression) analyzer.Reduced;
-            _transitions = analyzer.Transitions;
+            Context.Reduced = (LambdaExpression) analyzer.Reduced;
+            Context.Transitions = analyzer.Transitions;
 
-            expression = _reduced;
+            expression = Context.Reduced;
         }
 
         return InterpretDelegateFactory.CreateDelegate<TDelegate>( this, expression );
@@ -70,7 +62,13 @@ public sealed class XsInterpreter : ExpressionVisitor
             ThrowIfTransitioning( Context.Transition );
 
             if ( hasReturn )
-                return (T) results.Pop();
+            {
+                var result = results.Pop();
+
+                return result is Closure closure
+                    ? (T) closure.Lambda
+                    : (T) result;
+            }
             else
                 results.Pop();
         }
@@ -98,7 +96,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
     protected override Expression VisitGoto( GotoExpression node )
     {
-        if ( !_transitions.TryGetValue( node, out var transition ) )
+        if ( !Context.Transitions.TryGetValue( node, out var transition ) )
             throw new InterpreterException( $"Undefined label target: {node.Target.Name}", node );
 
         if ( node is { Kind: GotoExpressionKind.Return, Value: not null } )
@@ -154,7 +152,7 @@ EntryPoint:
 
             if ( Context.IsTransitioning )
             {
-                var nextChild = Context.GetNextChild(); //Transition.GetNextChild();
+                var nextChild = Context.GetNextChild();
                 statementIndex = node.Expressions.IndexOf( nextChild );
             }
 
@@ -227,7 +225,7 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Context.GetNextChild(); //Transition.GetNextChild();
+            expr = Context.GetNextChild();
             state = ConditionalState.Visit;
             continuation = expr == node.Test ? ConditionalState.HandleTest : ConditionalState.Complete;
         }
@@ -301,7 +299,7 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Context.GetNextChild(); //Transition.GetNextChild();
+            expr = Context.GetNextChild();
 
             if ( expr == node.SwitchValue )
             {
@@ -424,7 +422,7 @@ EntryPoint:
 
         if ( Context.IsTransitioning )
         {
-            expr = Context.GetNextChild(); //Transition.GetNextChild();
+            expr = Context.GetNextChild();
 
             if ( expr == node.Body )
             {
@@ -710,7 +708,7 @@ EntryPoint:
                     scope.Values[param] = value;
             }
 
-            var result = InterpretCaller.Invoke( lambdaDelegate, Context, arguments );
+            var result = lambdaDelegate?.DynamicInvoke( arguments );
 
             results.Push( result );
 
@@ -766,7 +764,7 @@ EntryPoint:
         {
             try
             {
-                var result = InterpretCaller.Invoke( node.Method, instance, Context, arguments );
+                var result = node.Method.Invoke( instance, arguments );
                 results.Push( result );
                 return node;
             }
@@ -786,7 +784,7 @@ EntryPoint:
                     scope.Values[param] = value;
             }
 
-            var result = InterpretCaller.Invoke( node.Method, instance, Context, arguments );
+            var result = node.Method.Invoke( instance, arguments );
 
             results.Push( result );
             return node;

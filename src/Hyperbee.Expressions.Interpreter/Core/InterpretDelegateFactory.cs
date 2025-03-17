@@ -10,21 +10,21 @@ public static class InterpretDelegateFactory
     private static readonly ConcurrentDictionary<Type, DynamicMethod> CachedDynamicMethods = new();
 
     private static readonly MethodInfo InterpretFuncMethod =
-        typeof( InterpretCaller )
+        typeof( InterpretDelegateClosure )
             .GetMethods( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
-            .First( x => x.Name == nameof( InterpretCaller.Interpret ) && x.IsGenericMethodDefinition );
+            .First( x => x.Name == nameof( InterpretDelegateClosure.Interpret ) && x.IsGenericMethodDefinition );
 
     private static readonly MethodInfo InterpretActionMethod =
-        typeof( InterpretCaller )
+        typeof( InterpretDelegateClosure )
             .GetMethods( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
-            .First( x => x.Name == nameof( InterpretCaller.Interpret ) && !x.IsGenericMethodDefinition );
+            .First( x => x.Name == nameof( InterpretDelegateClosure.Interpret ) && !x.IsGenericMethodDefinition );
 
     public static TDelegate CreateDelegate<TDelegate>( XsInterpreter instance, LambdaExpression lambda )
         where TDelegate : Delegate
     {
         var dm = CachedDynamicMethods.GetOrAdd( typeof( TDelegate ), _ => CreateDynamicMethod<TDelegate>() );
 
-        var closure = new InterpretCaller( instance, lambda );
+        var closure = new InterpretDelegateClosure( instance.Context, lambda );
         return (TDelegate) dm.CreateDelegate( typeof( TDelegate ), closure );
     }
 
@@ -41,7 +41,7 @@ public static class InterpretDelegateFactory
         var paramInfos = invokeMethod.GetParameters();
         var paramTypes = new Type[paramInfos.Length + 1];
 
-        paramTypes[0] = typeof( InterpretCaller );
+        paramTypes[0] = typeof( InterpretDelegateClosure );
 
         for ( var i = 0; i < paramInfos.Length; i++ )
             paramTypes[i + 1] = paramInfos[i].ParameterType;

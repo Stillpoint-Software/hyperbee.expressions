@@ -153,7 +153,6 @@ public class InterpreterReturnTests
         Assert.AreEqual( 42, result );
     }
 
-    /*
     [TestMethod]
     public void Compile_ShouldSucceed_WithLambdaInvokeChaining()
     {
@@ -183,7 +182,6 @@ public class InterpreterReturnTests
 
         Assert.AreEqual( 42, result );
     }
-    */
 
     [TestMethod]
     public void Compile_ShouldSucceed_WithMethodChaining()
