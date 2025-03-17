@@ -156,9 +156,9 @@ public class InterpreterReturnTests
     [TestMethod]
     public void Compile_ShouldSucceed_WithLambdaInvokeChaining()
     {
-        var myLambda = Parameter( typeof(Func<int, Func<int, int>>), "myLambda" );
-        var outerParam = Parameter( typeof(int), "outerParam" );
-        var innerParam = Parameter( typeof(int), "innerParam" );
+        var myLambda = Parameter( typeof( Func<int, Func<int, int>> ), "myLambda" );
+        var outerParam = Parameter( typeof( int ), "outerParam" );
+        var innerParam = Parameter( typeof( int ), "innerParam" );
 
         // myLambda(20)(21);
         var lambda = Lambda<Func<int>>(
@@ -167,7 +167,7 @@ public class InterpreterReturnTests
                 // myLambda = outerParam => innerParam => outerParam + innerParam + 1;
                 Assign(
                     myLambda,
-                    Lambda( Lambda( Add( Add( outerParam, innerParam ), Constant( 1 ) ), innerParam ) , outerParam )
+                    Lambda( Lambda( Add( Add( outerParam, innerParam ), Constant( 1 ) ), innerParam ), outerParam )
                 ),
                 Invoke(
                     Invoke( myLambda, Constant( 20 ) ),
