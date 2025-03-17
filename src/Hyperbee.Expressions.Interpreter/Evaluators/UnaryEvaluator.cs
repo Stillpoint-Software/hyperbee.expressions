@@ -8,7 +8,12 @@ internal sealed class UnaryEvaluator
 {
     public static object Unary( InterpretContext context, UnaryExpression unary )
     {
-        var operand = context.Results.Pop();
+        object operand = null;
+
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+        // Rethrows can have a null / unvisited operand
+        if ( unary.Operand != null ) 
+            operand = context.Results.Pop();
 
         switch ( unary.NodeType )
         {

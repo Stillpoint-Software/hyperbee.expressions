@@ -265,18 +265,23 @@ public class InterpreterReturnTests
                 TryCatch(
                     TryCatch(
                         Block(
-                            Throw( New( exceptionCtor ) ),
-                            x
+                            type: typeof( void ),
+                            Throw( New( exceptionCtor ) )
                         ),
                         Catch( e,
                             Block(
+                                type: typeof( void ),
                                 Assign( x, Constant( 32 ) ),
-                                Throw( e ),
-                                x
+                                Rethrow( typeof( InvalidOperationException ) )
                             )
                         ) ),
-                    Catch( invOpeExc, AddAssign( x, Constant( 10 ) ) )
-                ), x )
+                    Catch( invOpeExc, 
+                        Block(
+                            type: typeof(void),
+                            AddAssign( x, Constant( 10 ) )
+                        ))
+                ), 
+                x )
         );
 
         var compiledLambda = lambda.Interpreter();

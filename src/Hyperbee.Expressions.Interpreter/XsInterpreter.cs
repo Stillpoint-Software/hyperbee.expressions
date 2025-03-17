@@ -506,6 +506,13 @@ EntryPoint:
 
                     if ( Context.IsTransitioning )
                     {
+                        if ( lastResult == null && exception != null )
+                        {
+                            // handle empty rethrow
+                            Context.Transition = new TransitionException( exception );
+                            lastResult = exception;
+                        }
+
                         if ( Transition.CommonAncestor == node )
                             goto EntryPoint;
                     }
