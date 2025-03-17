@@ -12,7 +12,7 @@ internal sealed class UnaryEvaluator
 
         // ReSharper disable once ConditionIsAlwaysTrueOrFalse
         // Rethrows can have a null / unvisited operand
-        if ( unary.Operand != null ) 
+        if ( unary.Operand != null )
             operand = context.Results.Pop();
 
         switch ( unary.NodeType )

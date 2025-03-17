@@ -275,12 +275,12 @@ public class InterpreterReturnTests
                                 Rethrow( typeof( InvalidOperationException ) )
                             )
                         ) ),
-                    Catch( invOpeExc, 
+                    Catch( invOpeExc,
                         Block(
-                            type: typeof(void),
+                            type: typeof( void ),
                             AddAssign( x, Constant( 10 ) )
-                        ))
-                ), 
+                        ) )
+                ),
                 x )
         );
 
