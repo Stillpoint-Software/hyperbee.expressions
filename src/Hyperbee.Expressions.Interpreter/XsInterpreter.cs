@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -847,7 +847,7 @@ EntryPoint:
         if ( Context.IsTransitioning )
             return node;
 
-        var result = Evaluator.Binary( Context, node );
+        var result = BinaryEvaluator.Binary( Context, node );
 
         Context.Results.Push( result );
 
@@ -872,7 +872,7 @@ EntryPoint:
     {
         Visit( node.Operand ); // Visit and push operand
 
-        var result = Evaluator.Unary( Context, node );
+        var result = UnaryEvaluator.Unary( Context, node );
         Context.Results.Push( result );
 
         return node;
