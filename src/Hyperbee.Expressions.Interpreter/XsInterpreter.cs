@@ -50,12 +50,12 @@ public sealed class XsInterpreter : ExpressionVisitor
     {
         var (scope, results) = Context;
 
-        scope.EnterScope();
+        scope.Push();
 
         try
         {
             for ( var i = 0; i < lambda.Parameters.Count; i++ )
-                scope.Values[lambda.Parameters[i]] = values[i];
+                scope[lambda.Parameters[i]] = values[i];
 
             Visit( lambda.Body );
 
@@ -74,7 +74,7 @@ public sealed class XsInterpreter : ExpressionVisitor
         }
         finally
         {
-            scope.ExitScope();
+            scope.Pop();
         }
 
         return default;
@@ -144,7 +144,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
         var (scope, results) = Context;
 
-        scope.EnterScope();
+        scope.Push();
 
         try
         {
@@ -163,7 +163,7 @@ EntryPoint:
                     case BlockState.InitializeVariables:
                         foreach ( var variable in node.Variables )
                         {
-                            scope.Values[variable] = Default( variable.Type );
+                            scope[variable] = Default( variable.Type );
                         }
 
                         state = BlockState.HandleStatements;
@@ -200,7 +200,7 @@ EntryPoint:
         }
         finally
         {
-            scope.ExitScope();
+            scope.Pop();
         }
     }
 
@@ -491,15 +491,15 @@ EntryPoint:
 
                     try
                     {
-                        scope.EnterScope();
+                        scope.Push();
                         if ( exceptionVariable != null )
-                            scope.Values[exceptionVariable] = exception;
+                            scope[exceptionVariable] = exception;
 
                         Visit( expr! );
                     }
                     finally
                     {
-                        scope.ExitScope();
+                        scope.Pop();
                     }
 
                     lastResult = results.Pop();
@@ -595,7 +595,7 @@ EntryPoint:
     {
         var (scope, results) = Context;
 
-        scope.EnterScope();
+        scope.Push();
 
         try
         {
@@ -625,7 +625,7 @@ EntryPoint:
         }
         finally
         {
-            scope.ExitScope();
+            scope.Pop();
         }
 
         return node;
@@ -637,7 +637,7 @@ EntryPoint:
     {
         var (scope, results) = Context;
 
-        if ( scope.Values.Count == 0 )
+        if ( scope.Count == 0 )
         {
             results.Push( this.Interpret( node, node.Type ) );
             return node;
@@ -655,7 +655,7 @@ EntryPoint:
 
         foreach ( var variable in freeVariables )
         {
-            if ( !scope.Values.TryGetValue( variable, out var value ) )
+            if ( !scope.TryGetValue( variable, out var value ) )
                 throw new InterpreterException( $"Captured variable '{variable.Name}' is not defined.", node );
 
             capturedScope[variable] = value;
@@ -707,12 +707,12 @@ EntryPoint:
 
         try
         {
-            scope.EnterScope();
+            scope.Push();
 
             if ( capturedScope is not null )
             {
                 foreach ( var (param, value) in capturedScope )
-                    scope.Values[param] = value;
+                    scope[param] = value;
             }
 
             var result = lambdaDelegate?.DynamicInvoke( arguments );
@@ -723,7 +723,7 @@ EntryPoint:
         }
         finally
         {
-            scope.ExitScope();
+            scope.Pop();
         }
     }
 
@@ -771,12 +771,12 @@ EntryPoint:
         {
             if ( hasClosure )
             {
-                scope.EnterScope();
+                scope.Push();
 
                 foreach ( var capturedScope in capturedValues.Values )
                 {
                     foreach ( var (param, value) in capturedScope )
-                        scope.Values[param] = value;
+                        scope[param] = value;
                 }
             }
 
@@ -792,7 +792,7 @@ EntryPoint:
         {
             if ( hasClosure )
             {
-                scope.ExitScope();
+                scope.Pop();
             }
         }
     }
@@ -1016,14 +1016,14 @@ EntryPoint:
             return node;
         }
 
-        scope.EnterScope();
+        scope.Push();
 
         try
         {
             foreach ( var (_, capturedScope) in capturedValues )
             {
                 foreach ( var (param, value) in capturedScope )
-                    scope.Values[param] = value;
+                    scope[param] = value;
             }
 
             var instance = constructor.Invoke( arguments );
@@ -1032,7 +1032,7 @@ EntryPoint:
         }
         finally
         {
-            scope.ExitScope();
+            scope.Pop();
         }
     }
 
@@ -1088,7 +1088,7 @@ EntryPoint:
     {
         var (scope, results) = Context;
 
-        if ( !scope.Values.TryGetValue( node, out var value ) )
+        if ( !scope.TryGetValue( node, out var value ) )
             throw new InterpreterException( $"Parameter '{node.Name}' not found.", node );
 
         results.Push( value );

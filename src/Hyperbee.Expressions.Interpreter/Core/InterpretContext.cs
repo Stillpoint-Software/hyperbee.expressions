@@ -21,7 +21,7 @@ internal sealed class InterpretContext
 
     public InterpretContext( InterpretContext context )
     {
-        Scope = new InterpretScope( context.Scope.Values );
+        Scope = new InterpretScope( context.Scope );
         Results = new Stack<object>( context.Results );
         Transition = context.Transition;
         TransitionChildIndex = 0;

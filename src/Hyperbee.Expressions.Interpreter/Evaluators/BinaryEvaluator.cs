@@ -58,7 +58,7 @@ internal sealed class BinaryEvaluator
             switch ( binary.Left )
             {
                 case ParameterExpression paramExpr:
-                    leftValue = scope.Values[paramExpr];
+                    leftValue = scope[paramExpr];
                     break;
 
                 case MemberExpression memberExpr:
@@ -119,7 +119,7 @@ internal sealed class BinaryEvaluator
         switch ( binary.Left )
         {
             case ParameterExpression paramExpr:
-                return scope.Values[Collections.LinkedNode.Single, paramExpr] = rightValue;
+                return scope[Collections.LinkedNode.Single, paramExpr] = rightValue;
 
             case MemberExpression memberExpr:
                 switch ( rightValue )
