@@ -9,38 +9,22 @@ internal sealed class InterpretDelegateClosure
 
     public InterpretDelegateClosure( InterpretContext context, LambdaExpression lambda )
     {
-        // clone current context with current variable closure at the time of creation
+        // clone current context with current variable closure at the time of creation (like a display class)
         _context = new InterpretContext( context );
         _lambda = lambda;
     }
 
-    internal T Interpret<T>( params object[] values )
+    public T Interpret<T>( params object[] values )
     {
-        return Run<T>( values );
+        // Clone the context before running to ensure each interpreter has its own execution flow
+        return new XsInterpreter( new InterpretContext( _context ) )
+            .Interpret<T>( _lambda, true, values );
     }
 
-    internal void Interpret( params object[] values )
+    public void Interpret( params object[] values )
     {
-        Run<object>( values );
-    }
-
-    private T Run<T>( params object[] values )
-    {
-        var executionContext = ExecutionContext.Capture();
-
-        if ( executionContext == null )
-            return default;
-
-        // Clone the context before running to capture current closure
-        var local = new XsInterpreter( new InterpretContext( _context ) );
-        T result = default;
-
-        ExecutionContext.Run( executionContext, _ =>
-        {
-            // Ensures the AsyncLocal is correct for this execution context
-            result = local.Interpret<T>( _lambda, true, values );
-        }, null );
-
-        return result;
+        // Clone the context before running to ensure each interpreter has its own execution flow
+        new XsInterpreter( new InterpretContext( _context ) )
+            .Interpret<object>( _lambda, true, values );
     }
 }
