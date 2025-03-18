@@ -767,38 +767,33 @@ EntryPoint:
             }
         }
 
-        if ( !hasClosure )
-        {
-            try
-            {
-                var result = node.Method.Invoke( instance, arguments );
-                results.Push( result );
-                return node;
-            }
-            catch ( TargetInvocationException invocationException )
-            {
-                throw invocationException.InnerException ?? invocationException;
-            }
-        }
-
         try
         {
-            scope.EnterScope();
-
-            foreach ( var capturedScope in capturedValues.Values )
+            if ( hasClosure )
             {
-                foreach ( var (param, value) in capturedScope )
-                    scope.Values[param] = value;
+                scope.EnterScope();
+
+                foreach ( var capturedScope in capturedValues.Values )
+                {
+                    foreach ( var (param, value) in capturedScope )
+                        scope.Values[param] = value;
+                }
             }
 
             var result = node.Method.Invoke( instance, arguments );
-
             results.Push( result );
             return node;
         }
+        catch ( TargetInvocationException invocationException )
+        {
+            throw invocationException.InnerException ?? invocationException;
+        }
         finally
         {
-            scope.ExitScope();
+            if ( hasClosure )
+            {
+                scope.ExitScope();
+            }
         }
     }
 
