@@ -777,7 +777,7 @@ EntryPoint:
             }
             catch ( TargetInvocationException invocationException )
             {
-                    throw invocationException.InnerException ?? invocationException;
+                throw invocationException.InnerException ?? invocationException;
             }
         }
 
