@@ -28,6 +28,13 @@ trees to handle asynchronous workflows and other language constructs.
 
 * Supports Fast Expression Compiler (FEC) for improved performance.
 
+* Supports Interpreted Expression Trees for running expressions without compilation with `Hyperbee.Expressions.Interpreter` package.
+    *  Works the same way that the built in `lambda.Compile()` does, but without the need for compilation. 
+    ```csharp
+    var lambda = Expression.Lambda<Func<int>>(Expression.Constant(1));
+    var interpetedLambda = lambda.Interpret();
+    ```
+
 ## Examples
 
 ### Asynchronous Expressions

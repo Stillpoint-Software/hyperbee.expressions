@@ -29,7 +29,7 @@ public sealed class XsInterpreter : ExpressionVisitor
         Context = context;
     }
 
-    public TDelegate Interpreter<TDelegate>( LambdaExpression expression )
+    public TDelegate Interpret<TDelegate>( LambdaExpression expression )
         where TDelegate : Delegate
     {
         if ( Context.Reduced == null )
@@ -639,7 +639,7 @@ EntryPoint:
 
         if ( scope.Values.Count == 0 )
         {
-            results.Push( this.Interpreter( node, node.Type ) );
+            results.Push( this.Interpret( node, node.Type ) );
             return node;
         }
 
@@ -647,7 +647,7 @@ EntryPoint:
 
         if ( freeVariables.Count == 0 )
         {
-            results.Push( this.Interpreter( node, node.Type ) );
+            results.Push( this.Interpret( node, node.Type ) );
             return node;
         }
 
@@ -661,7 +661,7 @@ EntryPoint:
             capturedScope[variable] = value;
         }
 
-        var lambda = this.Interpreter( node, node.Type );
+        var lambda = this.Interpret( node, node.Type );
         results.Push( new Closure( lambda, capturedScope ) );
 
         return node;
@@ -690,7 +690,7 @@ EntryPoint:
                 break;
 
             case LambdaExpression lambda:
-                lambdaDelegate = (Delegate) this.Interpreter( lambda, lambda.Type );
+                lambdaDelegate = (Delegate) this.Interpret( lambda, lambda.Type );
                 break;
 
             default:
@@ -758,7 +758,7 @@ EntryPoint:
                     break;
 
                 case LambdaExpression lambda:
-                    arguments[i] = this.Interpreter( lambda, lambda.Type );
+                    arguments[i] = this.Interpret( lambda, lambda.Type );
                     break;
 
                 default:
@@ -777,7 +777,7 @@ EntryPoint:
             }
             catch ( TargetInvocationException invocationException )
             {
-                throw invocationException.InnerException ?? invocationException;
+                    throw invocationException.InnerException ?? invocationException;
             }
         }
 
@@ -998,7 +998,7 @@ EntryPoint:
                     break;
 
                 case LambdaExpression lambda:
-                    arguments[index] = this.Interpreter( lambda, lambda.Type );
+                    arguments[index] = this.Interpret( lambda, lambda.Type );
                     break;
 
                 default:

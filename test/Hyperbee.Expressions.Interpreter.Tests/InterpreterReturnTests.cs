@@ -36,9 +36,9 @@ public class InterpreterReturnTests
             )
         );
 
-        var compiledLambda = lambda.Interpreter();
+        var interpretedLambda = lambda.Interpret();
 
-        var result = compiledLambda();
+        var result = interpretedLambda();
 
         Assert.AreEqual( 42, result );
     }
@@ -70,9 +70,9 @@ public class InterpreterReturnTests
             )
         );
 
-        var compiledLambda = lambda.Interpreter();
+        var interpretedLambda = lambda.Interpret();
 
-        var result = compiledLambda();
+        var result = interpretedLambda();
 
         Assert.AreEqual( 42, result );
     }
@@ -108,9 +108,9 @@ public class InterpreterReturnTests
                 )
             )
         );
-        var compiledLambda = lambda.Interpreter();
+        var interpretedLambda = lambda.Interpret();
 
-        var result = compiledLambda();
+        var result = interpretedLambda();
 
         Assert.AreEqual( 42, result );
     }
@@ -146,9 +146,9 @@ public class InterpreterReturnTests
             )
         );
 
-        var compiledLambda = lambda.Interpreter();
+        var interpretedLambda = lambda.Interpret();
 
-        var result = compiledLambda();
+        var result = interpretedLambda();
 
         Assert.AreEqual( 42, result );
     }
@@ -176,9 +176,9 @@ public class InterpreterReturnTests
             )
         );
 
-        var compiledLambda = lambda.Interpreter();
+        var interpretedLambda = lambda.Interpret();
 
-        var result = compiledLambda();
+        var result = interpretedLambda();
 
         Assert.AreEqual( 42, result );
     }
@@ -209,9 +209,9 @@ public class InterpreterReturnTests
             )
         );
 
-        var compiledLambda = lambda.Interpreter();
+        var interpretedLambda = lambda.Interpret();
 
-        var result = compiledLambda();
+        var result = interpretedLambda();
 
         Assert.AreEqual( "42", result );
     }
@@ -242,9 +242,9 @@ public class InterpreterReturnTests
             )
         );
 
-        var compiledLambda = lambda.Interpreter();
+        var interpretedLambda = lambda.Interpret();
 
-        var result = compiledLambda();
+        var result = interpretedLambda();
 
         Assert.AreEqual( 13, result );
     }
@@ -284,9 +284,9 @@ public class InterpreterReturnTests
                 x )
         );
 
-        var compiledLambda = lambda.Interpreter();
+        var interpretedLambda = lambda.Interpret();
 
-        var result = compiledLambda();
+        var result = interpretedLambda();
 
         Assert.AreEqual( 42, result );
     }

@@ -5,12 +5,12 @@ namespace Hyperbee.Expressions.Interpreter;
 
 public static class LambdaExpressionExtensions
 {
-    public static object Interpreter( this LambdaExpression lambda )
+    public static object Interpret( this LambdaExpression lambda )
     {
-        return Interpreter( new XsInterpreter(), lambda );
+        return Interpret( new XsInterpreter(), lambda );
     }
 
-    internal static object Interpreter( this XsInterpreter interpreter, LambdaExpression lambda )
+    internal static object Interpret( this XsInterpreter interpreter, LambdaExpression lambda )
     {
         if ( !typeof( Delegate ).IsAssignableFrom( lambda.Type ) )
             throw new InvalidOperationException( "LambdaExpression must be convertible to a delegate." );
@@ -27,19 +27,19 @@ public static class LambdaExpressionExtensions
 
         var delegateType = Expression.GetDelegateType( paramTypes );
 
-        return Interpreter( interpreter, lambda, delegateType );
+        return Interpret( interpreter, lambda, delegateType );
     }
 
-    public static TDelegate Interpreter<TDelegate>( this Expression<TDelegate> lambda )
+    public static TDelegate Interpret<TDelegate>( this Expression<TDelegate> lambda )
         where TDelegate : Delegate
     {
-        return (TDelegate) Interpreter( (LambdaExpression) lambda );
+        return (TDelegate) Interpret( (LambdaExpression) lambda );
     }
 
-    public static object Interpreter( this XsInterpreter interpreter, LambdaExpression lambda, Type delegateType )
+    public static object Interpret( this XsInterpreter interpreter, LambdaExpression lambda, Type delegateType )
     {
         var method = typeof( XsInterpreter )
-            .GetMethod( nameof( XsInterpreter.Interpreter ), BindingFlags.Public | BindingFlags.Instance )?
+            .GetMethod( nameof( XsInterpreter.Interpret ), BindingFlags.Public | BindingFlags.Instance )?
             .MakeGenericMethod( delegateType );
 
         var interpretedDelegate = method?.Invoke( interpreter, [lambda] );

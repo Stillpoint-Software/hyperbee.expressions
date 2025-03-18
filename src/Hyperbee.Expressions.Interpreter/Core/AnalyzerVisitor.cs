@@ -2,20 +2,14 @@
 
 namespace Hyperbee.Expressions.Interpreter.Core;
 
-
-// Temp hack to make sure all nodes are reduced before analyzing
-internal sealed class LoweringVisitor : ExpressionVisitor
-{
-    protected override Expression VisitExtension( Expression node ) => Visit( node.ReduceAndCheck() );
-}
-
-
 internal sealed class AnalyzerVisitor : ExpressionVisitor
 {
     private readonly List<Expression> _currentPath = new( 8 );
 
     private readonly Dictionary<LabelTarget, List<Expression>> _labelPaths = new();
     private readonly Dictionary<GotoExpression, List<Expression>> _gotoPaths = new();
+
+    private readonly Dictionary<Expression, Expression> _replacements = new();
 
     public Dictionary<GotoExpression, Transition> Transitions { get; } = new();
     public Expression Reduced { get; private set; }
@@ -27,9 +21,8 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
 
         Transitions.Clear();
 
-        var reduced = new LoweringVisitor().Visit( root );  // TODO: fix
+        Reduced = Visit( root );
 
-        Reduced = Visit( reduced );
         ResolveTransitions();
     }
 
@@ -40,9 +33,15 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
 
         _currentPath.Add( node );
         var result = base.Visit( node );
-        _currentPath.RemoveAt( _currentPath.Count - 1 );
 
+        if ( result != node )
+        {
+            _replacements[node] = result;
+        }
+
+        _currentPath.RemoveAt( _currentPath.Count - 1 );
         return result;
+
     }
 
     protected override Expression VisitLabel( LabelExpression node )
@@ -75,8 +74,16 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         return base.VisitLoop( node );
     }
 
+    protected override Expression VisitExtension( Expression node )
+    {
+        return Visit( node.ReduceAndCheck() )!;
+    }
+
     private void ResolveTransitions()
     {
+        FixUpdatedExpressions( _replacements, _gotoPaths );
+        FixUpdatedExpressions( _replacements, _labelPaths );
+
         foreach ( var (gotoExpr, gotoPath) in _gotoPaths )
         {
             if ( !_labelPaths.TryGetValue( gotoExpr.Target, out var labelPath ) )
@@ -85,6 +92,22 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
             }
 
             Transitions[gotoExpr] = CreateTransition( gotoPath, labelPath, gotoExpr.Target );
+        }
+
+        return;
+
+        static void FixUpdatedExpressions<T>( Dictionary<Expression, Expression> replacements, Dictionary<T, List<Expression>> paths )
+        {
+            foreach ( var expressions in paths.Values )
+            {
+                for ( var i = 0; i < expressions.Count; i++ )
+                {
+                    if ( replacements.TryGetValue( expressions[i], out var replace ) )
+                    {
+                        expressions[i] = replace;
+                    }
+                }
+            }
         }
     }
 
