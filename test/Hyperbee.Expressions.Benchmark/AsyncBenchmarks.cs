@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using BenchmarkDotNet.Attributes;
 using DotNext.Linq.Expressions;
 using DotNext.Metaprogramming;
@@ -17,7 +17,7 @@ public class AsyncBenchmarks
     private Func<Task<int>> _preRunCompiledInterpret = null!;
     //private Func<Task<int>> _preRunNextFastCompiled = null!;
     //private Func<Task<int>> _preRunNextCompiledInterpret = null!;
-    
+
     private Expression<Func<Task<int>>> _lambda = null!;
     private Expression<Func<Task<int>>> _nextLambda = null!;
 
@@ -81,8 +81,8 @@ public class AsyncBenchmarks
             _preRunCompiledInterpret,
             _preRunFastCompiled,
             _preRunNextCompiled
-            /*, _preRunNextFastCompiled */
-            /*, _preRunNextCompiledInterpret */
+        /*, _preRunNextFastCompiled */
+        /*, _preRunNextCompiledInterpret */
         );
 
         return;
