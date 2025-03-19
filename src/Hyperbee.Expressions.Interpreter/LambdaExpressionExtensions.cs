@@ -1,10 +1,17 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.Concurrent;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Hyperbee.Expressions.Interpreter;
 
 public static class LambdaExpressionExtensions
 {
+    private static readonly MethodInfo OpenGenericInterpretMethod = typeof( XsInterpreter )
+        .GetMethod( nameof( XsInterpreter.Interpret ), BindingFlags.Public | BindingFlags.Instance );
+
+    private static readonly ConcurrentDictionary<Type, MethodInfo> InterpretMethods = new();
+    private static readonly ConcurrentDictionary<Type, Type> DelegateTypes = new();
+
     public static object Interpret( this LambdaExpression lambda )
     {
         return Interpret( new XsInterpreter(), lambda );
@@ -15,17 +22,18 @@ public static class LambdaExpressionExtensions
         if ( !typeof( Delegate ).IsAssignableFrom( lambda.Type ) )
             throw new InvalidOperationException( "LambdaExpression must be convertible to a delegate." );
 
-        var invokeMethod = lambda.Type.GetMethod( "Invoke" );
+        var delegateType = DelegateTypes.GetOrAdd( lambda.Type, type =>
+        {
+            var invokeMethod = lambda.Type.GetMethod( "Invoke" )
+                ?? throw new InvalidOperationException( "Invalid delegate type." );
 
-        if ( invokeMethod is null )
-            throw new InvalidOperationException( "Invalid delegate type." );
+            var paramTypes = invokeMethod.GetParameters()
+                .Select( p => p.ParameterType )
+                .Append( invokeMethod.ReturnType )
+                .ToArray();
 
-        var paramTypes = invokeMethod.GetParameters()
-            .Select( p => p.ParameterType )
-            .Append( invokeMethod.ReturnType )
-            .ToArray();
-
-        var delegateType = Expression.GetDelegateType( paramTypes );
+            return Expression.GetDelegateType( paramTypes );
+        } );
 
         return Interpret( interpreter, lambda, delegateType );
     }
@@ -38,9 +46,7 @@ public static class LambdaExpressionExtensions
 
     public static object Interpret( this XsInterpreter interpreter, LambdaExpression lambda, Type delegateType )
     {
-        var method = typeof( XsInterpreter )
-            .GetMethod( nameof( XsInterpreter.Interpret ), BindingFlags.Public | BindingFlags.Instance )?
-            .MakeGenericMethod( delegateType );
+        var method = InterpretMethods.GetOrAdd( delegateType, type => OpenGenericInterpretMethod?.MakeGenericMethod( type ) );
 
         var interpretedDelegate = method?.Invoke( interpreter, [lambda] );
 
