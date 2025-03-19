@@ -4,6 +4,7 @@
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <IsPackable>true</IsPackable>
 
     <Authors>Stillpoint Software, Inc.</Authors>
     <PackageId>Hyperbee.Expressions</PackageId>
@@ -42,7 +43,8 @@
     <None Include="..\..\assets\icon.png" Pack="true" Visible="false" PackagePath="/" />
     <None Include="..\..\README.md" Pack="true" Visible="true" PackagePath="/" Link="README.md" />
     <None Include="..\..\LICENSE" Pack="true" Visible="false" PackagePath="/" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageReference Include="Hyperbee.Collections" Version="2.4.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.13.0" />
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

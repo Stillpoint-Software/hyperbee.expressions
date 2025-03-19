@@ -28,6 +28,12 @@ trees to handle asynchronous workflows and other language constructs.
 
 * Supports Fast Expression Compiler (FEC) for improved performance.
 
+* Supports interpreted expression trees using `lambda.Compile(preferInterpretation: true)`. 
+    ```csharp
+    var lambda = Expression.Lambda<Func<int>>(Expression.Constant(1));
+    var interpetedLambda = lambda.Compile(preferInterpretation: true);
+    ```
+
 ## Examples
 
 ### Asynchronous Expressions

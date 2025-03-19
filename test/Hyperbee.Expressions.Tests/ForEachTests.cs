@@ -7,8 +7,11 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class ForEachExpressionTests
 {
-    [TestMethod]
-    public void ForEachExpression_ShouldIterateOverCollection()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void ForEachExpression_ShouldIterateOverCollection( CompilerType compiler )
     {
         // Arrange
         var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
@@ -21,15 +24,18 @@ public class ForEachExpressionTests
 
         // Act
         var lambda = Lambda<Action>( forEachExpr );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         compiledLambda();
 
         // Assert: No assertion needed
     }
 
-    [TestMethod]
-    public void ForEachExpression_ShouldBreakOnCondition()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void ForEachExpression_ShouldBreakOnCondition( CompilerType compiler )
     {
         // Arrange
         var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
@@ -46,15 +52,18 @@ public class ForEachExpressionTests
 
         // Act
         var lambda = Lambda<Action>( forEachExpr );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         compiledLambda();
 
         // Assert: No assertion needed
     }
 
-    [TestMethod]
-    public void ForEachExpression_ShouldUseCustomBreakAndContinueLabels()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void ForEachExpression_ShouldUseCustomBreakAndContinueLabels( CompilerType compiler )
     {
         // Arrange
         var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
@@ -81,7 +90,7 @@ public class ForEachExpressionTests
 
         // Act
         var lambda = Lambda<Action>( forEachExpr );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         compiledLambda();
 
@@ -91,8 +100,10 @@ public class ForEachExpressionTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task ForEachExpression_ShouldIterateOverCollection_WithAwaits( CompleterType completer, CompilerType compiler )
     {
         // Arrange

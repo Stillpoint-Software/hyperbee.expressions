@@ -10,8 +10,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenCondition( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Condition depends on awaited value
@@ -37,8 +39,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalAssignment( CompleterType completer, CompilerType compiler )
     {
         // Arrange: IfTrue branch contains an awaited task
@@ -71,8 +75,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenElseTrueBranch( CompleterType completer, CompilerType compiler )
     {
         // Arrange: IfTrue branch contains an awaited task
@@ -99,8 +105,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithIfThenElseFalseBranch( CompleterType completer, CompilerType compiler )
     {
         // Arrange: IfFalse branch contains an awaited task
@@ -127,8 +135,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalInTest( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Test depends on awaited value
@@ -154,8 +164,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTrueAndFalseBranches( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Both branches return values from awaited tasks
@@ -185,8 +197,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitBeforeAndAfterConditional( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await a task before and after a conditional expression
@@ -214,8 +228,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithFalseCondition( CompleterType completer, CompilerType compiler )
     {
         // Arrange: False condition should lead to the false branch being executed
@@ -282,8 +298,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedConditionals( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Conditionals nested inside each other
@@ -317,8 +335,10 @@ public class BlockAsyncConditionalTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithConditionalReturningTask( CompleterType completer, CompilerType compiler )
     {
         //Arrange: The result of the conditional is an awaited Task

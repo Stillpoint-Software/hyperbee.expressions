@@ -30,8 +30,12 @@ public class UsingExpressionTests
         _wasBodyExecuted = false;
     }
 
-    [TestMethod]
-    public void UsingExpression_ShouldDisposeResource_AfterUse()
+
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void UsingExpression_ShouldDisposeResource_AfterUse( CompilerType compiler )
     {
         // Arrange
         var resource = new TestDisposableResource();
@@ -44,7 +48,7 @@ public class UsingExpressionTests
         var usingExpression = Using( disposableVariable, disposableExpression, bodyExpression );
 
         var lambda = Lambda<Func<bool>>( usingExpression );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         var result = compiledLambda();
 
@@ -53,8 +57,11 @@ public class UsingExpressionTests
         Assert.IsTrue( resource.IsDisposed, "Resource should be disposed after using the expression." );
     }
 
-    [TestMethod]
-    public void UsingExpression_ShouldExecuteBodyExpression()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void UsingExpression_ShouldExecuteBodyExpression( CompilerType compiler )
     {
         // Arrange
         var resource = new TestDisposableResource();
@@ -70,7 +77,7 @@ public class UsingExpressionTests
         var usingExpression = Using( disposableExpression, bodyExpression );
 
         var lambda = Lambda<Action>( usingExpression );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         compiledLambda();
 
@@ -81,8 +88,10 @@ public class UsingExpressionTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task UsingExpression_ShouldExecuteAsyncExpression( CompleterType completer, CompilerType compiler )
     {
         // Arrange
@@ -108,8 +117,10 @@ public class UsingExpressionTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task UsingExpression_ShouldExecuteAsyncExpression_WithInnerUsing( CompleterType completer, CompilerType compiler )
     {
         // Arrange
@@ -147,8 +158,11 @@ public class UsingExpressionTests
         // The constructor should throw the exception, no need for further assertions
     }
 
-    [TestMethod]
-    public void UsingExpression_ShouldDisposeResource_EvenIfExceptionThrown()
+    [DataTestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void UsingExpression_ShouldDisposeResource_EvenIfExceptionThrown( CompilerType compiler )
     {
         // Arrange
         var resource = new TestDisposableResource();
@@ -160,7 +174,7 @@ public class UsingExpressionTests
         var usingExpression = Using( disposableExpression, bodyExpression );
 
         var lambda = Lambda<Action>( usingExpression );
-        var compiledLambda = lambda.Compile();
+        var compiledLambda = lambda.Compile( compiler );
 
         // Assert: Execute the expression and catch the exception, check if the resource was disposed
         try

@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using DotNext.Linq.Expressions;
 using DotNext.Metaprogramming;
 using FastExpressionCompiler;
+
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -13,10 +14,12 @@ public class AsyncBenchmarks
     private Func<Task<int>> _preRunCompiled = null!;
     private Func<Task<int>> _preRunFastCompiled = null!;
     private Func<Task<int>> _preRunNextCompiled = null!;
+    private Func<Task<int>> _preRunCompiledInterpret = null!;
     //private Func<Task<int>> _preRunNextFastCompiled = null!;
+    //private Func<Task<int>> _preRunNextCompiledInterpret = null!;
 
     private Expression<Func<Task<int>>> _lambda = null!;
-    private Expression<Func<Task<int>>> _nextlambda = null!;
+    private Expression<Func<Task<int>>> _nextLambda = null!;
 
     private Expression _expression = null!;
 
@@ -40,7 +43,7 @@ public class AsyncBenchmarks
 
         _lambda = Lambda<Func<Task<int>>>( _expression );
 
-        _nextlambda = CodeGenerator.AsyncLambda<Func<Task<int>>>( ( _, result ) =>
+        _nextLambda = CodeGenerator.AsyncLambda<Func<Task<int>>>( ( _, result ) =>
         {
             var isTrue = CodeGenerator.DeclareVariable( "isTrue", typeof( bool ).New() );
 
@@ -66,19 +69,29 @@ public class AsyncBenchmarks
         // build and call once for warmup
 
         _preRunCompiled = _lambda.Compile();
+        _preRunCompiledInterpret = _lambda.Compile( preferInterpretation: true );
         _preRunFastCompiled = _lambda.CompileFast();
-        _preRunNextCompiled = _nextlambda.Compile();
-        //_preRunFastNextCompiled = _nextlambda.CompileFast();
 
-        Warmup( _preRunCompiled, _preRunFastCompiled, _preRunNextCompiled );
+        _preRunNextCompiled = _nextLambda.Compile();
+        //_preRunNextFastCompiled = _nextLambda.CompileFast();
+        //_preRunNextCompiledInterpret = _nextLambda.Compile( preferInterpretation: true );
+
+        Warmup(
+            _preRunCompiled,
+            _preRunCompiledInterpret,
+            _preRunFastCompiled,
+            _preRunNextCompiled
+        /*, _preRunNextFastCompiled */
+        /*, _preRunNextCompiledInterpret */
+        );
 
         return;
 
         // Helpers
 
-        static void Warmup( params Func<Task<int>>[] funcs )
+        static void Warmup( params Func<Task<int>>[] functions )
         {
-            foreach ( var func in funcs )
+            foreach ( var func in functions )
             {
                 func().Wait();
             }
@@ -88,7 +101,7 @@ public class AsyncBenchmarks
     // Compile
 
     [BenchmarkCategory( "Compile" )]
-    [Benchmark( Description = "Hyperbee Compile" )]
+    [Benchmark( Description = "Hyperbee System Compile" )]
     public void Hyperbee_AsyncBlock_Compile()
     {
         _lambda.Compile();
@@ -102,10 +115,17 @@ public class AsyncBenchmarks
     }
 
     [BenchmarkCategory( "Compile" )]
-    [Benchmark( Description = "DotNext Compile" )]
+    [Benchmark( Description = "DotNext System Compile" )]
     public void DotNext_AsyncLambda_Compile()
     {
-        _nextlambda.Compile();
+        _nextLambda.Compile();
+    }
+
+    [BenchmarkCategory( "Compile" )]
+    [Benchmark( Description = "DotNext Fast Compile" )]
+    public void DotNext_AsyncLambda_FastCompile()
+    {
+        _nextLambda.CompileFast();
     }
 
     // Execute
@@ -118,8 +138,8 @@ public class AsyncBenchmarks
     }
 
     [BenchmarkCategory( "Execute" )]
-    [Benchmark( Description = "Hyperbee Execute" )]
-    public async Task Hyperbee_AsyncBlock_Execute()
+    [Benchmark( Description = "Hyperbee System Execute" )]
+    public async Task Hyperbee_AsyncBlock_SystemExecute()
     {
         await _preRunCompiled();
     }
@@ -132,11 +152,32 @@ public class AsyncBenchmarks
     }
 
     [BenchmarkCategory( "Execute" )]
-    [Benchmark( Description = "DotNext Execute" )]
-    public async Task DotNext_AsyncLambda_Execute()
+    [Benchmark( Description = "DotNext System Execute" )]
+    public async Task DotNext_AsyncLambda_SystemExecute()
     {
         await _preRunNextCompiled();
     }
+
+    //[BenchmarkCategory( "Execute" )]
+    //[Benchmark( Description = "DotNext Fast Execute" )]
+    //public async Task DotNext_AsyncLambda_FastExecute()
+    //{
+    //    await _preRunNextFastCompiled();
+    //}
+
+    [BenchmarkCategory( "Execute" )]
+    [Benchmark( Description = "Hyperbee Interpret Execute" )]
+    public async Task System_AsyncBlock_Execute_Interpret()
+    {
+        await _preRunCompiledInterpret();
+    }
+
+    //[BenchmarkCategory( "Execute" )]
+    //[Benchmark( Description = "DotNext Interpret Execute" )]
+    //public async Task DotNext_AsyncBlock_Execute_Interpret()
+    //{
+    //    await _preRunNextCompiledInterpret();
+    //}
 
     // Helpers
 

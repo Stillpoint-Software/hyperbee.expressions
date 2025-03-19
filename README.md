@@ -1,7 +1,7 @@
 ﻿# Welcome to Hyperbee Expressions
 
-`Hyperbee.Expressions` is a C# library that extends the capabilities of expression trees to handle asynchronous 
-workflows and other language constructs.
+`Hyperbee.Expressions` is a library for creating c# expression trees that extend the capabilities of standard expression 
+trees to handle asynchronous workflows and other language constructs.
 
 ## Features
 
@@ -21,6 +21,14 @@ workflows and other language constructs.
     * `StringFormatExpression`: An expression that creates a string using a supplied format string and parameters.
     * `DebugExpression`: An expression that helps when debugging expression trees.
 
+* Supports Fast Expression Compiler (FEC) for improved performance.
+
+* Supports interpreted expression trees using `lambda.Compile(preferInterpretation: true)`. 
+    ```csharp
+    var lambda = Expression.Lambda<Func<int>>(Expression.Constant(1));
+    var interpetedLambda = lambda.Compile(preferInterpretation: true);
+    ```
+
 ## Examples
 
 ### Asynchronous Expressions
@@ -37,7 +45,6 @@ public class Example
     public async Task ExampleAsync()
     {
         // Create an async block that calls async methods and assigns their results
-
         var instance = Constant( this );
         var result1 = Variable( typeof(int), "result1" );
         var result2 = Variable( typeof(int), "result2" );
@@ -119,5 +126,4 @@ Special thanks to:
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](https://github.com/Stillpoint-Software/.github/blob/main/.github/CONTRIBUTING.md) 
-for more details.
-
+for more detai

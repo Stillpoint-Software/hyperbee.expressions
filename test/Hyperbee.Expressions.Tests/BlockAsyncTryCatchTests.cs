@@ -10,8 +10,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the try block
@@ -38,8 +40,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldCatchExceptionSuccessfully_WithAwaitInCatchBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the catch block
@@ -76,8 +80,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldHandleExceptionSuccessfully_WithTryCatchFinally( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in both catch and finally blocks
@@ -117,8 +123,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryAndFinallyBlocks( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in both try and finally blocks
@@ -144,8 +152,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitInTryCatchAndFinallyBlocks( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in Try, Catch, and Finally blocks
@@ -176,8 +186,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithAwaitAfterThrow( CompleterType completer, CompilerType compiler )
     {
         var resultValue = Parameter( typeof( int ) );
@@ -210,8 +222,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldCatchMultipleExceptionsInNestedTryBlocks( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Multiple exceptions in nested Try-Catch blocks
@@ -250,8 +264,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the try block
@@ -300,8 +316,10 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithComplexNestedTryFinallyBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the try block
@@ -375,6 +393,7 @@ public class BlockAsyncTryCatchTests
     [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldAwaitSuccessfully_WithNestedTryCatchAndDelayedAwait( CompilerType compiler )
     {
         // Arrange: Nested TryCatch with delayed await tasks (non-completed)
