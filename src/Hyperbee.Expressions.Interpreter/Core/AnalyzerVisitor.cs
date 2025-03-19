@@ -9,7 +9,7 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
     private readonly Dictionary<LabelTarget, List<Expression>> _labelPaths = new();
     private readonly Dictionary<GotoExpression, List<Expression>> _gotoPaths = new();
 
-    private readonly Dictionary<Expression, Expression> _replacements = new();
+    //private readonly Dictionary<Expression, Expression> _replacements = new();
 
     public Dictionary<GotoExpression, Transition> Transitions { get; } = new();
     public Expression Reduced { get; private set; }
@@ -26,23 +26,37 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         ResolveTransitions();
     }
 
-    public override Expression Visit( Expression node )
+public override Expression Visit( Expression node )
+{
+    if ( node == null )
+        return null;
+
+    _currentPath.Add( node );
+    var result = base.Visit( node );
+
+    if ( !ReferenceEquals( node, result ) )
     {
-        if ( node == null )
-            return null;
-
-        _currentPath.Add( node );
-        var result = base.Visit( node );
-
-        if ( result != node )
-        {
-            _replacements[node] = result;
-        }
-
-        _currentPath.RemoveAt( _currentPath.Count - 1 );
-        return result;
-
+        FixExpressionPaths( node, result, _gotoPaths );
+        FixExpressionPaths( node, result, _labelPaths );
     }
+
+    _currentPath.RemoveAt( _currentPath.Count - 1 );
+    return result;
+
+    static void FixExpressionPaths<T>( Expression original, Expression replacement, Dictionary<T, List<Expression>> paths )
+    {
+        foreach ( var expressions in paths.Values )
+        {
+            for ( var i = 0; i < expressions.Count; i++ )
+            {
+                if ( ReferenceEquals( expressions[i], original ) )
+                {
+                    expressions[i] = replacement;
+                }
+            }
+        }
+    }
+}
 
     protected override Expression VisitLabel( LabelExpression node )
     {
@@ -81,8 +95,8 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
 
     private void ResolveTransitions()
     {
-        FixUpdatedExpressions( _replacements, _gotoPaths );
-        FixUpdatedExpressions( _replacements, _labelPaths );
+        //FixUpdatedExpressions( _replacements, _gotoPaths );
+        //FixUpdatedExpressions( _replacements, _labelPaths );
 
         foreach ( var (gotoExpr, gotoPath) in _gotoPaths )
         {
@@ -94,21 +108,21 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
             Transitions[gotoExpr] = CreateTransition( gotoPath, labelPath, gotoExpr.Target );
         }
 
-        return;
+        // return;
 
-        static void FixUpdatedExpressions<T>( Dictionary<Expression, Expression> replacements, Dictionary<T, List<Expression>> paths )
-        {
-            foreach ( var expressions in paths.Values )
-            {
-                for ( var i = 0; i < expressions.Count; i++ )
-                {
-                    if ( replacements.TryGetValue( expressions[i], out var replace ) )
-                    {
-                        expressions[i] = replace;
-                    }
-                }
-            }
-        }
+        //static void FixUpdatedExpressions<T>( Dictionary<Expression, Expression> replacements, Dictionary<T, List<Expression>> paths )
+        //{
+        //    foreach ( var expressions in paths.Values )
+        //    {
+        //        for ( var i = 0; i < expressions.Count; i++ )
+        //        {
+        //            if ( replacements.TryGetValue( expressions[i], out var replace ) )
+        //            {
+        //                expressions[i] = replace;
+        //            }
+        //        }
+        //    }
+        //}
     }
 
     private static Transition CreateTransition( List<Expression> gotoPath, List<Expression> labelPath, LabelTarget targetLabel )
