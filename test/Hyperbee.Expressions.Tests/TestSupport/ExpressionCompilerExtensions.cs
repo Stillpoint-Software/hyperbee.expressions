@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using Hyperbee.Expressions.Interpreter;
 
 #if FAST_COMPILER
 using FastExpressionCompiler;
@@ -28,7 +27,7 @@ public static class ExpressionCompilerExtensions
 #endif
         if ( compilerType == CompilerType.Interpret )
         {
-            return expression.Interpret();
+            return expression.Compile( preferInterpretation: true );
         }
 
         return expression.Compile();
@@ -46,7 +45,7 @@ public static class ExpressionCompilerExtensions
 #endif
         if ( compilerType == CompilerType.Interpret )
         {
-            return expression.Interpret();
+            return expression.Compile( preferInterpretation: true );
         }
 
         return expression.Compile();
@@ -64,7 +63,7 @@ public static class ExpressionCompilerExtensions
 #endif
         if ( compilerType == CompilerType.Interpret )
         {
-            return expression.Interpret();
+            return expression.Compile( preferInterpretation: true );
         }
 
         return expression.Compile();
@@ -81,7 +80,7 @@ public static class ExpressionCompilerExtensions
 #endif
         if ( compilerType == CompilerType.Interpret )
         {
-            return expression.Interpret();
+            return expression.Compile( preferInterpretation: true );
         }
 
         return expression.Compile();

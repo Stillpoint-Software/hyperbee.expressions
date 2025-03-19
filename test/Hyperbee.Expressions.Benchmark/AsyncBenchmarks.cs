@@ -3,7 +3,7 @@ using BenchmarkDotNet.Attributes;
 using DotNext.Linq.Expressions;
 using DotNext.Metaprogramming;
 using FastExpressionCompiler;
-using Hyperbee.Expressions.Interpreter;
+
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -12,7 +12,6 @@ namespace Hyperbee.Expressions.Benchmark;
 public class AsyncBenchmarks
 {
     private Func<Task<int>> _preRunCompiled = null!;
-    private Func<Task<int>> _preRunInterpret = null!;
     private Func<Task<int>> _preRunFastCompiled = null!;
     private Func<Task<int>> _preRunNextCompiled = null!;
     private Func<Task<int>> _preRunCompiledInterpret = null!;
@@ -72,7 +71,6 @@ public class AsyncBenchmarks
         _preRunCompiled = _lambda.Compile();
         _preRunCompiledInterpret = _lambda.Compile( preferInterpretation: true );
         _preRunFastCompiled = _lambda.CompileFast();
-        _preRunInterpret = _lambda.Interpret();
 
         _preRunNextCompiled = _nextLambda.Compile();
         //_preRunNextFastCompiled = _nextLambda.CompileFast();
@@ -82,7 +80,6 @@ public class AsyncBenchmarks
             _preRunCompiled,
             _preRunCompiledInterpret,
             _preRunFastCompiled,
-            _preRunInterpret,
             _preRunNextCompiled
             /*, _preRunNextFastCompiled */
             /*, _preRunNextCompiledInterpret */
@@ -169,42 +166,18 @@ public class AsyncBenchmarks
     //}
 
     [BenchmarkCategory( "Execute" )]
-    [Benchmark( Description = "Hyperbee System Interpret Execute" )]
+    [Benchmark( Description = "Hyperbee Interpret Execute" )]
     public async Task System_AsyncBlock_Execute_Interpret()
     {
         await _preRunCompiledInterpret();
     }
 
-    [BenchmarkCategory( "Execute" )]
-    [Benchmark( Description = "Hyperbee Interpret Execute" )]
-    public async Task Hyperbee_AsyncBlock_Execute_Interpret()
-    {
-        await _preRunInterpret();
-    }
-
     //[BenchmarkCategory( "Execute" )]
-    //[Benchmark( Description = "DotNext System Interpret Execute" )]
+    //[Benchmark( Description = "DotNext Interpret Execute" )]
     //public async Task DotNext_AsyncBlock_Execute_Interpret()
     //{
     //    await _preRunNextCompiledInterpret();
     //}
-    
-
-    // Interpret
-
-    [BenchmarkCategory( "Interpret" )]
-    [Benchmark( Description = "Hyperbee System Interpret" )]
-    public void System_AsyncBlock_CompileInterpret()
-    {
-        _lambda.Compile( preferInterpretation: true );
-    }
-
-    [BenchmarkCategory( "Interpret" )]
-    [Benchmark( Description = "Hyperbee Interpret" )]
-    public void Hyperbee_AsyncBlock_Interpret()
-    {
-        _lambda.Interpret();
-    }
 
     // Helpers
 

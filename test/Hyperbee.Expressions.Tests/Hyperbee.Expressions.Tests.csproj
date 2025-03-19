@@ -24,7 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hyperbee.Expressions.Interpreter\Hyperbee.Expressions.Interpreter.csproj" />
     <ProjectReference Include="..\..\src\Hyperbee.Expressions\Hyperbee.Expressions.csproj" />
   </ItemGroup>
 
