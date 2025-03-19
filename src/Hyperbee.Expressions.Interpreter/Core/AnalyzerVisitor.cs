@@ -26,37 +26,37 @@ internal sealed class AnalyzerVisitor : ExpressionVisitor
         ResolveTransitions();
     }
 
-public override Expression Visit( Expression node )
-{
-    if ( node == null )
-        return null;
-
-    _currentPath.Add( node );
-    var result = base.Visit( node );
-
-    if ( !ReferenceEquals( node, result ) )
+    public override Expression Visit( Expression node )
     {
-        FixExpressionPaths( node, result, _gotoPaths );
-        FixExpressionPaths( node, result, _labelPaths );
-    }
+        if ( node == null )
+            return null;
 
-    _currentPath.RemoveAt( _currentPath.Count - 1 );
-    return result;
+        _currentPath.Add( node );
+        var result = base.Visit( node );
 
-    static void FixExpressionPaths<T>( Expression original, Expression replacement, Dictionary<T, List<Expression>> paths )
-    {
-        foreach ( var expressions in paths.Values )
+        if ( !ReferenceEquals( node, result ) )
         {
-            for ( var i = 0; i < expressions.Count; i++ )
+            FixExpressionPaths( node, result, _gotoPaths );
+            FixExpressionPaths( node, result, _labelPaths );
+        }
+
+        _currentPath.RemoveAt( _currentPath.Count - 1 );
+        return result;
+
+        static void FixExpressionPaths<T>( Expression original, Expression replacement, Dictionary<T, List<Expression>> paths )
+        {
+            foreach ( var expressions in paths.Values )
             {
-                if ( ReferenceEquals( expressions[i], original ) )
+                for ( var i = 0; i < expressions.Count; i++ )
                 {
-                    expressions[i] = replacement;
+                    if ( ReferenceEquals( expressions[i], original ) )
+                    {
+                        expressions[i] = replacement;
+                    }
                 }
             }
         }
     }
-}
 
     protected override Expression VisitLabel( LabelExpression node )
     {
