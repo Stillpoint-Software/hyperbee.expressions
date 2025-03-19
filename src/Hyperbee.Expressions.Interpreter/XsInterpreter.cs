@@ -148,7 +148,7 @@ public sealed class XsInterpreter : ExpressionVisitor
 
         try
         {
-EntryPoint:
+Start:
 
             if ( Context.IsTransitioning )
             {
@@ -183,7 +183,7 @@ EntryPoint:
                         if ( Context.IsTransitioning )
                         {
                             if ( Transition.CommonAncestor == node )
-                                goto EntryPoint;
+                                goto Start;
 
                             results.Push( lastResult );
                             return node!;
@@ -221,7 +221,7 @@ EntryPoint:
         Expression expr = null;
         object lastResult = null;
 
-EntryPoint:
+Start:
 
         if ( Context.IsTransitioning )
         {
@@ -257,7 +257,7 @@ EntryPoint:
                     if ( Context.IsTransitioning )
                     {
                         if ( Transition.CommonAncestor == node )
-                            goto EntryPoint;
+                            goto Start;
 
                         results.Push( lastResult );
                         return node;
@@ -295,7 +295,7 @@ EntryPoint:
         Expression expr = null;
         object lastResult = null;
 
-EntryPoint:
+Start:
 
         if ( Context.IsTransitioning )
         {
@@ -379,7 +379,7 @@ EntryPoint:
                     if ( Context.IsTransitioning )
                     {
                         if ( Transition.CommonAncestor == node )
-                            goto EntryPoint;
+                            goto Start;
 
                         results.Push( lastResult );
                         return node;
@@ -418,7 +418,7 @@ EntryPoint:
         ParameterExpression exceptionVariable = null;
         object lastResult = null;
 
-EntryPoint:
+Start:
 
         if ( Context.IsTransitioning )
         {
@@ -514,7 +514,7 @@ EntryPoint:
                         }
 
                         if ( Transition.CommonAncestor == node )
-                            goto EntryPoint;
+                            goto Start;
                     }
 
                     state = continuation;
@@ -550,7 +550,7 @@ EntryPoint:
                     if ( Context.IsTransitioning )
                     {
                         if ( Transition.CommonAncestor == node )
-                            goto EntryPoint;
+                            goto Start;
 
                         results.Push( lastResult );
                         return node;
@@ -567,7 +567,7 @@ EntryPoint:
                     if ( Context.IsTransitioning )
                     {
                         if ( Transition.CommonAncestor == node )
-                            goto EntryPoint;
+                            goto Start;
 
                         if ( GetException( Transition ) != null )
                         {
