@@ -271,7 +271,8 @@ internal class StateMachineBuilder<TResult>
             exitLabel,
             stateField,
             builderField,
-            finalResultField
+            finalResultField,
+            null //TODO: current for yield?
         );
 
         // Create final lambda with try-catch block
