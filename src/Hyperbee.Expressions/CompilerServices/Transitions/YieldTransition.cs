@@ -24,7 +24,7 @@ internal class YieldTransition : Transition
             );
             return;
         }
-        expressions.Add( 
+        expressions.Add(
             Block(
                 Assign( context.StateMachineInfo.StateField, Constant( TargetNode.StateId ) ),
                 Assign( context.StateMachineInfo.CurrentField, Value ),

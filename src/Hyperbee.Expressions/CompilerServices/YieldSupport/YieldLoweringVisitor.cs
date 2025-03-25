@@ -251,7 +251,7 @@ internal class YieldLoweringVisitor : ExpressionVisitor
         var updateNode = base.VisitGoto( node );
 
         //if ( updateNode is not GotoExpression { Kind: GotoExpressionKind.Return } gotoExpression )
-            return updateNode;
+        return updateNode;
 
         //_hasFinalResultVariable = true;
 
@@ -340,9 +340,9 @@ internal class YieldLoweringVisitor : ExpressionVisitor
 
         var joinState = _states.EnterGroup( out var sourceState );
 
-       // var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
-      //  var tryStateVariable = _variableResolver.GetTryVariable( sourceState.StateId );
-      //  var exceptionVariable = _variableResolver.GetExceptionVariable( sourceState.StateId );
+        // var resultVariable = _variableResolver.GetResultVariable( node, sourceState.StateId );
+        //  var tryStateVariable = _variableResolver.GetTryVariable( sourceState.StateId );
+        //  var exceptionVariable = _variableResolver.GetExceptionVariable( sourceState.StateId );
 
         // if there is a finally block then that is the join for a try/catch.
 
@@ -358,9 +358,9 @@ internal class YieldLoweringVisitor : ExpressionVisitor
 
         var tryCatchTransition = new TryCatchTransition
         {
-           // TryStateVariable = tryStateVariable,
-           // ExceptionVariable = exceptionVariable,
-          //  TryNode = VisitBranch( node.Body, joinState, resultVariable ),
+            // TryStateVariable = tryStateVariable,
+            // ExceptionVariable = exceptionVariable,
+            //  TryNode = VisitBranch( node.Body, joinState, resultVariable ),
             FinallyNode = finalExpression,
             StateScope = nodeScope,
             Scopes = _states.Scopes

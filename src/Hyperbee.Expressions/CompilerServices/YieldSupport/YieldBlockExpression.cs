@@ -32,7 +32,7 @@ public class YieldBlockExpression : Expression
     {
         return YieldStateMachineBuilder.Create( EnumerableType, LoweringTransformer );
     }
-    
+
     private LoweringInfo LoweringTransformer()
     {
         try
@@ -54,48 +54,48 @@ public class YieldBlockExpression : Expression
 
     private Type GetYieldType()
     {
-        var stack = new Stack<Expression>(Expressions);
-        while (stack.Count > 0)
+        var stack = new Stack<Expression>( Expressions );
+        while ( stack.Count > 0 )
         {
             var current = stack.Pop();
-            switch (current)
+            switch ( current )
             {
                 case YieldExpression { IsReturn: true } yieldExpression:
                     return yieldExpression.Type;
 
                 case BlockExpression blockExpression:
-                    foreach (var expr in blockExpression.Expressions)
+                    foreach ( var expr in blockExpression.Expressions )
                     {
-                        stack.Push(expr);
+                        stack.Push( expr );
                     }
                     break;
                 case ConditionalExpression conditionalExpression:
-                    stack.Push(conditionalExpression.IfTrue);
-                    stack.Push(conditionalExpression.IfFalse);
-                    stack.Push(conditionalExpression.Test);
+                    stack.Push( conditionalExpression.IfTrue );
+                    stack.Push( conditionalExpression.IfFalse );
+                    stack.Push( conditionalExpression.Test );
                     break;
                 case LoopExpression loopExpression:
-                    stack.Push(loopExpression.Body);
+                    stack.Push( loopExpression.Body );
                     break;
                 case SwitchExpression switchExpression:
-                    foreach (var switchCase in switchExpression.Cases)
+                    foreach ( var switchCase in switchExpression.Cases )
                     {
                         stack.Push( switchCase.Body );
                     }
-                    stack.Push(switchExpression.SwitchValue);
+                    stack.Push( switchExpression.SwitchValue );
                     break;
                 case TryExpression tryExpression:
-                    stack.Push(tryExpression.Body);
-                    if (tryExpression.Fault != null) stack.Push(tryExpression.Fault);
-                    if (tryExpression.Finally != null) stack.Push(tryExpression.Finally);
-                    foreach (var handler in tryExpression.Handlers)
+                    stack.Push( tryExpression.Body );
+                    if ( tryExpression.Fault != null ) stack.Push( tryExpression.Fault );
+                    if ( tryExpression.Finally != null ) stack.Push( tryExpression.Finally );
+                    foreach ( var handler in tryExpression.Handlers )
                     {
-                        stack.Push(handler.Body);
+                        stack.Push( handler.Body );
                     }
                     break;
             }
         }
-        return typeof(void);
+        return typeof( void );
     }
 }
 

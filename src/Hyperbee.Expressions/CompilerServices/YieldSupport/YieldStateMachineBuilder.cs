@@ -3,8 +3,8 @@ using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
-using Hyperbee.Collections;
 using System.Runtime.CompilerServices;
+using Hyperbee.Collections;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices.YieldSupport;
@@ -101,7 +101,7 @@ internal class YieldStateMachineBuilder<TResult>
         var stateField = Field( stateMachine, FieldName.State );
         var currentField = Field( stateMachine, FieldName.Current );
 
-        var exitLabel = Label( typeof(bool), "ST_EXIT" );
+        var exitLabel = Label( typeof( bool ), "ST_EXIT" );
 
         context.StateMachineInfo = new StateMachineInfo(
             stateMachine,
@@ -113,7 +113,7 @@ internal class YieldStateMachineBuilder<TResult>
         );
 
         return Lambda(
-            typeof(YieldMoveNextDelegate<>).MakeGenericType( stateMachineType ),
+            typeof( YieldMoveNextDelegate<> ).MakeGenericType( stateMachineType ),
             Block(
                 TryFault(
                     Block(
@@ -183,7 +183,7 @@ internal class YieldStateMachineBuilder<TResult>
         }
     }
 
-    private Type CreateStateMachineType( StateMachineContext context, out Dictionary<ParameterExpression,FieldInfo> fieldLookup, out FieldInfo[] fields )
+    private Type CreateStateMachineType( StateMachineContext context, out Dictionary<ParameterExpression, FieldInfo> fieldLookup, out FieldInfo[] fields )
     {
         var typeBuilder = _moduleBuilder.DefineType( "YieldStateMachine", TypeAttributes.Public, typeof( object ),
         [
@@ -255,7 +255,7 @@ internal class YieldStateMachineBuilder<TResult>
     private static void ImplementIEnumerable( TypeBuilder typeBuilder )
     {
         var getEnumeratorMethod = typeBuilder.DefineMethod( "GetEnumerator",
-            MethodAttributes.Public | MethodAttributes.Virtual, typeof(IEnumerator), Type.EmptyTypes );
+            MethodAttributes.Public | MethodAttributes.Virtual, typeof( IEnumerator ), Type.EmptyTypes );
         var ilGen = getEnumeratorMethod.GetILGenerator();
 
         // Get the GetEnumerator method from IEnumerable<TResult>
@@ -273,14 +273,14 @@ internal class YieldStateMachineBuilder<TResult>
         ilGen.Emit( OpCodes.Castclass, typeof( IEnumerator ) );
         ilGen.Emit( OpCodes.Ret );
 
-        typeBuilder.DefineMethodOverride( getEnumeratorMethod, typeof(IEnumerable).GetMethod( "GetEnumerator" )! );
+        typeBuilder.DefineMethodOverride( getEnumeratorMethod, typeof( IEnumerable ).GetMethod( "GetEnumerator" )! );
     }
     private static void ImplementIEnumerableType( TypeBuilder typeBuilder, FieldBuilder stateField )
     {
         var getEnumeratorMethod = typeBuilder
-            .DefineMethod( "GetEnumerator", 
-                MethodAttributes.Public | MethodAttributes.Virtual, 
-                typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ), 
+            .DefineMethod( "GetEnumerator",
+                MethodAttributes.Public | MethodAttributes.Virtual,
+                typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ),
                 Type.EmptyTypes );
 
         var ilGen = getEnumeratorMethod.GetILGenerator();
@@ -301,8 +301,8 @@ internal class YieldStateMachineBuilder<TResult>
         ilGen.Emit( OpCodes.Castclass, typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ) );
         ilGen.Emit( OpCodes.Ret );
 
-        typeBuilder.DefineMethodOverride( 
-            getEnumeratorMethod, 
+        typeBuilder.DefineMethodOverride(
+            getEnumeratorMethod,
             typeof( IEnumerable<> ).MakeGenericType( typeof( TResult ) ).GetMethod( "GetEnumerator" )! );
     }
     private static void ImplementIEnumerator( TypeBuilder typeBuilder, FieldBuilder moveNextDelegateField, Type moveNextDelegateType, FieldBuilder currentField )

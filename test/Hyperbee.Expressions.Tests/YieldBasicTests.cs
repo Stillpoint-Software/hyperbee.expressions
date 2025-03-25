@@ -19,16 +19,16 @@ public class YieldBasicTests
     {
         // Arrange
         var block = BlockYield(
-            IfThenElse( Constant( true ), 
+            IfThenElse( Constant( true ),
                 Block(
                     YieldReturn( Constant( 5 ) ),
                     YieldReturn( Constant( 6 ) ),
                     YieldReturn( Constant( 7 ) )
-                    //YieldBreak()
+                //YieldBreak()
                 ),
                 YieldReturn( Constant( 10 ) ) ),
             YieldReturn( Constant( 15 ) )//,
-            //YieldBreak()
+                                         //YieldBreak()
         );
 
         var lambda = Lambda<Func<IEnumerable<int>>>( block );
@@ -66,7 +66,7 @@ public class YieldBasicTests
         var compiledLambda = lambda.Compile( compiler );
 
         // Act
-        var result = compiledLambda(12);
+        var result = compiledLambda( 12 );
 
         var results = result.ToArray();
 
