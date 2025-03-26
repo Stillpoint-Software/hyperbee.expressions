@@ -181,13 +181,19 @@ internal class LoweringVisitor : ExpressionVisitor
         StateNode firstGoto = null;
         StateNode previousTail = null;
 
-        foreach ( var expression in node.Expressions )
+        for ( var index = 0; index < node.Expressions.Count; index++ )
         {
+            var expression = node.Expressions[index];
+
             if ( RequiresLowering( expression ) )
             {
-                var updated = VisitBranch( expression, joinState, resultVariable ); // Warning: visitation mutates the tail state.
+                var updated =
+                    VisitBranch( expression, joinState, resultVariable ); // Warning: visitation mutates the tail state.
 
-                previousVariable = updated.Result.Variable;
+                // handle last expression in the block
+                if ( index == node.Expressions.Count -1 )
+                    previousVariable = updated.Result.Variable;
+
                 joinState.Result.Variable = previousVariable;
 
                 // Fix tail linked list of Transitions.

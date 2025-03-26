@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -53,7 +53,6 @@ internal class StateMachineBuilder<TResult>
         // 
         // stateMachine.__builder<> = new AsyncInterpreterTaskBuilder<TResult>();
         // stateMachine.__state<> = -1;
-        // stateMachine.<extern_fields> = <extern_fields>;
         //
         // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
         // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
