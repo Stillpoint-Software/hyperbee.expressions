@@ -191,7 +191,7 @@ internal class LoweringVisitor : ExpressionVisitor
                     VisitBranch( expression, joinState, resultVariable ); // Warning: visitation mutates the tail state.
 
                 // handle last expression in the block
-                if ( index == node.Expressions.Count -1 )
+                if ( index == node.Expressions.Count - 1 )
                     previousVariable = updated.Result.Variable;
 
                 joinState.Result.Variable = previousVariable;
