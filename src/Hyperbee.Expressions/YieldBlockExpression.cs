@@ -1,8 +1,10 @@
 ﻿using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using Hyperbee.Collections;
+using Hyperbee.Expressions.CompilerServices;
+using Hyperbee.Expressions.CompilerServices.Lowering;
 
-namespace Hyperbee.Expressions.CompilerServices.YieldSupport;
+namespace Hyperbee.Expressions;
 
 public class YieldBlockExpression : Expression
 {
@@ -78,6 +80,7 @@ public class YieldBlockExpression : Expression
                     stack.Push( loopExpression.Body );
                     break;
                 case SwitchExpression switchExpression:
+                    stack.Push( switchExpression.DefaultBody );
                     foreach ( var switchCase in switchExpression.Cases )
                     {
                         stack.Push( switchCase.Body );

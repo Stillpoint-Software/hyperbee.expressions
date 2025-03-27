@@ -1,8 +1,6 @@
-﻿using System.Collections.ObjectModel;
-using System.Linq.Expressions;
-using System.Transactions;
+﻿using System.Linq.Expressions;
 
-namespace Hyperbee.Expressions.CompilerServices.YieldSupport;
+namespace Hyperbee.Expressions;
 
 public class YieldExpression : Expression
 {
@@ -32,17 +30,7 @@ public class YieldExpression : Expression
 
     public override Expression Reduce()
     {
-        //if ( IsReturn )
-        //{
-        //    return Block(
-        //        Assign( State, Constant( -1 ) ),
-        //        Assign( Current, Value ),
-        //        Return( Constant( true ) )
-        //    );
-        //}
-
-
-        // TODO: Hack
+        // Note: Shouldn't be called, but just in case
         return Value ?? Default( Type );
     }
 

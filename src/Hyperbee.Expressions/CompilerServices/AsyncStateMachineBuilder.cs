@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -12,7 +12,7 @@ public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncSt
 
 internal delegate LoweringInfo LoweringTransformer();
 
-internal class StateMachineBuilder<TResult>
+internal class AsyncStateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
@@ -27,7 +27,7 @@ internal class StateMachineBuilder<TResult>
         public const string State = "__state<>";
     }
 
-    public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
+    public AsyncStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
     {
         _moduleBuilder = moduleBuilder;
         _typeName = typeName;
@@ -271,7 +271,7 @@ internal class StateMachineBuilder<TResult>
             stateField,
             builderField,
             finalResultField,
-            null //TODO: current for yield?
+            null  // current field for yield
         );
 
         // Create final lambda with try-catch block
@@ -379,7 +379,7 @@ internal class StateMachineBuilder<TResult>
     }
 }
 
-public static class StateMachineBuilder
+public static class AsyncStateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
     private static readonly ModuleBuilder ModuleBuilder;
@@ -389,9 +389,9 @@ public static class StateMachineBuilder
     const string RuntimeModuleName = "RuntimeStateMachineModule";
     const string StateMachineTypeName = "StateMachine";
 
-    static StateMachineBuilder()
+    static AsyncStateMachineBuilder()
     {
-        BuildStateMachineMethod = typeof( StateMachineBuilder )
+        BuildStateMachineMethod = typeof( AsyncStateMachineBuilder )
             .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
 
@@ -416,7 +416,7 @@ public static class StateMachineBuilder
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
-        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
+        var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( ModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever

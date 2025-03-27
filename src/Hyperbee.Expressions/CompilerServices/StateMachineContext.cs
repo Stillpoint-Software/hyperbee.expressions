@@ -1,5 +1,4 @@
-﻿
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Hyperbee.Collections;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -15,8 +14,10 @@ internal record StateMachineInfo(
     ParameterExpression StateMachine,
     LabelTarget ExitLabel,
     MemberExpression StateField,
+    // Async/Await
     MemberExpression BuilderField,
     MemberExpression FinalResultField,
+    // Yield
     MemberExpression CurrentField
 );
 
@@ -26,6 +27,10 @@ internal record LoweringInfo
 
     public LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; init; }
 
+    // Async/Await
     public int AwaitCount { get; init; }
     public bool HasFinalResultVariable { get; init; }
+
+    // Yield
+    public IReadOnlyCollection<ParameterExpression> Variables { get; init; }
 }

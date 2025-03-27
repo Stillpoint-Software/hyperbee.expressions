@@ -6,7 +6,6 @@ namespace Hyperbee.Expressions.CompilerServices.Transitions;
 internal class YieldTransition : Transition
 {
     public StateNode TargetNode { get; set; }
-    public LabelTarget ResumeLabel { get; internal set; }
     public Expression? Value { get; internal set; }
     public int StateId { get; internal set; }
 
@@ -14,9 +13,12 @@ internal class YieldTransition : Transition
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        //base.AddExpressions( expressions, context );
+        // Note: Base call seems to be pointless
+        //base.AddExpressions( expressions, context );  
+
         if ( Value == null )
         {
+            // Yield Break
             expressions.Add(
                 Block(
                     Return( context.StateMachineInfo.ExitLabel, Constant( false ) )
@@ -24,6 +26,8 @@ internal class YieldTransition : Transition
             );
             return;
         }
+
+        // Yield Return
         expressions.Add(
             Block(
                 Assign( context.StateMachineInfo.StateField, Constant( TargetNode.StateId ) ),
@@ -35,7 +39,6 @@ internal class YieldTransition : Transition
 
     internal override void Optimize( HashSet<LabelTarget> references )
     {
-        TargetNode = OptimizeGotos( TargetNode );
-        references.Add( TargetNode.NodeLabel );
+        // Because both break and return always exit the state machine they cannot fallthrough
     }
 }

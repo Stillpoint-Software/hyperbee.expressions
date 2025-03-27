@@ -1,13 +1,12 @@
 ﻿using System.Collections;
-using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 using Hyperbee.Collections;
+
 using static System.Linq.Expressions.Expression;
 
-namespace Hyperbee.Expressions.CompilerServices.YieldSupport;
+namespace Hyperbee.Expressions.CompilerServices;
 
 public delegate bool YieldMoveNextDelegate<in T>( T stateMachine );
 
@@ -35,7 +34,7 @@ internal class YieldStateMachineBuilder<TResult>
 
     public Expression CreateStateMachine( YieldLoweringTransformer loweringTransformer, int id )
     {
-        var loweringInfo = loweringTransformer();  // TODO: different lowing info???
+        var loweringInfo = loweringTransformer();
 
         // Create the state-machine builder context
         //
@@ -57,33 +56,20 @@ internal class YieldStateMachineBuilder<TResult>
         //
         // return (IEnumerable<TResult>) stateMachine;
 
-        var stateMachineType = CreateStateMachineType( context, out var fieldLookup, out var fields );
+        var stateMachineType = CreateStateMachineType( context, out var fields );
         var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
 
         var stateMachineVariable = Variable( stateMachineType, "stateMachine" );
 
-        var assignVariables = new List<Expression>();
-
-        foreach ( var (_, variable) in loweringInfo.ScopedVariables.EnumerateItems( LinkedNode.Current ) )
-        {
-            //var fieldInfo = fieldLookup[variable];
-            var fieldInfo = fields.First( x => x.Name == variable.Name );  // TODO: Hack
-
-            var field = Field( stateMachineVariable, fieldInfo );
-            assignVariables.Add( Assign( field, Variable( variable.Type, variable.Name ) ) );
-        }
-
         var bodyExpressions = new List<Expression>
         {
             Assign( stateMachineVariable, New( stateMachineType ) ),
-            Assign( Field( stateMachineVariable, FieldName.State ), Constant( -1 ) )
+            Assign( Field( stateMachineVariable, FieldName.State ), Constant( -1 ) ),
+            Assign( Field( stateMachineVariable, FieldName.MoveNextDelegate ), moveNextLambda ),
+            stateMachineVariable
         };
 
-        bodyExpressions.AddRange( assignVariables );
-        bodyExpressions.Add( Assign( Field( stateMachineVariable, FieldName.MoveNextDelegate ), moveNextLambda ) );
-        bodyExpressions.Add( stateMachineVariable );
-
-        return Block( [stateMachineVariable], bodyExpressions );
+        return Block( [.. loweringInfo.Variables, stateMachineVariable], bodyExpressions );
     }
 
 
@@ -107,8 +93,8 @@ internal class YieldStateMachineBuilder<TResult>
             stateMachine,
             exitLabel,
             stateField,
-            null, //TODO: builder for async/await
-            null, //TODO: final for async/await
+            null, // builder for async/await
+            null, // final for async/await
             currentField
         );
 
@@ -183,9 +169,10 @@ internal class YieldStateMachineBuilder<TResult>
         }
     }
 
-    private Type CreateStateMachineType( StateMachineContext context, out Dictionary<ParameterExpression, FieldInfo> fieldLookup, out FieldInfo[] fields )
+    private Type CreateStateMachineType( StateMachineContext context, out FieldInfo[] fields )
     {
-        var typeBuilder = _moduleBuilder.DefineType( "YieldStateMachine", TypeAttributes.Public, typeof( object ),
+        var typeBuilder = _moduleBuilder.DefineType(
+            _typeName, TypeAttributes.Public, typeof( object ),
         [
             typeof( IEnumerable<> ).MakeGenericType( typeof(TResult) ),
             typeof( IEnumerator<> ).MakeGenericType( typeof(TResult) ),
@@ -197,8 +184,6 @@ internal class YieldStateMachineBuilder<TResult>
         typeBuilder.AddInterfaceImplementation( typeof( IDisposable ) );
 
         // Define: fields
-
-        fieldLookup = new Dictionary<ParameterExpression, FieldInfo>();
 
         var moveNextDelegateType = typeof( YieldMoveNextDelegate<> ).MakeGenericType( typeBuilder );
 
@@ -228,12 +213,11 @@ internal class YieldStateMachineBuilder<TResult>
 
         foreach ( var parameterExpression in localVariables )
         {
-            var field = typeBuilder.DefineField(
+            typeBuilder.DefineField(
                 parameterExpression.Name ?? parameterExpression.ToString(),
                 parameterExpression.Type,
                 FieldAttributes.Public
             );
-            fieldLookup[parameterExpression] = field;
         }
 
         // Define: methods
@@ -374,7 +358,6 @@ internal class YieldStateMachineBuilder<TResult>
         var disposeMethod = typeBuilder.DefineMethod( "Dispose", MethodAttributes.Public | MethodAttributes.Virtual, typeof( void ), Type.EmptyTypes );
         var ilGen = disposeMethod.GetILGenerator();
 
-
         // TODO: Dispose all disposable fields
         // TODO: NOTE: this could include nested IEnumerable<> state machines
 
@@ -384,10 +367,8 @@ internal class YieldStateMachineBuilder<TResult>
         ilGen.Emit( OpCodes.Stfld, stateField );
         ilGen.Emit( OpCodes.Ret );
 
-        typeBuilder.DefineMethodOverride( disposeMethod, typeof( IDisposable ).GetMethod( "Dispose" ) );
+        typeBuilder.DefineMethodOverride( disposeMethod, typeof( IDisposable ).GetMethod( "Dispose" )! );
     }
-
-
 
     private sealed class HoistingVisitor( IReadOnlyDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor
     {
@@ -402,7 +383,6 @@ internal class YieldStateMachineBuilder<TResult>
         }
     }
 }
-
 
 public static class YieldStateMachineBuilder
 {
@@ -429,7 +409,7 @@ public static class YieldStateMachineBuilder
     internal static Expression Create( Type resultType, YieldLoweringTransformer loweringTransformer )
     {
         if ( resultType == typeof( void ) )
-            resultType = typeof( IVoidResult );
+            throw new ArgumentException( "IEnumerable must have a valid result type", nameof( resultType ) );
 
         var buildStateMachine = BuildYieldStateMachineMethod.MakeGenericMethod( resultType );
 
