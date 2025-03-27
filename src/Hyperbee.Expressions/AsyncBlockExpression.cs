@@ -51,7 +51,7 @@ public class AsyncBlockExpression : Expression
         return _stateMachine ??= AsyncStateMachineBuilder.Create( Result.Type, LoweringTransformer );
     }
 
-    private LoweringInfo LoweringTransformer()
+    private AsyncLoweringInfo LoweringTransformer()
     {
         try
         {

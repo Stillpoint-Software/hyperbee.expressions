@@ -35,7 +35,7 @@ public class YieldBlockExpression : Expression
         return YieldStateMachineBuilder.Create( EnumerableType, LoweringTransformer );
     }
 
-    private LoweringInfo LoweringTransformer()
+    private YieldLoweringInfo LoweringTransformer()
     {
         try
         {

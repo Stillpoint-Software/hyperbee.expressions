@@ -18,6 +18,10 @@ internal class AwaitTransition : Transition
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
+        if ( context.StateMachineInfo is not AsyncStateMachineInfo stateMachineInfo )
+            throw new ArgumentException( "Invalid State Machine" );
+
+
         base.AddExpressions( expressions, context );
         expressions.AddRange( Expressions() );
         return;
@@ -25,7 +29,7 @@ internal class AwaitTransition : Transition
         List<Expression> Expressions()
         {
             var getAwaiterMethod = AwaitBinder.GetAwaiterMethod;
-            var source = context.StateMachineInfo;
+            var source = stateMachineInfo;
 
 #if FAST_COMPILER
             // FEC: Use local variable for ref Target.

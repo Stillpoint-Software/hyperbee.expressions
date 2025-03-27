@@ -6,13 +6,14 @@ using Hyperbee.Expressions.Visitors;
 
 namespace Hyperbee.Expressions.CompilerServices.Lowering;
 
-internal abstract class BaseLoweringVisitor : ExpressionVisitor
+internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
+    where TInfo : LoweringInfo
 {
     protected readonly StateContext States = new( 4 );
     protected ExpressionMatcher ExpressionMatcher;
     protected VariableResolver VariableResolver;
 
-    public abstract LoweringInfo Transform(
+    public abstract TInfo Transform(
         Type resultType,
         ParameterExpression[] localVariables,
         Expression[] expressions,

@@ -5,14 +5,14 @@ using Hyperbee.Expressions.Visitors;
 
 namespace Hyperbee.Expressions.CompilerServices.Lowering;
 
-internal class AsyncLoweringVisitor : BaseLoweringVisitor
+internal class AsyncLoweringVisitor : BaseLoweringVisitor<AsyncLoweringInfo>
 {
     private ParameterExpression _finalResultVariable;
     private bool _hasFinalResultVariable;
 
     private int _awaitCount;
 
-    public override LoweringInfo Transform(
+    public override AsyncLoweringInfo Transform(
         Type resultType,
         ParameterExpression[] localVariables,
         Expression[] expressions,
@@ -31,7 +31,7 @@ internal class AsyncLoweringVisitor : BaseLoweringVisitor
 
         ThrowIfInvalid();
 
-        return new LoweringInfo
+        return new AsyncLoweringInfo
         {
             Scopes = States.Scopes,
             HasFinalResultVariable = _hasFinalResultVariable,

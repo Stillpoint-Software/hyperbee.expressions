@@ -13,6 +13,9 @@ internal class YieldTransition : Transition
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
+        if ( context.StateMachineInfo is not YieldStateMachineInfo stateMachineInfo )
+            throw new ArgumentException( "Invalid State Machine" );
+
         // Note: Base call seems to be pointless
         //base.AddExpressions( expressions, context );  
 
@@ -21,7 +24,7 @@ internal class YieldTransition : Transition
             // Yield Break
             expressions.Add(
                 Block(
-                    Return( context.StateMachineInfo.ExitLabel, Constant( false ) )
+                    Return( stateMachineInfo.ExitLabel, Constant( false ) )
                 )
             );
             return;
@@ -30,9 +33,9 @@ internal class YieldTransition : Transition
         // Yield Return
         expressions.Add(
             Block(
-                Assign( context.StateMachineInfo.StateField, Constant( TargetNode.StateId ) ),
-                Assign( context.StateMachineInfo.CurrentField, Value ),
-                Return( context.StateMachineInfo.ExitLabel, Constant( true ) )
+                Assign( stateMachineInfo.StateField, Constant( TargetNode.StateId ) ),
+                Assign( stateMachineInfo.CurrentField, Value ),
+                Return( stateMachineInfo.ExitLabel, Constant( true ) )
             )
         );
     }

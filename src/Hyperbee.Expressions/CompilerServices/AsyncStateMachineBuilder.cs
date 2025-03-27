@@ -10,7 +10,7 @@ namespace Hyperbee.Expressions.CompilerServices;
 public interface IVoidResult; // Marker interface for void Task results
 public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
 
-internal delegate LoweringInfo LoweringTransformer();
+internal delegate AsyncLoweringInfo AsyncLoweringTransformer();
 
 internal class AsyncStateMachineBuilder<TResult>
 {
@@ -33,7 +33,7 @@ internal class AsyncStateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( LoweringTransformer loweringTransformer, int id )
+    public Expression CreateStateMachine( AsyncLoweringTransformer loweringTransformer, int id )
     {
         ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
 
@@ -265,13 +265,12 @@ internal class AsyncStateMachineBuilder<TResult>
 
         var exitLabel = Label( "ST_EXIT" );
 
-        context.StateMachineInfo = new StateMachineInfo(
+        context.StateMachineInfo = new AsyncStateMachineInfo(
             stateMachine,
             exitLabel,
             stateField,
             builderField,
-            finalResultField,
-            null  // current field for yield
+            finalResultField
         );
 
         // Create final lambda with try-catch block
@@ -401,7 +400,7 @@ public static class AsyncStateMachineBuilder
         ModuleBuilder = assemblyBuilder.DefineDynamicModule( RuntimeModuleName );
     }
 
-    internal static Expression Create( Type resultType, LoweringTransformer loweringTransformer )
+    internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer )
     {
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
@@ -411,7 +410,7 @@ public static class AsyncStateMachineBuilder
         return (Expression) buildStateMachine.Invoke( null, [loweringTransformer] );
     }
 
-    internal static Expression Create<TResult>( LoweringTransformer loweringTransformer )
+    internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer )
     {
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";

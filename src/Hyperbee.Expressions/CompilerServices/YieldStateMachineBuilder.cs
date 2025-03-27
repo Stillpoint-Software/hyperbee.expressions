@@ -10,7 +10,7 @@ namespace Hyperbee.Expressions.CompilerServices;
 
 public delegate bool YieldMoveNextDelegate<in T>( T stateMachine );
 
-internal delegate LoweringInfo YieldLoweringTransformer();
+internal delegate YieldLoweringInfo YieldLoweringTransformer();
 
 internal class YieldStateMachineBuilder<TResult>
 {
@@ -89,12 +89,10 @@ internal class YieldStateMachineBuilder<TResult>
 
         var exitLabel = Label( typeof( bool ), "ST_EXIT" );
 
-        context.StateMachineInfo = new StateMachineInfo(
+        context.StateMachineInfo = new YieldStateMachineInfo(
             stateMachine,
             exitLabel,
             stateField,
-            null, // builder for async/await
-            null, // final for async/await
             currentField
         );
 
