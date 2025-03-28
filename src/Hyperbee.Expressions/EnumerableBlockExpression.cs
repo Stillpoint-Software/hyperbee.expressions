@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices;
@@ -13,6 +15,8 @@ public class EnumerableBlockExpression : Expression
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
 
     internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
+
+    private static YieldTypeVisitor TypeVisitor = new();
 
     public EnumerableBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
@@ -56,50 +60,37 @@ public class EnumerableBlockExpression : Expression
 
     private Type GetYieldType()
     {
-        var stack = new Stack<Expression>( Expressions );
-        while ( stack.Count > 0 )
-        {
-            var current = stack.Pop();
-            switch ( current )
-            {
-                case YieldExpression { IsReturn: true } yieldExpression:
-                    return yieldExpression.Type;
-
-                case BlockExpression blockExpression:
-                    foreach ( var expr in blockExpression.Expressions )
-                    {
-                        stack.Push( expr );
-                    }
-                    break;
-                case ConditionalExpression conditionalExpression:
-                    stack.Push( conditionalExpression.IfTrue );
-                    stack.Push( conditionalExpression.IfFalse );
-                    stack.Push( conditionalExpression.Test );
-                    break;
-                case LoopExpression loopExpression:
-                    stack.Push( loopExpression.Body );
-                    break;
-                case SwitchExpression switchExpression:
-                    stack.Push( switchExpression.DefaultBody );
-                    foreach ( var switchCase in switchExpression.Cases )
-                    {
-                        stack.Push( switchCase.Body );
-                    }
-                    stack.Push( switchExpression.SwitchValue );
-                    break;
-                case TryExpression tryExpression:
-                    stack.Push( tryExpression.Body );
-                    if ( tryExpression.Fault != null ) stack.Push( tryExpression.Fault );
-                    if ( tryExpression.Finally != null ) stack.Push( tryExpression.Finally );
-                    foreach ( var handler in tryExpression.Handlers )
-                    {
-                        stack.Push( handler.Body );
-                    }
-                    break;
-            }
-        }
-        return typeof( void );
+        return TypeVisitor.Find( [.. Expressions] );
     }
+
+
+    private sealed class YieldTypeVisitor : ExpressionVisitor
+    {
+        private Type _type;
+
+        public Type Find( Expression[] expressions )
+        {
+            foreach ( var expression in expressions )
+            {
+                Visit( expression );
+                if ( _type != null )
+                    return _type;
+            }
+
+            return typeof( void );
+        }
+
+        protected override Expression VisitExtension( Expression node )
+        {
+            if ( node is not YieldExpression { IsReturn: true } yieldExpression )
+                return base.VisitExtension( node );
+
+            _type = yieldExpression.Type;
+            return node;
+        }
+    }
+
+
 }
 
 public static partial class ExpressionExtensions

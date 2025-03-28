@@ -14,6 +14,10 @@ trees to handle asynchronous workflows and other language constructs.
     * `AwaitExpression`: An expression that represents an await operation.
     * `AsyncBlockExpression`: An expression that represents an asynchronous code block.
 
+* **Yield Expressions**
+    * `YieldExpression`: An expression that represents a yield return or break statement.
+    * `EnumerableBlockExpression`: An expression that represents an enumerable code block.
+
 * **Using Expression**
     * `UsingExpression`: An expression that automatically disposes IDisposable resources.
 
