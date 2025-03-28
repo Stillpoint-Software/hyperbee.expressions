@@ -15,7 +15,7 @@ public class BlockYieldConditionalTests
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThen( CompilerType compiler )
     {
         // Arrange
-        var block = BlockYield(
+        var block = BlockEnumerable(
             IfThen(
                 Constant( true ),
                 YieldReturn( Constant( 5 ) )
@@ -39,7 +39,7 @@ public class BlockYieldConditionalTests
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThenElse( CompilerType compiler )
     {
         // Arrange
-        var block = BlockYield(
+        var block = BlockEnumerable(
             IfThenElse(
                 Constant( false ),
                 YieldReturn( Constant( 1 ) ),
@@ -64,7 +64,7 @@ public class BlockYieldConditionalTests
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThenElseBreaks( CompilerType compiler )
     {
         // Arrange
-        var block = BlockYield(
+        var block = BlockEnumerable(
             IfThenElse(
                 Constant( true ),
                 Block(
@@ -94,7 +94,7 @@ public class BlockYieldConditionalTests
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThen_TrueBreak( CompilerType compiler )
     {
         // Arrange
-        var block = BlockYield(
+        var block = BlockEnumerable(
             IfThen(
                 Constant( true ),
                 YieldBreak()
@@ -119,7 +119,7 @@ public class BlockYieldConditionalTests
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThen_FalseBreak( CompilerType compiler )
     {
         // Arrange
-        var block = BlockYield(
+        var block = BlockEnumerable(
             IfThen(
                 Constant( false ),
                 YieldBreak()
@@ -147,7 +147,7 @@ public class BlockYieldConditionalTests
         // Arrange: IfTrue branch contains a yield return
         var var = Variable( typeof( int ), "var" );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [var],
             Assign( var,
                 Condition( Constant( true ),
@@ -183,7 +183,7 @@ public class BlockYieldConditionalTests
             Constant( true )
         );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             Condition( test, YieldReturn( Constant( 10 ) ), YieldReturn( Constant( 15 ) ) )
         );
 
@@ -205,7 +205,7 @@ public class BlockYieldConditionalTests
     public void YieldBlock_ShouldYieldSuccessfully_WithAwaitBeforeAndAfterConditional( CompilerType compiler )
     {
         // Arrange: yield before and after a conditional expression
-        var block = BlockYield(
+        var block = BlockEnumerable(
             YieldReturn( Constant( 10 ) ),
             Condition( Constant( true ), Constant( 15 ), Constant( 0 ) ),
             YieldReturn( Constant( 20 ) )
@@ -229,7 +229,7 @@ public class BlockYieldConditionalTests
     {
         // Arrange: False condition should lead to the false branch being executed
         var condition = Constant( false );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             Condition( condition,
                 Constant( 10 ),
                 YieldReturn( Constant( 20 ) )
@@ -252,7 +252,7 @@ public class BlockYieldConditionalTests
     public void YieldBlock_ShouldYieldSuccessfully_WithComplexConditionalLogic( CompilerType compiler )
     {
         // Arrange: Two conditionals where both branches return yield values
-        var block = BlockYield(
+        var block = BlockEnumerable(
             Condition( Constant( true ),
                 YieldReturn( Constant( 10 ) ),
                 YieldReturn( Constant( 20 ) )
@@ -284,7 +284,7 @@ public class BlockYieldConditionalTests
         var param1 = Parameter( typeof( int ), "param1" );
         var param2 = Parameter( typeof( int ), "param2" );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             IfThenElse( GreaterThan( param1, Constant( 10 ) ),
                 IfThenElse( GreaterThan( param2, Constant( 10 ) ),
                     YieldReturn( Constant( 5 ) ),

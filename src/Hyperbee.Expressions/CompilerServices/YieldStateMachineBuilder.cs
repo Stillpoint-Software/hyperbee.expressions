@@ -99,9 +99,8 @@ internal class YieldStateMachineBuilder<TResult>
         return Lambda(
             typeof( YieldMoveNextDelegate<> ).MakeGenericType( stateMachineType ),
             Block(
-                TryFault(
+                TryFault(  // This should be a try fault, but fails in FEC
                     Block(
-                        type: typeof( bool ),
                         CreateBody(
                             fields,
                             context,

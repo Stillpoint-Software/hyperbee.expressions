@@ -4,7 +4,7 @@ namespace Hyperbee.Expressions;
 
 public class YieldExpression : Expression
 {
-    public Expression? Value { get; }
+    public Expression Value { get; }
     public bool IsReturn { get; }
 
     public YieldExpression( Expression value ) : this( value, true )
@@ -15,7 +15,7 @@ public class YieldExpression : Expression
     {
     }
 
-    private YieldExpression( Expression? value, bool isReturn )
+    private YieldExpression( Expression value, bool isReturn )
     {
         if ( isReturn && value == null )
             throw new ArgumentNullException( nameof( value ), "Yield return must have a value." );

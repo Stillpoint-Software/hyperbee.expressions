@@ -17,7 +17,7 @@ public class BlockYieldLoopTests
         // Arrange: Await before break in a loop
         var loopCount = Variable( typeof( int ), "count" );
         var breakLabel = Label( "breakLabel" );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [loopCount],
             Assign( loopCount, Constant( 0 ) ),
             Loop(
@@ -54,7 +54,7 @@ public class BlockYieldLoopTests
         var loopCount = Variable( typeof( int ), "count" );
         var breakLabel = Label( "breakLabel" );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [loopCount],
             Assign( loopCount, Constant( 0 ) ),
             Loop(
@@ -90,7 +90,7 @@ public class BlockYieldLoopTests
         // Arrange: Yield before continue in a loop
         var loopCount = Variable( typeof( int ), "count" );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [loopCount],
             Assign( loopCount, Constant( 0 ) ),
             Loop(
@@ -127,7 +127,7 @@ public class BlockYieldLoopTests
         var loopCount = Variable( typeof( int ), "count" );
         var continueLabel = Label( "continueLabel" );
         var breakLabel = Label( "breakLabel" );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [loopCount],
             Assign( loopCount, Constant( 0 ) ),
             Loop(
@@ -167,7 +167,7 @@ public class BlockYieldLoopTests
         var loopCount = Variable( typeof( int ), "count" );
         var continueLabel = Label( "continueLabel" );
         var breakLabel = Label( "breakLabel" );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [loopCount],
             Assign( loopCount, Constant( 0 ) ),
             Loop(
@@ -205,7 +205,7 @@ public class BlockYieldLoopTests
         // Arrange: Multiple awaits in a loop
         var loopCount = Variable( typeof( int ), "count" );
         var breakLabel = Label( "breakLabel" );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [loopCount],
             Assign( loopCount, Constant( 0 ) ),
             Loop(
@@ -243,7 +243,7 @@ public class BlockYieldLoopTests
         var breakLabel = Label( "breakLabel" );
         var continueLabel = Label( "continueLabel" );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [loopCount],
             Assign( loopCount, Constant( 0 ) ),
             Loop(

@@ -16,7 +16,7 @@ internal class YieldLoweringVisitor : BaseLoweringVisitor<YieldLoweringInfo>
         ArgumentNullException.ThrowIfNull( expressions, nameof( expressions ) );
         ArgumentOutOfRangeException.ThrowIfZero( expressions.Length, nameof( expressions ) );
 
-        ExpressionMatcher = new ExpressionMatcher( expr => expr is YieldExpression or YieldBlockExpression );
+        ExpressionMatcher = new ExpressionMatcher( expr => expr is YieldExpression or EnumerableBlockExpression );
         VariableResolver = new VariableResolver( localVariables, scopedVariables, States );
 
         VisitExpressions( expressions );
@@ -50,9 +50,9 @@ internal class YieldLoweringVisitor : BaseLoweringVisitor<YieldLoweringInfo>
         {
             YieldExpression yieldExpression => VisitYieldExtension( yieldExpression ),
 
-            // Nested async blocks should be visited by their own visitor,
+            // Nested yield blocks should be visited by their own visitor,
             // but nested variables must be replaced
-            YieldBlockExpression => VariableResolver.Resolve( node ),
+            EnumerableBlockExpression => VariableResolver.Resolve( node ),
 
             // Lowering visitor shouldn't be used by extensions directly
             // since it changes the shape of the code
@@ -67,8 +67,6 @@ internal class YieldLoweringVisitor : BaseLoweringVisitor<YieldLoweringInfo>
         var joinState = States.EnterState( out var sourceState );
 
         var resultVariable = VariableResolver.GetResultVariable( node, sourceState.StateId );
-
-        //var resumeLabel = Expression.Label( $"{sourceState.NodeLabel.Name}_YIELD" );
 
         var yieldTransition = new YieldTransition
         {

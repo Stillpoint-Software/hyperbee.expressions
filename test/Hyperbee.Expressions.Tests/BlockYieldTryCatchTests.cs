@@ -16,7 +16,7 @@ public class BlockYieldTryCatchTests
     {
         // Arrange: Yield in the try block
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             TryCatch(
                 YieldReturn( Constant( 10 ) ),
                 Catch( exceptionParam, Constant( 0 ) )
@@ -42,7 +42,7 @@ public class BlockYieldTryCatchTests
         // Arrange: Yield in the catch block
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             TryCatch(
                 Block(
                     Throw( Constant( new Exception() ) ),
@@ -73,7 +73,7 @@ public class BlockYieldTryCatchTests
     {
         // Arrange: yield in both catch and finally blocks
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             TryCatchFinally(
                 Block(
                     Throw( Constant( new Exception() ) ),
@@ -105,7 +105,7 @@ public class BlockYieldTryCatchTests
     {
         // Arrange: Yield in both try and finally blocks
         var resultValue = Parameter( typeof( int ) );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [resultValue],
             TryFinally(
                 YieldReturn( Constant( 15 ) ), // Try block
@@ -134,7 +134,7 @@ public class BlockYieldTryCatchTests
     {
         // Arrange: Yield in Try, Catch, and Finally blocks
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             TryCatchFinally(
                 Block( // Try block
                     YieldReturn( Constant( 10 ) ),
@@ -170,7 +170,7 @@ public class BlockYieldTryCatchTests
         var resultValue = Parameter( typeof( int ) );
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             [resultValue],
             TryCatch(
                 Block(
@@ -203,7 +203,7 @@ public class BlockYieldTryCatchTests
         var outerExceptionParam = Parameter( typeof( Exception ), "outerEx" );
         var innerExceptionParam = Parameter( typeof( Exception ), "innerEx" );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             TryCatch(
                 Block(
                     TryCatch(
@@ -238,7 +238,7 @@ public class BlockYieldTryCatchTests
     public void YieldBlock_ShouldYieldSuccessfully_WithComplexNestedTryBlock( CompilerType compiler )
     {
         // Arrange: Yield in the try block
-        var block = BlockYield(
+        var block = BlockEnumerable(
             YieldReturn( Constant( 0 ) ),
             TryCatch(
                 Block(

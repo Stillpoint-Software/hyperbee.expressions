@@ -6,7 +6,7 @@ using Hyperbee.Expressions.CompilerServices.Lowering;
 
 namespace Hyperbee.Expressions;
 
-public class YieldBlockExpression : Expression
+public class EnumerableBlockExpression : Expression
 {
     private Type _enumerableType;
     public ReadOnlyCollection<Expression> Expressions { get; }
@@ -14,7 +14,7 @@ public class YieldBlockExpression : Expression
 
     internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
 
-    public YieldBlockExpression(
+    public EnumerableBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
         ReadOnlyCollection<Expression> expressions )
     {
@@ -104,23 +104,23 @@ public class YieldBlockExpression : Expression
 
 public static partial class ExpressionExtensions
 {
-    public static YieldBlockExpression BlockYield( params Expression[] expressions )
+    public static EnumerableBlockExpression BlockEnumerable( params Expression[] expressions )
     {
-        return new YieldBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ) );
+        return new EnumerableBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ) );
     }
 
-    public static YieldBlockExpression BlockYield( ParameterExpression[] variables, params Expression[] expressions )
+    public static EnumerableBlockExpression BlockEnumerable( ParameterExpression[] variables, params Expression[] expressions )
     {
-        return new YieldBlockExpression( new ReadOnlyCollection<ParameterExpression>( variables ), new ReadOnlyCollection<Expression>( expressions ) );
+        return new EnumerableBlockExpression( new ReadOnlyCollection<ParameterExpression>( variables ), new ReadOnlyCollection<Expression>( expressions ) );
     }
 
-    public static YieldBlockExpression BlockYield( ReadOnlyCollection<Expression> expressions )
+    public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<Expression> expressions )
     {
-        return new YieldBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions );
+        return new EnumerableBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions );
     }
 
-    public static YieldBlockExpression BlockYield( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
+    public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
     {
-        return new YieldBlockExpression( variables, expressions );
+        return new EnumerableBlockExpression( variables, expressions );
     }
 }

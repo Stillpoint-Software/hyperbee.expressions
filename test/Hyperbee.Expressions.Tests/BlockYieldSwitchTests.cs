@@ -19,7 +19,7 @@ public class BlockYieldSwitchTests
             YieldReturn( Constant( 1 ) ),
             Constant( 1 )
         );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             Switch(
                 switchValue,
                 Constant( 0 ),
@@ -46,7 +46,7 @@ public class BlockYieldSwitchTests
     {
         // Arrange: Default case contains an awaited task
         var switchValue = Constant( 3 ); // No case matches this value
-        var block = BlockYield(
+        var block = BlockEnumerable(
             Switch(
                 switchValue,
                 YieldReturn( Constant( 99 ) ), // Default body
@@ -73,7 +73,7 @@ public class BlockYieldSwitchTests
     {
         // Arrange: One of the case bodies contains an awaited task
         var switchValue = Constant( 1 );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             Switch(
                 switchValue,
                 Constant( 0 ),
@@ -106,7 +106,7 @@ public class BlockYieldSwitchTests
             YieldReturn( Constant( 25 ) ),
             Constant( 2 )
         );
-        var block = BlockYield(
+        var block = BlockEnumerable(
             Switch(
                 switchValue,
                 Constant( 0 ),
@@ -147,7 +147,7 @@ public class BlockYieldSwitchTests
             SwitchCase( YieldReturn( Constant( 50 ) ), Constant( 2 ) )
         );
 
-        var block = BlockYield(
+        var block = BlockEnumerable(
             Switch(
                 switchValue,
                 nestedSwitch,
@@ -172,7 +172,7 @@ public class BlockYieldSwitchTests
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldBeforeAndAfterSwitch( CompilerType compiler )
     {
         // Arrange: Awaiting tasks before and after the switch expression
-        var block = BlockYield(
+        var block = BlockEnumerable(
             YieldReturn( Constant( 30 ) ),
             Switch(
                 Constant( 1 ),
