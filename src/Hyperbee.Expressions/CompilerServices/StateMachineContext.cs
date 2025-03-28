@@ -24,7 +24,7 @@ internal record AsyncStateMachineInfo(
     MemberExpression FinalResultField
 ) : StateMachineInfo( StateMachine, ExitLabel, StateField );
 
-internal record YieldStateMachineInfo(
+internal record EnumerableStateMachineInfo(
     ParameterExpression StateMachine,
     LabelTarget ExitLabel,
     MemberExpression StateField,
@@ -44,7 +44,7 @@ internal record AsyncLoweringInfo : LoweringInfo
     public bool HasFinalResultVariable { get; init; }
 }
 
-internal record YieldLoweringInfo : LoweringInfo
+internal record EnumerableLoweringInfo : LoweringInfo
 {
     public IReadOnlyCollection<ParameterExpression> Variables { get; init; }
 }

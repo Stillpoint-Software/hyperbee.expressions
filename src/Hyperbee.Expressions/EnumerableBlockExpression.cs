@@ -39,11 +39,11 @@ public class EnumerableBlockExpression : Expression
         return YieldStateMachineBuilder.Create( EnumerableType, LoweringTransformer );
     }
 
-    private YieldLoweringInfo LoweringTransformer()
+    private EnumerableLoweringInfo LoweringTransformer()
     {
         try
         {
-            var visitor = new YieldLoweringVisitor();
+            var visitor = new EnumerableLoweringVisitor();
 
             return visitor.Transform(
                 EnumerableType,

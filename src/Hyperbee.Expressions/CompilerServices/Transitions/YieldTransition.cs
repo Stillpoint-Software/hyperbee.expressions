@@ -13,7 +13,7 @@ internal class YieldTransition : Transition
 
     public override void AddExpressions( List<Expression> expressions, StateMachineContext context )
     {
-        if ( context.StateMachineInfo is not YieldStateMachineInfo stateMachineInfo )
+        if ( context.StateMachineInfo is not EnumerableStateMachineInfo stateMachineInfo )
             throw new ArgumentException( "Invalid State Machine" );
 
         if ( Value == null )

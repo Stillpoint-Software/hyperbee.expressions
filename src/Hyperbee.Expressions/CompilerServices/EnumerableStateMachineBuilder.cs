@@ -10,9 +10,9 @@ namespace Hyperbee.Expressions.CompilerServices;
 
 public delegate bool YieldMoveNextDelegate<in T>( T stateMachine );
 
-internal delegate YieldLoweringInfo YieldLoweringTransformer();
+internal delegate EnumerableLoweringInfo YieldLoweringTransformer();
 
-internal class YieldStateMachineBuilder<TResult>
+internal class EnumerableStateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
@@ -26,7 +26,7 @@ internal class YieldStateMachineBuilder<TResult>
         public const string Current = "__current<>";
     }
 
-    public YieldStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
+    public EnumerableStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
     {
         _moduleBuilder = moduleBuilder;
         _typeName = typeName;
@@ -89,7 +89,7 @@ internal class YieldStateMachineBuilder<TResult>
 
         var exitLabel = Label( typeof( bool ), "ST_EXIT" );
 
-        context.StateMachineInfo = new YieldStateMachineInfo(
+        context.StateMachineInfo = new EnumerableStateMachineInfo(
             stateMachine,
             exitLabel,
             stateField,
@@ -418,7 +418,7 @@ public static class YieldStateMachineBuilder
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
-        var stateMachineBuilder = new YieldStateMachineBuilder<TResult>( YieldModuleBuilder, typeName );
+        var stateMachineBuilder = new EnumerableStateMachineBuilder<TResult>( YieldModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever

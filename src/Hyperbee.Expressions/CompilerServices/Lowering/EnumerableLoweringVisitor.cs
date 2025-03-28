@@ -5,9 +5,9 @@ using Hyperbee.Expressions.Visitors;
 
 namespace Hyperbee.Expressions.CompilerServices.Lowering;
 
-internal class YieldLoweringVisitor : BaseLoweringVisitor<YieldLoweringInfo>
+internal class EnumerableLoweringVisitor : BaseLoweringVisitor<EnumerableLoweringInfo>
 {
-    public override YieldLoweringInfo Transform(
+    public override EnumerableLoweringInfo Transform(
         Type resultType,
         ParameterExpression[] localVariables,
         Expression[] expressions,
@@ -25,7 +25,7 @@ internal class YieldLoweringVisitor : BaseLoweringVisitor<YieldLoweringInfo>
 
         ThrowIfInvalid();
 
-        return new YieldLoweringInfo
+        return new EnumerableLoweringInfo
         {
             Scopes = States.Scopes,
             ScopedVariables = scopedVariables,
