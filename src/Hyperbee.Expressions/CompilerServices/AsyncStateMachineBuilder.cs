@@ -10,9 +10,9 @@ namespace Hyperbee.Expressions.CompilerServices;
 public interface IVoidResult; // Marker interface for void Task results
 public delegate void MoveNextDelegate<in T>( T stateMachine ) where T : IAsyncStateMachine;
 
-internal delegate LoweringInfo LoweringTransformer();
+internal delegate AsyncLoweringInfo AsyncLoweringTransformer();
 
-internal class StateMachineBuilder<TResult>
+internal class AsyncStateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
@@ -27,13 +27,13 @@ internal class StateMachineBuilder<TResult>
         public const string State = "__state<>";
     }
 
-    public StateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
+    public AsyncStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
     {
         _moduleBuilder = moduleBuilder;
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( LoweringTransformer loweringTransformer, int id )
+    public Expression CreateStateMachine( AsyncLoweringTransformer loweringTransformer, int id )
     {
         ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
 
@@ -53,7 +53,6 @@ internal class StateMachineBuilder<TResult>
         // 
         // stateMachine.__builder<> = new AsyncInterpreterTaskBuilder<TResult>();
         // stateMachine.__state<> = -1;
-        // stateMachine.<extern_fields> = <extern_fields>;
         //
         // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
         // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
@@ -266,7 +265,7 @@ internal class StateMachineBuilder<TResult>
 
         var exitLabel = Label( "ST_EXIT" );
 
-        context.StateMachineInfo = new StateMachineInfo(
+        context.StateMachineInfo = new AsyncStateMachineInfo(
             stateMachine,
             exitLabel,
             stateField,
@@ -379,7 +378,7 @@ internal class StateMachineBuilder<TResult>
     }
 }
 
-public static class StateMachineBuilder
+public static class AsyncStateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
     private static readonly ModuleBuilder ModuleBuilder;
@@ -389,9 +388,9 @@ public static class StateMachineBuilder
     const string RuntimeModuleName = "RuntimeStateMachineModule";
     const string StateMachineTypeName = "StateMachine";
 
-    static StateMachineBuilder()
+    static AsyncStateMachineBuilder()
     {
-        BuildStateMachineMethod = typeof( StateMachineBuilder )
+        BuildStateMachineMethod = typeof( AsyncStateMachineBuilder )
             .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
 
@@ -401,7 +400,7 @@ public static class StateMachineBuilder
         ModuleBuilder = assemblyBuilder.DefineDynamicModule( RuntimeModuleName );
     }
 
-    internal static Expression Create( Type resultType, LoweringTransformer loweringTransformer )
+    internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer )
     {
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
@@ -411,12 +410,12 @@ public static class StateMachineBuilder
         return (Expression) buildStateMachine.Invoke( null, [loweringTransformer] );
     }
 
-    internal static Expression Create<TResult>( LoweringTransformer loweringTransformer )
+    internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer )
     {
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
-        var stateMachineBuilder = new StateMachineBuilder<TResult>( ModuleBuilder, typeName );
+        var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( ModuleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever

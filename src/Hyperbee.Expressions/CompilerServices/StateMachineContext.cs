@@ -1,5 +1,4 @@
-﻿
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Hyperbee.Collections;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -14,17 +13,38 @@ internal sealed class StateMachineContext
 internal record StateMachineInfo(
     ParameterExpression StateMachine,
     LabelTarget ExitLabel,
+    MemberExpression StateField
+);
+
+internal record AsyncStateMachineInfo(
+    ParameterExpression StateMachine,
+    LabelTarget ExitLabel,
     MemberExpression StateField,
     MemberExpression BuilderField,
     MemberExpression FinalResultField
-);
+) : StateMachineInfo( StateMachine, ExitLabel, StateField );
+
+internal record YieldStateMachineInfo(
+    ParameterExpression StateMachine,
+    LabelTarget ExitLabel,
+    MemberExpression StateField,
+    MemberExpression CurrentField
+) : StateMachineInfo( StateMachine, ExitLabel, StateField );
 
 internal record LoweringInfo
 {
     public IReadOnlyList<StateContext.Scope> Scopes { get; init; }
 
     public LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; init; }
+}
 
+internal record AsyncLoweringInfo : LoweringInfo
+{
     public int AwaitCount { get; init; }
     public bool HasFinalResultVariable { get; init; }
+}
+
+internal record YieldLoweringInfo : LoweringInfo
+{
+    public IReadOnlyCollection<ParameterExpression> Variables { get; init; }
 }

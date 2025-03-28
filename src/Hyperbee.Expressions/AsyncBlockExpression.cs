@@ -3,13 +3,13 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices;
+using Hyperbee.Expressions.CompilerServices.Lowering;
 
 namespace Hyperbee.Expressions;
 
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
 public class AsyncBlockExpression : Expression
 {
-    private readonly Type _taskType;
     private Expression _stateMachine;
 
     public ReadOnlyCollection<Expression> Expressions { get; }
@@ -37,25 +37,25 @@ public class AsyncBlockExpression : Expression
         Expressions = expressions;
         ScopedVariables = scopedVariables;
 
-        _taskType = GetTaskType( Result.Type );
+        Type = GetTaskType( Result.Type );
     }
 
     public override bool CanReduce => true;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
-    public override Type Type => _taskType;
+    public override Type Type { get; }
 
     public override Expression Reduce()
     {
-        return _stateMachine ??= StateMachineBuilder.Create( Result.Type, LoweringTransformer );
+        return _stateMachine ??= AsyncStateMachineBuilder.Create( Result.Type, LoweringTransformer );
     }
 
-    private LoweringInfo LoweringTransformer()
+    private AsyncLoweringInfo LoweringTransformer()
     {
         try
         {
-            var visitor = new LoweringVisitor();
+            var visitor = new AsyncLoweringVisitor();
 
             return visitor.Transform(
                 Result.Type,

@@ -627,10 +627,13 @@ public class BlockAsyncBasicTests
             Block(
                 Constant( 5 ),
                 Condition( Constant( true ),
-                    Await( AsyncHelper.Completer(
-                        Constant( completer ),
-                        Constant( 1 )
-                    ) ),
+                    Block(
+                        Await( AsyncHelper.Completer(
+                            Constant( completer ),
+                            Constant( 1 )
+                        ) ),
+                        Constant( 2 )
+                    ),
                     Constant( 0 )
                 )
             )
@@ -642,7 +645,7 @@ public class BlockAsyncBasicTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( 1, result );
+        Assert.AreEqual( 2, result );
     }
 
     public class TestContext
