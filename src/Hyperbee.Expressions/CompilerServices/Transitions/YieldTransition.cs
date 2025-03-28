@@ -6,7 +6,7 @@ namespace Hyperbee.Expressions.CompilerServices.Transitions;
 internal class YieldTransition : Transition
 {
     public StateNode TargetNode { get; set; }
-    public Expression? Value { get; internal set; }
+    public Expression Value { get; internal set; }
     public int StateId { get; internal set; }
 
     internal override StateNode FallThroughNode => TargetNode;
@@ -15,9 +15,6 @@ internal class YieldTransition : Transition
     {
         if ( context.StateMachineInfo is not YieldStateMachineInfo stateMachineInfo )
             throw new ArgumentException( "Invalid State Machine" );
-
-        // Note: Base call seems to be pointless
-        //base.AddExpressions( expressions, context );  
 
         if ( Value == null )
         {
