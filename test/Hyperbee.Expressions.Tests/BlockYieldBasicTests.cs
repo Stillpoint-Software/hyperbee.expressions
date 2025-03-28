@@ -75,12 +75,12 @@ public class BlockYieldBasicTests
                 TryFault( // fault is like a try finally, but for exceptions
                     Block(
                         Assign( x, Constant( 1 ) ),
-                        Throw( New( typeof(Exception) ), typeof(int) )
+                        Throw( New( typeof( Exception ) ), typeof( int ) )
                     ),
-                    Assign( x, Constant( 2 ) )              
+                    Assign( x, Constant( 2 ) )
                 ),
                 // catch so we can verify fault ran
-                Catch( typeof(Exception), Constant( -1 ) ) 
+                Catch( typeof( Exception ), Constant( -1 ) )
             ),
             x
         );
