@@ -85,6 +85,41 @@ public class Example
 }
 ```
 
+### Yield Expressions
+
+The following example demonstrates how to create a yield expression tree.
+
+When the expression tree is compiled, the `EnumerableBlockExpression` will auto-generate a state machine that executes
+`YieldExpressions` in the block.
+
+```csharp
+public class Example
+{
+    public void ExampleYield()
+    {
+        // Create an enumerable block that yields values
+        var index = Variable( typeof(int), "index" );
+
+        var enumerableBlock = BlockEnumerable(
+            [index],
+            For( Assign( index, Constant( 0 ) ), LessThan( index, Constant( 10 ) ), PostIncrementAssign( index ),
+                Yield( index )
+            )
+        );
+
+        // Compile and execute the enumerable block
+        var lambda = Lambda<Func<IEnumerable<int>>>( enumerableBlock );
+        var compiledLambda = lambda.Compile();
+        var enumerable = compiledLambda();
+
+        foreach( var value in enumerable )
+        {
+            Console.WriteLine( $"Yielded value: {value}" );
+        }
+    }
+}
+```
+
 ### Using Expression
 
 The following example demonstrates how to create a Using expression.
