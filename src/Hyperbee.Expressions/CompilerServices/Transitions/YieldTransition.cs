@@ -21,7 +21,8 @@ internal class YieldTransition : Transition
             // Yield Break
             expressions.Add(
                 Block(
-                    Return( stateMachineInfo.ExitLabel, Constant( false ) )
+                    Assign( stateMachineInfo.Success, Constant( true ) ),
+                    Return( stateMachineInfo.ExitLabel, Constant( false ), typeof(bool) )
                 )
             );
             return;
@@ -32,7 +33,8 @@ internal class YieldTransition : Transition
             Block(
                 Assign( stateMachineInfo.StateField, Constant( TargetNode.StateId ) ),
                 Assign( stateMachineInfo.CurrentField, Value ),
-                Return( stateMachineInfo.ExitLabel, Constant( true ) )
+                Assign( stateMachineInfo.Success, Constant( true ) ),
+                Return( stateMachineInfo.ExitLabel, Constant( true ), typeof( bool ) )
             )
         );
     }

@@ -9,9 +9,9 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockYieldTryCatchTests
 {
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldInTryBlock( CompilerType compiler )
     {
         // Arrange: Yield in the try block
@@ -34,9 +34,9 @@ public class BlockYieldTryCatchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldCatchExceptionSuccessfully_WithYieldInCatchBlock( CompilerType compiler )
     {
         // Arrange: Yield in the catch block
@@ -66,9 +66,9 @@ public class BlockYieldTryCatchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldHandleExceptionSuccessfully_WithTryCatchFinally( CompilerType compiler )
     {
         // Arrange: yield in both catch and finally blocks
@@ -98,9 +98,9 @@ public class BlockYieldTryCatchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldInTryAndFinallyBlocks( CompilerType compiler )
     {
         // Arrange: Yield in both try and finally blocks
@@ -127,9 +127,9 @@ public class BlockYieldTryCatchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldInTryCatchAndFinallyBlocks( CompilerType compiler )
     {
         // Arrange: Yield in Try, Catch, and Finally blocks
@@ -162,9 +162,9 @@ public class BlockYieldTryCatchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldAfterThrow( CompilerType compiler )
     {
         var resultValue = Parameter( typeof( int ) );
@@ -194,9 +194,9 @@ public class BlockYieldTryCatchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldCatchMultipleExceptionsInNestedTryBlocks( CompilerType compiler )
     {
         // Arrange: Multiple exceptions in nested Try-Catch blocks
@@ -232,9 +232,9 @@ public class BlockYieldTryCatchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithComplexNestedTryBlock( CompilerType compiler )
     {
         // Arrange: Yield in the try block

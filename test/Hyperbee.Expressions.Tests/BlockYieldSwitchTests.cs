@@ -9,9 +9,9 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockYieldSwitchTests
 {
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldInSwitchValue( CompilerType compiler )
     {
         // Arrange: Yield in the switch value
@@ -39,9 +39,9 @@ public class BlockYieldSwitchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithAwaitInDefaultBody( CompilerType compiler )
     {
         // Arrange: Default case contains an awaited task
@@ -66,9 +66,9 @@ public class BlockYieldSwitchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithAwaitInSwitchCaseBody( CompilerType compiler )
     {
         // Arrange: One of the case bodies contains an awaited task
@@ -96,9 +96,9 @@ public class BlockYieldSwitchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldInSwitchValueAndCaseBody( CompilerType compiler )
     {
         // Arrange: Yield both in switch value and case body
@@ -130,9 +130,9 @@ public class BlockYieldSwitchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithNestedSwitchesAndYields( CompilerType compiler )
     {
         // Arrange: Outer and inner switch cases involve awaited tasks
@@ -166,9 +166,9 @@ public class BlockYieldSwitchTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldBeforeAndAfterSwitch( CompilerType compiler )
     {
         // Arrange: Awaiting tasks before and after the switch expression

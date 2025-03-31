@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+//using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -83,6 +84,7 @@ internal class EnumerableStateMachineBuilder<TResult>
         // Set context state-machine-info
 
         var stateMachine = Parameter( stateMachineType, $"sm<{id}>" );
+        var success = Parameter( typeof( bool ), "success" );
 
         var stateField = Field( stateMachine, FieldName.State );
         var currentField = Field( stateMachine, FieldName.Current );
@@ -93,22 +95,29 @@ internal class EnumerableStateMachineBuilder<TResult>
             stateMachine,
             exitLabel,
             stateField,
-            currentField
+            currentField,
+            success
         );
 
         return Lambda(
-            typeof( YieldMoveNextDelegate<> ).MakeGenericType( stateMachineType ),
+            typeof(YieldMoveNextDelegate<>).MakeGenericType( stateMachineType ),
             Block(
-                TryFault(  // This should be a try fault, but fails in FEC
+                [success],
+                TryFinally( // This should be a try fault, but fails in FEC
                     Block(
                         CreateBody(
                             fields,
                             context,
                             Assign( stateField, Constant( -2 ) ),
-                            Return( exitLabel, Constant( false ), typeof( bool ) )
+                            Assign( success, Constant( true ) ),
+                            Return( exitLabel, Constant( false ), typeof(bool) )
                         )
                     ),
-                    Call( stateMachine, "Dispose", Type.EmptyTypes )
+                    Block(
+                        IfThen( Not( success ),
+                            Call( stateMachine, "Dispose", Type.EmptyTypes )
+                        )
+                    )
                 ),
                 Label( exitLabel, defaultValue: Constant( false ) )
             ),

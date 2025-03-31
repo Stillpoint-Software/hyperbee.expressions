@@ -9,9 +9,9 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockYieldLoopTests
 {
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldBeforeBreak( CompilerType compiler )
     {
         // Arrange: Await before break in a loop
@@ -45,9 +45,9 @@ public class BlockYieldLoopTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldAfterLoop( CompilerType compiler )
     {
         // Arrange: Yield after break in a loop
@@ -82,9 +82,9 @@ public class BlockYieldLoopTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithOutLoopBreakOrContinue( CompilerType compiler )
     {
         // Arrange: Yield before continue in a loop
@@ -118,9 +118,9 @@ public class BlockYieldLoopTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldBeforeContinue( CompilerType compiler )
     {
         // Arrange: Yield before continue in a loop
@@ -158,9 +158,9 @@ public class BlockYieldLoopTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    // [DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithYieldAfterContinue( CompilerType compiler )
     {
         // Arrange: yield after continue in a loop
@@ -197,9 +197,9 @@ public class BlockYieldLoopTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithMultipleYieldInLoop( CompilerType compiler )
     {
         // Arrange: Multiple awaits in a loop
@@ -233,9 +233,9 @@ public class BlockYieldLoopTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithBreakAndContinueLabels( CompilerType compiler )
     {
         // Arrange: Use both breakLabel and continueLabel in the loop

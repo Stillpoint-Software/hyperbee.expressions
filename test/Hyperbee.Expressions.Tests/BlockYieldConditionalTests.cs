@@ -9,9 +9,9 @@ namespace Hyperbee.Expressions.Tests;
 public class BlockYieldConditionalTests
 {
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThen( CompilerType compiler )
     {
         // Arrange
@@ -33,9 +33,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThenElse( CompilerType compiler )
     {
         // Arrange
@@ -58,9 +58,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThenElseBreaks( CompilerType compiler )
     {
         // Arrange
@@ -88,9 +88,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThen_TrueBreak( CompilerType compiler )
     {
         // Arrange
@@ -113,9 +113,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithIfThen_FalseBreak( CompilerType compiler )
     {
         // Arrange
@@ -139,9 +139,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithConditionalAssignment( CompilerType compiler )
     {
         // Arrange: IfTrue branch contains a yield return
@@ -172,9 +172,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithConditionalInTest( CompilerType compiler )
     {
         // Arrange: Test depends on yielding value first
@@ -199,9 +199,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithAwaitBeforeAndAfterConditional( CompilerType compiler )
     {
         // Arrange: yield before and after a conditional expression
@@ -222,9 +222,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithFalseCondition( CompilerType compiler )
     {
         // Arrange: False condition should lead to the false branch being executed
@@ -246,9 +246,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldYieldSuccessfully_WithComplexConditionalLogic( CompilerType compiler )
     {
         // Arrange: Two conditionals where both branches return yield values
@@ -275,9 +275,9 @@ public class BlockYieldConditionalTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void BlockYield_ShouldYieldSuccessfully_WithParameters( CompilerType compiler )
     {
         // Arrange

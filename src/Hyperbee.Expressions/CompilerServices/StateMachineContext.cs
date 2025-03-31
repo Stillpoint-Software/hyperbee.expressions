@@ -28,7 +28,8 @@ internal record EnumerableStateMachineInfo(
     ParameterExpression StateMachine,
     LabelTarget ExitLabel,
     MemberExpression StateField,
-    MemberExpression CurrentField
+    MemberExpression CurrentField,
+    ParameterExpression Success 
 ) : StateMachineInfo( StateMachine, ExitLabel, StateField );
 
 internal record LoweringInfo
