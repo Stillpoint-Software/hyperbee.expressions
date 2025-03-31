@@ -100,7 +100,7 @@ internal class EnumerableStateMachineBuilder<TResult>
         );
 
         return Lambda(
-            typeof(YieldMoveNextDelegate<>).MakeGenericType( stateMachineType ),
+            typeof( YieldMoveNextDelegate<> ).MakeGenericType( stateMachineType ),
             Block(
                 [success],
                 TryFinally( // This should be a try fault, but fails in FEC
@@ -110,7 +110,7 @@ internal class EnumerableStateMachineBuilder<TResult>
                             context,
                             Assign( stateField, Constant( -2 ) ),
                             Assign( success, Constant( true ) ),
-                            Return( exitLabel, Constant( false ), typeof(bool) )
+                            Return( exitLabel, Constant( false ), typeof( bool ) )
                         )
                     ),
                     Block(

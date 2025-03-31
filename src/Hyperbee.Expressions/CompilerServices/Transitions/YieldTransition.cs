@@ -22,7 +22,7 @@ internal class YieldTransition : Transition
             expressions.Add(
                 Block(
                     Assign( stateMachineInfo.Success, Constant( true ) ),
-                    Return( stateMachineInfo.ExitLabel, Constant( false ), typeof(bool) )
+                    Return( stateMachineInfo.ExitLabel, Constant( false ), typeof( bool ) )
                 )
             );
             return;

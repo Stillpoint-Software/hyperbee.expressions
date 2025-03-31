@@ -68,6 +68,7 @@ public static class ExpressionCompilerExtensions
 
         return expression.Compile();
     }
+
     public static Func<T1, T2, T3> Compile<T1, T2, T3>( this Expression<Func<T1, T2, T3>> expression, CompilerType compilerType = CompilerType.System )
     {
 #if FAST_COMPILER

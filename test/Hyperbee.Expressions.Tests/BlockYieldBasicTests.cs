@@ -67,7 +67,7 @@ namespace Hyperbee.Expressions.Tests
         [DataRow( CompilerType.Interpret )]
         public void TryFault_ShouldRunSuccessfully_WithException( CompilerType compiler )
         {
-            var x = Parameter( typeof(int), "x" );
+            var x = Parameter( typeof( int ), "x" );
 
             // Arrange
             var block = Block(
@@ -76,12 +76,12 @@ namespace Hyperbee.Expressions.Tests
                     TryFault( // fault is like a try finally, but for exceptions
                         Block(
                             Assign( x, Constant( 1 ) ),
-                            Throw( New( typeof(Exception) ), typeof(int) )
+                            Throw( New( typeof( Exception ) ), typeof( int ) )
                         ),
                         Assign( x, Constant( 2 ) )
                     ),
                     // catch so we can verify fault ran
-                    Catch( typeof(Exception), Constant( -1 ) )
+                    Catch( typeof( Exception ), Constant( -1 ) )
                 ),
                 x
             );
