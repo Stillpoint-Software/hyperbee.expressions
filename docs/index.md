@@ -14,6 +14,10 @@ trees to handle asynchronous workflows and other language constructs.
     * `AwaitExpression`: An expression that represents an await operation.
     * `AsyncBlockExpression`: An expression that represents an asynchronous code block.
 
+* **Yield Expressions**
+    * `YieldExpression`: An expression that represents a yield return or break statement.
+    * `EnumerableBlockExpression`: An expression that represents an enumerable code block.
+
 * **Using Expression**
     * `UsingExpression`: An expression that automatically disposes IDisposable resources.
 
@@ -82,6 +86,41 @@ public class Example
     {
         await Task.Delay( 1000 ); // Simulate async work
         return value * 2; // Example result
+    }
+}
+```
+
+### Yield Expressions
+
+The following example demonstrates how to create a yield expression tree.
+
+When the expression tree is compiled, the `EnumerableBlockExpression` will auto-generate a state machine that executes
+`YieldExpressions` in the block.
+
+```csharp
+public class Example
+{
+    public void ExampleYield()
+    {
+        // Create an enumerable block that yields values
+        var index = Variable( typeof(int), "index" );
+
+        var enumerableBlock = BlockEnumerable(
+            [index],
+            For( Assign( index, Constant( 0 ) ), LessThan( index, Constant( 10 ) ), PostIncrementAssign( index ),
+                Yield( index )
+            )
+        );
+
+        // Compile and execute the enumerable block
+        var lambda = Lambda<Func<IEnumerable<int>>>( enumerableBlock );
+        var compiledLambda = lambda.Compile();
+        var enumerable = compiledLambda();
+
+        foreach( var value in enumerable )
+        {
+            Console.WriteLine( $"Yielded value: {value}" );
+        }
     }
 }
 ```

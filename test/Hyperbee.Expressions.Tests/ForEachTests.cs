@@ -138,4 +138,33 @@ public class ForEachExpressionTests
         // Assert:
         Assert.AreEqual( 7, total );
     }
+
+    [DataTestMethod]
+    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    //[DataRow( CompilerType.Interpret )]
+    public void ForEachExpression_ShouldIterateOverCollection_WithYields( CompilerType compiler )
+    {
+        // Arrange
+        var list = Constant( new List<int> { 1, 2, 3, 4, 5 } );
+        var element = Variable( typeof( int ), "element" );
+
+        var forEachExpr = BlockEnumerable(
+            ForEach( list, element, YieldReturn( element ) )
+        );
+
+        // Act
+        var lambda = Lambda<Func<IEnumerable<int>>>( forEachExpr );
+        var compiledLambda = lambda.Compile( compiler );
+
+        var results = compiledLambda().ToArray();
+
+        // Assert:
+        Assert.AreEqual( 5, results.Length );
+        Assert.AreEqual( 1, results[0] );
+        Assert.AreEqual( 2, results[1] );
+        Assert.AreEqual( 3, results[2] );
+        Assert.AreEqual( 4, results[3] );
+        Assert.AreEqual( 5, results[4] );
+    }
 }

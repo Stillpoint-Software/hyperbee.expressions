@@ -1,4 +1,4 @@
-﻿namespace Hyperbee.Expressions.CompilerServices;
+﻿namespace Hyperbee.Expressions.CompilerServices.Lowering;
 
 internal class LoweringException : Exception
 {
