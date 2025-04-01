@@ -104,7 +104,7 @@ internal class EnumerableStateMachineBuilder<TResult>
             Block(
                 [success],
                 // This should be a try fault, but fails with preferInterpretation (see: https://github.com/dotnet/runtime/issues/114081)
-                TryFinally( 
+                TryFinally(
                     Block(
                         CreateBody(
                             fields,
