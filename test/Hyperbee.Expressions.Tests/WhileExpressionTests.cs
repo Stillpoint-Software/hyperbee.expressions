@@ -74,9 +74,9 @@ public class WhileExpressionTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void WhileExpression_ShouldIterateOverCollection_WithYields( CompilerType compiler )
     {
         // Arrange

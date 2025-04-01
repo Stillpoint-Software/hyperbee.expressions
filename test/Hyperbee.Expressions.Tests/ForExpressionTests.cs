@@ -58,7 +58,7 @@ public class ForExpressionTests
         var condition = LessThan( counter, Constant( 10 ) );
         var iteration = PostIncrementAssign( counter );
 
-        var forExpr = For( counterInit, condition, iteration, ( breakLabel, continueLabel ) =>
+        var forExpr = For( counterInit, condition, iteration, ( breakLabel, _ ) =>
             IfThenElse(
                 Equal( counter, Constant( 5 ) ),
                 Break( breakLabel ), // break when counter == 5
@@ -82,9 +82,9 @@ public class ForExpressionTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void ForExpression_ShouldIterateOverCollection_WithYields( CompilerType compiler )
     {
         // Arrange
