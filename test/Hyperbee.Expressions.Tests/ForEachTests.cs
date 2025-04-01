@@ -140,9 +140,9 @@ public class ForEachExpressionTests
     }
 
     [DataTestMethod]
-    //[DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
-    //[DataRow( CompilerType.Interpret )]
+    [DataRow( CompilerType.Interpret )]
     public void ForEachExpression_ShouldIterateOverCollection_WithYields( CompilerType compiler )
     {
         // Arrange
