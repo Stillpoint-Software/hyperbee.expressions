@@ -28,6 +28,8 @@ trees to handle asynchronous workflows and other language constructs.
 
 * **Other Expressions**
     * `StringFormatExpression`: An expression that creates a string using a supplied format string and parameters.
+    * `ConfigurationExpression`: An expression that allows access to IConfiguration.
+    * `InjectExpression`: An expression that allows for depency inject from a IServiceProvider.
     * `DebugExpression`: An expression that helps when debugging expression trees.
 
 * Supports Fast Expression Compiler (FEC) for improved performance.
