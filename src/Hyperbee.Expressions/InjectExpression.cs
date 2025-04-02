@@ -4,14 +4,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Hyperbee.Expressions;
 
-public class InjectExpression<T> : Expression, IDependencyInjectionExpression
+public class InjectExpression : Expression, IDependencyInjectionExpression
 {
     private IServiceProvider _serviceProvider;
     private readonly string _key;
     private readonly Expression _defaultValue;
+    private readonly Type _type;
 
-    public InjectExpression( IServiceProvider serviceProvider, string key, Expression defaultValue )
+    public InjectExpression( Type type, IServiceProvider serviceProvider, string key, Expression defaultValue )
     {
+        _type = type;
         _serviceProvider = serviceProvider;
         _key = key;
         _defaultValue = defaultValue;
@@ -23,16 +25,16 @@ public class InjectExpression<T> : Expression, IDependencyInjectionExpression
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof( T );
+    public override Type Type => _type;
     public override bool CanReduce => true;
 
-    private static readonly MethodInfo GetServiceMethodInfo = typeof( ServiceProviderServiceExtensions )
+    private MethodInfo GetServiceMethodInfo => typeof( ServiceProviderServiceExtensions )
         .GetMethod( "GetService", [typeof( IServiceProvider )] )!
-        .MakeGenericMethod( typeof( T ) );
+        .MakeGenericMethod( _type );
 
-    private static readonly MethodInfo GetKeyedServiceMethodInfo = typeof( ServiceProviderKeyedServiceExtensions )
+    private MethodInfo GetKeyedServiceMethodInfo => typeof( ServiceProviderKeyedServiceExtensions )
         .GetMethod( "GetKeyedService", [typeof( IServiceProvider ), typeof( string )] )!
-        .MakeGenericMethod( typeof( T ) );
+        .MakeGenericMethod( _type );
 
     public override Expression Reduce()
     {
@@ -41,7 +43,7 @@ public class InjectExpression<T> : Expression, IDependencyInjectionExpression
             throw new InvalidOperationException( "Service provider is not available." );
         }
 
-        var serviceValue = Variable( typeof( T ), "serviceValue" );
+        var serviceValue = Variable( _type, "serviceValue" );
 
         var callExpression = _key == null
             ? Call(
@@ -56,13 +58,13 @@ public class InjectExpression<T> : Expression, IDependencyInjectionExpression
             );
 
         var defaultExpression = _defaultValue ??
-                                Throw( New( ExceptionHelper.ConstructorInfo, Constant( "Service is not available." ) ), typeof( T ) );
+                                Throw( New( ExceptionHelper.ConstructorInfo, Constant( "Service is not available." ) ), _type );
 
         return Block(
             [serviceValue],
             Assign( serviceValue, callExpression ),
             Condition(
-                NotEqual( serviceValue, Constant( null, typeof( T ) ) ),
+                NotEqual( serviceValue, Constant( null, _type ) ),
                 serviceValue,
                 defaultExpression
             )
@@ -83,13 +85,23 @@ internal static class ExceptionHelper
 
 public static partial class ExpressionExtensions
 {
-    public static InjectExpression<T> Inject<T>( IServiceProvider serviceProvider, string key = null, Expression defaultValue = null )
+    public static InjectExpression Inject( Type type, IServiceProvider serviceProvider, string key = null, Expression defaultValue = null )
     {
-        return new InjectExpression<T>( serviceProvider, key, defaultValue );
+        return new InjectExpression( type, serviceProvider, key, defaultValue );
     }
 
-    public static InjectExpression<T> Inject<T>( string key = null, Expression defaultValue = null )
+    public static InjectExpression Inject( Type type, string key = null, Expression defaultValue = null )
     {
-        return new InjectExpression<T>( null, key, defaultValue );
+        return new InjectExpression( type, null, key, defaultValue );
+    }
+
+    public static InjectExpression Inject<T>( IServiceProvider serviceProvider, string key = null, Expression defaultValue = null )
+    {
+        return new InjectExpression( typeof( T ), serviceProvider, key, defaultValue );
+    }
+
+    public static InjectExpression Inject<T>( string key = null, Expression defaultValue = null )
+    {
+        return new InjectExpression( typeof(T), null, key, defaultValue );
     }
 }

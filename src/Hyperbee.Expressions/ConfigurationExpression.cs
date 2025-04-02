@@ -4,18 +4,21 @@ using Microsoft.Extensions.Configuration;
 
 namespace Hyperbee.Expressions;
 
-public class ConfigurationExpression<T> : Expression, IDependencyInjectionExpression
+public class ConfigurationExpression : Expression, IDependencyInjectionExpression
 {
     private IConfiguration _configuration;
     private readonly string _key;
+    private readonly Type _type;
 
-    public ConfigurationExpression( string key )
+    public ConfigurationExpression( Type type, string key )
     {
+        _type = type;
         _key = key;
     }
 
-    public ConfigurationExpression( IConfiguration configuration, string key )
+    public ConfigurationExpression( Type type, IConfiguration configuration, string key )
     {
+        _type = type;
         _configuration = configuration;
         _key = key;
     }
@@ -26,12 +29,12 @@ public class ConfigurationExpression<T> : Expression, IDependencyInjectionExpres
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
-    public override Type Type => typeof( T );
+    public override Type Type => _type;
     public override bool CanReduce => true;
 
-    private static readonly MethodInfo GetValueMethodInfo = typeof( ConfigurationBinder )
+    private MethodInfo GetValueMethodInfo => typeof( ConfigurationBinder )
         .GetMethod( "GetValue", [typeof( IConfiguration ), typeof( string )] )!
-        .MakeGenericMethod( typeof( T ) );
+        .MakeGenericMethod( _type );
 
     public override Expression Reduce()
     {
@@ -53,13 +56,23 @@ public class ConfigurationExpression<T> : Expression, IDependencyInjectionExpres
 }
 public static partial class ExpressionExtensions
 {
-    public static ConfigurationExpression<T> ConfigurationValue<T>( string key )
+    public static ConfigurationExpression ConfigurationValue( Type type, string key )
     {
-        return new ConfigurationExpression<T>( key );
+        return new ConfigurationExpression( type, key );
     }
 
-    public static ConfigurationExpression<T> ConfigurationValue<T>( IConfiguration configuration, string key )
+    public static ConfigurationExpression ConfigurationValue( Type type, IConfiguration configuration, string key )
     {
-        return new ConfigurationExpression<T>( configuration, key );
+        return new ConfigurationExpression( type, configuration, key );
+    }
+
+    public static ConfigurationExpression ConfigurationValue<T>( string key )
+    {
+        return new ConfigurationExpression( typeof(T), key );
+    }
+
+    public static ConfigurationExpression ConfigurationValue<T>( IConfiguration configuration, string key )
+    {
+        return new ConfigurationExpression( typeof( T ), configuration, key );
     }
 }
