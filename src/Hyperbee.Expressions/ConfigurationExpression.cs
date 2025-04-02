@@ -7,20 +7,19 @@ namespace Hyperbee.Expressions;
 public class ConfigurationExpression : Expression, IDependencyInjectionExpression
 {
     private IConfiguration _configuration;
-    private readonly string _key;
     private readonly Type _type;
 
     public ConfigurationExpression( Type type, string key )
     {
         _type = type;
-        _key = key;
+        Key = key;
     }
 
     public ConfigurationExpression( Type type, IConfiguration configuration, string key )
     {
         _type = type;
         _configuration = configuration;
-        _key = key;
+        Key = key;
     }
 
     public void SetServiceProvider( IServiceProvider serviceProvider )
@@ -30,6 +29,7 @@ public class ConfigurationExpression : Expression, IDependencyInjectionExpressio
 
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override Type Type => _type;
+    public string Key { get; init; }
     public override bool CanReduce => true;
 
     private MethodInfo GetValueMethodInfo => typeof( ConfigurationBinder )
@@ -46,7 +46,7 @@ public class ConfigurationExpression : Expression, IDependencyInjectionExpressio
         return Call(
             null,
             GetValueMethodInfo,
-            [Constant( _configuration ), Constant( _key )] );
+            [Constant( _configuration ), Constant( Key )] );
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )

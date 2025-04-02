@@ -7,16 +7,14 @@ namespace Hyperbee.Expressions;
 public class InjectExpression : Expression, IDependencyInjectionExpression
 {
     private IServiceProvider _serviceProvider;
-    private readonly string _key;
-    private readonly Expression _defaultValue;
     private readonly Type _type;
 
     public InjectExpression( Type type, IServiceProvider serviceProvider, string key, Expression defaultValue )
     {
         _type = type;
         _serviceProvider = serviceProvider;
-        _key = key;
-        _defaultValue = defaultValue;
+        Key = key;
+        DefaultValue = defaultValue;
     }
 
     public void SetServiceProvider( IServiceProvider serviceProvider )
@@ -26,6 +24,8 @@ public class InjectExpression : Expression, IDependencyInjectionExpression
 
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override Type Type => _type;
+    public string Key { get; init; }
+    public Expression DefaultValue { get; init; }
     public override bool CanReduce => true;
 
     private MethodInfo GetServiceMethodInfo => typeof( ServiceProviderServiceExtensions )
@@ -45,7 +45,7 @@ public class InjectExpression : Expression, IDependencyInjectionExpression
 
         var serviceValue = Variable( _type, "serviceValue" );
 
-        var callExpression = _key == null
+        var callExpression = Key == null
             ? Call(
                 null,
                 GetServiceMethodInfo,
@@ -54,10 +54,10 @@ public class InjectExpression : Expression, IDependencyInjectionExpression
             : Call(
                 null,
                 GetKeyedServiceMethodInfo,
-                [Constant( _serviceProvider ), Constant( _key )]
+                [Constant( _serviceProvider ), Constant( Key )]
             );
 
-        var defaultExpression = _defaultValue ??
+        var defaultExpression = DefaultValue ??
                                 Throw( New( ExceptionHelper.ConstructorInfo, Constant( "Service is not available." ) ), _type );
 
         return Block(
