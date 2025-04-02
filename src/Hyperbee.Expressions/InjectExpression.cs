@@ -102,6 +102,6 @@ public static partial class ExpressionExtensions
 
     public static InjectExpression Inject<T>( string key = null, Expression defaultValue = null )
     {
-        return new InjectExpression( typeof(T), null, key, defaultValue );
+        return new InjectExpression( typeof( T ), null, key, defaultValue );
     }
 }

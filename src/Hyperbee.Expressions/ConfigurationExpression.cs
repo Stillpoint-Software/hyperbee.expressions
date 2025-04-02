@@ -68,7 +68,7 @@ public static partial class ExpressionExtensions
 
     public static ConfigurationExpression ConfigurationValue<T>( string key )
     {
-        return new ConfigurationExpression( typeof(T), key );
+        return new ConfigurationExpression( typeof( T ), key );
     }
 
     public static ConfigurationExpression ConfigurationValue<T>( IConfiguration configuration, string key )
