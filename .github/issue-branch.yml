@@ -25,6 +25,11 @@ branches:
   - label : '*'
     skip: true
 
+permissions:
+  issues: write
+  pull-requests: write
+  contents: write
+  actions: read
 
 prSkipCI: true
 copyIssueDescriptionToPR: true
