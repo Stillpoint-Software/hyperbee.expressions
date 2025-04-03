@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Hyperbee.Expressions.Tests.TestSupport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -102,10 +102,30 @@ public class InjectExpressionTests
     [DataTestMethod]
     [DataRow( false )]
     [DataRow( true )]
+    public void InjectExpression_ShouldInjectSuccessfully_WithCustomCompileGetService( bool interpret )
+    {
+        // Arrange
+        var body = Inject<ITestService>( "TestKey" );
+
+        // Act
+        var lambda = Lambda<Func<ITestService>>( body );
+        var compiledLambda = lambda.Compile( GetServiceProvider(), interpret );
+
+        var result = compiledLambda();
+
+        // Assert
+        Assert.AreEqual( "Hello, World! And Universe!", result.DoSomething() );
+    }
+
+    [DataTestMethod]
+    [DataRow( false )]
+    [DataRow( true )]
     public void InjectExpression_ShouldInjectSuccessfully_WithCustomCompile( bool interpret )
     {
         // Arrange
-        var block = Call( Inject<ITestService>(), TestService.DoSomethingMethodInfo );
+        var block = Block(
+            Call( Inject<ITestService>(), TestService.DoSomethingMethodInfo )
+        );
 
         // Act
         var lambda = Lambda<Func<string>>( block );
