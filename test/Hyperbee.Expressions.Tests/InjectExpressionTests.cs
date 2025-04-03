@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using Hyperbee.Expressions.Tests.TestSupport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
