@@ -25,15 +25,16 @@ public class UsingExpression : Expression
 
     public override Expression Reduce()
     {
-        var disposableAssignment = Assign( DisposeVariable, Disposable );
+        var disposableVariable = DisposeVariable ?? Variable( Disposable.Type );
+        var disposableAssignment = Assign( disposableVariable, Disposable );
 
         var finallyBlock = IfThen(
-            NotEqual( DisposeVariable, Constant( null ) ),
-            Call( DisposeVariable, nameof( IDisposable.Dispose ), Type.EmptyTypes )
+            NotEqual( disposableVariable, Constant( null ) ),
+            Call( disposableVariable, nameof( IDisposable.Dispose ), Type.EmptyTypes )
         );
 
         return Block(
-            [DisposeVariable],
+            [disposableVariable],
             disposableAssignment,
             TryFinally( Body, finallyBlock )
         );
@@ -41,7 +42,10 @@ public class UsingExpression : Expression
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        var newDisposeVariable = visitor.VisitAndConvert( DisposeVariable, nameof( VisitChildren ) );
+        var newDisposeVariable = DisposeVariable != null 
+            ? visitor.VisitAndConvert( DisposeVariable, nameof( VisitChildren ) )
+            : null;
+
         var newDisposable = visitor.Visit( Disposable );
         var newBody = visitor.Visit( Body );
 
@@ -62,7 +66,6 @@ public static partial class ExpressionExtensions
 
     public static UsingExpression Using( Expression disposable, Expression body )
     {
-        var disposableVar = Expression.Variable( disposable.Type, "disposable" );
-        return new UsingExpression( disposableVar, disposable, body );
+        return new UsingExpression( null, disposable, body );
     }
 }
