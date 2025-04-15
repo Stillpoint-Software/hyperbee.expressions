@@ -7,16 +7,16 @@
     <IsPackable>true</IsPackable>
 
     <Authors>Stillpoint Software, Inc.</Authors>
-    <PackageId>Hyperbee.Expressions</PackageId>
+    <PackageId>Hyperbee.Expressions.Lab</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>expression-tree;expressions;async;await;expression-extension</PackageTags>
+    <PackageTags>expression-tree;expressions;lab;samples</PackageTags>
 
     <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Stillpoint Software, Inc.</Copyright>
-    <Title>Hyperbee Expressions</Title>
-    <Description>Async and Await for .NET Expression Trees.</Description>
+    <Title>Hyperbee Expressions (lab)</Title>
+    <Description>Extentions for .NET Expression Trees.</Description>
     <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
@@ -44,10 +44,13 @@
     <None Include="..\..\README.md" Pack="true" Visible="true" PackagePath="/" Link="README.md" />
     <None Include="..\..\LICENSE" Pack="true" Visible="false" PackagePath="/" />
     <PackageReference Include="Hyperbee.Collections" Version="2.4.0" />
+    <PackageReference Include="Hyperbee.Json" Version="3.0.3" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.13.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.4" />
+    <ProjectReference Include="..\Hyperbee.Expressions\Hyperbee.Expressions.csproj" />
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
