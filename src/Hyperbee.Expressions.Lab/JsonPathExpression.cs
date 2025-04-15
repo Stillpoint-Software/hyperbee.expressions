@@ -12,21 +12,21 @@ public class JsonPathExpression : Expression
 
     public JsonPathExpression( Expression jsonExpression, Expression path )
     {
-        if ( jsonExpression.Type != typeof(JsonElement) && jsonExpression.Type != typeof(JsonNode) )
+        if ( jsonExpression.Type != typeof( JsonElement ) && jsonExpression.Type != typeof( JsonNode ) )
             throw new InvalidOperationException( "Only JsonElement and JsonNode types are supported." );
 
         JsonExpression = jsonExpression;
         Path = path;
     }
 
-    public override Type Type => typeof(IEnumerable<>).MakeGenericType( JsonExpression.Type );
+    public override Type Type => typeof( IEnumerable<> ).MakeGenericType( JsonExpression.Type );
     public override ExpressionType NodeType => ExpressionType.Extension;
     public override bool CanReduce => true;
 
     public override Expression Reduce()
     {
-        var delegateType = typeof(NodeProcessorDelegate<>).MakeGenericType( JsonExpression.Type );
-        var selectMethodInfo = typeof(JsonPath<>)
+        var delegateType = typeof( NodeProcessorDelegate<> ).MakeGenericType( JsonExpression.Type );
+        var selectMethodInfo = typeof( JsonPath<> )
             .MakeGenericType( JsonExpression.Type )
             .GetMethod(
                 "Select",

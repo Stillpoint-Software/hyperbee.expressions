@@ -180,9 +180,9 @@ public class FetchExpressionTests
     }
 
     [DataTestMethod]
-    [DataRow(true)]
-    [DataRow(false)]
-    public async Task FetchExpression_ShouldHandleGetRequestWithHeaders(bool preferInterpretation)
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task FetchExpression_ShouldHandleGetRequestWithHeaders( bool preferInterpretation )
     {
         // Arrange
         var serviceProvider = GetServiceProvider();
@@ -196,29 +196,29 @@ public class FetchExpressionTests
         var block = BlockAsync(
             Await(
                 Fetch(
-                    Constant("Test"),
-                    Constant("/api/headers"),
-                    Constant(HttpMethod.Get),
+                    Constant( "Test" ),
+                    Constant( "/api/headers" ),
+                    Constant( HttpMethod.Get ),
                     null,
-                    Constant(headers)
+                    Constant( headers )
                 )
             )
         );
 
         // Act
-        var lambda = Lambda<Func<Task<HttpResponseMessage>>>(block);
-        var compiledLambda = lambda.Compile(serviceProvider, preferInterpretation);
+        var lambda = Lambda<Func<Task<HttpResponseMessage>>>( block );
+        var compiledLambda = lambda.Compile( serviceProvider, preferInterpretation );
 
         var response = await compiledLambda();
 
         // Assert
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
     [DataTestMethod]
-    [DataRow(true)]
-    [DataRow(false)]
-    public async Task FetchExpression_ShouldHandlePostRequestWithHeaders(bool preferInterpretation)
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task FetchExpression_ShouldHandlePostRequestWithHeaders( bool preferInterpretation )
     {
         // Arrange
         var serviceProvider = GetServiceProvider();
@@ -232,23 +232,23 @@ public class FetchExpressionTests
         var block = BlockAsync(
             Await(
                 Fetch(
-                    Constant("Test"),
-                    Constant("/api/headers-post"),
-                    Constant(HttpMethod.Post),
-                    Constant(new StringContent("{\"key\":\"value\"}", Encoding.UTF8, "application/json")),
-                    Constant(headers)
+                    Constant( "Test" ),
+                    Constant( "/api/headers-post" ),
+                    Constant( HttpMethod.Post ),
+                    Constant( new StringContent( "{\"key\":\"value\"}", Encoding.UTF8, "application/json" ) ),
+                    Constant( headers )
                 )
             )
         );
 
         // Act
-        var lambda = Lambda<Func<Task<HttpResponseMessage>>>(block);
-        var compiledLambda = lambda.Compile(serviceProvider, preferInterpretation);
+        var lambda = Lambda<Func<Task<HttpResponseMessage>>>( block );
+        var compiledLambda = lambda.Compile( serviceProvider, preferInterpretation );
 
         var response = await compiledLambda();
 
         // Assert
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
     private static IServiceProvider GetServiceProvider( HttpMessageHandler messageHandler = null )
@@ -279,7 +279,7 @@ public class FetchExpressionTests
             _statusCode = statusCode;
         }
 
-        protected override Task<HttpResponseMessage> SendAsync( 
+        protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken )
         {

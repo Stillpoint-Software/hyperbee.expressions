@@ -26,7 +26,7 @@ public class JsonExpressionTests
                 "FirstName": "John", 
                 "LastName": "Doe"
             }
-            """ ), typeof( Person )  );
+            """ ), typeof( Person ) );
 
         // Act
         var lambda = Lambda<Func<Person>>( body );
@@ -47,7 +47,7 @@ public class JsonExpressionTests
         var serviceProvider = GetServiceProvider();
 
         var body = Expression.JsonPath(
-            Expression.Json( 
+            Expression.Json(
                 Constant(
                 """
                 [

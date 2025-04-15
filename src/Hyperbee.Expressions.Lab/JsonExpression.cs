@@ -25,26 +25,26 @@ public class JsonExpression : Expression, IDependencyInjectionExpression
     public override Expression Reduce()
     {
         var optionExpression = (Expression) (_serviceProvider?
-            .GetService( typeof(JsonSerializerOptions) ) is not JsonSerializerOptions options
-            ? Default( typeof(JsonSerializerOptions) )
+            .GetService( typeof( JsonSerializerOptions ) ) is not JsonSerializerOptions options
+            ? Default( typeof( JsonSerializerOptions ) )
             : Constant( options ));
 
-        if ( InputExpression.Type == typeof(string) )
+        if ( InputExpression.Type == typeof( string ) )
         {
             // Deserialize from a string
             return Call(
-                typeof(JsonSerializer),
-                nameof(JsonSerializer.Deserialize),
+                typeof( JsonSerializer ),
+                nameof( JsonSerializer.Deserialize ),
                 [TargetType],
                 InputExpression,
                 optionExpression
             );
         }
 
-        if ( InputExpression.Type == typeof(Stream) )
+        if ( InputExpression.Type == typeof( Stream ) )
         {
-            var deserializeAsyncMethodInfo = typeof(JsonSerializer)
-                .GetMethod( nameof(JsonSerializer.DeserializeAsync), [
+            var deserializeAsyncMethodInfo = typeof( JsonSerializer )
+                .GetMethod( nameof( JsonSerializer.DeserializeAsync ), [
                     typeof(Stream),
                     typeof(JsonSerializerOptions),
                     typeof(CancellationToken)
@@ -59,10 +59,10 @@ public class JsonExpression : Expression, IDependencyInjectionExpression
             ) );
         }
 
-        if ( InputExpression.Type == typeof(HttpContent) )
+        if ( InputExpression.Type == typeof( HttpContent ) )
         {
-            var readStreamMethodInfo = typeof(HttpContent)
-                .GetMethod( nameof(HttpContent.ReadAsStreamAsync), Type.EmptyTypes )!;
+            var readStreamMethodInfo = typeof( HttpContent )
+                .GetMethod( nameof( HttpContent.ReadAsStreamAsync ), Type.EmptyTypes )!;
 
             // Deserialize from HttpContent using the stream
             var readStreamAsync = Await(
@@ -72,8 +72,8 @@ public class JsonExpression : Expression, IDependencyInjectionExpression
                 )
             );
 
-            var deserializeAsyncMethodInfo = typeof(JsonSerializer)
-                .GetMethod( nameof(JsonSerializer.DeserializeAsync), [
+            var deserializeAsyncMethodInfo = typeof( JsonSerializer )
+                .GetMethod( nameof( JsonSerializer.DeserializeAsync ), [
                     typeof(Stream),
                     typeof(JsonSerializerOptions),
                     typeof(CancellationToken)
@@ -84,7 +84,7 @@ public class JsonExpression : Expression, IDependencyInjectionExpression
                 deserializeAsyncMethodInfo,
                 readStreamAsync,
                 optionExpression,
-                Default( typeof(CancellationToken) )
+                Default( typeof( CancellationToken ) )
             ) );
         }
 
@@ -96,8 +96,8 @@ public class JsonExpression : Expression, IDependencyInjectionExpression
     {
         var newInput = visitor.Visit( InputExpression );
 
-        return newInput == InputExpression 
-            ? this 
+        return newInput == InputExpression
+            ? this
             : new JsonExpression( newInput, TargetType );
     }
 
@@ -111,6 +111,6 @@ public static partial class ExpressionExtensions
 {
     public static JsonExpression Json( Expression inputExpression, Type targetType = null )
     {
-        return new JsonExpression( inputExpression, targetType ?? typeof(JsonElement) );
+        return new JsonExpression( inputExpression, targetType ?? typeof( JsonElement ) );
     }
 }

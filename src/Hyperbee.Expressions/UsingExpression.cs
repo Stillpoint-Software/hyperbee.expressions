@@ -42,7 +42,7 @@ public class UsingExpression : Expression
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
     {
-        var newDisposeVariable = DisposeVariable != null 
+        var newDisposeVariable = DisposeVariable != null
             ? visitor.VisitAndConvert( DisposeVariable, nameof( VisitChildren ) )
             : null;
 
