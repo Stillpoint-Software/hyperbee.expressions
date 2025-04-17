@@ -1,5 +1,5 @@
-﻿using System.Net.Http.Json;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
+using System.Net.Http.Json;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -14,23 +14,23 @@ public static partial class ExpressionExtensions
 
     public static Expression ReadJson( Expression response, Type type )
     {
-        ArgumentNullException.ThrowIfNull( response, nameof(response) );
-        ArgumentNullException.ThrowIfNull( type, nameof(type) );
+        ArgumentNullException.ThrowIfNull( response, nameof( response ) );
+        ArgumentNullException.ThrowIfNull( type, nameof( type ) );
 
-        if ( response.Type != typeof(HttpResponseMessage) )
-            throw new ArgumentException( "Response must be of type HttpResponseMessage.", nameof(response) );
+        if ( response.Type != typeof( HttpResponseMessage ) )
+            throw new ArgumentException( "Response must be of type HttpResponseMessage.", nameof( response ) );
 
-        var readFromJsonMethodInfo = typeof(HttpContentJsonExtensions)
-            .GetMethod( nameof(HttpContentJsonExtensions.ReadFromJsonAsync),
-                [typeof(HttpContent), typeof(CancellationToken)] )!
+        var readFromJsonMethodInfo = typeof( HttpContentJsonExtensions )
+            .GetMethod( nameof( HttpContentJsonExtensions.ReadFromJsonAsync ),
+                [typeof( HttpContent ), typeof( CancellationToken )] )!
             .MakeGenericMethod( type );
 
-        var content = Property( response, nameof(HttpResponseMessage.Content) );
+        var content = Property( response, nameof( HttpResponseMessage.Content ) );
         return Call(
             null,
             readFromJsonMethodInfo,
             content,
-            Default( typeof(CancellationToken) )
+            Default( typeof( CancellationToken ) )
         );
     }
 
@@ -41,11 +41,11 @@ public static partial class ExpressionExtensions
 
     public static Expression ReadText( Expression response )
     {
-        ArgumentNullException.ThrowIfNull( response, nameof(response) );
+        ArgumentNullException.ThrowIfNull( response, nameof( response ) );
 
         return Call(
-            Property( response, nameof(HttpResponseMessage.Content) ),
-            nameof(HttpContent.ReadAsStringAsync),
+            Property( response, nameof( HttpResponseMessage.Content ) ),
+            nameof( HttpContent.ReadAsStringAsync ),
             Type.EmptyTypes
         );
     }
@@ -57,11 +57,11 @@ public static partial class ExpressionExtensions
 
     public static Expression ReadBytes( Expression response )
     {
-        ArgumentNullException.ThrowIfNull( response, nameof(response) );
+        ArgumentNullException.ThrowIfNull( response, nameof( response ) );
 
         return Call(
-            Property( response, nameof(HttpResponseMessage.Content) ),
-            nameof(HttpContent.ReadAsByteArrayAsync),
+            Property( response, nameof( HttpResponseMessage.Content ) ),
+            nameof( HttpContent.ReadAsByteArrayAsync ),
             Type.EmptyTypes
         );
     }
@@ -73,11 +73,11 @@ public static partial class ExpressionExtensions
 
     public static Expression ReadStream( Expression response )
     {
-        ArgumentNullException.ThrowIfNull( response, nameof(response) );
+        ArgumentNullException.ThrowIfNull( response, nameof( response ) );
 
         return Call(
-            Property( response, nameof(HttpResponseMessage.Content) ),
-            nameof(HttpContent.ReadAsStreamAsync),
+            Property( response, nameof( HttpResponseMessage.Content ) ),
+            nameof( HttpContent.ReadAsStreamAsync ),
             Type.EmptyTypes
         );
     }

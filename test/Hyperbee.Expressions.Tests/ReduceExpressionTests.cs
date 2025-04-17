@@ -98,7 +98,7 @@ public class ReduceExpressionTests
 
         var body = Map(
             list,
-            (item, index) => Power(item, Convert(index, typeof(double)))
+            ( item, index ) => Power( item, Convert( index, typeof( double ) ) )
         );
 
         // Act

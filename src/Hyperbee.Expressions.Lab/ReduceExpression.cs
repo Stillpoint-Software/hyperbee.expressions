@@ -89,7 +89,7 @@ public class ReduceExpression : Expression
                 Accumulator
             );
         }
-        
+
         if ( Index != null )
         {
             return Block(
@@ -142,17 +142,17 @@ public static partial class ExpressionExtensions
         return new ReduceExpression( collection, seed, body );
     }
 
-    public static ReduceExpression Reduce( 
-        Expression collection, 
-        Expression seed, 
+    public static ReduceExpression Reduce(
+        Expression collection,
+        Expression seed,
         ReduceBodyIndex body )
     {
         return new ReduceExpression( collection, seed, body );
     }
 
-    public static ReduceExpression Reduce( 
-        Expression collection, 
-        Expression seed, 
+    public static ReduceExpression Reduce(
+        Expression collection,
+        Expression seed,
         ReduceBodyIndexSource body )
     {
         return new ReduceExpression( collection, seed, body );

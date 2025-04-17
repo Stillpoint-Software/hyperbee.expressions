@@ -291,7 +291,7 @@ public class FetchExpressionTests
                         Constant( "Test" ),
                         Constant( "/api" )
                     ),
-                    typeof(Dictionary<string, string>) )
+                    typeof( Dictionary<string, string> ) )
             )
         );
 
@@ -352,7 +352,7 @@ public class FetchExpressionTests
         // Assert
         var buffer = new byte[response.Length];
         response.ReadExactly( buffer );
-        Assert.AreEqual( "{\"mockKey\":\"mockValue\"}", Encoding.Default.GetString(buffer) );
+        Assert.AreEqual( "{\"mockKey\":\"mockValue\"}", Encoding.Default.GetString( buffer ) );
     }
     private static IServiceProvider GetServiceProvider( HttpMessageHandler messageHandler = null )
     {

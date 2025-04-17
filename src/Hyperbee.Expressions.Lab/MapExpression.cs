@@ -150,14 +150,14 @@ public static partial class ExpressionExtensions
 
     private static Type GetGenericType( Type type )
     {
-        var enumerableType = type == typeof(IEnumerable<>)
+        var enumerableType = type == typeof( IEnumerable<> )
             ? type
             : type.GetInterfaces()
-                .FirstOrDefault( t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>) );
+                .FirstOrDefault( t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof( IEnumerable<> ) );
 
         var enumerableGenericType = enumerableType?.GetGenericArguments()[0] ?? typeof( object );
 
-        if( enumerableGenericType == null )
+        if ( enumerableGenericType == null )
             throw new ArgumentException( "Collection must be IEnumerable", nameof( type ) );
 
         return enumerableGenericType;
