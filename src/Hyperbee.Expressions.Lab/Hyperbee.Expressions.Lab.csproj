@@ -16,7 +16,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Stillpoint Software, Inc.</Copyright>
     <Title>Hyperbee Expressions (lab)</Title>
-    <Description>Extentions for .NET Expression Trees.</Description>
+    <Description>Sample Extentions for .NET Expression Trees.</Description>
     <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>

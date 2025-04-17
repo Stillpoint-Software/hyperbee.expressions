@@ -25,8 +25,7 @@ public class FetchExpressionTests
             Await(
                 Fetch(
                     Constant( "Test" ),
-                    Constant( "/api" ),
-                    Constant( HttpMethod.Get )
+                    Constant( "/api" )
                 ) )
         );
 
@@ -251,6 +250,110 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task FetchExpression_ShouldHandleNullContent( bool preferInterpretation )
+    {
+        // Arrange
+        var serviceProvider = GetServiceProvider();
+        var block = BlockAsync(
+            Await(
+                Fetch(
+                    Constant( "Test" ),
+                    Constant( "/api" ),
+                    Constant( HttpMethod.Post ),
+                    null
+                ) )
+        );
+
+        // Act
+        var lambda = Lambda<Func<Task<HttpResponseMessage>>>( block );
+        var compiledLambda = lambda.Compile( serviceProvider, preferInterpretation );
+        var response = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
+    }
+
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task FetchExpression_ShouldReadJsonStream( bool preferInterpretation )
+    {
+        // Arrange
+        var serviceProvider = GetServiceProvider();
+
+        var block = BlockAsync(
+            Await(
+                ReadJson(
+                    Fetch(
+                        Constant( "Test" ),
+                        Constant( "/api" )
+                    ),
+                    typeof(Dictionary<string, string>) )
+            )
+        );
+
+        // Act
+        var lambda = Lambda<Func<Task<Dictionary<string, string>>>>( block );
+        var compiledLambda = lambda.Compile( serviceProvider, preferInterpretation );
+
+        var response = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( "mockValue", response["mockKey"] );
+    }
+
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task FetchExpression_ShouldReadText( bool preferInterpretation )
+    {
+        // Arrange
+        var serviceProvider = GetServiceProvider();
+
+        var block = BlockAsync(
+            Await( ReadText(
+                Fetch( Constant( "Test" ), Constant( "/api" ) ) )
+            )
+        );
+
+        // Act
+        var lambda = Lambda<Func<Task<string>>>( block );
+        var compiledLambda = lambda.Compile( serviceProvider, preferInterpretation );
+
+        var response = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( "{\"mockKey\":\"mockValue\"}", response );
+    }
+
+    [DataTestMethod]
+    [DataRow( true )]
+    [DataRow( false )]
+    public async Task FetchExpression_ShouldReadStream( bool preferInterpretation )
+    {
+        // Arrange
+        var serviceProvider = GetServiceProvider();
+
+        var block = ReadStream(
+            Fetch(
+                Constant( "Test" ),
+                Constant( "/api" )
+            ) );
+
+        // Act
+        var lambda = Lambda<Func<Task<Stream>>>( block );
+        var compiledLambda = lambda.Compile( serviceProvider, preferInterpretation );
+
+        var response = await compiledLambda();
+
+        // Assert
+        var buffer = new byte[response.Length];
+        response.ReadExactly( buffer );
+        Assert.AreEqual( "{\"mockKey\":\"mockValue\"}", Encoding.Default.GetString(buffer) );
+    }
     private static IServiceProvider GetServiceProvider( HttpMessageHandler messageHandler = null )
     {
         var host = Host.CreateDefaultBuilder()

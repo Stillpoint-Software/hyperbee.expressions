@@ -167,6 +167,13 @@ public class FetchExpression : Expression, IDependencyInjectionExpression
 
 public static partial class ExpressionExtensions
 {
+    public static FetchExpression Fetch(
+        Expression clientName,
+        Expression url )
+    {
+        return new FetchExpression( url, Expression.Constant( HttpMethod.Get ), null, null, clientName );
+    }
+
     public static FetchExpression Fetch( Expression clientName,
         Expression url,
         Expression method,

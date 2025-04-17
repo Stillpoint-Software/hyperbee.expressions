@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using System.Reflection;
 using System.Text.Json;
 
 using static Hyperbee.Expressions.ExpressionExtensions;
@@ -55,41 +54,12 @@ public class JsonExpression : Expression, IDependencyInjectionExpression
             return Await( Call(
                 deserializeAsyncMethodInfo,
                 InputExpression,
-                optionExpression
-            ) );
-        }
-
-        if ( InputExpression.Type == typeof( HttpContent ) )
-        {
-            var readStreamMethodInfo = typeof( HttpContent )
-                .GetMethod( nameof( HttpContent.ReadAsStreamAsync ), Type.EmptyTypes )!;
-
-            // Deserialize from HttpContent using the stream
-            var readStreamAsync = Await(
-                Call(
-                    InputExpression,
-                    readStreamMethodInfo
-                )
-            );
-
-            var deserializeAsyncMethodInfo = typeof( JsonSerializer )
-                .GetMethod( nameof( JsonSerializer.DeserializeAsync ), [
-                    typeof(Stream),
-                    typeof(JsonSerializerOptions),
-                    typeof(CancellationToken)
-                ] )!
-                .MakeGenericMethod( TargetType );
-
-            return Await( Call(
-                deserializeAsyncMethodInfo,
-                readStreamAsync,
                 optionExpression,
                 Default( typeof( CancellationToken ) )
             ) );
         }
 
         throw new InvalidOperationException( "Unsupported input type for JSON deserialization." );
-
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
