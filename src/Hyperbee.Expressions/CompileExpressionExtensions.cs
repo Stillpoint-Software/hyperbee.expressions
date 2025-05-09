@@ -4,8 +4,8 @@ namespace Hyperbee.Expressions;
 
 public static partial class ExpressionExtensions
 {
-    public static Func<TResult> Compile<TResult>(
-        this Expression<Func<TResult>> expression,
+    public static TResult Compile<TResult>(
+        this Expression<TResult> expression,
         IServiceProvider serviceProvider,
         bool preferInterpretation = false )
     {
@@ -13,7 +13,7 @@ public static partial class ExpressionExtensions
 
         var setter = new ServiceSetter( serviceProvider );
 
-        return setter.Visit( expression ) is Expression<Func<TResult>> replacedExpression
+        return setter.Visit( expression ) is Expression<TResult> replacedExpression
             ? replacedExpression.Compile( preferInterpretation )
             : throw new InvalidOperationException( "Failed to compile expression." );
     }
