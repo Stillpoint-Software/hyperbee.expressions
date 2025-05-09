@@ -82,7 +82,7 @@ internal sealed class VariableResolver : ExpressionVisitor
         awaiter = AddVariable( Variable( type, VariableName.Awaiter( stateId, ref _variableId ) ) );
         _awaiters[type] = awaiter;
 
-        return AddVariable( awaiter );
+        return awaiter; //AddVariable( awaiter );
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
