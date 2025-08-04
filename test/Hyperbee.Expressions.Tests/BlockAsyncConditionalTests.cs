@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncConditionalTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -36,7 +36,7 @@ public class BlockAsyncConditionalTests
         Assert.IsTrue( true ); // No exception means condition and block executed successfully
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -72,7 +72,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 1, result );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -102,7 +102,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 1, result );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -132,7 +132,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 2, result );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -161,7 +161,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 1, result );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -194,7 +194,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 10, result ); // Condition is true, so the true branch should be awaited
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -225,7 +225,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 15, result ); // Last awaited value should be 15
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -255,7 +255,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 20, result ); // False branch should be awaited and return 20
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
@@ -295,7 +295,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 2, result ); // Second condition is false, so the false branch returns 2
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -332,7 +332,7 @@ public class BlockAsyncConditionalTests
         Assert.AreEqual( 10, result ); // The true branch contains another conditional, false branch executed
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -370,7 +370,6 @@ public class BlockAsyncConditionalTests
     }
 
     [TestMethod]
-    [ExpectedException( typeof( NullReferenceException ) )]
     public async Task AsyncBlock_ShouldThrowException_WithNullTaskInConditional()
     {
         // Arrange: One of the branches returns a null task, leading to exception
@@ -385,6 +384,6 @@ public class BlockAsyncConditionalTests
         var compiledLambda = lambda.Compile();
 
         // Act & Assert
-        await compiledLambda();
+        await Assert.ThrowsExactlyAsync<NullReferenceException>( async () => await compiledLambda() );
     }
 }

@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Tests;
 public class StringFormatExpressionTests
 {
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -26,7 +26,7 @@ public class StringFormatExpressionTests
         Assert.AreEqual( "Hello, world!", result, "Should return the format string when no arguments are provided." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -48,19 +48,18 @@ public class StringFormatExpressionTests
     }
 
     [TestMethod]
-    [ExpectedException( typeof( ArgumentException ) )]
     public void StringFormatExpression_Should_Throw_If_Format_Is_Not_String()
     {
         // Arrange
         var invalidFormat = Expression.Constant( 42 );
 
         // Act
-        _ = ExpressionExtensions.StringFormat( invalidFormat, Expression.Constant( 10 ) );
+        Assert.ThrowsExactly<ArgumentException>( () => _ = ExpressionExtensions.StringFormat( invalidFormat, Expression.Constant( 10 ) ) );
 
         // Assert: Exception is expected
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Tests;
 public class ForExpressionTests
 {
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -43,7 +43,7 @@ public class ForExpressionTests
         Assert.AreEqual( 5, result, "Counter should be 5 after the loop finishes." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -81,7 +81,7 @@ public class ForExpressionTests
         Assert.AreEqual( 5, result, "Loop should break when counter reaches 5." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

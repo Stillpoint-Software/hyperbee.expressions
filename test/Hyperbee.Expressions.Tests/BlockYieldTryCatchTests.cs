@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockYieldTryCatchTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -33,7 +33,7 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 10, result[0] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -65,7 +65,7 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 99, result[0] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -97,7 +97,7 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 50, result[1] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -126,7 +126,7 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 5, result[2] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -161,7 +161,7 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 40, result[3] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -193,7 +193,7 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 0, result.Length );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -231,7 +231,7 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 50, result[1] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
