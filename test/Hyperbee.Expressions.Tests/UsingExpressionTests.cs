@@ -31,7 +31,7 @@ public class UsingExpressionTests
     }
 
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -57,7 +57,7 @@ public class UsingExpressionTests
         Assert.IsTrue( resource.IsDisposed, "Resource should be disposed after using the expression." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -85,7 +85,7 @@ public class UsingExpressionTests
         Assert.IsTrue( _wasBodyExecuted, "The body expression should be executed." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -114,7 +114,7 @@ public class UsingExpressionTests
         Assert.AreEqual( 10, result );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -145,20 +145,19 @@ public class UsingExpressionTests
     }
 
     [TestMethod]
-    [ExpectedException( typeof( ArgumentException ) )]
     public void UsingExpression_ShouldThrowArgumentException_WhenNonDisposableUsed()
     {
         // Arrange
         var nonDisposableExpression = Constant( "non-disposable string" );
 
         // Act
-        Using( nonDisposableExpression, Empty() );
+        Assert.ThrowsExactly<ArgumentException>( () => Using( nonDisposableExpression, Empty() ) );
 
         // Assert: Expect an ArgumentException due to non-disposable resource
         // The constructor should throw the exception, no need for further assertions
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

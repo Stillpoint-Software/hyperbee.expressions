@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class ForEachExpressionTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -31,7 +31,7 @@ public class ForEachExpressionTests
         // Assert: No assertion needed
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -59,7 +59,7 @@ public class ForEachExpressionTests
         // Assert: No assertion needed
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -97,7 +97,7 @@ public class ForEachExpressionTests
         // Assert: No assert needed
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -139,7 +139,7 @@ public class ForEachExpressionTests
         Assert.AreEqual( 7, total );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncSwitchTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -39,7 +39,7 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 10, result ); // Awaited switch value should match the first case
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -71,7 +71,7 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 99, result ); // Default body should return 99
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -106,7 +106,7 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 100, result ); // Case 1 body should be awaited and return 100
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -141,7 +141,7 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 50, result ); // Case 2 body should be awaited and return 50
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -182,14 +182,13 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 30, result ); // First case of nested switch should return 30
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
     [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
-    [ExpectedException( typeof( ArgumentException ) )]
     public async Task AsyncBlock_ShouldThrowException_WithAwaitInSwitchCaseTestValues( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Switch case test values cannot contain awaited tasks
@@ -211,10 +210,10 @@ public class BlockAsyncSwitchTests
         var compiledLambda = lambda.Compile( compiler );
 
         // Act
-        await compiledLambda();
+        await Assert.ThrowsExactlyAsync<ArgumentException>( async () => await compiledLambda() );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -249,7 +248,7 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 10, result ); // Matching case with complex awaited value should return 10
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -276,7 +275,7 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 100, result ); // Awaiting a delayed task should return 100 after completion
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
