@@ -30,15 +30,14 @@ jobs:
       version_json_path: ${{ steps.locate_version.outputs.file }}
 
     steps:
-      # Checkout the branch we’re releasing *from*
-      - name: ⬇️ Checkout target branch
+      - name: Checkout target branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           ref: ${{ inputs.target_branch }}
 
       # Optional sanity check (keeps the job obvious when the ref is wrong)
-      - name: 🔍 Ensure target branch exists
+      - name: Ensure target branch exists
         run: |
           if ! git rev-parse --verify --quiet "refs/heads/${{ inputs.target_branch }}"; then
             echo "::error::Ref '${{ inputs.target_branch }}' not found."
@@ -46,7 +45,7 @@ jobs:
           fi
 
       # Find version.json and emit its absolute path
-      - name: 📄 Locate version.json
+      - name: Locate version.json
         id: locate_version
         shell: bash
         run: |
