@@ -1,61 +1,86 @@
-name: Create Release
+name: Prepare Release & Publish Package
 
 on:
   workflow_dispatch:
     inputs:
-      is_prerelease:
-        description: 'Create a prerelease:'
-        type: boolean
+      target_branch:
+        description: "Branch or tag to release from"
+        type: choice
+        options: [ main, master, develop ]
+        default: main
         required: true
-        default: false
-      is_draft:
-        description: 'Set as a draft:'
-        type: boolean
+      increment:
+        description: "Version bump"
+        type: choice
+        options: [ major, minor, patch ]
+        default: patch
         required: true
-        default: false
-
-permissions:
-    contents: write
-
-env:
-  ALLOW_PRERELEASE: ${{ startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/hotfix/') }}
 
 jobs:
-  create-release:
+  validate_branch:
     runs-on: ubuntu-latest
 
+    # Expose the file path to downstream jobs
+    outputs:
+      version_json_path: ${{ steps.locate_version.outputs.file }}
+
     steps:
-    - name: Check For Valid Prerelease
-      if: ${{ ( env.ALLOW_PRERELEASE == 'true' && github.event.inputs.is_prerelease == 'false' ) || ( github.ref == 'refs/heads/main' && github.event.inputs.is_prerelease == 'true' ) }}
-      run: |
-        echo "Prereleases should not be triggered on the main branch, please use development or hotfix"
-        exit 1
+      # Checkout the branch we’re releasing *from*
+      - name: ⬇️ Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ inputs.target_branch }}
 
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      # Optional sanity check (keeps the job obvious when the ref is wrong)
+      - name: 🔍 Ensure target branch exists
+        run: |
+          if ! git rev-parse --verify --quiet "refs/heads/${{ inputs.target_branch }}"; then
+            echo "::error::Ref '${{ inputs.target_branch }}' not found."
+            exit 1
+          fi
 
-    - name: Get Current Version
-      id: get_version
-      shell: pwsh
-      run: |
-          Import-Module ./solution-helper.psm1 -Force
-          $version = Get-Version
-          if ("${{ github.event.inputs.is_prerelease }}" -eq "true") {
-            $version_tag = "$version-develop.$(date +'%y%m%d%H%M%S')"
-          } else {
-            $version_tag = $version
-          }
-          echo "version_tag=$version_tag" | Out-File -FilePath $env:GITHUB_ENV -Append
+      # Find version.json and emit its absolute path
+      - name: 📄 Locate version.json
+        id: locate_version
+        shell: bash
+        run: |
+          # Search Git-tracked files first …
+          REL_PATH=$(git ls-files --full-name '*version.json' | head -n1)
 
-    - name: Create Release
-      run: |
-        echo "🎁 Creating release ${{ env.version_tag }}"
-        gh release create ${{ env.version_tag }} \
-          --target ${{ github.ref_name }} \
-          --title ${{ env.version_tag }} \
-          --generate-notes \
-          $(if [[ "${{ github.event.inputs.is_draft }}" == "true" ]]; then echo "--draft"; fi) \
-          $(if [[ "${{ github.event.inputs.is_prerelease }}" == "true" ]]; then echo "--prerelease"; fi) \
-          $(if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then echo "--latest"; fi)
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # … fall back to a filesystem search for untracked files (optional)
+          if [[ -z "$REL_PATH" ]]; then
+            REL_PATH=$(find . -type f -name version.json | head -n1 | sed 's|^\./||')
+          fi
+
+          if [[ -z "$REL_PATH" ]]; then
+            echo "::error::version.json not found on branch '${{ inputs.target_branch }}'."
+            tree -L 2 -C || true
+            exit 1
+          fi
+
+          ABS_PATH="$GITHUB_WORKSPACE/$REL_PATH"
+          echo "Found version.json at: $ABS_PATH"
+
+          # Pass the path to other jobs
+          echo "file=$ABS_PATH" >> "$GITHUB_OUTPUT"
+
+  prepare:
+    needs: validate_branch
+    uses: Stillpoint-Software/shared-workflows/.github/workflows/nbgv_prepare_release.yml@main
+    with:
+      target_branch:     ${{ inputs.target_branch }}
+      increment:         ${{ inputs.increment }}
+      version_file_path: ${{ needs.validate_branch.outputs.version_json_path }}
+    secrets: inherit
+
+  publish:
+    needs: prepare
+    uses: Stillpoint-Software/shared-workflows/.github/workflows/nbgv_dotnet_pack.yml@main
+    with:
+      checkout_ref:         ${{ needs.prepare.outputs.release_branch }}
+      build_configuration:  ${{ inputs.target_branch == 'develop' && 'Develop' || 'Release' }}
+      push_after_pack:      true
+      force_dev_prerelease: ${{ inputs.target_branch == 'develop' }}
+    secrets:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

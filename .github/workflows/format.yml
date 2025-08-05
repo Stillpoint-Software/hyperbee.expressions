@@ -1,9 +1,9 @@
 name: Format
 
-on:
+on: 
   push:
-  workflow_run:
-    workflows:
+  workflow_run: 
+    workflows: 
       - Create Prerelease
       - Create Release
     types: [requested]
@@ -14,32 +14,13 @@ on:
       - main
       - develop
 
-permissions:
-    contents: write
-
-env:
-  DOTNET_VERSION: "9.0.x"
-
 jobs:
   format:
-    runs-on: ubuntu-latest
+    uses: Stillpoint-Software/shared-workflows/.github/workflows/format.yml@main
+    with:
+      dotnet_version: "9.0.x"
+    secrets:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Format
-        run: dotnet format
-
-      - name: Update Styles
-        continue-on-error: true
-        run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
-          git commit -am "Updated code formatting to match rules in .editorconfig"
-          git push
