@@ -25,7 +25,7 @@ jobs:
   validate_branch:
     runs-on: ubuntu-latest
 
-    # Expose the file path to downstream jobs
+
     outputs:
       version_json_path: ${{ steps.locate_version.outputs.file }}
 
