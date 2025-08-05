@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
   checks: write
 
 jobs:

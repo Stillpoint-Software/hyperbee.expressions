@@ -12,6 +12,11 @@ on:
   pull_request:
     types: [ opened, closed ]
 
+permissions:
+  contents: read
+  issues: write         
+  pull-requests: write
+
 jobs:
   create_issue_branch_job:
     uses: Stillpoint-Software/shared-workflows/.github/workflows/create-issue-branch.yml@main
