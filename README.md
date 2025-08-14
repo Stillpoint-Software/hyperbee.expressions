@@ -167,4 +167,5 @@ Special thanks to:
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](https://github.com/Stillpoint-Software/.github/blob/main/.github/CONTRIBUTING.md) 
-for more detai
+for more details
+
