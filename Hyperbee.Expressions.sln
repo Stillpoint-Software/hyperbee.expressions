@@ -6,7 +6,8 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6103145C-EC79-4B5F-9CE6-8F10BFC6ACC5}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Build.props = Directory.Build.props
-		Directory.Build.targets = Directory.Build.targets
+		LICENSE = LICENSE
+		README.md = README.md
 		version.json = version.json
 	EndProjectSection
 EndProject
@@ -18,12 +19,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{23A5
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{639ADCDD-E258-40E6-BBC3-70D71DE97191}"
 	ProjectSection(SolutionItems) = preProject
-		.github\workflows\create-release.yml = .github\workflows\create-release.yml
+		.github\workflows\create_release.yml = .github\workflows\create_release.yml
+		.github\workflows\create_test_report.yml = .github\workflows\create_test_report.yml
 		.github\workflows\deploy-gh-pages.yml = .github\workflows\deploy-gh-pages.yml
 		.github\workflows\format.yml = .github\workflows\format.yml
-		.github\workflows\issue-branch.yml = .github\workflows\issue-branch.yml
-		.github\workflows\test-report.yml = .github\workflows\test-report.yml
-		.github\workflows\test.yml = .github\workflows\test.yml
+		.github\workflows\issue_branch.yml = .github\workflows\issue_branch.yml
+		.github\workflows\pack_publish.yml = .github\workflows\pack_publish.yml
+		.github\workflows\run_tests.yml = .github\workflows\run_tests.yml
+		.github\workflows\unlist_package.yml = .github\workflows\unlist_package.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Tests", "Solution Tests", "{FCA0C3C6-AA4C-4EB8-869B-9B12913518FF}"
