@@ -189,6 +189,7 @@ public class BlockAsyncSwitchTests
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
     [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    [ExpectedException( typeof( ArgumentException ) )]
     public async Task AsyncBlock_ShouldThrowException_WithAwaitInSwitchCaseTestValues( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Switch case test values cannot contain awaited tasks
@@ -210,7 +211,7 @@ public class BlockAsyncSwitchTests
         var compiledLambda = lambda.Compile( compiler );
 
         // Act
-        await Assert.ThrowsExactlyAsync<ArgumentException>( async () => await compiledLambda() );
+        await compiledLambda();
     }
 
     [TestMethod]

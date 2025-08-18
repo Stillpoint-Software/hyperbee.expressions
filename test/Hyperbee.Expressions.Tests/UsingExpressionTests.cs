@@ -145,13 +145,14 @@ public class UsingExpressionTests
     }
 
     [TestMethod]
+    [ExpectedException( typeof( ArgumentException ) )]
     public void UsingExpression_ShouldThrowArgumentException_WhenNonDisposableUsed()
     {
         // Arrange
         var nonDisposableExpression = Constant( "non-disposable string" );
 
         // Act
-        Assert.ThrowsExactly<ArgumentException>( () => Using( nonDisposableExpression, Empty() ) );
+        Using( nonDisposableExpression, Empty() );
 
         // Assert: Expect an ArgumentException due to non-disposable resource
         // The constructor should throw the exception, no need for further assertions

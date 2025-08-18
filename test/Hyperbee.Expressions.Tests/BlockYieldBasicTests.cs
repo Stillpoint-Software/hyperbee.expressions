@@ -44,7 +44,7 @@ public class BlockYieldBasicTests
     https://github.com/dotnet/runtime/issues/114081
     ======================================================================
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( false )]
     [DataRow( true )]
     public void TryFault_ShouldRunSuccessfully_WithReturnLabel( bool interpret )
@@ -75,7 +75,7 @@ public class BlockYieldBasicTests
         Assert.AreEqual( 1, result );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( false )]
     [DataRow( true )]
     public void TryFault_ShouldRunSuccessfully_WithReturnLabel_Workaround( bool interpret )

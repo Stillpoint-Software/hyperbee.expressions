@@ -370,6 +370,7 @@ public class BlockAsyncConditionalTests
     }
 
     [TestMethod]
+    [ExpectedException( typeof( NullReferenceException ) )]
     public async Task AsyncBlock_ShouldThrowException_WithNullTaskInConditional()
     {
         // Arrange: One of the branches returns a null task, leading to exception
@@ -384,6 +385,6 @@ public class BlockAsyncConditionalTests
         var compiledLambda = lambda.Compile();
 
         // Act & Assert
-        await Assert.ThrowsExactlyAsync<NullReferenceException>( async () => await compiledLambda() );
+        await compiledLambda();
     }
 }
