@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockYieldSwitchTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -38,7 +38,7 @@ public class BlockYieldSwitchTests
         Assert.AreEqual( 1, result[0] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -65,7 +65,7 @@ public class BlockYieldSwitchTests
         Assert.AreEqual( 99, result[0] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -95,7 +95,7 @@ public class BlockYieldSwitchTests
         Assert.AreEqual( 100, result[0] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -129,7 +129,7 @@ public class BlockYieldSwitchTests
         Assert.AreEqual( 50, result[1] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -165,7 +165,7 @@ public class BlockYieldSwitchTests
         Assert.AreEqual( 30, result[0] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

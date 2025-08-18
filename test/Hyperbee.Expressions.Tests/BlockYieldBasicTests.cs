@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockYieldBasicTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

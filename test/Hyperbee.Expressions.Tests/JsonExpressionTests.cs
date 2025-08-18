@@ -12,7 +12,7 @@ public record Person( string FirstName, string LastName );
 [TestClass]
 public class JsonExpressionTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public void JsonExpression_ShouldDeserializeSuccessfully_WithServiceProvider( bool preferInterpretation )
@@ -38,7 +38,7 @@ public class JsonExpressionTests
 
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public void JsonPathExpression_ShouldSelectSuccessfully_WithServiceProvider( bool preferInterpretation )
