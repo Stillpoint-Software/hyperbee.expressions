@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockYieldConditionalTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -32,7 +32,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 5, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -57,7 +57,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 5, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -87,7 +87,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 10, result[0] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -112,7 +112,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 0, result.Length );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -138,7 +138,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 5, result[0] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -171,7 +171,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 1, result.Skip( 1 ).First() );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -198,7 +198,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 10, result.Skip( 1 ).First() );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -221,7 +221,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 20, result[1] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -245,7 +245,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 20, result.First() ); // False branch should be awaited and return 20
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -274,7 +274,7 @@ public class BlockYieldConditionalTests
         Assert.AreEqual( 40, result[1] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncTryCatchTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -37,7 +37,7 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 10, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -77,7 +77,7 @@ public class BlockAsyncTryCatchTests
 
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -120,7 +120,7 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 50, result ); // Catch block handles the exception and returns 30
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -149,7 +149,7 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 25, result ); // Catch block handles the exception and returns 30
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -183,7 +183,7 @@ public class BlockAsyncTryCatchTests
     }
 
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -219,7 +219,7 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 50, result ); // Outer catch handles the exception
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -261,7 +261,7 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 50, result ); // Outer catch handles the exception
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -313,7 +313,7 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 60, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -390,7 +390,7 @@ public class BlockAsyncTryCatchTests
         Assert.AreEqual( 40, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

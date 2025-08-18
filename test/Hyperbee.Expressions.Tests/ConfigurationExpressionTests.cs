@@ -10,7 +10,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class ConfigurationExpressionTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -31,7 +31,7 @@ public class ConfigurationExpressionTests
         Assert.AreEqual( Value, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( false )]
     [DataRow( true )]
     public void ConfigurationExpression_ShouldConfigurationSuccessfully_WithCustomCompile( bool interpret )

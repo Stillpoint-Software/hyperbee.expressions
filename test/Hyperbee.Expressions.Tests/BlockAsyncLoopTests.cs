@@ -7,7 +7,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncLoopTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -49,7 +49,7 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 1, result ); // Loop should break after 1 iteration
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -92,7 +92,7 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 2, result ); // Loop breaks after 2 iterations
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -136,7 +136,7 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 2, result ); // Loop continues past the first iteration
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -180,7 +180,7 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 2, result ); // Loop processes all iterations
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -223,7 +223,7 @@ public class BlockAsyncLoopTests
         Assert.AreEqual( 1, result ); // Loop processes all iterations
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
