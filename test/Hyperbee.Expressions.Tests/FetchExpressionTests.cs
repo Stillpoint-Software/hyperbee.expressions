@@ -13,7 +13,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class FetchExpressionTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandleGetRequest( bool preferInterpretation )
@@ -39,7 +39,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandlePostRequest( bool preferInterpretation )
@@ -67,7 +67,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandlePutRequest( bool preferInterpretation )
@@ -97,7 +97,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandleDeleteRequest( bool preferInterpretation )
@@ -124,7 +124,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandleInvalidEndpoint( bool preferInterpretation )
@@ -151,7 +151,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.NotFound, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandleBadRequest( bool preferInterpretation )
@@ -178,7 +178,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.BadRequest, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandleGetRequestWithHeaders( bool preferInterpretation )
@@ -214,7 +214,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandlePostRequestWithHeaders( bool preferInterpretation )
@@ -250,7 +250,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldHandleNullContent( bool preferInterpretation )
@@ -276,7 +276,7 @@ public class FetchExpressionTests
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldReadJsonStream( bool preferInterpretation )
@@ -305,7 +305,7 @@ public class FetchExpressionTests
         Assert.AreEqual( "mockValue", response["mockKey"] );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldReadText( bool preferInterpretation )
@@ -329,7 +329,7 @@ public class FetchExpressionTests
         Assert.AreEqual( "{\"mockKey\":\"mockValue\"}", response );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( true )]
     [DataRow( false )]
     public async Task FetchExpression_ShouldReadStream( bool preferInterpretation )

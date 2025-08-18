@@ -31,7 +31,7 @@ public class UsingExpressionTests
     }
 
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -57,7 +57,7 @@ public class UsingExpressionTests
         Assert.IsTrue( resource.IsDisposed, "Resource should be disposed after using the expression." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -85,7 +85,7 @@ public class UsingExpressionTests
         Assert.IsTrue( _wasBodyExecuted, "The body expression should be executed." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -114,7 +114,7 @@ public class UsingExpressionTests
         Assert.AreEqual( 10, result );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -158,7 +158,7 @@ public class UsingExpressionTests
         // The constructor should throw the exception, no need for further assertions
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

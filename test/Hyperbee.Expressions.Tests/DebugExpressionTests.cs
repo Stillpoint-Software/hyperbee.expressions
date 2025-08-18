@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Tests;
 public class DebugExpressionTests
 {
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -29,7 +29,7 @@ public class DebugExpressionTests
         Assert.IsTrue( called, "Debug delegate should have been invoked." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -51,7 +51,7 @@ public class DebugExpressionTests
         Assert.IsTrue( called, "Debug delegate should have been invoked." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -73,7 +73,7 @@ public class DebugExpressionTests
         Assert.IsTrue( called, "Debug delegate should have been invoked when condition is true." );
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -112,7 +112,7 @@ public class DebugExpressionTests
         // Assert: Exception is expected
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
