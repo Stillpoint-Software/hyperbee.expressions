@@ -25,7 +25,7 @@ public class CompilerCompatibilityTests
         public static int ExecuteDelegate( Func<int> action ) => action();
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithCustomDelegateParameter( CompilerType compiler )
@@ -53,7 +53,7 @@ public class CompilerCompatibilityTests
         Assert.AreEqual( 42, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithConstantRefParameter( CompilerType compiler )
@@ -76,7 +76,7 @@ public class CompilerCompatibilityTests
         Assert.AreEqual( 42, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithUnusedValue( CompilerType compiler )
@@ -107,7 +107,7 @@ public class CompilerCompatibilityTests
         Assert.AreEqual( 42, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithSimpleSwitchValue( CompilerType compiler )
@@ -130,7 +130,7 @@ public class CompilerCompatibilityTests
         Assert.AreEqual( 2, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithEmptySwitch( CompilerType compiler )
@@ -151,7 +151,7 @@ public class CompilerCompatibilityTests
         Assert.AreEqual( 2, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithGotoInTry( CompilerType compiler )
@@ -181,7 +181,7 @@ public class CompilerCompatibilityTests
         Assert.AreEqual( 2, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     public void Compile_ShouldSucceed_WithGotoLabelOutsideTry( CompilerType compiler )

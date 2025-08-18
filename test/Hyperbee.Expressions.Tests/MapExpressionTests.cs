@@ -9,7 +9,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class MapExpressionTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -36,7 +36,7 @@ public class MapExpressionTests
         Assert.AreEqual( 8, result[3] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -60,7 +60,7 @@ public class MapExpressionTests
         Assert.AreEqual( 40 + 3, result[3] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

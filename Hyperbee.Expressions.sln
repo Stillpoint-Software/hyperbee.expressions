@@ -22,7 +22,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\create_release.yml = .github\workflows\create_release.yml
 		.github\workflows\create_test_report.yml = .github\workflows\create_test_report.yml
 		.github\workflows\deploy-gh-pages.yml = .github\workflows\deploy-gh-pages.yml
-		.github\workflows\format.yml = .github\workflows\format.yml
 		.github\workflows\issue_branch.yml = .github\workflows\issue_branch.yml
 		.github\workflows\pack_publish.yml = .github\workflows\pack_publish.yml
 		.github\workflows\run_tests.yml = .github\workflows\run_tests.yml

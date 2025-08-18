@@ -9,7 +9,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockAsyncBasicTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -36,7 +36,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 1, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -67,7 +67,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -86,7 +86,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 5, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -117,10 +117,11 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result ); // Last awaited result should be returned
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
+    [ExpectedException( typeof( InvalidOperationException ) )]
     public async Task BlockAsync_ShouldThrowException_WithFaultedTask( CompilerType compiler )
     {
         // Arrange
@@ -132,13 +133,14 @@ public class BlockAsyncBasicTests
         var compiledLambda = lambda.Compile( compiler );
 
         // Act & Assert
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>( async () => await compiledLambda() );
+        await compiledLambda();
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
+    [ExpectedException( typeof( TaskCanceledException ) )]
     public async Task BlockAsync_ShouldHandleCanceledTask_WithCancellation( CompilerType compiler )
     {
         // Arrange
@@ -151,10 +153,10 @@ public class BlockAsyncBasicTests
         var compiledLambda = lambda.Compile( compiler );
 
         // Act & Assert
-        await Assert.ThrowsExactlyAsync<TaskCanceledException>( async () => await compiledLambda() );
+        await compiledLambda();
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -182,7 +184,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -213,7 +215,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -259,7 +261,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 7, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -283,7 +285,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 20, result ); // The last operation is asynchronous and returns 20
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -301,7 +303,7 @@ public class BlockAsyncBasicTests
         Assert.IsTrue( true ); // If no exception, the test is successful
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -331,7 +333,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 10, result ); // The last operation is asynchronous and returns 10
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -363,7 +365,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 15, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -414,7 +416,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 255, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -452,7 +454,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 10, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -498,7 +500,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 15, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -559,7 +561,7 @@ public class BlockAsyncBasicTests
         }
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -611,7 +613,7 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 7, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -665,7 +667,7 @@ public class BlockAsyncBasicTests
         }
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]

@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Tests;
 public class DebugExpressionTests
 {
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -29,7 +29,7 @@ public class DebugExpressionTests
         Assert.IsTrue( called, "Debug delegate should have been invoked." );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -51,7 +51,7 @@ public class DebugExpressionTests
         Assert.IsTrue( called, "Debug delegate should have been invoked." );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -73,7 +73,7 @@ public class DebugExpressionTests
         Assert.IsTrue( called, "Debug delegate should have been invoked when condition is true." );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -96,6 +96,7 @@ public class DebugExpressionTests
     }
 
     [TestMethod]
+    [ExpectedException( typeof( ArgumentException ) )]
     public void DebugExpression_Should_Throw_If_Condition_Is_Not_Boolean()
     {
         // Arrange
@@ -106,12 +107,12 @@ public class DebugExpressionTests
         var invalidCondition = Constant( 42 );
 
         // Act
-        Assert.ThrowsExactly<ArgumentException>( () => _ = Debug( DebugAction, invalidCondition, Constant( 10 ) ) );
+        _ = Debug( DebugAction, invalidCondition, Constant( 10 ) );
 
         // Assert: Exception is expected
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
