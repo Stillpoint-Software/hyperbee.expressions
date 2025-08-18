@@ -45,7 +45,7 @@ public class CustomAwaiterTests
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.Interpret )]
@@ -70,7 +70,7 @@ public class CustomAwaiterTests
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
@@ -104,7 +104,7 @@ public class CustomAwaiterTests
         Assert.AreEqual( 42, result, "The result should be 42." );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompleterType.Immediate, CompilerType.Fast )]
     [DataRow( CompleterType.Immediate, CompilerType.System )]
     [DataRow( CompleterType.Immediate, CompilerType.Interpret )]

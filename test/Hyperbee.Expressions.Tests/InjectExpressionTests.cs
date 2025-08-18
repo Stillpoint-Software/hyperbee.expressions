@@ -11,7 +11,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class InjectExpressionTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -32,7 +32,7 @@ public class InjectExpressionTests
         Assert.AreEqual( "Hello, World!", result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -54,7 +54,7 @@ public class InjectExpressionTests
         Assert.AreEqual( "Hello, World! And Universe!", result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -78,10 +78,11 @@ public class InjectExpressionTests
         Assert.AreEqual( "Hello, World! Oh No!", result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
+    [ExpectedException( typeof( InvalidOperationException ), "Service is not available." )]
     public void InjectExpression_ShouldInjectSuccessfully_WithBadKey( CompilerType compiler )
     {
         // Arrange
@@ -95,10 +96,10 @@ public class InjectExpressionTests
         var lambda = Lambda<Func<string>>( block );
         var compiledLambda = lambda.Compile( compiler );
 
-        Assert.ThrowsExactly<InvalidOperationException>( () => compiledLambda() );
+        compiledLambda();
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( false )]
     [DataRow( true )]
     public void InjectExpression_ShouldInjectSuccessfully_WithCustomCompileGetService( bool interpret )
@@ -116,7 +117,7 @@ public class InjectExpressionTests
         Assert.AreEqual( "Hello, World! And Universe!", result.DoSomething() );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( false )]
     [DataRow( true )]
     public void InjectExpression_ShouldInjectSuccessfully_WithCustomCompile( bool interpret )
@@ -136,7 +137,7 @@ public class InjectExpressionTests
         Assert.AreEqual( "Hello, World!", result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( false )]
     [DataRow( true )]
     public void InjectExpression_ShouldInjectSuccessfully_WithKeyedCustomCompile( bool interpret )

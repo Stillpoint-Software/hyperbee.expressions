@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class BlockYieldLoopTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -44,7 +44,7 @@ public class BlockYieldLoopTests
         Assert.AreEqual( 1, result.First() ); // Loop should break after 1 iteration
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -81,7 +81,7 @@ public class BlockYieldLoopTests
         Assert.AreEqual( 5, result.First() ); // Loop breaks after 2 iterations
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -117,7 +117,7 @@ public class BlockYieldLoopTests
         Assert.AreEqual( 2, result[1] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -157,7 +157,7 @@ public class BlockYieldLoopTests
         Assert.AreEqual( 2, result[1] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -196,7 +196,7 @@ public class BlockYieldLoopTests
         Assert.AreEqual( 2, result[0] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -232,7 +232,7 @@ public class BlockYieldLoopTests
         Assert.AreEqual( 1, result[1] );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

@@ -6,7 +6,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class ConditionalExpressionTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]

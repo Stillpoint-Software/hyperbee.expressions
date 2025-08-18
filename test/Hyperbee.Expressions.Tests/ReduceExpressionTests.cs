@@ -9,7 +9,7 @@ namespace Hyperbee.Expressions.Tests;
 [TestClass]
 public class ReduceExpressionTests
 {
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -32,7 +32,7 @@ public class ReduceExpressionTests
         Assert.AreEqual( 10, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -55,7 +55,7 @@ public class ReduceExpressionTests
         Assert.AreEqual( 16, result );
     }
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
@@ -88,7 +88,7 @@ public class ReduceExpressionTests
     }
 
 
-    [TestMethod]
+    [DataTestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
