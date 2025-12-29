@@ -34,7 +34,7 @@ public class BlockYieldSwitchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length );
+        Assert.HasCount( 1, result );
         Assert.AreEqual( 1, result[0] );
     }
 
@@ -61,7 +61,7 @@ public class BlockYieldSwitchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length );
+        Assert.HasCount( 1, result );
         Assert.AreEqual( 99, result[0] );
     }
 
@@ -91,7 +91,7 @@ public class BlockYieldSwitchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length );
+        Assert.HasCount( 1, result );
         Assert.AreEqual( 100, result[0] );
     }
 
@@ -124,7 +124,7 @@ public class BlockYieldSwitchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 2, result.Length );
+        Assert.HasCount( 2, result );
         Assert.AreEqual( 25, result[0] );
         Assert.AreEqual( 50, result[1] );
     }
@@ -161,7 +161,7 @@ public class BlockYieldSwitchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length );
+        Assert.HasCount( 1, result );
         Assert.AreEqual( 30, result[0] );
     }
 
@@ -189,7 +189,7 @@ public class BlockYieldSwitchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 2, result.Length );
+        Assert.HasCount( 2, result );
         Assert.AreEqual( 30, result[0] );
         Assert.AreEqual( 15, result[1] );
     }

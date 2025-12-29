@@ -83,7 +83,7 @@ public class BlockYieldConditionalTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length );
+        Assert.HasCount( 1, result );
         Assert.AreEqual( 10, result[0] );
     }
 
@@ -109,7 +109,7 @@ public class BlockYieldConditionalTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 0, result.Length );
+        Assert.IsEmpty( result );
     }
 
     [TestMethod]
@@ -134,7 +134,7 @@ public class BlockYieldConditionalTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length );
+        Assert.HasCount( 1, result );
         Assert.AreEqual( 5, result[0] );
     }
 

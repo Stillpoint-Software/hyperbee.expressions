@@ -552,7 +552,7 @@ public class BlockAsyncBasicTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( threadCount, result.Length );
+        Assert.HasCount( threadCount, result );
         for ( var tC = 0; tC < threadCount; tC++ )
         {
             Assert.AreEqual( tC, result[tC] );

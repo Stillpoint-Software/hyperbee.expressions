@@ -29,7 +29,7 @@ public class BlockYieldTryCatchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length );
+        Assert.HasCount( 1, result );
         Assert.AreEqual( 10, result[0] );
     }
 
@@ -61,7 +61,7 @@ public class BlockYieldTryCatchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length );
+        Assert.HasCount( 1, result );
         Assert.AreEqual( 99, result[0] );
     }
 
@@ -92,7 +92,7 @@ public class BlockYieldTryCatchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 2, result.Length );
+        Assert.HasCount( 2, result );
         Assert.AreEqual( 30, result[0] );
         Assert.AreEqual( 50, result[1] );
     }
@@ -120,7 +120,7 @@ public class BlockYieldTryCatchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 3, result.Length );
+        Assert.HasCount( 3, result );
         Assert.AreEqual( 15, result[0] );
         Assert.AreEqual( 25, result[1] );
         Assert.AreEqual( 5, result[2] );
@@ -154,7 +154,7 @@ public class BlockYieldTryCatchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 4, result.Length );
+        Assert.HasCount( 4, result );
         Assert.AreEqual( 10, result[0] );
         Assert.AreEqual( 20, result[1] );
         Assert.AreEqual( 30, result[2] );
@@ -190,7 +190,7 @@ public class BlockYieldTryCatchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 0, result.Length );
+        Assert.IsEmpty( result );
     }
 
     [TestMethod]
@@ -226,7 +226,7 @@ public class BlockYieldTryCatchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 2, result.Length );
+        Assert.HasCount( 2, result );
         Assert.AreEqual( 20, result[0] );
         Assert.AreEqual( 50, result[1] );
     }
@@ -273,7 +273,7 @@ public class BlockYieldTryCatchTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 8, result.Length );
+        Assert.HasCount( 8, result );
         Assert.AreEqual( 0, result[0] );
         Assert.AreEqual( 10, result[1] );
         Assert.AreEqual( 20, result[2] );
