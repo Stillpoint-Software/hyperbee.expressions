@@ -112,7 +112,7 @@ public class BlockYieldLoopTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 2, result.Length ); // Loop continues past the first iteration
+        Assert.HasCount( 2, result ); // Loop continues past the first iteration
         Assert.AreEqual( 1, result[0] );
         Assert.AreEqual( 2, result[1] );
     }
@@ -152,7 +152,7 @@ public class BlockYieldLoopTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 2, result.Length ); // Loop continues past the first iteration
+        Assert.HasCount( 2, result ); // Loop continues past the first iteration
         Assert.AreEqual( 1, result[0] );
         Assert.AreEqual( 2, result[1] );
     }
@@ -192,7 +192,7 @@ public class BlockYieldLoopTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 1, result.Length ); // Loop continues past the first iteration
+        Assert.HasCount( 1, result ); // Loop continues past the first iteration
         Assert.AreEqual( 2, result[0] );
     }
 
@@ -227,7 +227,7 @@ public class BlockYieldLoopTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 2, result.Length );
+        Assert.HasCount( 2, result );
         Assert.AreEqual( 0, result[0] );
         Assert.AreEqual( 1, result[1] );
     }
@@ -272,7 +272,7 @@ public class BlockYieldLoopTests
         var result = compiledLambda().ToArray();
 
         // Assert
-        Assert.AreEqual( 3, result.Length );
+        Assert.HasCount( 3, result );
         Assert.AreEqual( 1, result[0] );
         Assert.AreEqual( 2, result[1] );
         Assert.AreEqual( 3, result[2] );

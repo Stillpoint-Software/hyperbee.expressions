@@ -121,7 +121,6 @@ public class BlockAsyncBasicTests
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
-    [ExpectedException( typeof( InvalidOperationException ) )]
     public async Task BlockAsync_ShouldThrowException_WithFaultedTask( CompilerType compiler )
     {
         // Arrange
@@ -133,14 +132,13 @@ public class BlockAsyncBasicTests
         var compiledLambda = lambda.Compile( compiler );
 
         // Act & Assert
-        await compiledLambda();
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>( async () => await compiledLambda() );
     }
 
     [TestMethod]
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
-    [ExpectedException( typeof( TaskCanceledException ) )]
     public async Task BlockAsync_ShouldHandleCanceledTask_WithCancellation( CompilerType compiler )
     {
         // Arrange
@@ -153,7 +151,7 @@ public class BlockAsyncBasicTests
         var compiledLambda = lambda.Compile( compiler );
 
         // Act & Assert
-        await compiledLambda();
+        await Assert.ThrowsExactlyAsync<TaskCanceledException>( async () => await compiledLambda() );
     }
 
     [TestMethod]
@@ -554,7 +552,7 @@ public class BlockAsyncBasicTests
         var result = await compiledLambda();
 
         // Assert
-        Assert.AreEqual( threadCount, result.Length );
+        Assert.HasCount( threadCount, result );
         for ( var tC = 0; tC < threadCount; tC++ )
         {
             Assert.AreEqual( tC, result[tC] );

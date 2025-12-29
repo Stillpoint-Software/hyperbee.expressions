@@ -104,7 +104,7 @@ public class WhileExpressionTests
         var results = compiledLambda().ToArray();
 
         // Assert:
-        Assert.AreEqual( 5, results.Length );
+        Assert.HasCount( 5, results );
         Assert.AreEqual( 0, results[0] );
         Assert.AreEqual( 1, results[1] );
         Assert.AreEqual( 2, results[2] );

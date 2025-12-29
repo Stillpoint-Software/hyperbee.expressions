@@ -20,9 +20,22 @@ public static class ExpressionCompilerExtensions
 #if FAST_COMPILER
         if ( compilerType == CompilerType.Fast )
         {
-            var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo | CompilerFlags.ThrowOnNotSupportedExpression );
-            var target = compiledExpression.Target; // keep for debugging
-            return compiledExpression;
+            try
+            {
+                var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo );
+                if ( compiledExpression != null )
+                {
+                    var target = compiledExpression.Target; // keep for debugging
+                    return compiledExpression;
+                }
+            }
+            catch ( NotSupportedExpressionException )
+            {
+                // Fall back to system compiler when FastExpressionCompiler doesn't support the expression
+            }
+            
+            // Fall back to system compiler
+            return expression.Compile();
         }
 #endif
         if ( compilerType == CompilerType.Interpret )
@@ -38,9 +51,22 @@ public static class ExpressionCompilerExtensions
 #if FAST_COMPILER
         if ( compilerType == CompilerType.Fast )
         {
-            var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo | CompilerFlags.ThrowOnNotSupportedExpression );
-            var target = compiledExpression.Target; // keep for debugging
-            return compiledExpression;
+            try
+            {
+                var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo );
+                if ( compiledExpression != null )
+                {
+                    var target = compiledExpression.Target; // keep for debugging
+                    return compiledExpression;
+                }
+            }
+            catch ( NotSupportedExpressionException )
+            {
+                // Fall back to system compiler when FastExpressionCompiler doesn't support the expression
+            }
+            
+            // Fall back to system compiler
+            return expression.Compile();
         }
 #endif
         if ( compilerType == CompilerType.Interpret )
@@ -56,9 +82,22 @@ public static class ExpressionCompilerExtensions
 #if FAST_COMPILER
         if ( compilerType == CompilerType.Fast )
         {
-            var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo | CompilerFlags.ThrowOnNotSupportedExpression );
-            var target = compiledExpression.Target; // keep for debugging
-            return compiledExpression;
+            try
+            {
+                var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo );
+                if ( compiledExpression != null )
+                {
+                    var target = compiledExpression.Target; // keep for debugging
+                    return compiledExpression;
+                }
+            }
+            catch ( NotSupportedExpressionException )
+            {
+                // Fall back to system compiler when FastExpressionCompiler doesn't support the expression
+            }
+            
+            // Fall back to system compiler
+            return expression.Compile();
         }
 #endif
         if ( compilerType == CompilerType.Interpret )
@@ -74,9 +113,22 @@ public static class ExpressionCompilerExtensions
 #if FAST_COMPILER
         if ( compilerType == CompilerType.Fast )
         {
-            var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo | CompilerFlags.ThrowOnNotSupportedExpression );
-            var target = compiledExpression.Target; // keep for debugging
-            return compiledExpression;
+            try
+            {
+                var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo );
+                if ( compiledExpression != null )
+                {
+                    var target = compiledExpression.Target; // keep for debugging
+                    return compiledExpression;
+                }
+            }
+            catch ( NotSupportedExpressionException )
+            {
+                // Fall back to system compiler when FastExpressionCompiler doesn't support the expression
+            }
+            
+            // Fall back to system compiler
+            return expression.Compile();
         }
 #endif
         if ( compilerType == CompilerType.Interpret )
