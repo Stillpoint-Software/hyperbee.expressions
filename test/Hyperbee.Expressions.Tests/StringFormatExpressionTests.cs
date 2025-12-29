@@ -48,14 +48,13 @@ public class StringFormatExpressionTests
     }
 
     [TestMethod]
-    [ExpectedException( typeof( ArgumentException ) )]
     public void StringFormatExpression_Should_Throw_If_Format_Is_Not_String()
     {
         // Arrange
         var invalidFormat = Expression.Constant( 42 );
 
         // Act
-        _ = ExpressionExtensions.StringFormat( invalidFormat, Expression.Constant( 10 ) );
+        Assert.ThrowsExactly<ArgumentException>( () => _ = ExpressionExtensions.StringFormat( invalidFormat, Expression.Constant( 10 ) ) );
 
         // Assert: Exception is expected
     }

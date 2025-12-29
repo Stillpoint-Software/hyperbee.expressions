@@ -1,6 +1,7 @@
 ﻿using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
+using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Loggers;
@@ -15,7 +16,14 @@ public class BenchmarkConfig
     {
         public Config()
         {
-            AddJob( Job.ShortRun );
+            AddJob( Job.ShortRun
+                .WithRuntime( CoreRuntime.Core80 )
+                .WithId( ".NET 8" ) );
+
+            AddJob( Job.ShortRun
+                .WithRuntime( CoreRuntime.Core10_0 )
+                .WithId( ".NET 10" ) );
+
 
             AddExporter( MarkdownExporter.GitHub );
             AddValidator( JitOptimizationsValidator.DontFailOnError );

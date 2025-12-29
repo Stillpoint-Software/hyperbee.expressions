@@ -189,29 +189,29 @@ public class BlockAsyncSwitchTests
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
     [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
-    [ExpectedException( typeof( ArgumentException ) )]
     public async Task AsyncBlock_ShouldThrowException_WithAwaitInSwitchCaseTestValues( CompleterType completer, CompilerType compiler )
     {
-        // Arrange: Switch case test values cannot contain awaited tasks
-        var block = Switch(
-            Constant( 1 ),
-            Constant( 0 ),
-            SwitchCase(
-                Constant( 10 ),
-                Await( BlockAsync(
-                    Await( AsyncHelper.Completer(
-                        Constant( completer ),
-                        Constant( 1 )
+        // Act & Assert: The exception should be thrown during lambda construction or compilation
+        await Assert.ThrowsExactlyAsync<ArgumentException>(async () =>
+        {
+            var block = Switch(
+                Constant( 1 ),
+                Constant( 0 ),
+                SwitchCase(
+                    Constant( 10 ),
+                    Await( BlockAsync(
+                        Await( AsyncHelper.Completer(
+                            Constant( completer ),
+                            Constant( 1 )
+                        ) )
                     ) )
-                ) )
-            ),
-            SwitchCase( Constant( 20 ), Constant( 2 ) )
-        );
-        var lambda = Lambda<Func<Task<int>>>( block );
-        var compiledLambda = lambda.Compile( compiler );
-
-        // Act
-        await compiledLambda();
+                ),
+                SwitchCase( Constant( 20 ), Constant( 2 ) )
+            );
+            var lambda = Lambda<Func<Task<int>>>( block );
+            var compiledLambda = lambda.Compile( compiler );
+            await compiledLambda();
+        });
     }
 
     [TestMethod]
