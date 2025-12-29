@@ -1,18 +1,12 @@
 <Project>
-  <!-- Shared package refs -->
   <ItemGroup>
     <!-- NBGV drives versions; PrivateAssets=all keeps it out of consumers -->
-    <PackageReference Include="Nerdbank.GitVersioning" Version="3.8.38-alpha" PrivateAssets="all" />
-
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
     <!-- SourceLink for GitHub -->
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-
+    <PackageReference Include="Microsoft.SourceLink.GitHub"/>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
   </ItemGroup>
-
-  <!-- SourceLink / build hygiene -->
+  
   <PropertyGroup>
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <Deterministic>true</Deterministic>
@@ -44,4 +38,9 @@
           PackagePath="\"
     Link="LICENSE" />
   </ItemGroup>
+  <!-- Global project properies -->
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+  </PropertyGroup>
 </Project>

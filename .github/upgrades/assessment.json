@@ -1,0 +1,182 @@
+{
+  "settings": {
+    "components": {
+      "code": false,
+      "binaries": false
+    },
+    "targetId": "net8.0",
+    "targetDisplayName": ".NETCoreApp,Version=v8.0"
+  },
+  "analysisStartTime": "2025-12-29T13:13:03.0869463Z",
+  "analysisEndTime": "2025-12-29T13:13:03.3830138Z",
+  "privacyModeHelpUrl": "https://go.microsoft.com/fwlink/?linkid=2270980",
+  "stats": {
+    "summary": {
+      "projects": 5,
+      "issues": 0,
+      "incidents": 0,
+      "effort": 0
+    },
+    "charts": {
+      "severity": {
+        "Mandatory": 0,
+        "Optional": 0,
+        "Potential": 0,
+        "Information": 0
+      },
+      "category": {}
+    }
+  },
+  "projects": [
+    {
+      "path": "docs\\docs.shproj",
+      "startingProject": true,
+      "issues": 0,
+      "storyPoints": 0,
+      "properties": {
+        "appName": "docs",
+        "projectKind": "DotNetCoreApp",
+        "frameworks": [
+          "net8.0",
+          "net10.0"
+        ],
+        "languages": [
+          ""
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 0,
+        "numberOfCodeFiles": 0,
+        "linesTotal": 0,
+        "linesOfCode": 0,
+        "totalApiScanned": 0,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [],
+      "features": []
+    },
+    {
+      "path": "test\\Hyperbee.Expressions.Benchmark\\Hyperbee.Expressions.Benchmark.csproj",
+      "startingProject": true,
+      "issues": 0,
+      "storyPoints": 0,
+      "properties": {
+        "appName": "Hyperbee.Expressions.Benchmark",
+        "projectKind": "DotNetCoreApp",
+        "frameworks": [
+          "net9.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 3,
+        "numberOfCodeFiles": 3,
+        "linesTotal": 259,
+        "linesOfCode": 259,
+        "totalApiScanned": 0,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [],
+      "features": []
+    },
+    {
+      "path": "src\\Hyperbee.Expressions\\Hyperbee.Expressions.csproj",
+      "startingProject": true,
+      "issues": 0,
+      "storyPoints": 0,
+      "properties": {
+        "appName": "Hyperbee.Expressions",
+        "projectKind": "ClassLibrary",
+        "frameworks": [
+          "net8.0",
+          "net9.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 43,
+        "numberOfCodeFiles": 43,
+        "linesTotal": 5390,
+        "linesOfCode": 5390,
+        "totalApiScanned": 0,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [],
+      "features": []
+    },
+    {
+      "path": "src\\Hyperbee.Expressions.Lab\\Hyperbee.Expressions.Lab.csproj",
+      "startingProject": true,
+      "issues": 0,
+      "storyPoints": 0,
+      "properties": {
+        "appName": "Hyperbee.Expressions.Lab",
+        "projectKind": "ClassLibrary",
+        "frameworks": [
+          "net8.0",
+          "net9.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 6,
+        "numberOfCodeFiles": 6,
+        "linesTotal": 748,
+        "linesOfCode": 748,
+        "totalApiScanned": 0,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [],
+      "features": []
+    },
+    {
+      "path": "test\\Hyperbee.Expressions.Tests\\Hyperbee.Expressions.Tests.csproj",
+      "startingProject": true,
+      "issues": 0,
+      "storyPoints": 0,
+      "properties": {
+        "appName": "Hyperbee.Expressions.Tests",
+        "projectKind": "ClassLibrary",
+        "frameworks": [
+          "net8.0",
+          "net9.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 32,
+        "numberOfCodeFiles": 32,
+        "linesTotal": 6508,
+        "linesOfCode": 6508,
+        "totalApiScanned": 0,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [],
+      "features": []
+    }
+  ],
+  "rules": {}
+}

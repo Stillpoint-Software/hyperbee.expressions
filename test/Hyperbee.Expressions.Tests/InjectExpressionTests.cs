@@ -82,7 +82,6 @@ public class InjectExpressionTests
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
-    [ExpectedException( typeof( InvalidOperationException ), "Service is not available." )]
     public void InjectExpression_ShouldInjectSuccessfully_WithBadKey( CompilerType compiler )
     {
         // Arrange
@@ -96,7 +95,7 @@ public class InjectExpressionTests
         var lambda = Lambda<Func<string>>( block );
         var compiledLambda = lambda.Compile( compiler );
 
-        compiledLambda();
+        Assert.ThrowsExactly<InvalidOperationException>( () => compiledLambda() );
     }
 
     [TestMethod]
