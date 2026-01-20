@@ -1,7 +1,8 @@
 <Project>
   <PropertyGroup>
     <!-- Suppress NU1507 (multiple package sources with CPM) -->
-    <NoWarn>$(NoWarn);NU1507</NoWarn>
+    <NoWarn>$(NoWarn);NU1507;MSTEST0001</NoWarn>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);MSTEST0001</WarningsNotAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
