@@ -28,20 +28,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.0.0" />
-  </ItemGroup>
-  <!-- .NET 8 specific package versions - For compatibility during transition -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <PackageVersion Include="Hyperbee.Json" Version="3.0.6" />
-    <PackageVersion Include="Hyperbee.Collections" Version="2.6.4" />
-  </ItemGroup>
-  <!-- .NET 9 specific package versions (for backward compatibility) -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
-    <PackageVersion Include="Hyperbee.Json" Version="2.7.2" />
-    <PackageVersion Include="Hyperbee.Collections" Version="2.6.4" />
-  </ItemGroup>
-  <!-- .NET 10 specific package versions (primary target)  -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageVersion Include="Hyperbee.Json" Version="3.1.2" />
-    <PackageVersion Include="Hyperbee.Collections" Version="2.7.2" />
+    <PackageVersion Include="Hyperbee.Json" Version="3.2.1" />
+    <PackageVersion Include="Hyperbee.Collections" Version="2.7.3" />
   </ItemGroup>
 </Project>
