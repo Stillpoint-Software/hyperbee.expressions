@@ -3,12 +3,10 @@
   <PropertyGroup>
     <Nullable>disable</Nullable>
     <IsPackable>true</IsPackable>
-
     <Authors>Stillpoint Software, Inc.</Authors>
     <PackageId>Hyperbee.Expressions.Lab</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>expression-tree;expressions;lab;samples</PackageTags>
-
     <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -23,7 +21,7 @@
   <PropertyGroup>
     <DefineConstants>$(DefineConstants);FAST_COMPILER</DefineConstants>
   </PropertyGroup>
-  
+
   <ItemGroup>
     <None Update="$(MSBuildProjectName).csproj.DotSettings" Visible="false" />
   </ItemGroup>

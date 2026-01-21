@@ -1,14 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <Nullable>disable</Nullable>
-    <IsPackable>true</IsPackable>
 
     <Authors>Stillpoint Software, Inc.</Authors>
     <PackageId>Hyperbee.Expressions</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>expression-tree;expressions;async;await;expression-extension</PackageTags>
-
     <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -23,7 +21,7 @@
   <PropertyGroup>
     <DefineConstants>$(DefineConstants);FAST_COMPILER</DefineConstants>
   </PropertyGroup>
-  
+
   <ItemGroup>
     <None Update="$(MSBuildProjectName).csproj.DotSettings" Visible="false" />
   </ItemGroup>
@@ -47,7 +45,10 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Update="Microsoft.SourceLink.GitHub" />
+    <PackageReference Update="Microsoft.SourceLink.GitHub">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>
