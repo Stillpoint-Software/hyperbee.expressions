@@ -10,7 +10,6 @@
     <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageId>Hyperbee Expressions</PackageId>
     <Copyright>Stillpoint Software, Inc.</Copyright>
     <Title>Hyperbee Expressions</Title>
     <Description>Async and Await for .NET Expression Trees.</Description>
