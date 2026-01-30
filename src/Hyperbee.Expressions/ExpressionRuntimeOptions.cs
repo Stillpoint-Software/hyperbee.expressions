@@ -7,12 +7,7 @@ public class ExpressionRuntimeOptions
 {
     /// <summary>
     /// Gets or sets the ModuleBuilder provider for this expression.
-    /// If null, uses DefaultProvider.
+    /// Defaults to <see cref="DefaultModuleBuilderProvider"/>
     /// </summary>
-    public IModuleBuilderProvider Provider { get; init; }
-
-    /// <summary>
-    /// Gets the effective provider (instance provider or default).
-    /// </summary>
-    internal IModuleBuilderProvider GetEffectiveProvider() => Provider ?? DefaultModuleBuilderProvider.Instance;
+    public IModuleBuilderProvider Provider { get; init; } = DefaultModuleBuilderProvider.Instance;
 }

@@ -405,13 +405,12 @@ public static class AsyncStateMachineBuilder
     internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
     {
         options ??= new ExpressionRuntimeOptions();
-        var provider = options.GetEffectiveProvider();
-
+        
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
         // Get ModuleBuilder from provider using ModuleKind.Async
-        var moduleBuilder = provider.GetModuleBuilder( ModuleKind.Async );
+        var moduleBuilder = options.Provider.GetModuleBuilder( ModuleKind.Async );
 
         var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );

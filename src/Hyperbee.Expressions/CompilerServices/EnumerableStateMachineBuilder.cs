@@ -418,13 +418,12 @@ public static class YieldStateMachineBuilder
     internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
     {
         options ??= new ExpressionRuntimeOptions();
-        var provider = options.GetEffectiveProvider();
 
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
         // Get ModuleBuilder from provider using ModuleKind.Enumerable
-        var moduleBuilder = provider.GetModuleBuilder( ModuleKind.Enumerable );
+        var moduleBuilder = options.Provider.GetModuleBuilder( ModuleKind.Enumerable );
 
         var stateMachineBuilder = new EnumerableStateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
