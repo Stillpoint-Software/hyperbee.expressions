@@ -394,11 +394,8 @@ internal class EnumerableStateMachineBuilder<TResult>
 public static class YieldStateMachineBuilder
 {
     private static readonly MethodInfo BuildYieldStateMachineMethod;
-    private static readonly ModuleBuilder YieldModuleBuilder;
     private static int __id;
 
-    const string RuntimeAssemblyName = "RuntimeYieldStateMachineAssembly";
-    const string RuntimeModuleName = "RuntimeYieldStateMachineModule";
     const string StateMachineTypeName = "YieldStateMachine";
 
     static YieldStateMachineBuilder()
@@ -406,29 +403,30 @@ public static class YieldStateMachineBuilder
         BuildYieldStateMachineMethod = typeof( YieldStateMachineBuilder )
             .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
-
-        // Create the state machine module
-        var assemblyName = new AssemblyName( RuntimeAssemblyName );
-        var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
-        YieldModuleBuilder = assemblyBuilder.DefineDynamicModule( RuntimeModuleName );
     }
 
-    internal static Expression Create( Type resultType, YieldLoweringTransformer loweringTransformer )
+    internal static Expression Create( Type resultType, YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
     {
         if ( resultType == typeof( void ) )
             throw new ArgumentException( "IEnumerable must have a valid result type", nameof( resultType ) );
 
         var buildStateMachine = BuildYieldStateMachineMethod.MakeGenericMethod( resultType );
 
-        return (Expression) buildStateMachine.Invoke( null, [loweringTransformer] );
+        return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options] );
     }
 
-    internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer )
+    internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
     {
+        options ??= new ExpressionRuntimeOptions();
+        var provider = options.GetEffectiveProvider();
+
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
-        var stateMachineBuilder = new EnumerableStateMachineBuilder<TResult>( YieldModuleBuilder, typeName );
+        // Get ModuleBuilder from provider using ModuleKind.Enumerable
+        var moduleBuilder = provider.GetModuleBuilder( ModuleKind.Enumerable );
+
+        var stateMachineBuilder = new EnumerableStateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever
