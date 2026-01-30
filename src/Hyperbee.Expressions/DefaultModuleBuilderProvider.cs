@@ -5,7 +5,6 @@ namespace Hyperbee.Expressions;
 
 /// <summary>
 /// Default ModuleBuilder provider using AssemblyBuilderAccess.Run.
-/// This maintains backward compatibility with existing behavior.
 /// </summary>
 public sealed class DefaultModuleBuilderProvider : IModuleBuilderProvider
 {
