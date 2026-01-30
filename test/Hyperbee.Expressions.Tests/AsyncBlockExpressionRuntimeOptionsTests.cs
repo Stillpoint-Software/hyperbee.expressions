@@ -43,7 +43,7 @@ public class AsyncBlockExpressionRuntimeOptionsTests
         // Arrange
         var options = new ExpressionRuntimeOptions
         {
-            Provider = new CollectibleModuleBuilderProvider()
+            ModuleBuilderProvider = new CollectibleModuleBuilderProvider()
         };
 
         var block = BlockAsync(
@@ -75,7 +75,7 @@ public class AsyncBlockExpressionRuntimeOptionsTests
     {
         // Arrange
         var customProvider = new CustomTestModuleBuilderProvider();
-        var options = new ExpressionRuntimeOptions { Provider = customProvider };
+        var options = new ExpressionRuntimeOptions { ModuleBuilderProvider = customProvider };
 
         var block = BlockAsync(
             new[]
@@ -108,7 +108,7 @@ public class AsyncBlockExpressionRuntimeOptionsTests
         // Arrange
         var options = new ExpressionRuntimeOptions
         {
-            Provider = new CollectibleModuleBuilderProvider()
+            ModuleBuilderProvider = new CollectibleModuleBuilderProvider()
         };
 
         var result1 = Variable( typeof( int ), "result1" );
@@ -149,7 +149,7 @@ public class AsyncBlockExpressionRuntimeOptionsTests
     {
         // Arrange
         var trackingProvider = new TrackingModuleBuilderProvider();
-        var options = new ExpressionRuntimeOptions { Provider = trackingProvider };
+        var options = new ExpressionRuntimeOptions { ModuleBuilderProvider = trackingProvider };
 
         var block1 = BlockAsync(
             new[] { Await( AsyncHelper.Completer( Constant( CompleterType.Immediate ), Constant( 1 ) ) ) },

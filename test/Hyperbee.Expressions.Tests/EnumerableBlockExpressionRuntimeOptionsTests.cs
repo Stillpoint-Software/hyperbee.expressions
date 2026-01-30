@@ -45,7 +45,7 @@ public class EnumerableBlockExpressionRuntimeOptionsTests
         // Arrange
         var options = new ExpressionRuntimeOptions
         {
-            Provider = new CollectibleModuleBuilderProvider()
+            ModuleBuilderProvider = new CollectibleModuleBuilderProvider()
         };
 
         var block = BlockEnumerable(
@@ -79,7 +79,7 @@ public class EnumerableBlockExpressionRuntimeOptionsTests
     {
         // Arrange
         var customProvider = new CustomTestModuleBuilderProvider();
-        var options = new ExpressionRuntimeOptions { Provider = customProvider };
+        var options = new ExpressionRuntimeOptions { ModuleBuilderProvider = customProvider };
 
         var block = BlockEnumerable(
             new Expression[]
@@ -112,7 +112,7 @@ public class EnumerableBlockExpressionRuntimeOptionsTests
         // Arrange
         var options = new ExpressionRuntimeOptions
         {
-            Provider = new CollectibleModuleBuilderProvider()
+            ModuleBuilderProvider = new CollectibleModuleBuilderProvider()
         };
 
         var counter = Variable( typeof( int ), "counter" );
@@ -150,7 +150,7 @@ public class EnumerableBlockExpressionRuntimeOptionsTests
     {
         // Arrange
         var trackingProvider = new TrackingModuleBuilderProvider();
-        var options = new ExpressionRuntimeOptions { Provider = trackingProvider };
+        var options = new ExpressionRuntimeOptions { ModuleBuilderProvider = trackingProvider };
 
         var block1 = BlockEnumerable(
             new Expression[] { YieldReturn( Constant( 1 ) ) },
@@ -191,7 +191,7 @@ public class EnumerableBlockExpressionRuntimeOptionsTests
         // Arrange
         var options = new ExpressionRuntimeOptions
         {
-            Provider = new CollectibleModuleBuilderProvider()
+            ModuleBuilderProvider = new CollectibleModuleBuilderProvider()
         };
 
         var block = BlockEnumerable(

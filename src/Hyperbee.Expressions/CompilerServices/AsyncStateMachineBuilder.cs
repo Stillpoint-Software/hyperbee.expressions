@@ -410,7 +410,7 @@ public static class AsyncStateMachineBuilder
         var typeName = $"{StateMachineTypeName}{typeId}";
 
         // Get ModuleBuilder from provider using ModuleKind.Async
-        var moduleBuilder = options.Provider.GetModuleBuilder( ModuleKind.Async );
+        var moduleBuilder = options.ModuleBuilderProvider.GetModuleBuilder( ModuleKind.Async );
 
         var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );

@@ -423,7 +423,7 @@ public static class YieldStateMachineBuilder
         var typeName = $"{StateMachineTypeName}{typeId}";
 
         // Get ModuleBuilder from provider using ModuleKind.Enumerable
-        var moduleBuilder = options.Provider.GetModuleBuilder( ModuleKind.Enumerable );
+        var moduleBuilder = options.ModuleBuilderProvider.GetModuleBuilder( ModuleKind.Enumerable );
 
         var stateMachineBuilder = new EnumerableStateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );

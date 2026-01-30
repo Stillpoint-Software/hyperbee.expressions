@@ -9,5 +9,5 @@ public class ExpressionRuntimeOptions
     /// Gets or sets the ModuleBuilder provider for this expression.
     /// Defaults to <see cref="DefaultModuleBuilderProvider"/>
     /// </summary>
-    public IModuleBuilderProvider Provider { get; init; } = DefaultModuleBuilderProvider.Instance;
+    public IModuleBuilderProvider ModuleBuilderProvider { get; init; } = DefaultModuleBuilderProvider.Instance;
 }
