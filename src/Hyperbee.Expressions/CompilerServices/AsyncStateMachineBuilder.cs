@@ -381,11 +381,8 @@ internal class AsyncStateMachineBuilder<TResult>
 public static class AsyncStateMachineBuilder
 {
     private static readonly MethodInfo BuildStateMachineMethod;
-    private static readonly ModuleBuilder ModuleBuilder;
     private static int __id;
 
-    const string RuntimeAssemblyName = "RuntimeStateMachineAssembly";
-    const string RuntimeModuleName = "RuntimeStateMachineModule";
     const string StateMachineTypeName = "StateMachine";
 
     static AsyncStateMachineBuilder()
@@ -393,29 +390,29 @@ public static class AsyncStateMachineBuilder
         BuildStateMachineMethod = typeof( AsyncStateMachineBuilder )
             .GetMethods( BindingFlags.NonPublic | BindingFlags.Static )
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
-
-        // Create the state machine module
-        var assemblyName = new AssemblyName( RuntimeAssemblyName );
-        var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly( assemblyName, AssemblyBuilderAccess.Run );
-        ModuleBuilder = assemblyBuilder.DefineDynamicModule( RuntimeModuleName );
     }
 
-    internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer )
+    internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
     {
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
 
         var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
 
-        return (Expression) buildStateMachine.Invoke( null, [loweringTransformer] );
+        return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options] );
     }
 
-    internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer )
+    internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
     {
+        options ??= new ExpressionRuntimeOptions();
+        
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
-        var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( ModuleBuilder, typeName );
+        // Get ModuleBuilder from provider using ModuleKind.Async
+        var moduleBuilder = options.ModuleBuilderProvider.GetModuleBuilder( ModuleKind.Async );
+
+        var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         return stateMachineExpression; // the-best expression breakpoint ever

@@ -14,20 +14,22 @@ public class AsyncBlockExpression : Expression
 
     public ReadOnlyCollection<Expression> Expressions { get; }
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
+    public ExpressionRuntimeOptions RuntimeOptions { get; }
 
     internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
 
     public Expression Result => Expressions[^1];
 
-    internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
-        : this( variables, expressions, null )
+    internal AsyncBlockExpression( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options = null )
+        : this( variables, expressions, null, options )
     {
     }
 
     internal AsyncBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
         ReadOnlyCollection<Expression> expressions,
-        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables
+        LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables,
+        ExpressionRuntimeOptions options = null
     )
     {
         if ( expressions == null || expressions.Count == 0 )
@@ -36,6 +38,7 @@ public class AsyncBlockExpression : Expression
         Variables = variables;
         Expressions = expressions;
         ScopedVariables = scopedVariables;
+        RuntimeOptions = options;
 
         Type = GetTaskType( Result.Type );
     }
@@ -48,7 +51,7 @@ public class AsyncBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        return _stateMachine ??= AsyncStateMachineBuilder.Create( Result.Type, LoweringTransformer );
+        return _stateMachine ??= AsyncStateMachineBuilder.Create( Result.Type, LoweringTransformer, RuntimeOptions );
     }
 
     private AsyncLoweringInfo LoweringTransformer()
@@ -78,7 +81,7 @@ public class AsyncBlockExpression : Expression
         if ( Compare( newVariables, Variables ) && Compare( newExpressions, Expressions ) )
             return this;
 
-        return new AsyncBlockExpression( newVariables, newExpressions, ScopedVariables );
+        return new AsyncBlockExpression( newVariables, newExpressions, ScopedVariables, RuntimeOptions );
     }
 
     internal static bool Compare<T>( ICollection<T> compare, IReadOnlyList<T> current )
@@ -143,5 +146,25 @@ public static partial class ExpressionExtensions
     public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
     {
         return new AsyncBlockExpression( variables, expressions );
+    }
+
+    public static AsyncBlockExpression BlockAsync( Expression[] expressions, ExpressionRuntimeOptions options )
+    {
+        return new AsyncBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ), options );
+    }
+
+    public static AsyncBlockExpression BlockAsync( ParameterExpression[] variables, Expression[] expressions, ExpressionRuntimeOptions options )
+    {
+        return new AsyncBlockExpression( new ReadOnlyCollection<ParameterExpression>( variables ), new ReadOnlyCollection<Expression>( expressions ), options );
+    }
+
+    public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options )
+    {
+        return new AsyncBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions, options );
+    }
+
+    public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options )
+    {
+        return new AsyncBlockExpression( variables, expressions, options );
     }
 }

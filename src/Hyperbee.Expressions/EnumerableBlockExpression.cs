@@ -11,6 +11,7 @@ public class EnumerableBlockExpression : Expression
     private Type _enumerableType;
     public ReadOnlyCollection<Expression> Expressions { get; }
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
+    public ExpressionRuntimeOptions RuntimeOptions { get; }
 
     internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
 
@@ -18,13 +19,15 @@ public class EnumerableBlockExpression : Expression
 
     public EnumerableBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
-        ReadOnlyCollection<Expression> expressions )
+        ReadOnlyCollection<Expression> expressions,
+        ExpressionRuntimeOptions options = null )
     {
         if ( expressions == null || expressions.Count == 0 )
             throw new ArgumentException( "YieldBlockExpression must contain at least one expression." );
 
         Variables = variables;
         Expressions = expressions;
+        RuntimeOptions = options;
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
@@ -34,7 +37,7 @@ public class EnumerableBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        return YieldStateMachineBuilder.Create( EnumerableType, LoweringTransformer );
+        return YieldStateMachineBuilder.Create( EnumerableType, LoweringTransformer, RuntimeOptions );
     }
 
     private EnumerableLoweringInfo LoweringTransformer()
@@ -111,5 +114,25 @@ public static partial class ExpressionExtensions
     public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
     {
         return new EnumerableBlockExpression( variables, expressions );
+    }
+
+    public static EnumerableBlockExpression BlockEnumerable( Expression[] expressions, ExpressionRuntimeOptions options )
+    {
+        return new EnumerableBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ), options );
+    }
+
+    public static EnumerableBlockExpression BlockEnumerable( ParameterExpression[] variables, Expression[] expressions, ExpressionRuntimeOptions options )
+    {
+        return new EnumerableBlockExpression( new ReadOnlyCollection<ParameterExpression>( variables ), new ReadOnlyCollection<Expression>( expressions ), options );
+    }
+
+    public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options )
+    {
+        return new EnumerableBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions, options );
+    }
+
+    public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options )
+    {
+        return new EnumerableBlockExpression( variables, expressions, options );
     }
 }
