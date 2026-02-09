@@ -28,7 +28,8 @@ internal abstract class Transition
         {
             var lastExpression = expressions[^1];
 
-            if ( variable.Type.IsAssignableFrom( lastExpression.Type ) )
+            if ( variable.Type.IsAssignableFrom( lastExpression.Type ) && 
+                 ( variable.Type != typeof( object ) || !lastExpression.Type.IsValueType ) )
             {
                 expressions[^1] = Assign( variable, lastExpression );
             }

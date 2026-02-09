@@ -718,4 +718,31 @@ public class BlockAsyncBasicTests
         // Assert
         Assert.AreEqual( 3, result );
     }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [Description("Issue: https://github.com/Stillpoint-Software/hyperbee.expressions/issues/126")]
+    public async Task BlockAsync_DoesNotAssignVariableForSetResultWhenBoxingIsRequired( CompilerType compiler )
+    {
+        // Arrange
+        var expected = new object();
+        var variable = Variable(typeof(int));
+
+        var lambda = Lambda<Func<Task<object>>>(
+            BlockAsync(
+                [variable],
+                Assign( variable, Constant( 0 ) ),
+                Await( Constant( Task.FromResult( expected ) ) )
+                )
+            );
+
+        // Act
+        var method = lambda.Compile( compiler );
+
+        var result = await method();
+        
+        // Assert
+        Assert.AreSame( expected, result );
+    }
 }
