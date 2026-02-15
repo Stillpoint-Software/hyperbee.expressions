@@ -415,8 +415,15 @@ public static class AsyncStateMachineBuilder
         var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
-        options.SourceHandler?.Invoke( stateMachineExpression );
+        if ( options.SourceHandler != null )
+        {
+            var debugView = GetDebugView( stateMachineExpression );
+            options.SourceHandler( debugView );
+        }
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }
+
+    [UnsafeAccessor( UnsafeAccessorKind.Method, Name = "get_DebugView" )]
+    private static extern string GetDebugView( Expression expression );
 }
