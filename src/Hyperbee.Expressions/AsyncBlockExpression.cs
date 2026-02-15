@@ -58,7 +58,7 @@ public class AsyncBlockExpression : Expression
     {
         try
         {
-            var visitor = new AsyncLoweringVisitor();
+            var visitor = new AsyncLoweringVisitor { Optimize = RuntimeOptions?.Optimize ?? true };
 
             return visitor.Transform(
                 Result.Type,

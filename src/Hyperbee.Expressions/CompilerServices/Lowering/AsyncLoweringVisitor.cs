@@ -12,6 +12,8 @@ internal class AsyncLoweringVisitor : BaseLoweringVisitor<AsyncLoweringInfo>
 
     private int _awaitCount;
 
+    public bool Optimize { get; init; } = true;
+
     public override AsyncLoweringInfo Transform(
         Type resultType,
         ParameterExpression[] localVariables,
@@ -27,7 +29,8 @@ internal class AsyncLoweringVisitor : BaseLoweringVisitor<AsyncLoweringInfo>
 
         VisitExpressions( expressions );
 
-        StateOptimizer.Optimize( States );
+        if ( Optimize )
+            StateOptimizer.Optimize( States );
 
         ThrowIfInvalid();
 

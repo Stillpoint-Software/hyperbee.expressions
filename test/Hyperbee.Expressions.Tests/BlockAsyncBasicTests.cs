@@ -646,6 +646,32 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
     }
 
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public async Task BlockAsync_ShouldHandleValueTypeToObjectAssignment_WithBoxing( CompilerType compiler )
+    {
+        // Arrange: assign value-type (int) to variable before await
+        // Reproduces: https://github.com/Stillpoint-Software/hyperbee.expressions/issues/126
+        var variable = Variable( typeof( int ) );
+
+        var block = BlockAsync(
+            [variable],
+            Assign( variable, Constant( 0 ) ),
+            Await( Constant( Task.FromResult( new object() ) ) )
+        );
+
+        var lambda = Lambda<Func<Task<object>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.IsNotNull( result );
+    }
+
     public class TestContext
     {
         public int Id { get; set; }

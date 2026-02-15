@@ -415,6 +415,8 @@ public static class AsyncStateMachineBuilder
         var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
+        options.SourceHandler?.Invoke( stateMachineExpression );
+
         return stateMachineExpression; // the-best expression breakpoint ever
     }
 }

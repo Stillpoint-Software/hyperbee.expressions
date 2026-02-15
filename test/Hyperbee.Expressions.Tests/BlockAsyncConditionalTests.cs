@@ -370,6 +370,60 @@ public class BlockAsyncConditionalTests
     }
 
     [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task AsyncBlock_ShouldReturnCorrectValue_WithIfThenReturnLabel( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange: IfThen with Return(label, value) should return the value, not null
+        // Reproduces: https://github.com/Stillpoint-Software/hyperbee.expressions/issues/123
+        var expected = new object();
+        var variable = Variable( typeof( object ) );
+        var label = Label( typeof( object ), "return" );
+
+        var block = BlockAsync(
+            [variable],
+            Assign(
+                variable,
+                Await( AsyncHelper.Completer(
+                    Constant( completer ),
+                    Constant( expected, typeof( object ) )
+                ) ) ),
+            IfThen(
+                NotEqual(
+                    variable,
+                    Constant( null, typeof( object ) ) ),
+                Return(
+                    label,
+                    variable,
+                    typeof( object ) ) ),
+            Return(
+                label,
+                Constant(
+                    new object(),
+                    typeof( object ) ),
+                typeof( object ) ),
+            Label(
+                label,
+                Constant(
+                    new object(),
+                    typeof( object ) ) )
+        );
+
+        var lambda = Lambda<Func<Task<object>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert - should return 'expected', not null
+        Assert.AreSame( expected, result );
+    }
+
+    [TestMethod]
     public async Task AsyncBlock_ShouldThrowException_WithNullTaskInConditional()
     {
         // Arrange: One of the branches returns a null task, leading to exception
