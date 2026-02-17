@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+
+using System.Linq.Expressions;
 using System.Reflection;
 using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
@@ -298,7 +300,7 @@ public class BlockAsyncBasicTests
         await compiledLambda(); // Should complete without exception
 
         // Assert
-        Assert.IsTrue( true ); // If no exception, the test is successful
+        // If no exception, the test is successful
     }
 
     [TestMethod]
