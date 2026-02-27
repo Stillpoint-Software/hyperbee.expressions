@@ -30,7 +30,7 @@ internal abstract class Transition
 
             if ( variable.Type.IsAssignableFrom( lastExpression.Type ) )
             {
-                expressions[^1] = Assign( variable, lastExpression );
+                expressions[^1] = Assign( variable, EnsureConvert( lastExpression, variable.Type ) );
             }
 
             return;
@@ -38,8 +38,16 @@ internal abstract class Transition
 
         if ( value != null && variable.Type.IsAssignableFrom( value.Type ) )
         {
-            expressions.Add( Assign( variable, value ) );
+            expressions.Add( Assign( variable, EnsureConvert( value, variable.Type ) ) );
         }
+    }
+
+    protected static Expression EnsureConvert( Expression expression, Type targetType )
+    {
+        if ( expression.Type != targetType && expression.Type.IsValueType )
+            return Convert( expression, targetType );
+
+        return expression;
     }
 
     internal abstract void Optimize( HashSet<LabelTarget> references );

@@ -24,7 +24,7 @@ internal class FinalTransition : Transition
         if ( expressions.Count <= 1 || expressions[^1].Type == typeof( void ) )
         {
             value ??= Constant( null, typeof( IVoidResult ) );
-            expressions.Add( Assign( variable, value ) );
+            expressions.Add( Assign( variable, EnsureConvert( value, variable.Type ) ) );
             return;
         }
 
@@ -34,7 +34,7 @@ internal class FinalTransition : Transition
 
             if ( variable.Type.IsAssignableFrom( lastExpression.Type ) )
             {
-                expressions[^1] = Assign( variable, lastExpression );
+                expressions[^1] = Assign( variable, EnsureConvert( lastExpression, variable.Type ) );
             }
         }
     }

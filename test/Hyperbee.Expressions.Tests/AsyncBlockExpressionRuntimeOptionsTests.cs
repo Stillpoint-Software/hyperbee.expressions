@@ -181,6 +181,67 @@ public class AsyncBlockExpressionRuntimeOptionsTests
             trackingProvider.GetModuleBuilder( ModuleKind.Async ) );
     }
 
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public async Task BlockAsync_SourceHandler_ShouldCaptureStateMachineSource( CompilerType compiler )
+    {
+        // Arrange
+        string capturedSource = null;
+        var options = new ExpressionRuntimeOptions
+        {
+            SourceHandler = source => capturedSource = source
+        };
+
+        var block = BlockAsync(
+            new[]
+            {
+                Await( AsyncHelper.Completer(
+                    Constant( CompleterType.Immediate ),
+                    Constant( 42 )
+                ) )
+            },
+            options
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 42, result );
+        Assert.IsNotNull( capturedSource, "SourceHandler should have been called" );
+        Assert.IsTrue( capturedSource.Length > 0, "Captured source should not be empty" );
+        Assert.IsTrue( capturedSource.Contains( "__state<>" ),
+            "Captured source should contain state machine state field" );
+        Assert.IsTrue( capturedSource.Contains( "__builder<>" ),
+            "Captured source should contain state machine builder field" );
+    }
+
+    [TestMethod]
+    public async Task BlockAsync_SourceHandler_ShouldNotBeCalled_WhenNotProvided()
+    {
+        // Arrange - no SourceHandler set
+        var block = BlockAsync(
+            Await( AsyncHelper.Completer(
+                Constant( CompleterType.Immediate ),
+                Constant( 42 )
+            ) )
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile( CompilerType.Fast );
+
+        // Act - should complete without error
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 42, result );
+    }
+
     // Helper: Custom test provider that tracks usage
     private class CustomTestModuleBuilderProvider : IModuleBuilderProvider
     {

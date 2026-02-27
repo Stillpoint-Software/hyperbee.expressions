@@ -31,6 +31,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     private const int InitialCapacity = 8;
 
     private int _variableId;
+    private ParameterExpression _finalResultVariable;
 
     private readonly StateContext _states;
 
@@ -100,7 +101,8 @@ internal sealed class VariableResolver : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public ParameterExpression GetFinalResult( Type type )
     {
-        return AddVariable( Variable( type, VariableName.FinalResult ) );
+        _finalResultVariable = AddVariable( Variable( type, VariableName.FinalResult ) );
+        return _finalResultVariable;
     }
 
     // Resolver
@@ -149,6 +151,14 @@ internal sealed class VariableResolver : ExpressionVisitor
     {
         if ( _labels.TryGetValue( node.Target, out var label ) )
             return label;
+
+        // BUG FIX: Return gotos inside non-lowered expressions (e.g. IfThen without Await) 
+        // must assign _finalResultVariable so the state machine result is set.
+        if ( _finalResultVariable != null && node.Kind == GotoExpressionKind.Return && node.Value != null )
+        {
+            var visitedValue = Visit( node.Value );
+            return node.Update( node.Target, Assign( _finalResultVariable, visitedValue ) );
+        }
 
         return base.VisitGoto( node );
     }
