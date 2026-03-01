@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+
+using System.Linq.Expressions;
 using System.Reflection;
 using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
@@ -298,7 +300,7 @@ public class BlockAsyncBasicTests
         await compiledLambda(); // Should complete without exception
 
         // Assert
-        Assert.IsTrue( true ); // If no exception, the test is successful
+        // If no exception, the test is successful
     }
 
     [TestMethod]
@@ -644,6 +646,32 @@ public class BlockAsyncBasicTests
 
         // Assert
         Assert.AreEqual( 2, result );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public async Task BlockAsync_ShouldHandleValueTypeToObjectAssignment_WithBoxing( CompilerType compiler )
+    {
+        // Arrange: assign value-type (int) to variable before await
+        // Reproduces: https://github.com/Stillpoint-Software/hyperbee.expressions/issues/126
+        var variable = Variable( typeof( int ) );
+
+        var block = BlockAsync(
+            [variable],
+            Assign( variable, Constant( 0 ) ),
+            Await( Constant( Task.FromResult( new object() ) ) )
+        );
+
+        var lambda = Lambda<Func<Task<object>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.IsNotNull( result );
     }
 
     public class TestContext

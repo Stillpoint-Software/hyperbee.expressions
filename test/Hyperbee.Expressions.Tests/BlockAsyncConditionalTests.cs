@@ -29,11 +29,8 @@ public class BlockAsyncConditionalTests
         var lambda = Lambda<Func<Task>>( block );
         var compiledLambda = lambda.Compile( compiler );
 
-        // Act
+        // Act & Assert - test passes if no exception is thrown
         await compiledLambda();
-
-        // Assert
-        Assert.IsTrue( true ); // No exception means condition and block executed successfully
     }
 
     [TestMethod]

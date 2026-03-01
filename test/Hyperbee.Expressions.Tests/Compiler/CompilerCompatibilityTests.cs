@@ -1,6 +1,10 @@
 ﻿using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
 
+#if FAST_COMPILER
+using FastExpressionCompiler;
+#endif
+
 namespace Hyperbee.Expressions.Tests.Compiler;
 
 // The following tests are to ensure compatibility with both SystemCompiler and FastExpressionCompiler.
@@ -214,4 +218,62 @@ public class CompilerCompatibilityTests
         var result = compiledLambda();
         Assert.AreEqual( 5, result );
     }
+
+#if FAST_COMPILER
+    [TestMethod]
+    public void CompileFast_ShouldReturnNull_ForReturnGotoFromTryCatchWithAssign()
+    {
+        // This test verifies that FEC correctly detects unsupported patterns and returns null,
+        // allowing the fallback mechanism in ExpressionCompilerExtensions to work.
+        //
+        // FEC has documented error 1007 (NotSupported_Try_GotoReturnToTheFollowupLabel) for
+        // Return gotos from TryCatch blocks. When FEC detects this pattern, it should return
+        // null (when ifFastFailedReturnNull: true) or throw NotSupportedExpressionException.
+        //
+        // Known issue: https://github.com/dadhi/FastExpressionCompiler/issues/495
+        // FEC's detection is incomplete - it misses Return gotos where the value is a compound
+        // expression containing assignments (e.g., Return(label, Assign(...)). Instead of
+        // returning null, FEC generates invalid IL that throws InvalidProgramException at runtime.
+        //
+        // When FEC issue 495 is fixed, this test will pass.
+
+        Assert.Inconclusive( "This test is currently expected to fail due to incomplete detection of unsupported patterns in FEC." );
+
+        // Arrange: Build expression with Return(label, Assign(...)) inside TryCatch
+        var variable = Variable( typeof( object ), "var" );
+        var finalResult = Variable( typeof( object ), "finalResult" );
+        var returnLabel = Label( typeof( object ), "return" );
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+
+        var block = Block(
+            new[] { variable, finalResult },
+            TryCatch(
+                Block(
+                    typeof( void ),
+                    Assign( variable, Constant( "hello", typeof( object ) ) ),
+                    IfThen(
+                        NotEqual( variable, Constant( null, typeof( object ) ) ),
+                        // FEC should detect this as error 1007 and reject it
+                        Return( returnLabel, Assign( finalResult, variable ), typeof( object ) )
+                    ),
+                    Assign( finalResult, Constant( "default", typeof( object ) ) ),
+                    Label( returnLabel, Constant( "fallback", typeof( object ) ) )
+                ),
+                Catch( exceptionParam, Empty() )
+            ),
+            finalResult
+        );
+
+        var lambda = Lambda<Func<object>>( block );
+
+        // Act: FEC should detect the unsupported pattern and return null
+        var compiled = lambda.CompileFast( ifFastFailedReturnNull: true );
+
+        // Assert: FEC should return null to trigger fallback mechanism
+        // Currently fails - FEC returns non-null with invalid IL
+        Assert.IsNull( compiled,
+            "FEC should return null for unsupported patterns to allow fallback to System compiler. " +
+            "See https://github.com/dadhi/FastExpressionCompiler/issues/495" );
+    }
+#endif
 }
