@@ -81,6 +81,7 @@ public enum IROp : byte
     EndTryCatch,            // End exception handling block
     Throw,                  // Throw exception
     Rethrow,                // Rethrow current exception
+    Leave,                  // Leave try/catch block (branch target label)
 
     // Stack manipulation
     Dup,                    // Duplicate top of stack

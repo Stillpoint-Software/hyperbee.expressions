@@ -13,6 +13,8 @@ public class ExpressionLowerer
     private readonly IRBuilder _ir;
     private readonly Dictionary<ParameterExpression, int> _parameterMap = new();
     private readonly Dictionary<ParameterExpression, int> _localMap = new();
+    private readonly Dictionary<LabelTarget, int> _labelMap = new();
+    private readonly Dictionary<LabelTarget, int> _labelValueLocalMap = new();
     private int _argOffset;
 
     /// <summary>
@@ -145,13 +147,28 @@ public class ExpressionLowerer
                 LowerDefault( (DefaultExpression) node );
                 break;
 
-            // Unsupported Phase 1 types that should throw
+            // Exception handling
             case ExpressionType.Try:
+                LowerTryCatch( (TryExpression) node );
+                break;
+
+            case ExpressionType.Throw:
+                LowerThrow( (UnaryExpression) node );
+                break;
+
+            // Goto / Label
+            case ExpressionType.Goto:
+                LowerGoto( (GotoExpression) node );
+                break;
+
+            case ExpressionType.Label:
+                LowerLabel( (LabelExpression) node );
+                break;
+
+            // Unsupported types that should throw
             case ExpressionType.Lambda:
             case ExpressionType.Loop:
-            case ExpressionType.Goto:
             case ExpressionType.Switch:
-            case ExpressionType.Label:
                 throw new NotSupportedException(
                     $"Expression type {node.NodeType} is not supported in this compiler phase." );
 
@@ -670,6 +687,207 @@ public class ExpressionLowerer
             _ir.Emit( IROp.InitObj, _ir.AddOperand( node.Type ) );
             _ir.Emit( IROp.StoreLocal, temp );
             _ir.Emit( IROp.LoadLocal, temp );
+        }
+    }
+
+    // --- Exception handling ---
+
+    private void LowerTryCatch( TryExpression node )
+    {
+        var isVoid = node.Type == typeof( void );
+
+        // For non-void try expressions, declare a temp to hold the result
+        var resultLocal = -1;
+        if ( !isVoid )
+        {
+            resultLocal = _ir.DeclareLocal( node.Type, "$tryResult" );
+        }
+
+        // Define the label for after EndTryCatch (leave target)
+        var endLabel = _ir.DefineLabel();
+
+        // Emit BeginTry
+        _ir.Emit( IROp.BeginTry );
+
+        // Lower try body
+        LowerExpression( node.Body );
+
+        // Store result if non-void
+        if ( !isVoid )
+        {
+            _ir.Emit( IROp.StoreLocal, resultLocal );
+        }
+
+        // Leave the try block
+        _ir.Emit( IROp.Leave, endLabel );
+
+        // Lower catch handlers
+        foreach ( var handler in node.Handlers )
+        {
+            _ir.Emit( IROp.BeginCatch, _ir.AddOperand( handler.Test ) );
+
+            if ( handler.Variable != null )
+            {
+                // Declare a local for the caught exception and store it
+                var exLocal = _ir.DeclareLocal( handler.Variable.Type, handler.Variable.Name );
+                _localMap[handler.Variable] = exLocal;
+                _ir.Emit( IROp.StoreLocal, exLocal );
+            }
+            else
+            {
+                // CLR pushes exception on stack at catch entry; discard it
+                _ir.Emit( IROp.Pop );
+            }
+
+            // Lower handler body
+            LowerExpression( handler.Body );
+
+            // Store result if non-void
+            if ( !isVoid )
+            {
+                _ir.Emit( IROp.StoreLocal, resultLocal );
+            }
+
+            // Leave the catch block
+            _ir.Emit( IROp.Leave, endLabel );
+        }
+
+        // Lower finally block
+        if ( node.Finally != null )
+        {
+            _ir.Emit( IROp.BeginFinally );
+            LowerExpression( node.Finally );
+            if ( node.Finally.Type != typeof( void ) )
+            {
+                _ir.Emit( IROp.Pop );
+            }
+            // endfinally is handled by ILGenerator at EndExceptionBlock
+        }
+
+        // Lower fault block
+        if ( node.Fault != null )
+        {
+            _ir.Emit( IROp.BeginFault );
+            LowerExpression( node.Fault );
+            if ( node.Fault.Type != typeof( void ) )
+            {
+                _ir.Emit( IROp.Pop );
+            }
+        }
+
+        // Emit EndTryCatch
+        _ir.Emit( IROp.EndTryCatch );
+
+        // Mark the end label (leave target)
+        _ir.MarkLabel( endLabel );
+
+        // Load result if non-void
+        if ( !isVoid )
+        {
+            _ir.Emit( IROp.LoadLocal, resultLocal );
+        }
+    }
+
+    private void LowerThrow( UnaryExpression node )
+    {
+        if ( node.Operand != null )
+        {
+            LowerExpression( node.Operand );
+            _ir.Emit( IROp.Throw );
+        }
+        else
+        {
+            // Rethrow (throw without operand inside catch)
+            _ir.Emit( IROp.Rethrow );
+        }
+    }
+
+    // --- Goto / Label ---
+
+    private int GetOrCreateLabel( LabelTarget target )
+    {
+        if ( !_labelMap.TryGetValue( target, out var labelIndex ) )
+        {
+            labelIndex = _ir.DefineLabel();
+            _labelMap[target] = labelIndex;
+        }
+        return labelIndex;
+    }
+
+    private int GetOrCreateLabelValueLocal( LabelTarget target )
+    {
+        if ( !_labelValueLocalMap.TryGetValue( target, out var localIndex ) )
+        {
+            localIndex = _ir.DeclareLocal( target.Type, $"$label_{target.Name}" );
+            _labelValueLocalMap[target] = localIndex;
+        }
+        return localIndex;
+    }
+
+    private void LowerGoto( GotoExpression node )
+    {
+        var labelIndex = GetOrCreateLabel( node.Target );
+
+        // If the goto carries a value, store it in the label's value local
+        if ( node.Value != null && node.Target.Type != typeof( void ) )
+        {
+            LowerExpression( node.Value );
+            var valueLocal = GetOrCreateLabelValueLocal( node.Target );
+            _ir.Emit( IROp.StoreLocal, valueLocal );
+        }
+
+        // Emit branch (or leave if inside try/catch -- StackSpillPass handles this)
+        _ir.Emit( IROp.Branch, labelIndex );
+    }
+
+    private void LowerLabel( LabelExpression node )
+    {
+        var labelIndex = GetOrCreateLabel( node.Target );
+
+        // If the label has a type (carries a value), we need to handle two arrival paths:
+        //  1. Via Goto: the Goto already stored the value into the label's value local.
+        //     The Goto branches directly to the "after default" point.
+        //  2. Via fallthrough: the default value is stored into the value local.
+        //
+        // Pattern:
+        //   [fallthrough default store]
+        //   Branch afterDefaultLabel     -- skip for fallthrough (already stored default)
+        //   -- Wait, simpler: Goto branches to afterDefaultLabel, fallthrough stores default.
+        //
+        // Actually the simplest correct pattern:
+        //   [default value store]        -- fallthrough stores default
+        //   afterDefaultLabel:           -- Goto jumps here (value already stored by Goto)
+        //   LoadLocal valueLocal         -- load the value
+
+        if ( node.Target.Type != typeof( void ) )
+        {
+            var valueLocal = GetOrCreateLabelValueLocal( node.Target );
+
+            if ( node.DefaultValue != null )
+            {
+                // Store the default value for the fallthrough path.
+                // Goto arrivals branch past this to the label mark point.
+                LowerExpression( node.DefaultValue );
+                _ir.Emit( IROp.StoreLocal, valueLocal );
+            }
+
+            // Mark the label (Goto targets arrive here, skipping default store)
+            _ir.MarkLabel( labelIndex );
+
+            // Load the value
+            _ir.Emit( IROp.LoadLocal, valueLocal );
+        }
+        else
+        {
+            // Void label -- just mark the label
+            _ir.MarkLabel( labelIndex );
+
+            if ( node.DefaultValue != null && node.DefaultValue.Type != typeof( void ) )
+            {
+                // Void label but non-void default -- lower and discard
+                LowerExpression( node.DefaultValue );
+                _ir.Emit( IROp.Pop );
+            }
         }
     }
 }

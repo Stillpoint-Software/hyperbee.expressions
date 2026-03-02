@@ -273,16 +273,38 @@ public static class ILEmissionPass
                 case IROp.EndScope:
                     break;
 
-                // Exception handling -- not in Phase 1
+                // Exception handling
                 case IROp.BeginTry:
+                    ilg.BeginExceptionBlock();
+                    break;
+
                 case IROp.BeginCatch:
+                    ilg.BeginCatchBlock( (Type) ir.Operands[inst.Operand] );
+                    break;
+
                 case IROp.BeginFinally:
+                    ilg.BeginFinallyBlock();
+                    break;
+
                 case IROp.BeginFault:
+                    ilg.BeginFaultBlock();
+                    break;
+
                 case IROp.EndTryCatch:
+                    ilg.EndExceptionBlock();
+                    break;
+
                 case IROp.Throw:
+                    ilg.Emit( OpCodes.Throw );
+                    break;
+
                 case IROp.Rethrow:
-                    throw new NotSupportedException(
-                        $"Exception handling (IR op {inst.Op}) is not supported in this compiler phase." );
+                    ilg.Emit( OpCodes.Rethrow );
+                    break;
+
+                case IROp.Leave:
+                    ilg.Emit( OpCodes.Leave, ilLabels[inst.Operand] );
+                    break;
 
                 // Not in Phase 1
                 case IROp.CreateDelegate:
@@ -478,25 +500,18 @@ public static class ILEmissionPass
 
         // Cast or unbox to target type
         if ( targetType.IsValueType )
-        {
             ilg.Emit( OpCodes.Unbox_Any, targetType );
-        }
+
         else if ( targetType != typeof( object ) )
-        {
             ilg.Emit( OpCodes.Castclass, targetType );
-        }
     }
 
     private static void EmitConvert( ILGenerator ilg, Type targetType, bool isChecked )
     {
         if ( isChecked )
-        {
             EmitConvertChecked( ilg, targetType );
-        }
         else
-        {
             EmitConvertUnchecked( ilg, targetType );
-        }
     }
 
     private static void EmitConvertUnchecked( ILGenerator ilg, Type targetType )

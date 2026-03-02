@@ -3,6 +3,7 @@ using System.Reflection.Emit;
 using Hyperbee.Expressions.Compiler.Emission;
 using Hyperbee.Expressions.Compiler.IR;
 using Hyperbee.Expressions.Compiler.Lowering;
+using Hyperbee.Expressions.Compiler.Passes;
 
 namespace Hyperbee.Expressions.Compiler;
 
@@ -44,6 +45,9 @@ public static class HyperbeeCompiler
         {
             BuildConstantsMapping( ir, out constantIndices, out constantsArray );
         }
+
+        // Step 3b: Run stack spill pass (converts Branch to Leave inside try/catch)
+        StackSpillPass.Run( ir );
 
         // Step 4: Build DynamicMethod parameter types
         var paramTypes = BuildParameterTypes( lambda, needsConstantsArray );
@@ -177,6 +181,30 @@ public static class HyperbeeCompiler
 
             case TypeBinaryExpression typeBinary:
                 return ScanForNonEmbeddableConstants( typeBinary.Expression );
+
+            case TryExpression tryExpr:
+            {
+                if ( ScanForNonEmbeddableConstants( tryExpr.Body ) )
+                    return true;
+                foreach ( var handler in tryExpr.Handlers )
+                {
+                    if ( handler.Filter != null && ScanForNonEmbeddableConstants( handler.Filter ) )
+                        return true;
+                    if ( ScanForNonEmbeddableConstants( handler.Body ) )
+                        return true;
+                }
+                if ( tryExpr.Finally != null && ScanForNonEmbeddableConstants( tryExpr.Finally ) )
+                    return true;
+                if ( tryExpr.Fault != null && ScanForNonEmbeddableConstants( tryExpr.Fault ) )
+                    return true;
+                return false;
+            }
+
+            case GotoExpression gotoExpr:
+                return gotoExpr.Value != null && ScanForNonEmbeddableConstants( gotoExpr.Value );
+
+            case LabelExpression labelExpr:
+                return labelExpr.DefaultValue != null && ScanForNonEmbeddableConstants( labelExpr.DefaultValue );
 
             default:
                 return false;

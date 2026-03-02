@@ -82,7 +82,7 @@ public class FecKnownIssues
             ) );
 
         // FEC: does not detect this as unsupported; emits invalid IL.
-        // Hyperbee must compile correctly (currently falls back to System).
+        // Hyperbee compiles correctly (no longer needs fallback).
         Assert.AreEqual( 42, HyperbeeCompiler.CompileWithFallback<Func<int>>( lambda )() );
     }
 
@@ -106,6 +106,90 @@ public class FecKnownIssues
             ) );
 
         Assert.AreEqual( -1, HyperbeeCompiler.CompileWithFallback<Func<int>>( lambda )() );
+    }
+
+    // --- Pattern 1 & 2: HyperbeeCompiler.Compile (no fallback) ---
+    //
+    // After Phase 2 implementation, these patterns are natively compiled by
+    // HyperbeeCompiler without needing fallback to System compiler.
+
+    [TestMethod]
+    public void Pattern1_TryCatch_WithAssign_HyperbeeNative()
+    {
+        var result = Expression.Variable( typeof(int), "result" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { result },
+                Expression.TryCatch(
+                    Expression.Assign( result, Expression.Constant( 42 ) ),
+                    Expression.Catch( typeof(Exception), Expression.Constant( 0 ) )
+                ),
+                result
+            ) );
+
+        Assert.AreEqual( 42, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    [TestMethod]
+    public void Pattern1_TryCatch_WithAssign_CatchPath_HyperbeeNative()
+    {
+        var result = Expression.Variable( typeof(int), "result" );
+        var throwing = Expression.Block(
+            typeof(int),
+            Expression.Throw( Expression.New( typeof(InvalidOperationException) ) ),
+            Expression.Constant( 0 ) );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { result },
+                Expression.TryCatch(
+                    Expression.Assign( result, throwing ),
+                    Expression.Catch(
+                        typeof(InvalidOperationException),
+                        Expression.Assign( result, Expression.Constant( -1 ) ) )
+                ),
+                result
+            ) );
+
+        Assert.AreEqual( -1, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    [TestMethod]
+    public void Pattern2_ReturnLabelInsideTryCatch_HyperbeeNative()
+    {
+        var returnLabel = Expression.Label( typeof(int), "return" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                typeof(int),
+                Expression.TryCatch(
+                    Expression.Return( returnLabel, Expression.Constant( 42 ) ),
+                    Expression.Catch( typeof(Exception),
+                        Expression.Return( returnLabel, Expression.Constant( -1 ) ) )
+                ),
+                Expression.Label( returnLabel, Expression.Constant( 0 ) )
+            ) );
+
+        Assert.AreEqual( 42, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    [TestMethod]
+    public void Pattern2_ReturnLabelInsideTryCatch_CatchBranch_HyperbeeNative()
+    {
+        var returnLabel = Expression.Label( typeof(int), "return" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                typeof(int),
+                Expression.TryCatch(
+                    Expression.Block(
+                        Expression.Throw( Expression.New( typeof(InvalidOperationException) ) ),
+                        Expression.Return( returnLabel, Expression.Constant( 42 ) )
+                    ),
+                    Expression.Catch( typeof(Exception),
+                        Expression.Return( returnLabel, Expression.Constant( -1 ) ) )
+                ),
+                Expression.Label( returnLabel, Expression.Constant( 0 ) )
+            ) );
+
+        Assert.AreEqual( -1, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
     }
 
     // --- Pattern 3: Mutable captured variable in nested lambda ---
