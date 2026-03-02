@@ -65,6 +65,7 @@ public enum IROp : byte
     // Method calls
     Call,                   // Static/non-virtual call
     CallVirt,               // Virtual/interface call
+    Constrained,            // Constrained prefix for value-type virtual calls (operand -> Type)
     NewObj,                 // Constructor call
 
     // Control flow
@@ -97,7 +98,8 @@ public enum IROp : byte
 
     // Special
     InitObj,                // Initialize value type
-    LoadAddress,            // Load address of local/arg/field
+    LoadAddress,            // Load address of local variable
+    LoadArgAddress,         // Load address of argument
     LoadToken,              // Load runtime type/method/field token
     Switch,                 // Switch table branch
 }

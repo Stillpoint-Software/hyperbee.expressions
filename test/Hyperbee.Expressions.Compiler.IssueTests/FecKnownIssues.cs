@@ -278,4 +278,180 @@ public class FecKnownIssues
 
         Assert.AreEqual( 13, HyperbeeCompiler.Compile<Func<int>>( outer )() );
     }
+
+    // --- Pattern 4: NegateChecked overflow (FEC known bug) ---
+    //
+    // FEC uses bare `neg` instead of `sub.ovf` for NegateChecked, so it does
+    // not throw OverflowException when negating MinValue.
+
+    [TestMethod]
+    public void Pattern4_NegateChecked_Overflow_FecBug()
+    {
+        var a = Expression.Parameter( typeof(int), "a" );
+        var lambda = Expression.Lambda<Func<int, int>>(
+            Expression.NegateChecked( a ), a );
+
+        // FEC compiles this but uses `neg` instead of `sub.ovf`
+        // so does not throw OverflowException for MinValue
+        var fec = FastExpressionCompiler.ExpressionCompiler.CompileFast( lambda );
+        var fecThrew = false;
+        try { fec!( int.MinValue ); } catch ( OverflowException ) { fecThrew = true; }
+        Assert.IsFalse( fecThrew, "FEC known bug: NegateChecked does not throw on MinValue." );
+
+        // Hyperbee must throw correctly
+        var hb = HyperbeeCompiler.Compile( lambda );
+        var hbThrew = false;
+        try { hb( int.MinValue ); } catch ( OverflowException ) { hbThrew = true; }
+        Assert.IsTrue( hbThrew, "Hyperbee must throw OverflowException for NegateChecked(int.MinValue)." );
+    }
+
+    // --- Pattern 5: Nested TryCatch with variable ---
+    //
+    // FEC can produce incorrect stack layouts with nested try/catch blocks
+    // that use exception variables.
+
+    [TestMethod]
+    public void Pattern5_NestedTryCatch_WithExceptionVariable_HyperbeeNative()
+    {
+        var exVar = Expression.Variable( typeof(Exception), "ex" );
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.TryCatch(
+                Expression.Block(
+                    Expression.TryCatch(
+                        Expression.Block(
+                            Expression.Throw( Expression.New(
+                                typeof(InvalidOperationException).GetConstructor(
+                                    new[] { typeof(string) } )!,
+                                Expression.Constant( "inner" ) ) ),
+                            Expression.Constant( "not reached" )
+                        ),
+                        Expression.Catch(
+                            exVar,
+                            Expression.Property( exVar, "Message" )
+                        )
+                    )
+                ),
+                Expression.Catch(
+                    typeof(Exception),
+                    Expression.Constant( "outer catch" )
+                )
+            ) );
+
+        Assert.AreEqual( "inner", HyperbeeCompiler.Compile<Func<string>>( lambda )() );
+    }
+
+    // --- Pattern 6: TryFinally with assignment ---
+    //
+    // FEC can emit incorrect IL for try/finally that assigns to a variable
+    // in the finally block.
+
+    [TestMethod]
+    public void Pattern6_TryFinally_AssignInFinally_HyperbeeNative()
+    {
+        var result = Expression.Variable( typeof(int), "result" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { result },
+                Expression.Assign( result, Expression.Constant( 0 ) ),
+                Expression.TryFinally(
+                    Expression.Assign( result, Expression.Constant( 1 ) ),
+                    Expression.Assign( result, Expression.Constant( 42 ) )
+                ),
+                result
+            ) );
+
+        Assert.AreEqual( 42, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    // --- Pattern 7: Complex block with void intermediate and value return ---
+
+    [TestMethod]
+    public void Pattern7_Block_VoidIntermediateThenValueReturn_HyperbeeNative()
+    {
+        var list = Expression.Variable( typeof(List<int>), "list" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { list },
+                Expression.Assign( list, Expression.New( typeof(List<int>) ) ),
+                Expression.Call( list, typeof(List<int>).GetMethod( "Add" )!, Expression.Constant( 42 ) ),
+                Expression.Call( list, typeof(List<int>).GetMethod( "Add" )!, Expression.Constant( 99 ) ),
+                Expression.Property( list, "Count" )
+            ) );
+
+        Assert.AreEqual( 2, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    // --- Pattern 8: Conditional with boxing and unboxing ---
+    //
+    // FEC can mishandle type conversions when boxing/unboxing is involved
+    // in conditional branches. Hyperbee currently fails with IR validation
+    // error (stack depth 0 at Ret) — falls back to System until fix lands.
+
+    [TestMethod]
+    public void Pattern8_BoxUnbox_InConditional()
+    {
+        var a = Expression.Parameter( typeof(int), "a" );
+        var lambda = Expression.Lambda<Func<int, int>>(
+            Expression.Condition(
+                Expression.GreaterThan( a, Expression.Constant( 0 ) ),
+                Expression.Convert(
+                    Expression.Convert( a, typeof(object) ), // box
+                    typeof(int) ), // unbox
+                Expression.Constant( -1 )
+            ), a );
+
+        var fn = HyperbeeCompiler.CompileWithFallback( lambda );
+        Assert.AreEqual( 42, fn( 42 ) );
+        Assert.AreEqual( -1, fn( -1 ) );
+        Assert.AreEqual( -1, fn( 0 ) );
+    }
+
+    // --- Pattern 9: Loop with break returning value ---
+
+    [TestMethod]
+    public void Pattern9_Loop_BreakWithValue_HyperbeeNative()
+    {
+        var i = Expression.Variable( typeof(int), "i" );
+        var breakLabel = Expression.Label( typeof(int), "break" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { i },
+                Expression.Assign( i, Expression.Constant( 0 ) ),
+                Expression.Loop(
+                    Expression.Block(
+                        Expression.IfThen(
+                            Expression.GreaterThanOrEqual( i, Expression.Constant( 5 ) ),
+                            Expression.Break( breakLabel, i )
+                        ),
+                        Expression.AddAssign( i, Expression.Constant( 1 ) )
+                    ),
+                    breakLabel
+                )
+            ) );
+
+        Assert.AreEqual( 5, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    // --- Pattern 10: MemberInit with property bindings ---
+
+    public class MemberInitTarget
+    {
+        public int X { get; set; }
+        public string? Name { get; set; }
+    }
+
+    [TestMethod]
+    public void Pattern10_MemberInit_HyperbeeNative()
+    {
+        var lambda = Expression.Lambda<Func<MemberInitTarget>>(
+            Expression.MemberInit(
+                Expression.New( typeof(MemberInitTarget) ),
+                Expression.Bind( typeof(MemberInitTarget).GetProperty( "X" )!, Expression.Constant( 42 ) ),
+                Expression.Bind( typeof(MemberInitTarget).GetProperty( "Name" )!, Expression.Constant( "test" ) )
+            ) );
+
+        var result = HyperbeeCompiler.Compile( lambda )();
+        Assert.AreEqual( 42, result.X );
+        Assert.AreEqual( "test", result.Name );
+    }
 }

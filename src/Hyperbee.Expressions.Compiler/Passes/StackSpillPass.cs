@@ -29,16 +29,25 @@ public static class StackSpillPass
     /// </summary>
     private static void ConvertBranchesToLeaves( IRBuilder ir )
     {
-        // Track exception block nesting depth
-        // We need to know if a Branch target is outside the current exception block.
-        // Strategy: track the instruction ranges of exception blocks, then for each
-        // Branch inside a block, check if the target is outside.
+        var instructions = ir.Instructions;
+
+        // Fast-exit: if no try blocks exist, there is nothing to convert
+        var hasTry = false;
+        for ( var i = 0; i < instructions.Count; i++ )
+        {
+            if ( instructions[i].Op == IROp.BeginTry )
+            {
+                hasTry = true;
+                break;
+            }
+        }
+
+        if ( !hasTry )
+            return;
 
         // Build a list of exception block ranges
-        var tryStack = new Stack<int>(); // stack of BeginTry instruction indices
-        var blockRanges = new List<(int Start, int End)>();
-
-        var instructions = ir.Instructions;
+        var tryStack = new Stack<int>( 4 );
+        var blockRanges = new List<(int Start, int End)>( 4 );
         for ( var i = 0; i < instructions.Count; i++ )
         {
             switch ( instructions[i].Op )

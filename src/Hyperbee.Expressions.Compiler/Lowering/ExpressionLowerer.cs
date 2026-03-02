@@ -15,18 +15,17 @@ public class ExpressionLowerer
 {
     private readonly IRBuilder _ir;
     private readonly Dictionary<ParameterExpression, int> _parameterMap = new( 4 );
-    private readonly Dictionary<ParameterExpression, int> _localMap = new( 8 );
-    private readonly Dictionary<LabelTarget, int> _labelMap = new( 4 );
-    private readonly Dictionary<LabelTarget, int> _labelValueLocalMap = new( 4 );
-    private readonly HashSet<ParameterExpression> _capturedVariables;
+    private readonly HashSet<ParameterExpression>? _capturedVariables;
 
-    // Maps captured variable -> local index of its StrongBox<T>
-    private readonly Dictionary<ParameterExpression, int> _strongBoxLocalMap = new();
-
-    // Maps a nested lambda (by reference identity) to its closure info
-    private readonly Dictionary<LambdaExpression, ClosureInfo> _closureInfoMap = new();
+    // Lazy-initialized maps: avoid allocation overhead for simple expressions
+    private Dictionary<ParameterExpression, int>? _localMap;
+    private Dictionary<LabelTarget, int>? _labelMap;
+    private Dictionary<LabelTarget, int>? _labelValueLocalMap;
+    private Dictionary<ParameterExpression, int>? _strongBoxLocalMap;
+    private Dictionary<LambdaExpression, ClosureInfo>? _closureInfoMap;
 
     private int _argOffset;
+    private bool _discardResult;
 
     /// <summary>
     /// Creates a new expression lowerer targeting the given IR builder.
@@ -43,7 +42,7 @@ public class ExpressionLowerer
     public ExpressionLowerer( IRBuilder ir, HashSet<ParameterExpression>? capturedVariables )
     {
         _ir = ir;
-        _capturedVariables = capturedVariables ?? new HashSet<ParameterExpression>();
+        _capturedVariables = capturedVariables;
     }
 
     /// <summary>
@@ -64,10 +63,10 @@ public class ExpressionLowerer
 
     private bool IsCaptured( ParameterExpression variable )
     {
-        return _capturedVariables.Contains( variable );
+        return _capturedVariables != null && _capturedVariables.Contains( variable );
     }
 
-    private void LowerExpression( Expression node )
+    private void LowerExpression( Expression? node )
     {
         if ( node == null )
             return;
@@ -121,6 +120,8 @@ public class ExpressionLowerer
             case ExpressionType.NegateChecked:
             case ExpressionType.Not:
             case ExpressionType.UnaryPlus:
+            case ExpressionType.Increment:
+            case ExpressionType.Decrement:
                 LowerUnary( (UnaryExpression) node );
                 break;
 
@@ -306,7 +307,7 @@ public class ExpressionLowerer
     private void LowerParameter( ParameterExpression node )
     {
         // Captured variable -- load through StrongBox<T>.Value
-        if ( IsCaptured( node ) && _strongBoxLocalMap.ContainsKey( node ) )
+        if ( IsCaptured( node ) && _strongBoxLocalMap?.ContainsKey( node ) == true )
         {
             EmitLoadCapturedValue( node );
             return;
@@ -316,7 +317,7 @@ public class ExpressionLowerer
         {
             _ir.Emit( IROp.LoadArg, argIndex );
         }
-        else if ( _localMap.TryGetValue( node, out var localIndex ) )
+        else if ( _localMap != null && _localMap.TryGetValue( node, out var localIndex ) )
         {
             _ir.Emit( IROp.LoadLocal, localIndex );
         }
@@ -324,7 +325,7 @@ public class ExpressionLowerer
         {
             // Variable not yet declared -- declare as local
             var local = _ir.DeclareLocal( node.Type, node.Name );
-            _localMap[node] = local;
+            ( _localMap ??= new( 8 ) )[node] = local;
             _ir.Emit( IROp.LoadLocal, local );
         }
     }
@@ -400,14 +401,14 @@ public class ExpressionLowerer
                 _ir.Emit( IROp.Cgt );
                 break;
             case ExpressionType.LessThanOrEqual:
-                // cgt + ldc.i4.0 + ceq (negate greater-than)
-                _ir.Emit( IROp.Cgt );
+                // Use cgt.un for floating-point so NaN comparisons return false
+                _ir.Emit( IsFloatingPoint( node.Left.Type ) ? IROp.CgtUn : IROp.Cgt );
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
                 _ir.Emit( IROp.Ceq );
                 break;
             case ExpressionType.GreaterThanOrEqual:
-                // clt + ldc.i4.0 + ceq (negate less-than)
-                _ir.Emit( IROp.Clt );
+                // Use clt.un for floating-point so NaN comparisons return false
+                _ir.Emit( IsFloatingPoint( node.Left.Type ) ? IROp.CltUn : IROp.Clt );
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
                 _ir.Emit( IROp.Ceq );
                 break;
@@ -427,20 +428,21 @@ public class ExpressionLowerer
             return;
         }
 
-        // Short-circuit: if left is false, skip right and push false
-        var falseLabel = _ir.DefineLabel();
+        // Short-circuit: if left is false, skip right and use left result.
+        // Use a result local so stack is empty at labels.
+        var resultLocal = _ir.DeclareLocal( typeof( bool ), "$andAlso" );
         var endLabel = _ir.DefineLabel();
 
         LowerExpression( node.Left );
-        _ir.Emit( IROp.Dup );
-        _ir.Emit( IROp.BranchFalse, falseLabel );
-        _ir.Emit( IROp.Pop ); // discard the dup'd left value
-        LowerExpression( node.Right );
-        _ir.Emit( IROp.Branch, endLabel );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
+        _ir.Emit( IROp.BranchFalse, endLabel ); // left is false → short-circuit
 
-        _ir.MarkLabel( falseLabel );
-        // The dup'd false value is still on the stack
+        LowerExpression( node.Right );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+
         _ir.MarkLabel( endLabel );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
     }
 
     private void LowerOrElse( BinaryExpression node )
@@ -454,20 +456,21 @@ public class ExpressionLowerer
             return;
         }
 
-        // Short-circuit: if left is true, skip right and push true
-        var trueLabel = _ir.DefineLabel();
+        // Short-circuit: if left is true, skip right and use left result.
+        // Use a result local so stack is empty at labels.
+        var resultLocal = _ir.DeclareLocal( typeof( bool ), "$orElse" );
         var endLabel = _ir.DefineLabel();
 
         LowerExpression( node.Left );
-        _ir.Emit( IROp.Dup );
-        _ir.Emit( IROp.BranchTrue, trueLabel );
-        _ir.Emit( IROp.Pop ); // discard the dup'd left value
-        LowerExpression( node.Right );
-        _ir.Emit( IROp.Branch, endLabel );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
+        _ir.Emit( IROp.BranchTrue, endLabel ); // left is true → short-circuit
 
-        _ir.MarkLabel( trueLabel );
-        // The dup'd true value is still on the stack
+        LowerExpression( node.Right );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+
         _ir.MarkLabel( endLabel );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
     }
 
     private void LowerUnary( UnaryExpression node )
@@ -488,13 +491,39 @@ public class ExpressionLowerer
                 _ir.Emit( IROp.Negate );
                 break;
             case ExpressionType.NegateChecked:
-                _ir.Emit( IROp.NegateChecked );
+            {
+                // Checked negate: 0 - value with overflow detection.
+                // The operand is already on the stack. Store to temp, push 0, reload, sub.ovf.
+                var temp = _ir.DeclareLocal( node.Type, "$neg_temp" );
+                _ir.Emit( IROp.StoreLocal, temp );
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetZeroForType( node.Type ) ) );
+                _ir.Emit( IROp.LoadLocal, temp );
+                _ir.Emit( IROp.SubChecked );
                 break;
+            }
             case ExpressionType.Not:
-                _ir.Emit( IROp.Not );
+                if ( node.Type == typeof( bool ) )
+                {
+                    // Boolean Not: ldc.i4.0 + ceq (true→false, false→true)
+                    // Bitwise 'not' on bool(1) gives 0xFFFFFFFE which is still truthy.
+                    _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                    _ir.Emit( IROp.Ceq );
+                }
+                else
+                {
+                    _ir.Emit( IROp.Not );
+                }
                 break;
             case ExpressionType.UnaryPlus:
                 // No-op: value is already on the stack
+                break;
+            case ExpressionType.Increment:
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetOneForType( node.Type ) ) );
+                _ir.Emit( IROp.Add );
+                break;
+            case ExpressionType.Decrement:
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetOneForType( node.Type ) ) );
+                _ir.Emit( IROp.Sub );
                 break;
             default:
                 throw new NotSupportedException( $"Unary op {node.NodeType} is not supported." );
@@ -570,9 +599,20 @@ public class ExpressionLowerer
 
     private void LowerMethodCall( MethodCallExpression node )
     {
+        var isValueTypeInstance = node.Object != null && node.Object.Type.IsValueType;
+        var needsConstrained = isValueTypeInstance && node.Method.IsVirtual;
+
         if ( node.Object != null )
         {
-            LowerExpression( node.Object );
+            if ( isValueTypeInstance )
+            {
+                // All value-type instance calls need a managed pointer (byref) on stack
+                EmitLoadAddress( node.Object );
+            }
+            else
+            {
+                LowerExpression( node.Object );
+            }
         }
 
         for ( var i = 0; i < node.Arguments.Count; i++ )
@@ -580,9 +620,17 @@ public class ExpressionLowerer
             LowerExpression( node.Arguments[i] );
         }
 
-        _ir.Emit(
-            node.Method.IsVirtual ? IROp.CallVirt : IROp.Call,
-            _ir.AddOperand( node.Method ) );
+        if ( needsConstrained )
+        {
+            _ir.Emit( IROp.Constrained, _ir.AddOperand( node.Object!.Type ) );
+            _ir.Emit( IROp.CallVirt, _ir.AddOperand( node.Method ) );
+        }
+        else
+        {
+            _ir.Emit(
+                node.Method.IsVirtual ? IROp.CallVirt : IROp.Call,
+                _ir.AddOperand( node.Method ) );
+        }
     }
 
     private void LowerConditional( ConditionalExpression node )
@@ -619,16 +667,60 @@ public class ExpressionLowerer
             {
                 _ir.Emit( IROp.Pop );
             }
-            _ir.Emit( IROp.Branch, endLabel );
 
-            _ir.MarkLabel( falseLabel );
-            LowerExpression( node.IfFalse );
-            if ( isVoidConditional && node.IfFalse.Type != typeof( void ) )
+            if ( !isVoidConditional )
             {
-                _ir.Emit( IROp.Pop );
-            }
+                // Store result so stack is empty at labels
+                var resultLocal = _ir.DeclareLocal( node.Type, "$cond" );
+                _ir.Emit( IROp.StoreLocal, resultLocal );
+                _ir.Emit( IROp.Branch, endLabel );
 
-            _ir.MarkLabel( endLabel );
+                _ir.MarkLabel( falseLabel );
+                LowerExpression( node.IfFalse );
+                _ir.Emit( IROp.StoreLocal, resultLocal );
+
+                _ir.MarkLabel( endLabel );
+                _ir.Emit( IROp.LoadLocal, resultLocal );
+            }
+            else
+            {
+                _ir.Emit( IROp.Branch, endLabel );
+
+                _ir.MarkLabel( falseLabel );
+                LowerExpression( node.IfFalse );
+                if ( node.IfFalse.Type != typeof( void ) )
+                {
+                    _ir.Emit( IROp.Pop );
+                }
+
+                _ir.MarkLabel( endLabel );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Emit the address of a value-type expression onto the stack.
+    /// Used for constrained virtual calls on value types.
+    /// </summary>
+    private void EmitLoadAddress( Expression node )
+    {
+        switch ( node )
+        {
+            case ParameterExpression param when _localMap != null && _localMap.TryGetValue( param, out var localIndex ):
+                _ir.Emit( IROp.LoadAddress, localIndex );
+                return;
+
+            case ParameterExpression param when _parameterMap.TryGetValue( param, out var argIndex ):
+                _ir.Emit( IROp.LoadArgAddress, argIndex );
+                return;
+
+            default:
+                // Complex expression: lower it, store to a temp local, load address of temp
+                LowerExpression( node );
+                var temp = _ir.DeclareLocal( node.Type, "$addr_temp" );
+                _ir.Emit( IROp.StoreLocal, temp );
+                _ir.Emit( IROp.LoadAddress, temp );
+                return;
         }
     }
 
@@ -655,6 +747,22 @@ public class ExpressionLowerer
             {
                 _ir.Emit( IROp.Call, _ir.AddOperand( getter ) );
             }
+            else if ( node.Expression!.Type.IsValueType )
+            {
+                // Value-type instance calls need a managed pointer (byref).
+                // Virtual calls use constrained prefix; non-virtual use plain call.
+                EmitLoadAddress( node.Expression! );
+
+                if ( getter.IsVirtual )
+                {
+                    _ir.Emit( IROp.Constrained, _ir.AddOperand( node.Expression!.Type ) );
+                    _ir.Emit( IROp.CallVirt, _ir.AddOperand( getter ) );
+                }
+                else
+                {
+                    _ir.Emit( IROp.Call, _ir.AddOperand( getter ) );
+                }
+            }
             else
             {
                 LowerExpression( node.Expression! );
@@ -673,7 +781,11 @@ public class ExpressionLowerer
     {
         if ( node.Constructor == null )
         {
-            throw new NotSupportedException( "NewExpression without constructor is not supported." );
+            // Value type default construction (no constructor).
+            // CLR zeros locals on declaration.
+            var temp = _ir.DeclareLocal( node.Type, "$newDefault" );
+            _ir.Emit( IROp.LoadLocal, temp );
+            return;
         }
 
         for ( var i = 0; i < node.Arguments.Count; i++ )
@@ -696,6 +808,7 @@ public class ExpressionLowerer
                 // Captured variable: allocate a StrongBox<T> local
                 var strongBoxType = typeof( StrongBox<> ).MakeGenericType( variable.Type );
                 var boxLocal = _ir.DeclareLocal( strongBoxType, $"$box_{variable.Name}" );
+                _strongBoxLocalMap ??= new( 2 );
                 _strongBoxLocalMap[variable] = boxLocal;
 
                 // Emit: new StrongBox<T>() and store
@@ -706,20 +819,33 @@ public class ExpressionLowerer
             else
             {
                 var local = _ir.DeclareLocal( variable.Type, variable.Name );
-                _localMap[variable] = local;
+                ( _localMap ??= new( 8 ) )[variable] = local;
             }
         }
 
         // Lower all expressions in the block
         for ( var i = 0; i < node.Expressions.Count; i++ )
         {
-            LowerExpression( node.Expressions[i] );
+            var isLast = i == node.Expressions.Count - 1;
+            var expr = node.Expressions[i];
 
-            // All expressions except the last have their result discarded
-            if ( i < node.Expressions.Count - 1
-                && node.Expressions[i].Type != typeof( void ) )
+            if ( !isLast && expr.NodeType == ExpressionType.Assign )
             {
-                _ir.Emit( IROp.Pop );
+                // Statement-position assignment: skip the Dup since the result
+                // is immediately discarded. Saves 2 instructions (Dup + Pop).
+                _discardResult = true;
+                LowerExpression( expr );
+                _discardResult = false;
+            }
+            else
+            {
+                LowerExpression( expr );
+
+                // All expressions except the last have their result discarded
+                if ( !isLast && expr.Type != typeof( void ) )
+                {
+                    _ir.Emit( IROp.Pop );
+                }
             }
         }
 
@@ -728,22 +854,24 @@ public class ExpressionLowerer
 
     private void LowerAssign( BinaryExpression node )
     {
+        var needsResult = !_discardResult;
+
         // The left side must be a ParameterExpression (variable)
         if ( node.Left is ParameterExpression variable )
         {
             // Captured variable -- store through StrongBox<T>.Value
-            if ( IsCaptured( variable ) && _strongBoxLocalMap.ContainsKey( variable ) )
+            if ( IsCaptured( variable ) && _strongBoxLocalMap?.ContainsKey( variable ) == true )
             {
-                EmitStoreCapturedValue( variable, node.Right );
+                EmitStoreCapturedValue( variable, node.Right, needsResult );
                 return;
             }
 
             LowerExpression( node.Right );
 
-            // Dup the value so it remains on the stack as the result of the assignment
-            _ir.Emit( IROp.Dup );
+            if ( needsResult )
+                _ir.Emit( IROp.Dup );
 
-            if ( _localMap.TryGetValue( variable, out var localIndex ) )
+            if ( _localMap != null && _localMap.TryGetValue( variable, out var localIndex ) )
             {
                 _ir.Emit( IROp.StoreLocal, localIndex );
             }
@@ -755,7 +883,7 @@ public class ExpressionLowerer
             {
                 // Variable not yet declared -- declare as local
                 var local = _ir.DeclareLocal( variable.Type, variable.Name );
-                _localMap[variable] = local;
+                ( _localMap ??= new( 8 ) )[variable] = local;
                 _ir.Emit( IROp.StoreLocal, local );
             }
         }
@@ -766,15 +894,29 @@ public class ExpressionLowerer
                 if ( field.IsStatic )
                 {
                     LowerExpression( node.Right );
-                    _ir.Emit( IROp.Dup );
+                    if ( needsResult )
+                        _ir.Emit( IROp.Dup );
                     _ir.Emit( IROp.StoreStaticField, _ir.AddOperand( field ) );
                 }
                 else
                 {
                     LowerExpression( member.Expression! );
                     LowerExpression( node.Right );
-                    _ir.Emit( IROp.Dup );
-                    _ir.Emit( IROp.StoreField, _ir.AddOperand( field ) );
+
+                    if ( needsResult )
+                    {
+                        // Need the result: use temp to preserve value across stfld
+                        var temp = _ir.DeclareLocal( node.Right.Type, "$fld_assign" );
+                        _ir.Emit( IROp.Dup );
+                        _ir.Emit( IROp.StoreLocal, temp );
+                        _ir.Emit( IROp.StoreField, _ir.AddOperand( field ) );
+                        _ir.Emit( IROp.LoadLocal, temp );
+                    }
+                    else
+                    {
+                        // Statement position: just store, no result needed
+                        _ir.Emit( IROp.StoreField, _ir.AddOperand( field ) );
+                    }
                 }
             }
             else if ( member.Member is PropertyInfo property )
@@ -785,14 +927,65 @@ public class ExpressionLowerer
                 if ( setter.IsStatic )
                 {
                     LowerExpression( node.Right );
-                    _ir.Emit( IROp.Dup );
+                    if ( needsResult )
+                        _ir.Emit( IROp.Dup );
                     _ir.Emit( IROp.Call, _ir.AddOperand( setter ) );
                 }
                 else
                 {
                     LowerExpression( member.Expression! );
                     LowerExpression( node.Right );
+
+                    if ( needsResult )
+                    {
+                        // Need the result: use temp to preserve value across setter call
+                        var temp = _ir.DeclareLocal( node.Right.Type, "$prop_assign" );
+                        _ir.Emit( IROp.Dup );
+                        _ir.Emit( IROp.StoreLocal, temp );
+                        _ir.Emit(
+                            setter.IsVirtual ? IROp.CallVirt : IROp.Call,
+                            _ir.AddOperand( setter ) );
+                        _ir.Emit( IROp.LoadLocal, temp );
+                    }
+                    else
+                    {
+                        // Statement position: just call setter, no result needed
+                        _ir.Emit(
+                            setter.IsVirtual ? IROp.CallVirt : IROp.Call,
+                            _ir.AddOperand( setter ) );
+                    }
+                }
+            }
+            else
+            {
+                throw new NotSupportedException( $"Cannot assign to member type {member.Member.GetType().Name}." );
+            }
+        }
+        else if ( node.Left is IndexExpression indexExpr )
+        {
+            if ( indexExpr.Indexer != null )
+            {
+                // Property indexer: call the set accessor
+                var setter = indexExpr.Indexer.GetSetMethod( true )
+                    ?? throw new InvalidOperationException( $"Indexer '{indexExpr.Indexer.Name}' has no setter." );
+
+                LowerExpression( indexExpr.Object );
+                foreach ( var arg in indexExpr.Arguments )
+                    LowerExpression( arg );
+                LowerExpression( node.Right );
+
+                if ( needsResult )
+                {
+                    var temp = _ir.DeclareLocal( node.Right.Type, "$idx_assign" );
                     _ir.Emit( IROp.Dup );
+                    _ir.Emit( IROp.StoreLocal, temp );
+                    _ir.Emit(
+                        setter.IsVirtual ? IROp.CallVirt : IROp.Call,
+                        _ir.AddOperand( setter ) );
+                    _ir.Emit( IROp.LoadLocal, temp );
+                }
+                else
+                {
                     _ir.Emit(
                         setter.IsVirtual ? IROp.CallVirt : IROp.Call,
                         _ir.AddOperand( setter ) );
@@ -800,7 +993,24 @@ public class ExpressionLowerer
             }
             else
             {
-                throw new NotSupportedException( $"Cannot assign to member type {member.Member.GetType().Name}." );
+                // Array element: stelem
+                LowerExpression( indexExpr.Object );
+                foreach ( var arg in indexExpr.Arguments )
+                    LowerExpression( arg );
+                LowerExpression( node.Right );
+
+                if ( needsResult )
+                {
+                    var temp = _ir.DeclareLocal( node.Right.Type, "$arr_assign" );
+                    _ir.Emit( IROp.Dup );
+                    _ir.Emit( IROp.StoreLocal, temp );
+                    _ir.Emit( IROp.StoreElement, _ir.AddOperand( indexExpr.Type ) );
+                    _ir.Emit( IROp.LoadLocal, temp );
+                }
+                else
+                {
+                    _ir.Emit( IROp.StoreElement, _ir.AddOperand( indexExpr.Type ) );
+                }
             }
         }
         else
@@ -824,10 +1034,9 @@ public class ExpressionLowerer
         }
         else
         {
-            // Value type default: declare a temp, initobj, load
+            // Value type default: CLR zeros locals on declaration,
+            // so just declare a temp and load it.
             var temp = _ir.DeclareLocal( node.Type );
-            _ir.Emit( IROp.InitObj, _ir.AddOperand( node.Type ) );
-            _ir.Emit( IROp.StoreLocal, temp );
             _ir.Emit( IROp.LoadLocal, temp );
         }
     }
@@ -872,7 +1081,7 @@ public class ExpressionLowerer
             {
                 // Declare a local for the caught exception and store it
                 var exLocal = _ir.DeclareLocal( handler.Variable.Type, handler.Variable.Name );
-                _localMap[handler.Variable] = exLocal;
+                ( _localMap ??= new( 8 ) )[handler.Variable] = exLocal;
                 _ir.Emit( IROp.StoreLocal, exLocal );
             }
             else
@@ -948,6 +1157,7 @@ public class ExpressionLowerer
 
     private int GetOrCreateLabel( LabelTarget target )
     {
+        _labelMap ??= new( 4 );
         if ( !_labelMap.TryGetValue( target, out var labelIndex ) )
         {
             labelIndex = _ir.DefineLabel();
@@ -958,6 +1168,7 @@ public class ExpressionLowerer
 
     private int GetOrCreateLabelValueLocal( LabelTarget target )
     {
+        _labelValueLocalMap ??= new( 4 );
         if ( !_labelValueLocalMap.TryGetValue( target, out var localIndex ) )
         {
             localIndex = _ir.DeclareLocal( target.Type, $"$label_{target.Name}" );
@@ -1410,87 +1621,93 @@ public class ExpressionLowerer
             return;
         }
 
+        var resultLocal = _ir.DeclareLocal( node.Type, "$coalesce" );
         var endLabel = _ir.DefineLabel();
         var useRightLabel = _ir.DefineLabel();
 
-        LowerExpression( node.Left );
-        _ir.Emit( IROp.Dup );
-
-        // For nullable value types, we need HasValue check
         var leftType = node.Left.Type;
+
         if ( leftType.IsValueType && Nullable.GetUnderlyingType( leftType ) != null )
         {
-            // Store the nullable in a temp for HasValue check
-            var temp = _ir.DeclareLocal( leftType, "$coalesceTemp" );
-            _ir.Emit( IROp.StoreLocal, temp );
-            _ir.Emit( IROp.Pop ); // pop the dup'd value
+            // Nullable value type: check HasValue
+            var leftLocal = _ir.DeclareLocal( leftType, "$coalesceLeft" );
 
-            // Load address and call HasValue
-            _ir.Emit( IROp.LoadLocal, temp );
+            LowerExpression( node.Left );
+            _ir.Emit( IROp.StoreLocal, leftLocal );
 
+            // Call HasValue
+            _ir.Emit( IROp.LoadAddress, leftLocal );
             var hasValueGetter = leftType.GetProperty( "HasValue" )!.GetGetMethod()!;
-            // For value types we need to store and load address
-            _ir.Emit( IROp.StoreLocal, temp );
-            _ir.Emit( IROp.LoadAddress, temp );
             _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
             _ir.Emit( IROp.BranchFalse, useRightLabel );
 
-            // Has value -- get the value
-            _ir.Emit( IROp.LoadAddress, temp );
+            // Has value -- get the underlying value
+            _ir.Emit( IROp.LoadAddress, leftLocal );
             var getValueGetter = leftType.GetProperty( "Value" )!.GetGetMethod()!;
             _ir.Emit( IROp.Call, _ir.AddOperand( getValueGetter ) );
 
-            // If the coalesce conversion exists, apply it
+            // Apply conversion if present
             if ( node.Conversion != null )
             {
                 var convDelegate = node.Conversion.Compile();
+                var delLocal = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
+                var valLocal = _ir.DeclareLocal( Nullable.GetUnderlyingType( leftType )!, "$coalesceVal" );
+                _ir.Emit( IROp.StoreLocal, valLocal );
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( convDelegate ) );
-                // Stack: [value] [delegate]
-                // Need to swap -- use temp
-                var valTemp = _ir.DeclareLocal( Nullable.GetUnderlyingType( leftType )!, "$coalesceVal" );
-                var delTemp = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
-                _ir.Emit( IROp.StoreLocal, delTemp );
-                _ir.Emit( IROp.StoreLocal, valTemp );
-                _ir.Emit( IROp.LoadLocal, delTemp );
-                _ir.Emit( IROp.LoadLocal, valTemp );
+                _ir.Emit( IROp.StoreLocal, delLocal );
+                _ir.Emit( IROp.LoadLocal, delLocal );
+                _ir.Emit( IROp.LoadLocal, valLocal );
                 var invokeMethod = convDelegate.GetType().GetMethod( "Invoke" )!;
                 _ir.Emit( IROp.CallVirt, _ir.AddOperand( invokeMethod ) );
             }
 
+            _ir.Emit( IROp.StoreLocal, resultLocal );
             _ir.Emit( IROp.Branch, endLabel );
 
             _ir.MarkLabel( useRightLabel );
             LowerExpression( node.Right );
+            _ir.Emit( IROp.StoreLocal, resultLocal );
+
             _ir.MarkLabel( endLabel );
+            _ir.Emit( IROp.LoadLocal, resultLocal );
         }
         else
         {
-            // Reference type -- use brfalse (null check)
+            // Reference type: null check via BranchFalse
+            var leftLocal = _ir.DeclareLocal( node.Left.Type, "$coalesceLeft" );
+
+            LowerExpression( node.Left );
+            _ir.Emit( IROp.StoreLocal, leftLocal );
+            _ir.Emit( IROp.LoadLocal, leftLocal );
             _ir.Emit( IROp.BranchFalse, useRightLabel );
 
-            // If there is a conversion lambda, apply it
+            // Left is non-null
+            _ir.Emit( IROp.LoadLocal, leftLocal );
+
+            // Apply conversion if present
             if ( node.Conversion != null )
             {
                 var convDelegate = node.Conversion.Compile();
+                var delLocal = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
+                var valLocal = _ir.DeclareLocal( node.Left.Type, "$coalesceVal" );
+                _ir.Emit( IROp.StoreLocal, valLocal );
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( convDelegate ) );
-                // Stack: [left] [delegate] -- need swap
-                var leftTemp = _ir.DeclareLocal( node.Left.Type, "$coalesceLeft" );
-                var delTemp = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
-                _ir.Emit( IROp.StoreLocal, delTemp );
-                _ir.Emit( IROp.StoreLocal, leftTemp );
-                _ir.Emit( IROp.LoadLocal, delTemp );
-                _ir.Emit( IROp.LoadLocal, leftTemp );
+                _ir.Emit( IROp.StoreLocal, delLocal );
+                _ir.Emit( IROp.LoadLocal, delLocal );
+                _ir.Emit( IROp.LoadLocal, valLocal );
                 var invokeMethod = convDelegate.GetType().GetMethod( "Invoke" )!;
                 _ir.Emit( IROp.CallVirt, _ir.AddOperand( invokeMethod ) );
             }
 
+            _ir.Emit( IROp.StoreLocal, resultLocal );
             _ir.Emit( IROp.Branch, endLabel );
 
             _ir.MarkLabel( useRightLabel );
-            _ir.Emit( IROp.Pop ); // discard the dup'd null
             LowerExpression( node.Right );
+            _ir.Emit( IROp.StoreLocal, resultLocal );
 
             _ir.MarkLabel( endLabel );
+            _ir.Emit( IROp.LoadLocal, resultLocal );
         }
     }
 
@@ -1562,7 +1779,7 @@ public class ExpressionLowerer
     /// </summary>
     private void EmitLoadCapturedValue( ParameterExpression variable )
     {
-        var boxLocal = _strongBoxLocalMap[variable];
+        var boxLocal = _strongBoxLocalMap![variable];
         var strongBoxType = typeof( StrongBox<> ).MakeGenericType( variable.Type );
         var valueField = strongBoxType.GetField( "Value" )!;
 
@@ -1575,25 +1792,29 @@ public class ExpressionLowerer
     /// The right-hand side expression is lowered and the result is dup'd so the
     /// assignment expression still has a value on the stack.
     /// </summary>
-    private void EmitStoreCapturedValue( ParameterExpression variable, Expression rightSide )
+    private void EmitStoreCapturedValue( ParameterExpression variable, Expression rightSide, bool needsResult = true )
     {
-        var boxLocal = _strongBoxLocalMap[variable];
+        var boxLocal = _strongBoxLocalMap![variable];
         var strongBoxType = typeof( StrongBox<> ).MakeGenericType( variable.Type );
         var valueField = strongBoxType.GetField( "Value" )!;
 
-        // Pattern: LoadLocal box, LowerExpression right, Dup, StoreLocal temp, StoreField Value, LoadLocal temp
-        // This leaves the assigned value on the stack as the expression result.
         _ir.Emit( IROp.LoadLocal, boxLocal );
         LowerExpression( rightSide );
-        _ir.Emit( IROp.Dup );
 
-        // Stack: [box] [value] [value]
-        // stfld expects [box][value], but the dup'd value is on top.
-        // Use a temp to hold the result.
-        var tempLocal = _ir.DeclareLocal( variable.Type, $"$temp_{variable.Name}" );
-        _ir.Emit( IROp.StoreLocal, tempLocal ); // Stack: [box] [value]
-        _ir.Emit( IROp.StoreField, _ir.AddOperand( valueField ) ); // Stack: empty
-        _ir.Emit( IROp.LoadLocal, tempLocal ); // Stack: [value] (assignment result)
+        if ( needsResult )
+        {
+            // Need the result: use temp to preserve value across stfld
+            var tempLocal = _ir.DeclareLocal( variable.Type, $"$temp_{variable.Name}" );
+            _ir.Emit( IROp.Dup );
+            _ir.Emit( IROp.StoreLocal, tempLocal );
+            _ir.Emit( IROp.StoreField, _ir.AddOperand( valueField ) );
+            _ir.Emit( IROp.LoadLocal, tempLocal );
+        }
+        else
+        {
+            // Statement position: just store, no result needed
+            _ir.Emit( IROp.StoreField, _ir.AddOperand( valueField ) );
+        }
     }
 
     /// <summary>
@@ -1648,7 +1869,7 @@ public class ExpressionLowerer
                 // Load the StrongBox locals for captured variables
                 foreach ( var capture in closureInfo.Captures )
                 {
-                    var boxLocal = _strongBoxLocalMap[capture];
+                    var boxLocal = _strongBoxLocalMap![capture];
                     _ir.Emit( IROp.LoadLocal, boxLocal );
                 }
 
@@ -1693,16 +1914,16 @@ public class ExpressionLowerer
     private ClosureInfo? GetOrBuildClosureInfo( LambdaExpression lambda )
     {
         // Check if already built
-        if ( _closureInfoMap.TryGetValue( lambda, out var existing ) )
+        if ( _closureInfoMap?.TryGetValue( lambda, out var existing ) == true )
         {
             return existing;
         }
 
         // Find which captured variables this nested lambda references
-        var innerCaptures = new List<ParameterExpression>();
+        var innerCaptures = new List<ParameterExpression>( _capturedVariables!.Count );
         foreach ( var capturedVar in _capturedVariables )
         {
-            if ( _strongBoxLocalMap.ContainsKey( capturedVar )
+            if ( _strongBoxLocalMap?.ContainsKey( capturedVar ) == true
                 && ReferencesVariable( lambda.Body, capturedVar ) )
             {
                 innerCaptures.Add( capturedVar );
@@ -1726,7 +1947,7 @@ public class ExpressionLowerer
         }
 
         // Build a mapping from captured variable to StrongBox<T>.Value access
-        var replacements = new Dictionary<ParameterExpression, Expression>();
+        var replacements = new Dictionary<ParameterExpression, Expression>( innerCaptures.Count );
         for ( var i = 0; i < innerCaptures.Count; i++ )
         {
             var valueField = boxTypes[i].GetField( "Value" )!;
@@ -1737,7 +1958,8 @@ public class ExpressionLowerer
         var rewrittenBody = (Expression) new CaptureRewriter( replacements ).Visit( lambda.Body )!;
 
         // Build a new lambda that takes the original params + StrongBox params
-        var allParams = new List<ParameterExpression>( lambda.Parameters );
+        var allParams = new List<ParameterExpression>( lambda.Parameters.Count + innerCaptures.Count );
+        allParams.AddRange( lambda.Parameters );
         allParams.AddRange( boxParams );
 
         // If the original lambda has a void return type but the rewritten body has
@@ -1750,7 +1972,9 @@ public class ExpressionLowerer
 
         // Build the correct delegate type that matches the original return type
         // but includes the extra StrongBox parameters.
-        var allParamTypes = allParams.Select( p => p.Type ).ToArray();
+        var allParamTypes = new Type[allParams.Count];
+        for ( var i = 0; i < allParams.Count; i++ )
+            allParamTypes[i] = allParams[i].Type;
         Type delegateType;
 
         if ( originalReturnType == typeof( void ) )
@@ -1770,6 +1994,7 @@ public class ExpressionLowerer
         var compiledInner = rewrittenLambda.Compile();
 
         var closureInfo = new ClosureInfo( compiledInner, innerCaptures );
+        _closureInfoMap ??= new( 2 );
         _closureInfoMap[lambda] = closureInfo;
         return closureInfo;
     }
@@ -1777,7 +2002,7 @@ public class ExpressionLowerer
     /// <summary>
     /// Check if an expression tree references a specific parameter variable.
     /// </summary>
-    private static bool ReferencesVariable( Expression node, ParameterExpression variable )
+    private static bool ReferencesVariable( Expression? node, ParameterExpression variable )
     {
         if ( node == null )
             return false;
@@ -1878,6 +2103,41 @@ public class ExpressionLowerer
             default:
                 return false;
         }
+    }
+
+    // --- Helpers ---
+
+    /// <summary>
+    /// Returns the zero constant for a numeric type, used for checked negation (0 - value).
+    /// </summary>
+    private static object GetZeroForType( Type type )
+    {
+        if ( type == typeof( int ) ) return 0;
+        if ( type == typeof( long ) ) return 0L;
+        if ( type == typeof( short ) ) return (short) 0;
+        if ( type == typeof( sbyte ) ) return (sbyte) 0;
+        if ( type == typeof( float ) ) return 0f;
+        if ( type == typeof( double ) ) return 0d;
+        if ( type == typeof( decimal ) ) return 0m;
+        throw new NotSupportedException( $"NegateChecked is not supported for type {type.Name}." );
+    }
+
+    private static object GetOneForType( Type type )
+    {
+        if ( type == typeof( int ) ) return 1;
+        if ( type == typeof( long ) ) return 1L;
+        if ( type == typeof( short ) ) return (short) 1;
+        if ( type == typeof( sbyte ) ) return (sbyte) 1;
+        if ( type == typeof( byte ) ) return (byte) 1;
+        if ( type == typeof( float ) ) return 1f;
+        if ( type == typeof( double ) ) return 1d;
+        if ( type == typeof( decimal ) ) return 1m;
+        throw new NotSupportedException( $"Increment/Decrement is not supported for type {type.Name}." );
+    }
+
+    private static bool IsFloatingPoint( Type type )
+    {
+        return type == typeof( float ) || type == typeof( double );
     }
 
     // --- Closure infrastructure ---

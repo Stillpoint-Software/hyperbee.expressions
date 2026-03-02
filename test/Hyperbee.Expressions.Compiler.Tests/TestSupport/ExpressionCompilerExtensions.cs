@@ -22,7 +22,7 @@ public static class ExpressionCompilerExtensions
         {
             CompilerType.System    => expression.Compile(),
             CompilerType.Interpret => expression.Compile( preferInterpretation: true ),
-            CompilerType.Hyperbee  => HyperbeeCompiler.CompileWithFallback( expression ),
+            CompilerType.Hyperbee  => HyperbeeCompiler.Compile( expression ),
             CompilerType.Fast      => CompileFast( expression ),
             _ => throw new ArgumentOutOfRangeException( nameof( compilerType ) )
         };

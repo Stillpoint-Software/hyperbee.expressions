@@ -16,7 +16,7 @@ public static class CaptureScanner
     public static HashSet<ParameterExpression> FindCapturedVariables( LambdaExpression rootLambda )
     {
         var captured = new HashSet<ParameterExpression>();
-        var outerScope = new HashSet<ParameterExpression>();
+        var outerScope = new HashSet<ParameterExpression>( rootLambda.Parameters.Count + 4 );
 
         // The root lambda's own parameters are in scope for nested lambdas
         foreach ( var param in rootLambda.Parameters )
@@ -37,7 +37,7 @@ public static class CaptureScanner
     /// Recursively collect all block-declared variables in the expression tree,
     /// stopping at nested lambda boundaries.
     /// </summary>
-    private static void CollectDeclaredVariables( Expression node, HashSet<ParameterExpression> outerScope )
+    private static void CollectDeclaredVariables( Expression? node, HashSet<ParameterExpression> outerScope )
     {
         if ( node == null )
             return;
@@ -137,7 +137,7 @@ public static class CaptureScanner
     /// find variables it references that are in the outer scope.
     /// </summary>
     private static void FindCapturesInNestedLambdas(
-        Expression node,
+        Expression? node,
         HashSet<ParameterExpression> outerScope,
         HashSet<ParameterExpression> captured )
     {
@@ -233,7 +233,7 @@ public static class CaptureScanner
     /// outer-scope variables. Variables declared in the inner scope are excluded.
     /// </summary>
     private static void FindReferencedOuterVariables(
-        Expression node,
+        Expression? node,
         HashSet<ParameterExpression> outerScope,
         HashSet<ParameterExpression> innerScope,
         HashSet<ParameterExpression> captured )

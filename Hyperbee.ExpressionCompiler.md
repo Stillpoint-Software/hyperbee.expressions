@@ -18,6 +18,18 @@ and completeness of the System Expression Compiler.
 8. [CompileToMethod Support](#8-compiletomethod-support)
 9. [Architecture and Design](#9-architecture-and-design)
 10. [Implementation Plan](#10-implementation-plan)
+    - Phase 0: Project Setup and Test Infrastructure
+    - Phase 1: Foundation (MVP)
+    - Phase 2: Exception Handling
+    - Phase 3: Closures
+    - Phase 4: Completeness
+    - Phase 5: Optimization
+    - **Phase 6: IL Correctness and Allocation Quick Wins**
+    - **Phase 7: Test Coverage Wave 1 (Critical Gaps)**
+    - **Phase 8: IL Quality**
+    - **Phase 9: Test Coverage Wave 2 (Breadth and Edge Cases)**
+    - Phase 10: CompileToMethod Support
+    - Phase 11: Production Hardening
 11. [Estimated Performance Impact](#11-estimated-performance-impact)
 12. [Risk Analysis](#12-risk-analysis)
 13. [References and Source Locations](#13-references-and-source-locations)
@@ -2079,7 +2091,122 @@ All Phase 0 tests pass for Hyperbee on supported expression types.
 
 **Expected outcome:** Compilation speed within 2x of FEC, correctness matching system.
 
-### Phase 6: CompileToMethod Support
+### Phase 6: IL Correctness and Allocation Quick Wins
+
+**Goal:** Fix correctness gaps in emitted IL and reduce unnecessary allocations.
+
+**Correctness fixes:**
+
+1. Add `IROp.Constrained` prefix and emit `constrained. callvirt` for virtual
+   method calls on value types (ToString, GetHashCode, Equals) -- currently causes
+   boxing at every call site. Requires `LoadAddress` for value-type instances
+   instead of `LoadLocal`. Files: `IROp.cs`, `ExpressionLowerer.cs` (LowerMethodCall),
+   `ILEmissionPass.cs`
+2. Fix `NegateChecked` to emit `ldc.i4.0; <value>; sub.ovf` instead of bare `neg` --
+   currently does not throw on overflow (e.g., `int.MinValue`).
+   Files: `ExpressionLowerer.cs`, `ILEmissionPass.cs`
+
+**IR validation:**
+
+3. Implement `IRValidator` pass (`Passes/IRValidator.cs`) with `[Conditional("DEBUG")]`
+   for zero-cost in Release builds. Single linear scan over IR instructions validates:
+   - Stack depth is 0 at each label target and at BeginTry
+   - Stack depth is exactly 1 at `Ret` (or 0 for void return)
+   - Every `StoreLocal`/`LoadLocal` references a declared local index
+   - Every `Branch`/`BranchTrue`/`BranchFalse` targets a valid defined label
+   - Exception handler blocks are properly nested (no overlapping try ranges)
+   - `Leave` only appears inside try/catch blocks
+   - No unreferenced labels (warning, not error)
+   Wire into `HyperbeeCompiler.TransformIR()` after StackSpillPass and PeepholePass.
+   Also add opt-in `HyperbeeCompilerOptions.ValidateIR` flag for production diagnostics
+
+**Allocation quick wins:**
+
+4. Lazy-allocate `_strongBoxLocalMap` and `_closureInfoMap` in ExpressionLowerer --
+   only allocate on first use (most expressions have no closures)
+5. Add fast-path in `HyperbeeCompiler.Compile()`: if the expression tree contains
+   no nested `LambdaExpression` nodes, skip the `CaptureScanner` entirely
+6. Run benchmarks -- verify allocation reduction for non-closure expressions
+
+**Expected outcome:** Correct value-type virtual dispatch. Correct checked negation.
+Debug-time IR validation catches malformed IL before emission.
+Reduced allocations for the common no-closure case.
+
+### Phase 7: Test Coverage Wave 1 (Critical Gaps)
+
+**Goal:** Close the six zero-coverage expression categories that pose the highest
+correctness risk. Port tests from dotnet/runtime adapted to MSTest `[DataRow]` with
+`CompilerType.System` and `CompilerType.Hyperbee`.
+
+1. **Comparison operators** (GT, LT, GE, LE, EQ, NE) -- dedicated tests across int,
+   long, float, double. Include NaN, nullable, and custom operator cases. Port from
+   `dotnet/runtime BinaryOperators/Comparison/`
+2. **Unary operators** (Negate, NegateChecked, Not, OnesComplement, UnaryPlus,
+   Increment, Decrement) -- all numeric types. Port from `dotnet/runtime Unary/`.
+   Will immediately validate the NegateChecked fix from Phase 6
+3. **Logical operators** (AndAlso, OrElse) -- short-circuit evaluation tests with
+   side-effect tracking. Verify right operand is not evaluated when left determines
+   result
+4. **MethodCall expressions** -- static call, instance call, virtual call on reference
+   and value types, generic method, ref/out parameters. Will validate the
+   `constrained. callvirt` fix from Phase 6
+5. **MemberAccess tests** -- instance property get/set, static property, field read/write,
+   readonly field
+6. **Boundary value tests** -- add to existing test files: NaN, Infinity, MaxValue,
+   MinValue, division by zero, null for each applicable expression type
+7. Run full test suite across all three targets (net8.0, net9.0, net10.0)
+
+**Expected outcome:** ~60-80 new tests covering the highest-risk gaps. Any latent
+bugs in comparison, unary, logical, method call, and member access emission exposed
+and fixed.
+
+### Phase 8: IL Quality
+
+**Goal:** Improve the quality of emitted IL to reduce delegate size and runtime overhead.
+
+1. **Context-aware assignment lowering** -- add `bool needsResult` parameter to
+   `LowerAssign`. When called from `LowerBlock` for non-final expressions, pass
+   `false` to skip the `Dup`/`Pop` pair. Eliminates 2 wasted instructions per
+   statement-position assignment. Files: `ExpressionLowerer.cs` (LowerAssign, LowerBlock)
+2. **Short-form branches** -- emit `br.s`, `brtrue.s`, `brfalse.s`, `leave.s` instead
+   of long-form. ILGenerator auto-expands if target exceeds range, so short-form is
+   always safe to attempt. Keeps IL body smaller, improving JIT inlining opportunity.
+   File: `ILEmissionPass.cs`
+3. **Dead code elimination pass** -- remove unreachable instructions after unconditional
+   `Branch`/`Ret`/`Throw`/`Leave` (up to next `Label` target). New file:
+   `Passes/DeadCodePass.cs`
+4. Run benchmarks -- verify no regression in compilation speed from new pass
+5. Run tests -- verify all existing tests still pass
+
+**Expected outcome:** Tighter IL output. Statement assignments save 2 instructions each.
+Smaller IL bodies improve JIT behavior.
+
+### Phase 9: Test Coverage Wave 2 (Breadth and Edge Cases)
+
+**Goal:** Achieve comprehensive type coverage and catch subtle edge-case bugs.
+
+1. **Type conversion tests** (Convert, ConvertChecked, TypeAs) -- primitive-to-primitive
+   conversion matrix across all numeric types. Port from `dotnet/runtime Convert/` and
+   `Cast/`
+2. **Bitwise operator tests** (And, Or, Xor, LeftShift, RightShift) -- int, long,
+   uint, ulong. Port from `dotnet/runtime BinaryOperators/Bitwise/`
+3. **Assignment expression tests** -- Assign, AddAssign, SubtractAssign, and other
+   compound operators. Property and field assignment targets
+4. **New/Constructor expression tests** -- default ctor, parameterized, struct
+   constructors, by-ref constructor params
+5. **Default expression tests** -- default(T) for all value types and reference types
+6. **Nullable/lifted operation tests** (first wave) -- nullable Add, Sub, Mul, nullable
+   comparison (GT, LT, EQ with nullable operands). Port from
+   `dotnet/runtime Lifted/` test files. Focus on the most common patterns first
+7. **Port 20-30 additional FEC IssueTests** -- cherry-pick the most relevant closure
+   issues, conversion edge cases, and TryCatch variants from
+   `dadhi/FastExpressionCompiler/test/FastExpressionCompiler.IssueTests/`
+8. Run full test suite and benchmarks
+
+**Expected outcome:** ~100-150 new tests. Comprehensive type coverage for all
+arithmetic, conversion, and comparison operations. Nullable basics covered.
+
+### Phase 10: CompileToMethod Support
 
 **Goal:** Support compilation to MethodBuilder for persistence and AOT scenarios.
 
@@ -2095,7 +2222,7 @@ All Phase 0 tests pass for Hyperbee on supported expression types.
 
 **Expected outcome:** Working CompileToMethod with save-to-disk support.
 
-### Phase 7: Production Hardening
+### Phase 11: Production Hardening
 
 **Goal:** Production-ready library.
 
@@ -2104,55 +2231,71 @@ All Phase 0 tests pass for Hyperbee on supported expression types.
 2. Implement random expression tree fuzzing (see Appendix E)
 3. Thread safety validation
 4. Error handling and diagnostics (clear error messages for unsupported patterns)
-5. NuGet package creation (Hyperbee.ExpressionCompiler)
-6. Documentation and API reference
-7. Integration tests with real-world libraries (AutoMapper, Mapster, etc.)
-8. Performance regression CI gate (benchmark must not regress beyond threshold)
+5. **Display class closure model** -- replace N `StrongBox<T>` allocations with a
+   single `TypeBuilder`-generated display class per closure scope. Requires
+   `ModuleBuilder` (available via `ExpressionRuntimeOptions`). Improves cache
+   locality and reduces heap allocations for multi-capture closures
+6. **ArrayPool for IRBuilder internals** -- pool the backing arrays of the 4 internal
+   lists via `ArrayPool<T>.Shared`. Add `Reset()`/`IDisposable` pattern. Reduces
+   GC pressure for repeated compilation scenarios
+7. **Nullable/lifted operation tests** (full coverage) -- complete the nullable
+   test matrix for all arithmetic, bitwise, comparison, and logical operations.
+   Port remaining lifted tests from `dotnet/runtime`
+8. **Differential fuzz testing** -- random expression tree generator +
+   `ExpressionVerifier.Verify()`. Compile with System and Hyperbee, compare results.
+   Catches bugs no manual test suite will find
+9. NuGet package creation (Hyperbee.ExpressionCompiler)
+10. Documentation and API reference
+11. Integration tests with real-world libraries (AutoMapper, Mapster, etc.)
+12. Performance regression CI gate (benchmark must not regress beyond threshold)
 
 ---
 
 ## 11. Estimated Performance Impact
 
-### Compilation Speed Estimates
+### Compilation Speed (Actual Benchmarks — Phase 5)
 
-Based on the analysis of where time is spent in the system compiler:
+Measured on Intel Core i9-9980HK, .NET 9.0.12, BenchmarkDotNet v0.15.8:
 
-| Optimization | Estimated Speedup | Cumulative |
-|---|---|---|
-| Single tree walk instead of 3 | ~2-3x | 2-3x |
-| Eliminate StackSpiller tree copying | ~3-5x | 6-15x |
-| Flat IR passes vs tree recursion | ~1.5-2x | 9-30x |
-| Type-associated DynamicMethod | ~1.2-1.5x | 11-45x |
-| Reduced allocation / GC pressure | ~1.3-2x | 14-90x |
-| Simpler closure strategy | ~1.1-1.3x | 15-100x |
+| Tier | System | FEC | Hyperbee | HB vs FEC | HB vs System |
+|---|---:|---:|---:|---|---|
+| Simple | 29.6 μs | 2.78 μs | 3.29 μs | 1.19x | **9.0x faster** |
+| Closure | 28.2 μs | 2.73 μs | 3.43 μs | 1.26x | **8.2x faster** |
+| TryCatch | 50.1 μs | 3.94 μs | 5.88 μs | 1.49x | **8.5x faster** |
+| Complex | 134.5 μs | 3.38 μs | 4.64 μs | 1.37x | **29.0x faster** |
+| Loop | 68.0 μs | 4.36 μs | 6.54 μs | 1.50x | **10.4x faster** |
+| Switch | 64.8 μs | 3.36 μs | 4.79 μs | 1.42x | **13.5x faster** |
 
-**Conservative target: 10-20x faster than system compiler.**
-**Optimistic target: 20-40x faster (approaching FEC).**
+**Result: 8-29x faster than System. 1.2-1.5x of FEC (within 2x target).**
 
-### Allocation Estimates
+### Allocations (Actual Benchmarks — Phase 5)
 
-For a 100-node expression tree with a try/catch block:
+| Tier | System Alloc | FEC Alloc | Hyperbee Alloc | HB vs FEC | HB vs System |
+|---|---:|---:|---:|---|---|
+| Simple | 4,335 B | 904 B | 4,440 B | 4.9x more | +2% |
+| Closure | 4,279 B | 894 B | 4,424 B | 4.9x more | +3% |
+| TryCatch | 5,901 B | 1,520 B | 5,456 B | 3.6x more | -8% |
+| Complex | 4,749 B | 1,392 B | 4,800 B | 3.4x more | +1% |
+| Loop | 6,718 B | 1,110 B | 5,616 B | 5.1x more | -16% |
+| Switch | 6,272 B | 1,352 B | 5,384 B | 4.0x more | -14% |
 
-| Metric | System Compiler | Hyperbee (estimated) |
-|---|---|---|
-| Expression tree traversals | 3 | 1 |
-| New expression tree nodes | 60-100 | 0 |
-| ReadOnlyCollection allocations | 20-40 | 0 |
-| IR instruction storage | N/A | ~150 structs in a List (1 alloc) |
-| Temp variable allocations | ParameterExpression objects | int indices (0 allocs) |
-| Total heap allocations | ~100-200 | ~10-20 |
+**Result: Allocations are roughly on par with System, 3-5x higher than FEC.**
+The 80% reduction target vs System is not yet met. FEC achieves lower allocations
+because it emits IL directly in a single pass with no intermediate IR. Our IR
+architecture trades allocation for optimization opportunity (peephole, stack spill).
+Phase 6 targets allocation reduction for the no-closure common case.
 
 ### Delegate Execution Speed
 
-The compiled delegates should perform comparably to both the system compiler
-and FEC delegates. The IR-based approach allows for small improvements:
+The compiled delegates perform comparably to both the system compiler and FEC.
+All three compilers produce functionally equivalent IL for simple expressions,
+so execution speed differences are negligible.
 
-- Closure access: ArrayClosure with flat array vs StrongBox<T> chain
-  (saves 1-2 instructions per captured variable access)
-- Short-form opcodes consistently used
-- Potential for peephole optimizations reducing redundant load/stores
-
-**Estimated: comparable to FEC (~7-10ns), slightly faster than system (~11ns).**
+**Known IL quality gaps** (addressed in Phases 6 and 8):
+- Missing `constrained.` prefix causes boxing on value-type virtual calls (Phase 6)
+- StrongBox<T> model uses N heap objects vs 1 display class (Phase 11)
+- Statement-position assignments emit unnecessary Dup/Pop (Phase 8)
+- No short-form branches (Phase 8)
 
 ---
 

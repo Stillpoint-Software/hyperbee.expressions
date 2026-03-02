@@ -23,12 +23,14 @@ public static class HyperbeeCompiler
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
     public static Delegate Compile( LambdaExpression lambda )
     {
-        // Scan for captured variables before lowering
-        var capturedVariables = CaptureScanner.FindCapturedVariables( lambda );
+        // Fast-path: skip capture scanning when no nested lambdas exist (common case)
+        var capturedVariables = ContainsNestedLambda( lambda.Body )
+            ? CaptureScanner.FindCapturedVariables( lambda )
+            : null;
 
         var ir = LowerToIR( lambda, capturedVariables, out var needsConstantsArray );
 
-        TransformIR( ir );
+        TransformIR( ir, lambda.ReturnType == typeof( void ) );
 
         return EmitDelegate( ir, lambda, needsConstantsArray );
     }
@@ -77,11 +79,11 @@ public static class HyperbeeCompiler
 
     private static IRBuilder LowerToIR(
         LambdaExpression lambda,
-        HashSet<ParameterExpression> capturedVariables,
+        HashSet<ParameterExpression>? capturedVariables,
         out bool needsConstantsArray )
     {
         needsConstantsArray = ScanForNonEmbeddableConstants( lambda.Body )
-            || capturedVariables.Count > 0; // closures always need constants array for delegates
+            || ( capturedVariables != null && capturedVariables.Count > 0 );
 
         var ir = new IRBuilder();
         var lowerer = new ExpressionLowerer( ir, capturedVariables );
@@ -92,10 +94,12 @@ public static class HyperbeeCompiler
         return ir;
     }
 
-    private static void TransformIR( IRBuilder ir )
+    private static void TransformIR( IRBuilder ir, bool isVoidReturn )
     {
-        StackSpillPass.Run( ir ); // Handle stack spilling for complex expressions and try/catch blocks
-        PeepholePass.Run( ir );   // Remove redundant instructions
+        StackSpillPass.Run( ir );  // Handle stack spilling for complex expressions and try/catch blocks
+        PeepholePass.Run( ir );    // Remove redundant instructions
+        DeadCodePass.Run( ir );    // Remove unreachable instructions after terminators
+        IRValidator.Validate( ir, isVoidReturn ); // Structural validation (DEBUG only, zero cost in Release)
     }
 
     private static Delegate EmitDelegate( IRBuilder ir, LambdaExpression lambda, bool needsConstantsArray )
@@ -119,6 +123,107 @@ public static class HyperbeeCompiler
     }
 
     // --- Private helpers ---
+
+    /// <summary>
+    /// Quick check: does the expression tree contain any nested LambdaExpression?
+    /// If not, there can be no captured variables and CaptureScanner can be skipped.
+    /// </summary>
+    private static bool ContainsNestedLambda( Expression? node )
+    {
+        if ( node == null )
+            return false;
+
+        switch ( node )
+        {
+            case LambdaExpression:
+                return true;
+
+            case BinaryExpression b:
+                return ContainsNestedLambda( b.Left ) || ContainsNestedLambda( b.Right );
+
+            case UnaryExpression u:
+                return ContainsNestedLambda( u.Operand );
+
+            case ConditionalExpression c:
+                return ContainsNestedLambda( c.Test )
+                    || ContainsNestedLambda( c.IfTrue )
+                    || ContainsNestedLambda( c.IfFalse );
+
+            case MethodCallExpression m:
+            {
+                if ( ContainsNestedLambda( m.Object ) )
+                    return true;
+                foreach ( var arg in m.Arguments )
+                    if ( ContainsNestedLambda( arg ) )
+                        return true;
+                return false;
+            }
+
+            case BlockExpression b:
+            {
+                foreach ( var expr in b.Expressions )
+                    if ( ContainsNestedLambda( expr ) )
+                        return true;
+                return false;
+            }
+
+            case InvocationExpression inv:
+            {
+                if ( ContainsNestedLambda( inv.Expression ) )
+                    return true;
+                foreach ( var arg in inv.Arguments )
+                    if ( ContainsNestedLambda( arg ) )
+                        return true;
+                return false;
+            }
+
+            case MemberExpression m:
+                return ContainsNestedLambda( m.Expression );
+
+            case NewExpression n:
+            {
+                foreach ( var arg in n.Arguments )
+                    if ( ContainsNestedLambda( arg ) )
+                        return true;
+                return false;
+            }
+
+            case TryExpression t:
+            {
+                if ( ContainsNestedLambda( t.Body ) )
+                    return true;
+                foreach ( var h in t.Handlers )
+                    if ( ContainsNestedLambda( h.Body ) || ContainsNestedLambda( h.Filter ) )
+                        return true;
+                return ContainsNestedLambda( t.Finally ) || ContainsNestedLambda( t.Fault );
+            }
+
+            case LoopExpression l:
+                return ContainsNestedLambda( l.Body );
+
+            case SwitchExpression s:
+            {
+                if ( ContainsNestedLambda( s.SwitchValue ) )
+                    return true;
+                foreach ( var c in s.Cases )
+                    if ( ContainsNestedLambda( c.Body ) )
+                        return true;
+                return ContainsNestedLambda( s.DefaultBody );
+            }
+
+            case GotoExpression g:
+                return ContainsNestedLambda( g.Value );
+
+            case LabelExpression l:
+                return ContainsNestedLambda( l.DefaultValue );
+
+            case TypeBinaryExpression t:
+                return ContainsNestedLambda( t.Expression );
+
+            default:
+                return false;
+        }
+    }
 
     private static bool ScanForNonEmbeddableConstants( Expression node )
     {
@@ -358,15 +463,16 @@ public static class HyperbeeCompiler
 
         // Build a set of operand indices referenced by LoadConst instructions
         // in a single pass, avoiding O(operands * instructions) scan.
-        var loadConstOperands = new HashSet<int>();
+        var operandCount = ir.Operands.Count;
+        var loadConstOperands = new HashSet<int>( operandCount );
         foreach ( var inst in ir.Instructions )
         {
             if ( inst.Op == IROp.LoadConst )
                 loadConstOperands.Add( inst.Operand );
         }
 
-        constantIndices = new Dictionary<int, int>();
-        var constants = new List<object>();
+        constantIndices = new Dictionary<int, int>( operandCount );
+        var constants = new List<object>( operandCount );
 
         for ( var i = 0; i < ir.Operands.Count; i++ )
         {

@@ -5,10 +5,10 @@ namespace Hyperbee.Expressions.Compiler.IR;
 /// </summary>
 public class IRBuilder
 {
-    private readonly List<IRInstruction> _instructions = new( 32 );
-    private readonly List<object> _operands = new( 8 );
-    private readonly List<LocalInfo> _locals = new( 4 );
-    private readonly List<LabelInfo> _labels = new( 4 );
+    private readonly List<IRInstruction> _instructions = new( 16 );
+    private readonly List<object> _operands = new( 4 );
+    private readonly List<LocalInfo> _locals = new( 2 );
+    private readonly List<LabelInfo> _labels = new( 2 );
     private int _currentScope;
 
     // --- Public read-only accessors ---

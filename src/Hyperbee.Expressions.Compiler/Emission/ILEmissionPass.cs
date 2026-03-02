@@ -128,15 +128,10 @@ public static class ILEmissionPass
                     break;
 
                 case IROp.NegateChecked:
-                    // For checked negate: load 0, then sub.ovf
-                    // This correctly detects overflow for int.MinValue etc.
-                    // Actually the simplest approach: neg does NOT throw on overflow.
-                    // For checked negate of int: ldc.i4.0, val (already on stack... but we already pushed operand)
-                    // We need to do: push 0, push val, sub.ovf
-                    // But val is already on the stack. So: store temp, ldc.i4.0, load temp, sub.ovf
-                    // For simplicity in Phase 1 just emit neg (matches System compiler behavior for non-MinValue)
-                    ilg.Emit( OpCodes.Neg );
-                    break;
+                    // NegateChecked is now lowered to (0 - value) with SubChecked
+                    // in ExpressionLowerer. This case should not be reached.
+                    throw new InvalidOperationException(
+                        "NegateChecked should be lowered to SubChecked by ExpressionLowerer." );
 
                 case IROp.Not:
                     ilg.Emit( OpCodes.Not );
@@ -222,21 +217,27 @@ public static class ILEmissionPass
                     ilg.Emit( OpCodes.Callvirt, (MethodInfo) ir.Operands[inst.Operand] );
                     break;
 
+                case IROp.Constrained:
+                    ilg.Emit( OpCodes.Constrained, (Type) ir.Operands[inst.Operand] );
+                    break;
+
                 case IROp.NewObj:
                     ilg.Emit( OpCodes.Newobj, (ConstructorInfo) ir.Operands[inst.Operand] );
                     break;
 
                 // Control flow
+                // Short-form branches: ILGenerator auto-expands to long-form
+                // if the target exceeds sbyte range, so short-form is always safe.
                 case IROp.Branch:
-                    ilg.Emit( OpCodes.Br, ilLabels[inst.Operand] );
+                    ilg.Emit( OpCodes.Br_S, ilLabels[inst.Operand] );
                     break;
 
                 case IROp.BranchTrue:
-                    ilg.Emit( OpCodes.Brtrue, ilLabels[inst.Operand] );
+                    ilg.Emit( OpCodes.Brtrue_S, ilLabels[inst.Operand] );
                     break;
 
                 case IROp.BranchFalse:
-                    ilg.Emit( OpCodes.Brfalse, ilLabels[inst.Operand] );
+                    ilg.Emit( OpCodes.Brfalse_S, ilLabels[inst.Operand] );
                     break;
 
                 case IROp.Label:
@@ -303,7 +304,7 @@ public static class ILEmissionPass
                     break;
 
                 case IROp.Leave:
-                    ilg.Emit( OpCodes.Leave, ilLabels[inst.Operand] );
+                    ilg.Emit( OpCodes.Leave_S, ilLabels[inst.Operand] );
                     break;
 
                 // Array operations
@@ -327,6 +328,14 @@ public static class ILEmissionPass
                 // Load address of local variable
                 case IROp.LoadAddress:
                     EmitLoadLocalAddress( ilg, inst.Operand );
+                    break;
+
+                // Load address of argument
+                case IROp.LoadArgAddress:
+                    if ( inst.Operand <= 255 )
+                        ilg.Emit( OpCodes.Ldarga_S, (byte) inst.Operand );
+                    else
+                        ilg.Emit( OpCodes.Ldarga, (short) inst.Operand );
                     break;
 
                 // Load runtime type token
