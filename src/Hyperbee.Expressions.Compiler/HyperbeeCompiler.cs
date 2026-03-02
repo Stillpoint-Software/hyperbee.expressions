@@ -21,38 +21,37 @@ public static class HyperbeeCompiler
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
     public static Delegate Compile( LambdaExpression lambda )
     {
-        // Step 1: Create IR builder and lower expression tree
+        var ir = LowerToIR( lambda, out var needsConstantsArray );
+
+        RunPasses( ir );
+
+        return EmitDelegate( ir, lambda, needsConstantsArray );
+    }
+
+    private static IRBuilder LowerToIR( LambdaExpression lambda, out bool needsConstantsArray )
+    {
+        needsConstantsArray = ScanForNonEmbeddableConstants( lambda.Body );
+
         var ir = new IRBuilder();
         var lowerer = new ExpressionLowerer( ir );
-
-        // Step 2: Scan for non-embeddable constants need
-        // We do a pre-scan by lowering first, then checking operands
-        // But we need to know argOffset before lowering.
-        // Solution: lower with argOffset=0 tentatively, then check if we need constants.
-        // Actually, we need to lower twice or be smarter.
-        // Better approach: do a quick pre-scan of the expression tree for non-embeddable constants.
-
-        var needsConstantsArray = NeedsConstantsArray( lambda.Body );
         var argOffset = needsConstantsArray ? 1 : 0;
 
         lowerer.Lower( lambda, argOffset );
 
-        // Step 3: Build the constants array and index mapping
-        Dictionary<int, int>? constantIndices = null;
-        object[]? constantsArray = null;
+        return ir;
+    }
 
-        if ( needsConstantsArray )
-        {
-            BuildConstantsMapping( ir, out constantIndices, out constantsArray );
-        }
-
-        // Step 3b: Run stack spill pass (converts Branch to Leave inside try/catch)
+    private static void RunPasses( IRBuilder ir )
+    {
         StackSpillPass.Run( ir );
+    }
 
-        // Step 4: Build DynamicMethod parameter types
+    private static Delegate EmitDelegate( IRBuilder ir, LambdaExpression lambda, bool needsConstantsArray )
+    {
+        BuildConstantsMapping( ir, needsConstantsArray, out var constantIndices, out var constantsArray );
+
         var paramTypes = BuildParameterTypes( lambda, needsConstantsArray );
 
-        // Step 5: Create DynamicMethod
         var method = new DynamicMethod(
             string.Empty,
             lambda.ReturnType,
@@ -60,16 +59,11 @@ public static class HyperbeeCompiler
             typeof( HyperbeeCompiler ),
             skipVisibility: true );
 
-        // Step 6: Emit IL from IR
         ILEmissionPass.Run( ir, method.GetILGenerator(), needsConstantsArray, constantIndices );
 
-        // Step 7: Create delegate
-        if ( needsConstantsArray )
-        {
-            return method.CreateDelegate( lambda.Type, constantsArray );
-        }
-
-        return method.CreateDelegate( lambda.Type );
+        return needsConstantsArray
+            ? method.CreateDelegate( lambda.Type, constantsArray )
+            : method.CreateDelegate( lambda.Type );
     }
 
     /// <summary>Compiles the expression. Returns null on unsupported patterns.</summary>
@@ -109,14 +103,6 @@ public static class HyperbeeCompiler
         => TryCompile( lambda ) ?? lambda.Compile();
 
     // --- Private helpers ---
-
-    /// <summary>
-    /// Pre-scan the expression tree for any constants that cannot be embedded directly in IL.
-    /// </summary>
-    private static bool NeedsConstantsArray( Expression body )
-    {
-        return ScanForNonEmbeddableConstants( body );
-    }
 
     private static bool ScanForNonEmbeddableConstants( Expression node )
     {
@@ -226,9 +212,17 @@ public static class HyperbeeCompiler
     /// </summary>
     private static void BuildConstantsMapping(
         IRBuilder ir,
-        out Dictionary<int, int> constantIndices,
-        out object[] constantsArray )
+        bool needsConstantsArray,
+        out Dictionary<int, int>? constantIndices,
+        out object[]? constantsArray )
     {
+        if ( !needsConstantsArray )
+        {
+            constantIndices = null;
+            constantsArray = null;
+            return;
+        }
+
         constantIndices = new Dictionary<int, int>();
         var constants = new List<object>();
 
@@ -236,7 +230,6 @@ public static class HyperbeeCompiler
         {
             var operand = ir.Operands[i];
 
-            // Only consider operands that are referenced by LoadConst instructions
             var isConstant = false;
             foreach ( var inst in ir.Instructions )
             {
