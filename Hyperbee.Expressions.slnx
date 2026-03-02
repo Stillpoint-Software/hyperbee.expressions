@@ -22,6 +22,9 @@
   </Folder>
   <Folder Name="/Solution Tests/">
     <Project Path="test/Hyperbee.Expressions.Benchmark/Hyperbee.Expressions.Benchmark.csproj" />
+    <Project Path="test/Hyperbee.Expressions.Compiler.Benchmarks/Hyperbee.Expressions.Compiler.Benchmarks.csproj" />
+    <Project Path="test/Hyperbee.Expressions.Compiler.IssueTests/Hyperbee.Expressions.Compiler.IssueTests.csproj" />
+    <Project Path="test/Hyperbee.Expressions.Compiler.Tests/Hyperbee.Expressions.Compiler.Tests.csproj" />
     <Project Path="test/Hyperbee.Expressions.Tests/Hyperbee.Expressions.Tests.csproj" />
   </Folder>
   <Project Path="src/Hyperbee.ExpressionCompiler/Hyperbee.ExpressionCompiler.csproj" />
