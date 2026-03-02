@@ -326,6 +326,16 @@ public class ExpressionLowerer
     {
         if ( node.Value == null )
         {
+            // Nullable<T> null constant → push default(Nullable<T>) (a zero-initialized struct), not ldnull.
+            // ldnull produces an object ref; stelem and other value-type ops expect a struct on the stack.
+            // CLR zeroes locals on declaration, so a fresh temp local already holds default(Nullable<T>).
+            if ( Nullable.GetUnderlyingType( node.Type ) != null )
+            {
+                var tempLocal = _ir.DeclareLocal( node.Type, "$nullableDefault" );
+                _ir.Emit( IROp.LoadLocal, tempLocal );
+                return;
+            }
+
             _ir.Emit( IROp.LoadNull );
             return;
         }

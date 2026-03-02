@@ -1,7 +1,7 @@
 # Hyperbee Expression Compiler
 
 A high-performance, IR-based expression compiler for .NET. Drop-in replacement for `Expression.Compile()`
-that is **8-30x faster than the System compiler** and supports **all expression tree patterns** — including
+that is **9-34x faster than the System compiler** and supports **all expression tree patterns** — including
 those that [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler) doesn't.
 
 ## Why Another Expression Compiler?
@@ -15,9 +15,9 @@ expression tree patterns** while significantly outperforming System Compiler.
 
 ## Performance
 
-The Hyperbee compiler is consistently 8-30x faster than System Compiler and within 1.25-1.52x of FEC across all tiers — while producing correct IL for the sub-set of patterns that FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, etc.).
+The Hyperbee compiler is consistently 9-34x faster than System Compiler and within 1.11-1.47x of FEC across all tiers — while producing correct IL for the sub-set of patterns that FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, etc.).
 
-The TryCatch tier at 1.52x is the widest gap vs FEC, the result of enhanced try catch pattern handling. The Complex tier at ~30x faster than System Compiler is the standout — that's where the multi-pass IR architecture pays off vs the System compiler's heavyweight compilation pipeline.
+The Switch tier at 1.47x is the widest gap vs FEC, the result of enhanced switch pattern handling. The Complex tier at ~34x faster than System Compiler is the standout — that's where the multi-pass IR architecture pays off vs the System compiler's heavyweight compilation pipeline.
 
 ### Compilation Benchmarks
 
@@ -27,32 +27,43 @@ Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
 .NET SDK 10.0.103 — .NET 9.0.12, X64 RyuJIT x86-64-v3
 ```
 
-| Tier         | Compiler     |        Mean |   Allocated | vs System (speed) | vs FEC (speed) |
-| ------------ | ------------ | ----------: | ----------: | ----------------: | -------------: |
-| **Simple**   | System       |    28.77 us |     4,335 B |                 — |              — |
-|              | FEC          |     2.84 us |       904 B |      10.1x faster |              — |
-|              | **Hyperbee** | **3.12 us** | **2,168 B** |   **9.2x faster** |      **1.10x** |
-| **Closure**  | System       |    27.18 us |     4,279 B |                 — |              — |
-|              | FEC          |     2.85 us |       895 B |       9.5x faster |              — |
-|              | **Hyperbee** | **3.27 us** | **2,152 B** |   **8.3x faster** |      **1.15x** |
-| **TryCatch** | System       |    48.96 us |     5,901 B |                 — |              — |
-|              | FEC          |     3.62 us |     1,518 B |      13.5x faster |              — |
-|              | **Hyperbee** | **5.49 us** | **4,016 B** |   **8.9x faster** |      **1.52x** |
-| **Complex**  | System       |   137.82 us |     4,749 B |                 — |              — |
-|              | FEC          |     3.37 us |     1,390 B |      40.9x faster |              — |
-|              | **Hyperbee** | **4.70 us** | **2,520 B** |  **29.3x faster** |      **1.39x** |
-| **Loop**     | System       |    69.62 us |     6,718 B |                 — |              — |
-|              | FEC          |     4.33 us |     1,110 B |      16.1x faster |              — |
-|              | **Hyperbee** | **6.14 us** | **4,840 B** |  **11.3x faster** |      **1.42x** |
-| **Switch**   | System       |    62.23 us |     6,272 B |                 — |              — |
-|              | FEC          |     3.76 us |     1,352 B |      16.6x faster |              — |
-|              | **Hyperbee** | **5.33 us** | **3,384 B** |  **11.7x faster** |      **1.42x** |
+| Tier         | Compiler     |         Mean |   Allocated | vs System (speed) | vs FEC (speed) |
+| ------------ | ------------ | -----------: | ----------: | ----------------: | -------------: |
+| **Simple**   | System       |    28.44 us  |     4,335 B |                 — |              — |
+|              | FEC          |     2.57 us  |       904 B |      11.1x faster |              — |
+|              | **Hyperbee** |  **2.86 us** | **2,168 B** |   **9.9x faster** |      **1.11x** |
+| **Closure**  | System       |    27.37 us  |     4,279 B |                 — |              — |
+|              | FEC          |     2.53 us  |       895 B |      10.8x faster |              — |
+|              | **Hyperbee** |  **2.84 us** | **2,152 B** |   **9.6x faster** |      **1.12x** |
+| **TryCatch** | System       |    47.34 us  |     5,901 B |                 — |              — |
+|              | FEC          |     3.43 us  |     1,520 B |      13.8x faster |              — |
+|              | **Hyperbee** |  **4.63 us** | **4,015 B** |  **10.2x faster** |      **1.35x** |
+| **Complex**  | System       |   128.95 us  |     4,749 B |                 — |              — |
+|              | FEC          |     3.18 us  |     1,392 B |      40.6x faster |              — |
+|              | **Hyperbee** |  **3.81 us** | **2,576 B** |  **33.8x faster** |      **1.20x** |
+| **Loop**     | System       |    63.99 us  |     6,718 B |                 — |              — |
+|              | FEC          |     3.94 us  |     1,110 B |      16.2x faster |              — |
+|              | **Hyperbee** |  **5.61 us** | **4,840 B** |  **11.4x faster** |      **1.42x** |
+| **Switch**   | System       |    60.80 us  |     6,272 B |                 — |              — |
+|              | FEC          |     3.03 us  |     1,352 B |      20.1x faster |              — |
+|              | **Hyperbee** |  **4.47 us** | **3,968 B** |  **13.6x faster** |      **1.47x** |
+
+### Execution Benchmarks
+
+All three compilers produce delegates with equivalent runtime performance. Differences are sub-nanosecond
+and reflect JIT characteristics of `DynamicMethod` vs static methods, not meaningful execution overhead.
+
+| Method              |     Mean |
+| ------------------- | -------: |
+| Execute \| System   | 0.706 ns |
+| Execute \| FEC      | 1.295 ns |
+| Execute \| Hyperbee | 1.701 ns |
 
 ### Compiler Comparison
 
 |                        | System (`Expression.Compile`)            | FEC (`CompileFast`)                                       | Hyperbee (`HyperbeeCompiler.Compile`)    |
 | ---------------------- | ---------------------------------------- | --------------------------------------------------------- | ---------------------------------------- |
-| **Speed**              | Baseline (slowest)                       | Fastest (8-40x vs System)                                 | Fast (8-30x vs System)                   |
+| **Speed**              | Baseline (slowest)                       | Fastest (10-40x vs System)                                | Fast (9-34x vs System)                   |
 | **Allocations**        | Highest                                  | Lowest                                                    | Middle                                   |
 | **Correctness**        | Reference (always correct)               | Most patterns correct; some edge cases produce invalid IL | All patterns correct                     |
 | **Architecture**       | Heavyweight runtime compilation pipeline | Single-pass IL emission                                   | Multi-pass IR pipeline with optimization |
@@ -100,6 +111,27 @@ var fn = HyperbeeCompiler.TryCompile( lambda );
 
 // Falls back to System compiler on failure
 var fn = HyperbeeCompiler.CompileWithFallback( lambda );
+```
+
+### Compile to MethodBuilder
+
+Emit the expression tree directly into a static `MethodBuilder` on a dynamic type — useful when building
+assemblies with `AssemblyBuilder`/`TypeBuilder`. Only expressions with embeddable constants (no closures
+over heap objects) are supported; use `TryCompileToMethod` for a non-throwing variant.
+
+```csharp
+var ab = AssemblyBuilder.DefineDynamicAssembly( new AssemblyName( "MyAssembly" ), AssemblyBuilderAccess.Run );
+var mb = ab.DefineDynamicModule( "MyModule" );
+var tb = mb.DefineType( "MyType", TypeAttributes.Public | TypeAttributes.Class );
+var method = tb.DefineMethod( "Add", MethodAttributes.Public | MethodAttributes.Static,
+    typeof( int ), [typeof( int ), typeof( int )] );
+
+var a = Expression.Parameter( typeof( int ), "a" );
+var b = Expression.Parameter( typeof( int ), "b" );
+HyperbeeCompiler.CompileToMethod( Expression.Lambda( Expression.Add( a, b ), a, b ), method );
+
+var type = tb.CreateType();
+var result = (int) type.GetMethod( "Add" )!.Invoke( null, [1, 2] )!; // 3
 ```
 
 ## Architecture

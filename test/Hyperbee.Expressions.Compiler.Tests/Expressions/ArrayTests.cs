@@ -776,4 +776,24 @@ public class ArrayTests
 
         Assert.AreEqual( 60, fn() );
     }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NewArrayInit_NullableIntArray_AccessElements( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<int?[]>>(
+            Expression.NewArrayInit( typeof( int? ),
+                Expression.Constant( (int?) 1, typeof( int? ) ),
+                Expression.Constant( null, typeof( int? ) ),
+                Expression.Constant( (int?) 3, typeof( int? ) ) ) );
+        var fn = lambda.Compile( compilerType );
+
+        var arr = fn();
+        Assert.AreEqual( 3, arr.Length );
+        Assert.AreEqual( 1, arr[0] );
+        Assert.IsNull( arr[1] );
+        Assert.AreEqual( 3, arr[2] );
+    }
 }
