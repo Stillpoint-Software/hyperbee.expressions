@@ -270,4 +270,391 @@ public class BinaryTests
         Assert.AreEqual( 6.0m, fn( 2.0m, 3.0m ) );
         Assert.AreEqual( 0.0m, fn( 0.0m, 999.0m ) );
     }
+
+    // --- Subtract (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Subtract_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var b = Expression.Parameter( typeof(long), "b" );
+        var lambda = Expression.Lambda<Func<long, long, long>>( Expression.Subtract( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3L, fn( 10L, 7L ) );
+        Assert.AreEqual( -1L, fn( 0L, 1L ) );
+        Assert.AreEqual( long.MinValue, fn( long.MinValue, 0L ) );
+    }
+
+    // --- Multiply (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Multiply_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var b = Expression.Parameter( typeof(long), "b" );
+        var lambda = Expression.Lambda<Func<long, long, long>>( Expression.Multiply( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6L, fn( 2L, 3L ) );
+        Assert.AreEqual( -6L, fn( -2L, 3L ) );
+        Assert.AreEqual( 0L, fn( 0L, 100L ) );
+    }
+
+    // --- Add (uint) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Add_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var b = Expression.Parameter( typeof(uint), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, uint>>( Expression.Add( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3u, fn( 1u, 2u ) );
+        Assert.AreEqual( 0u, fn( 0u, 0u ) );
+        Assert.AreEqual( uint.MaxValue, fn( uint.MaxValue - 1u, 1u ) );
+    }
+
+    // --- Add (ulong) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Add_ULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var b = Expression.Parameter( typeof(ulong), "b" );
+        var lambda = Expression.Lambda<Func<ulong, ulong, ulong>>( Expression.Add( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3UL, fn( 1UL, 2UL ) );
+        Assert.AreEqual( 0UL, fn( 0UL, 0UL ) );
+        Assert.AreEqual( ulong.MaxValue, fn( ulong.MaxValue - 1UL, 1UL ) );
+    }
+
+    // --- Subtract (uint) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Subtract_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var b = Expression.Parameter( typeof(uint), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, uint>>( Expression.Subtract( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3u, fn( 5u, 2u ) );
+        Assert.AreEqual( 0u, fn( 0u, 0u ) );
+        Assert.AreEqual( uint.MaxValue, fn( uint.MaxValue, 0u ) );
+    }
+
+    // --- Subtract (ulong) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Subtract_ULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var b = Expression.Parameter( typeof(ulong), "b" );
+        var lambda = Expression.Lambda<Func<ulong, ulong, ulong>>( Expression.Subtract( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 7UL, fn( 10UL, 3UL ) );
+        Assert.AreEqual( 0UL, fn( 5UL, 5UL ) );
+    }
+
+    // --- Multiply (uint) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Multiply_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var b = Expression.Parameter( typeof(uint), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, uint>>( Expression.Multiply( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6u, fn( 2u, 3u ) );
+        Assert.AreEqual( 0u, fn( 0u, 5u ) );
+        Assert.AreEqual( 1u, fn( 1u, 1u ) );
+    }
+
+    // --- Multiply (ulong) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Multiply_ULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var b = Expression.Parameter( typeof(ulong), "b" );
+        var lambda = Expression.Lambda<Func<ulong, ulong, ulong>>( Expression.Multiply( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 12UL, fn( 3UL, 4UL ) );
+        Assert.AreEqual( 0UL, fn( 0UL, 100UL ) );
+    }
+
+    // --- Divide (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Divide_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var b = Expression.Parameter( typeof(long), "b" );
+        var lambda = Expression.Lambda<Func<long, long, long>>( Expression.Divide( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3L, fn( 9L, 3L ) );
+        Assert.AreEqual( -3L, fn( 9L, -3L ) );
+        Assert.AreEqual( 0L, fn( 0L, 5L ) );
+    }
+
+    // --- Divide (uint) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Divide_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var b = Expression.Parameter( typeof(uint), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, uint>>( Expression.Divide( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3u, fn( 9u, 3u ) );
+        Assert.AreEqual( 0u, fn( 2u, 3u ) );
+        Assert.AreEqual( 1u, fn( 5u, 5u ) );
+    }
+
+    // --- Divide (ulong) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Divide_ULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var b = Expression.Parameter( typeof(ulong), "b" );
+        var lambda = Expression.Lambda<Func<ulong, ulong, ulong>>( Expression.Divide( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 4UL, fn( 8UL, 2UL ) );
+        Assert.AreEqual( 0UL, fn( 3UL, 4UL ) );
+    }
+
+    // --- Modulo (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Modulo_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var b = Expression.Parameter( typeof(long), "b" );
+        var lambda = Expression.Lambda<Func<long, long, long>>( Expression.Modulo( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1L, fn( 7L, 3L ) );
+        Assert.AreEqual( 0L, fn( 6L, 3L ) );
+        Assert.AreEqual( -1L, fn( -7L, 3L ) );
+    }
+
+    // --- Modulo (uint) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Modulo_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var b = Expression.Parameter( typeof(uint), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, uint>>( Expression.Modulo( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1u, fn( 7u, 3u ) );
+        Assert.AreEqual( 0u, fn( 6u, 3u ) );
+        Assert.AreEqual( 2u, fn( 2u, 5u ) );
+    }
+
+    // --- Modulo (ulong) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Modulo_ULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var b = Expression.Parameter( typeof(ulong), "b" );
+        var lambda = Expression.Lambda<Func<ulong, ulong, ulong>>( Expression.Modulo( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1UL, fn( 10UL, 3UL ) );
+        Assert.AreEqual( 0UL, fn( 9UL, 3UL ) );
+    }
+
+    // --- AddChecked (long) — overflow throws ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void AddChecked_Long_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var b = Expression.Parameter( typeof(long), "b" );
+        var lambda = Expression.Lambda<Func<long, long, long>>( Expression.AddChecked( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3L, fn( 1L, 2L ) );
+
+        var threw = false;
+        try { fn( long.MaxValue, 1L ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from AddChecked long overflow." );
+    }
+
+    // --- AddChecked (uint) — unsigned overflow throws ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void AddChecked_UInt_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var b = Expression.Parameter( typeof(uint), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, uint>>( Expression.AddChecked( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3u, fn( 1u, 2u ) );
+
+        var threw = false;
+        try { fn( uint.MaxValue, 1u ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from AddChecked uint overflow." );
+    }
+
+    // --- AddChecked (ulong) — unsigned overflow throws ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void AddChecked_ULong_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var b = Expression.Parameter( typeof(ulong), "b" );
+        var lambda = Expression.Lambda<Func<ulong, ulong, ulong>>( Expression.AddChecked( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3UL, fn( 1UL, 2UL ) );
+
+        var threw = false;
+        try { fn( ulong.MaxValue, 1UL ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from AddChecked ulong overflow." );
+    }
+
+    // --- MultiplyChecked (uint) — unsigned overflow throws ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void MultiplyChecked_UInt_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var b = Expression.Parameter( typeof(uint), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, uint>>( Expression.MultiplyChecked( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6u, fn( 2u, 3u ) );
+
+        var threw = false;
+        try { fn( uint.MaxValue, 2u ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from MultiplyChecked uint overflow." );
+    }
+
+    // --- SubtractChecked (long) — overflow throws ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void SubtractChecked_Long_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var b = Expression.Parameter( typeof(long), "b" );
+        var lambda = Expression.Lambda<Func<long, long, long>>( Expression.SubtractChecked( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1L, fn( 3L, 2L ) );
+
+        var threw = false;
+        try { fn( long.MinValue, 1L ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from SubtractChecked long overflow." );
+    }
+
+    // --- MultiplyChecked (long) — overflow throws ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void MultiplyChecked_Long_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var b = Expression.Parameter( typeof(long), "b" );
+        var lambda = Expression.Lambda<Func<long, long, long>>( Expression.MultiplyChecked( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6L, fn( 2L, 3L ) );
+
+        var threw = false;
+        try { fn( long.MaxValue, 2L ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from MultiplyChecked long overflow." );
+    }
+
+    // --- Add (double) — special floating-point values ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Add_Double_SpecialValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(double), "a" );
+        var b = Expression.Parameter( typeof(double), "b" );
+        var lambda = Expression.Lambda<Func<double, double, double>>( Expression.Add( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( double.PositiveInfinity, fn( double.MaxValue, double.MaxValue ) );
+        Assert.IsTrue( double.IsNaN( fn( double.NaN, 1.0 ) ) );
+        Assert.IsTrue( double.IsNaN( fn( 1.0, double.NaN ) ) );
+        Assert.AreEqual( double.PositiveInfinity, fn( double.PositiveInfinity, 1.0 ) );
+    }
 }

@@ -122,6 +122,18 @@ public static class ILEmissionPass
                     ilg.Emit( OpCodes.Mul_Ovf );
                     break;
 
+                case IROp.AddCheckedUn:
+                    ilg.Emit( OpCodes.Add_Ovf_Un );
+                    break;
+
+                case IROp.SubCheckedUn:
+                    ilg.Emit( OpCodes.Sub_Ovf_Un );
+                    break;
+
+                case IROp.MulCheckedUn:
+                    ilg.Emit( OpCodes.Mul_Ovf_Un );
+                    break;
+
                 // Unary
                 case IROp.Negate:
                     ilg.Emit( OpCodes.Neg );
@@ -186,6 +198,10 @@ public static class ILEmissionPass
 
                 case IROp.ConvertChecked:
                     EmitConvert( ilg, (Type) ir.Operands[inst.Operand], isChecked: true );
+                    break;
+
+                case IROp.ConvertCheckedUn:
+                    EmitConvertCheckedFromUnsigned( ilg, (Type) ir.Operands[inst.Operand] );
                     break;
 
                 case IROp.Box:
@@ -673,5 +689,39 @@ public static class ILEmissionPass
             ilg.Emit( OpCodes.Conv_Ovf_U );
         else
             throw new NotSupportedException( $"Unsupported checked conversion target type: {targetType.Name}" );
+    }
+
+    /// <summary>
+    /// Emit a checked conversion from an unsigned-integer source.
+    /// Uses Conv_Ovf_X_Un opcodes which treat the source value as unsigned.
+    /// </summary>
+    private static void EmitConvertCheckedFromUnsigned( ILGenerator ilg, Type targetType )
+    {
+        if ( targetType == typeof( sbyte ) )
+            ilg.Emit( OpCodes.Conv_Ovf_I1_Un );
+        else if ( targetType == typeof( short ) )
+            ilg.Emit( OpCodes.Conv_Ovf_I2_Un );
+        else if ( targetType == typeof( int ) )
+            ilg.Emit( OpCodes.Conv_Ovf_I4_Un );
+        else if ( targetType == typeof( long ) )
+            ilg.Emit( OpCodes.Conv_Ovf_I8_Un );
+        else if ( targetType == typeof( byte ) )
+            ilg.Emit( OpCodes.Conv_Ovf_U1_Un );
+        else if ( targetType == typeof( ushort ) || targetType == typeof( char ) )
+            ilg.Emit( OpCodes.Conv_Ovf_U2_Un );
+        else if ( targetType == typeof( uint ) )
+            ilg.Emit( OpCodes.Conv_Ovf_U4_Un );
+        else if ( targetType == typeof( ulong ) )
+            ilg.Emit( OpCodes.Conv_Ovf_U8_Un );
+        else if ( targetType == typeof( float ) )
+            ilg.Emit( OpCodes.Conv_R4 );
+        else if ( targetType == typeof( double ) )
+            ilg.Emit( OpCodes.Conv_R8 );
+        else if ( targetType == typeof( nint ) )
+            ilg.Emit( OpCodes.Conv_Ovf_I_Un );
+        else if ( targetType == typeof( nuint ) )
+            ilg.Emit( OpCodes.Conv_Ovf_U_Un );
+        else
+            throw new NotSupportedException( $"Unsupported unsigned checked conversion target type: {targetType.Name}" );
     }
 }

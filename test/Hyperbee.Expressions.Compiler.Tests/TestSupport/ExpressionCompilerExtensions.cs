@@ -31,17 +31,8 @@ public static class ExpressionCompilerExtensions
     private static TDelegate CompileFast<TDelegate>( Expression<TDelegate> expression )
         where TDelegate : Delegate
     {
-        try
-        {
-            var compiled = expression.CompileFast( ifFastFailedReturnNull: true );
-            if ( compiled != null )
-                return compiled;
-        }
-        catch ( NotSupportedExpressionException )
-        {
-            // fall through to system compiler
-        }
-
-        return expression.Compile();
+        // No fallback. If FEC fails, the test fails.
+        // Use Assert.Inconclusive guards for known FEC limitations. See FecKnownIssues.cs.
+        return expression.CompileFast()!;
     }
 }

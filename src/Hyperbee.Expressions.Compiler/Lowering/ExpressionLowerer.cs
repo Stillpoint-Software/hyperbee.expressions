@@ -140,6 +140,8 @@ public class ExpressionLowerer
             case ExpressionType.UnaryPlus:
             case ExpressionType.Increment:
             case ExpressionType.Decrement:
+            case ExpressionType.IsTrue:
+            case ExpressionType.IsFalse:
                 LowerUnary( (UnaryExpression) node );
                 break;
 
@@ -325,11 +327,21 @@ public class ExpressionLowerer
         if ( node.Value == null )
         {
             _ir.Emit( IROp.LoadNull );
+            return;
         }
-        else
+
+        // Expression.Constant(42, typeof(int?)) has Value=42 (int) but Type=int?.
+        // We must push the underlying value then wrap it in Nullable<T>.
+        var underlyingType = Nullable.GetUnderlyingType( node.Type );
+        if ( underlyingType != null )
         {
             _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Value ) );
+            var ctor = node.Type.GetConstructor( [underlyingType] )!;
+            _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+            return;
         }
+
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Value ) );
     }
 
     private void LowerParameter( ParameterExpression node )
@@ -360,21 +372,23 @@ public class ExpressionLowerer
 
     private void LowerBinary( BinaryExpression node )
     {
-        // Operator overload -- emit as method call
-        if ( node.Method != null )
-        {
-            LowerExpression( node.Left );
-            LowerExpression( node.Right );
-            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
-            return;
-        }
-
-        // Check for lifted nullable operations
+        // Check for lifted nullable operations first.
+        // When IsLifted is true, even if node.Method is set (e.g. decimal operators, Math.Pow),
+        // the operands are nullable and we must use the lifted null-propagation path.
         var leftUnderlying = Nullable.GetUnderlyingType( node.Left.Type );
 
         if ( leftUnderlying != null )
         {
             LowerLiftedBinary( node, leftUnderlying );
+            return;
+        }
+
+        // Non-lifted operator overload -- emit as direct method call
+        if ( node.Method != null )
+        {
+            LowerExpression( node.Left );
+            LowerExpression( node.Right );
+            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
             return;
         }
 
@@ -391,19 +405,19 @@ public class ExpressionLowerer
                 _ir.Emit( IROp.Add );
                 break;
             case ExpressionType.AddChecked:
-                _ir.Emit( IROp.AddChecked );
+                _ir.Emit( IsUnsigned( leftType ) ? IROp.AddCheckedUn : IROp.AddChecked );
                 break;
             case ExpressionType.Subtract:
                 _ir.Emit( IROp.Sub );
                 break;
             case ExpressionType.SubtractChecked:
-                _ir.Emit( IROp.SubChecked );
+                _ir.Emit( IsUnsigned( leftType ) ? IROp.SubCheckedUn : IROp.SubChecked );
                 break;
             case ExpressionType.Multiply:
                 _ir.Emit( IROp.Mul );
                 break;
             case ExpressionType.MultiplyChecked:
-                _ir.Emit( IROp.MulChecked );
+                _ir.Emit( IsUnsigned( leftType ) ? IROp.MulCheckedUn : IROp.MulChecked );
                 break;
             case ExpressionType.Divide:
                 _ir.Emit( IROp.Div );
@@ -436,20 +450,24 @@ public class ExpressionLowerer
                 _ir.Emit( IROp.Ceq );
                 break;
             case ExpressionType.LessThan:
-                _ir.Emit( IROp.Clt );
+                // For floats: clt (ordered) returns false when either operand is NaN — correct behavior
+                // For unsigned: clt.un for proper unsigned comparison
+                _ir.Emit( IsUnsigned( leftType ) ? IROp.CltUn : IROp.Clt );
                 break;
             case ExpressionType.GreaterThan:
-                _ir.Emit( IROp.Cgt );
+                // For floats: cgt (ordered) returns false when either operand is NaN — correct behavior
+                // For unsigned: cgt.un for proper unsigned comparison
+                _ir.Emit( IsUnsigned( leftType ) ? IROp.CgtUn : IROp.Cgt );
                 break;
             case ExpressionType.LessThanOrEqual:
-                // Use cgt.un for floating-point so NaN comparisons return false
-                _ir.Emit( IsFloatingPoint( leftType ) ? IROp.CgtUn : IROp.Cgt );
+                // cgt.un: for float (NaN returns false) and unsigned types
+                _ir.Emit( IsUnsignedOrFloat( leftType ) ? IROp.CgtUn : IROp.Cgt );
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
                 _ir.Emit( IROp.Ceq );
                 break;
             case ExpressionType.GreaterThanOrEqual:
-                // Use clt.un for floating-point so NaN comparisons return false
-                _ir.Emit( IsFloatingPoint( leftType ) ? IROp.CltUn : IROp.Clt );
+                // clt.un: for float (NaN returns false) and unsigned types
+                _ir.Emit( IsUnsignedOrFloat( leftType ) ? IROp.CltUn : IROp.Clt );
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
                 _ir.Emit( IROp.Ceq );
                 break;
@@ -460,13 +478,18 @@ public class ExpressionLowerer
 
     private void LowerLiftedBinary( BinaryExpression node, Type underlyingType )
     {
-        var nullableType = node.Left.Type;
-        var hasValueGetter = nullableType.GetProperty( "HasValue" )!.GetGetMethod()!;
-        var getValueOrDefault = nullableType.GetMethod( "GetValueOrDefault", Type.EmptyTypes )!;
+        var leftNullableType = node.Left.Type;
+        var hasValueGetterA = leftNullableType.GetProperty( "HasValue" )!.GetGetMethod()!;
+        var getValueOrDefaultA = leftNullableType.GetMethod( "GetValueOrDefault", Type.EmptyTypes )!;
 
-        // Store operands into temp locals
-        var tempA = _ir.DeclareLocal( nullableType, "$liftA" );
-        var tempB = _ir.DeclareLocal( nullableType, "$liftB" );
+        // Right operand may have a different nullable type (e.g., shifts: long? << int?)
+        var rightNullableType = node.Right.Type;
+        var hasValueGetterB = rightNullableType.GetProperty( "HasValue" )!.GetGetMethod()!;
+        var getValueOrDefaultB = rightNullableType.GetMethod( "GetValueOrDefault", Type.EmptyTypes )!;
+
+        // Store operands into temp locals using their correct types
+        var tempA = _ir.DeclareLocal( leftNullableType, "$liftA" );
+        var tempB = _ir.DeclareLocal( rightNullableType, "$liftB" );
 
         LowerExpression( node.Left );
         _ir.Emit( IROp.StoreLocal, tempA );
@@ -482,20 +505,27 @@ public class ExpressionLowerer
         if ( isComparison && !node.IsLiftedToNull )
         {
             // Lifted comparison returning bool (not bool?)
-            LowerLiftedComparison( node, underlyingType, tempA, tempB, hasValueGetter, getValueOrDefault, isEqualityOp );
+            LowerLiftedComparison( node, underlyingType, tempA, tempB,
+                hasValueGetterA, getValueOrDefaultA,
+                hasValueGetterB, getValueOrDefaultB,
+                isEqualityOp );
         }
         else
         {
             // Lifted arithmetic returning Nullable<T>
-            LowerLiftedArithmetic( node, underlyingType, nullableType, tempA, tempB, hasValueGetter, getValueOrDefault );
+            LowerLiftedArithmetic( node, underlyingType, leftNullableType, tempA, tempB,
+                hasValueGetterA, getValueOrDefaultA,
+                hasValueGetterB, getValueOrDefaultB );
         }
     }
 
     private void LowerLiftedComparison(
         BinaryExpression node, Type underlyingType,
         int tempA, int tempB,
-        System.Reflection.MethodInfo hasValueGetter,
-        System.Reflection.MethodInfo getValueOrDefault,
+        System.Reflection.MethodInfo hasValueGetterA,
+        System.Reflection.MethodInfo getValueOrDefaultA,
+        System.Reflection.MethodInfo hasValueGetterB,
+        System.Reflection.MethodInfo getValueOrDefaultB,
         bool isEqualityOp )
     {
         var resultLocal = _ir.DeclareLocal( typeof( bool ), "$liftCmpResult" );
@@ -512,12 +542,12 @@ public class ExpressionLowerer
 
             // hasA = tempA.HasValue
             _ir.Emit( IROp.LoadAddress, tempA );
-            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterA ) );
             _ir.Emit( IROp.StoreLocal, hasALocal );
 
             // hasB = tempB.HasValue
             _ir.Emit( IROp.LoadAddress, tempB );
-            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterB ) );
             _ir.Emit( IROp.StoreLocal, hasBLocal );
 
             // if (hasA != hasB) → one null, one not → mismatch
@@ -533,9 +563,9 @@ public class ExpressionLowerer
             // Both have values: compare
             _ir.MarkLabel( compareLabel );
             _ir.Emit( IROp.LoadAddress, tempA );
-            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultA ) );
             _ir.Emit( IROp.LoadAddress, tempB );
-            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultB ) );
             EmitBinaryOp( node.NodeType, underlyingType );
             _ir.Emit( IROp.StoreLocal, resultLocal );
             _ir.Emit( IROp.Branch, endLabel );
@@ -557,18 +587,18 @@ public class ExpressionLowerer
             var falseLabel = _ir.DefineLabel();
 
             _ir.Emit( IROp.LoadAddress, tempA );
-            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterA ) );
             _ir.Emit( IROp.BranchFalse, falseLabel );
 
             _ir.Emit( IROp.LoadAddress, tempB );
-            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterB ) );
             _ir.Emit( IROp.BranchFalse, falseLabel );
 
             // Both have values: compare
             _ir.Emit( IROp.LoadAddress, tempA );
-            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultA ) );
             _ir.Emit( IROp.LoadAddress, tempB );
-            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultB ) );
             EmitBinaryOp( node.NodeType, underlyingType );
             _ir.Emit( IROp.StoreLocal, resultLocal );
 
@@ -584,8 +614,10 @@ public class ExpressionLowerer
     private void LowerLiftedArithmetic(
         BinaryExpression node, Type underlyingType, Type nullableType,
         int tempA, int tempB,
-        System.Reflection.MethodInfo hasValueGetter,
-        System.Reflection.MethodInfo getValueOrDefault )
+        System.Reflection.MethodInfo hasValueGetterA,
+        System.Reflection.MethodInfo getValueOrDefaultA,
+        System.Reflection.MethodInfo hasValueGetterB,
+        System.Reflection.MethodInfo getValueOrDefaultB )
     {
         var endLabel = _ir.DefineLabel();
         var resultLocal = _ir.DeclareLocal( nullableType, "$liftResult" );
@@ -594,20 +626,26 @@ public class ExpressionLowerer
 
         // if (!tempA.HasValue) goto endLabel (result stays null)
         _ir.Emit( IROp.LoadAddress, tempA );
-        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterA ) );
         _ir.Emit( IROp.BranchFalse, endLabel );
 
         // if (!tempB.HasValue) goto endLabel (result stays null)
         _ir.Emit( IROp.LoadAddress, tempB );
-        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterB ) );
         _ir.Emit( IROp.BranchFalse, endLabel );
 
         // Both have values: extract, apply op, wrap
         _ir.Emit( IROp.LoadAddress, tempA );
-        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultA ) );
         _ir.Emit( IROp.LoadAddress, tempB );
-        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
-        EmitBinaryOp( node.NodeType, underlyingType );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultB ) );
+
+        // When a method override exists (e.g., decimal operators, Math.Pow), call it directly.
+        // Otherwise use the standard IL opcode.
+        if ( node.Method != null )
+            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
+        else
+            EmitBinaryOp( node.NodeType, underlyingType );
 
         // Wrap result: new Nullable<T>(result)
         var ctor = nullableType.GetConstructor( [underlyingType] )!;
@@ -677,20 +715,23 @@ public class ExpressionLowerer
 
     private void LowerUnary( UnaryExpression node )
     {
-        // Operator overload
-        if ( node.Method != null )
-        {
-            LowerExpression( node.Operand );
-            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
-            return;
-        }
-
-        // Check for lifted nullable operations
+        // Check for lifted nullable operations BEFORE checking node.Method.
+        // When the operand is nullable (e.g., Negate(decimal?)), node.Method may point
+        // to the non-nullable underlying method (e.g., decimal.op_UnaryNegation(decimal)).
+        // We must go through the lifted null-propagation path instead of calling the method directly.
         var operandUnderlying = Nullable.GetUnderlyingType( node.Operand.Type );
 
         if ( operandUnderlying != null && Nullable.GetUnderlyingType( node.Type ) != null )
         {
             LowerLiftedUnary( node, operandUnderlying );
+            return;
+        }
+
+        // Non-nullable operator overload
+        if ( node.Method != null )
+        {
+            LowerExpression( node.Operand );
+            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
             return;
         }
 
@@ -743,6 +784,14 @@ public class ExpressionLowerer
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetOneForType( node.Type ) ) );
                 _ir.Emit( IROp.Sub );
                 break;
+            case ExpressionType.IsTrue:
+                // bool value is already on the stack as 0 or 1; no-op
+                break;
+            case ExpressionType.IsFalse:
+                // Negate: false (0) → true (1), true (1) → false (0)
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                _ir.Emit( IROp.Ceq );
+                break;
             default:
                 throw new NotSupportedException( $"Unary op {node.NodeType} is not supported." );
         }
@@ -773,40 +822,49 @@ public class ExpressionLowerer
         _ir.Emit( IROp.LoadAddress, tempOperand );
         _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
 
-        // Emit the underlying unary operation on the extracted value
-        switch ( node.NodeType )
+        // When a method override exists (e.g., decimal.op_UnaryNegation), call it directly
+        // on the extracted underlying value. Otherwise use the standard IL opcode.
+        if ( node.Method != null )
         {
-            case ExpressionType.Negate:
-                _ir.Emit( IROp.Negate );
-                break;
-            case ExpressionType.NegateChecked:
+            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
+        }
+        else
+        {
+            // Emit the underlying unary operation on the extracted value
+            switch ( node.NodeType )
             {
-                var temp = _ir.DeclareLocal( underlyingType, "$neg_temp" );
-                _ir.Emit( IROp.StoreLocal, temp );
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetZeroForType( underlyingType ) ) );
-                _ir.Emit( IROp.LoadLocal, temp );
-                _ir.Emit( IROp.SubChecked );
-                break;
-            }
-            case ExpressionType.Not:
-                if ( underlyingType == typeof( bool ) )
+                case ExpressionType.Negate:
+                    _ir.Emit( IROp.Negate );
+                    break;
+                case ExpressionType.NegateChecked:
                 {
-                    _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
-                    _ir.Emit( IROp.Ceq );
+                    var temp = _ir.DeclareLocal( underlyingType, "$neg_temp" );
+                    _ir.Emit( IROp.StoreLocal, temp );
+                    _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetZeroForType( underlyingType ) ) );
+                    _ir.Emit( IROp.LoadLocal, temp );
+                    _ir.Emit( IROp.SubChecked );
+                    break;
                 }
-                else
-                {
+                case ExpressionType.Not:
+                    if ( underlyingType == typeof( bool ) )
+                    {
+                        _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                        _ir.Emit( IROp.Ceq );
+                    }
+                    else
+                    {
+                        _ir.Emit( IROp.Not );
+                    }
+                    break;
+                case ExpressionType.OnesComplement:
                     _ir.Emit( IROp.Not );
-                }
-                break;
-            case ExpressionType.OnesComplement:
-                _ir.Emit( IROp.Not );
-                break;
-            case ExpressionType.UnaryPlus:
-                // No-op
-                break;
-            default:
-                throw new NotSupportedException( $"Lifted unary op {node.NodeType} is not supported." );
+                    break;
+                case ExpressionType.UnaryPlus:
+                    // No-op
+                    break;
+                default:
+                    throw new NotSupportedException( $"Lifted unary op {node.NodeType} is not supported." );
+            }
         }
 
         // Wrap result: new Nullable<T>(result)
@@ -821,24 +879,39 @@ public class ExpressionLowerer
 
     private void LowerConvert( UnaryExpression node )
     {
-        LowerExpression( node.Operand );
+        var sourceType = node.Operand.Type;
+        var targetType = node.Type;
 
-        // Method-based conversion (e.g., user-defined implicit/explicit operators)
-        if ( node.Method != null )
+        var sourceUnderlying = Nullable.GetUnderlyingType( sourceType );
+        var targetUnderlying = Nullable.GetUnderlyingType( targetType );
+
+        // Nullable<S> -> Nullable<T>: null-propagating conversion
+        if ( sourceUnderlying != null && targetUnderlying != null )
         {
-            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
+            LowerNullableToNullableConvert( node, sourceType, targetType, sourceUnderlying, targetUnderlying );
             return;
         }
 
-        var sourceType = node.Operand.Type;
-        var targetType = node.Type;
+        LowerExpression( node.Operand );
+
+        // Method-based conversion (e.g., user-defined implicit/explicit operators).
+        // If the method returns the underlying type but target is Nullable<T>, wrap the result.
+        if ( node.Method != null )
+        {
+            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
+            if ( targetUnderlying != null && node.Method.ReturnType == targetUnderlying )
+            {
+                var ctor = targetType.GetConstructor( [targetUnderlying] )!;
+                _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+            }
+            return;
+        }
 
         // Identity conversion -- no-op
         if ( sourceType == targetType )
             return;
 
         // Nullable<T> -> T: call Nullable<T>.get_Value()
-        var sourceUnderlying = Nullable.GetUnderlyingType( sourceType );
         if ( sourceUnderlying != null && targetType == sourceUnderlying )
         {
             var temp = _ir.DeclareLocal( sourceType, "$nullable_temp" );
@@ -850,7 +923,6 @@ public class ExpressionLowerer
         }
 
         // T -> Nullable<T>: call new Nullable<T>(T)
-        var targetUnderlying = Nullable.GetUnderlyingType( targetType );
         if ( targetUnderlying != null && sourceType == targetUnderlying )
         {
             var ctor = targetType.GetConstructor( [targetUnderlying] )!;
@@ -887,9 +959,62 @@ public class ExpressionLowerer
         if ( effectiveSource == effectiveTarget )
             return; // Same underlying representation (e.g., int <-> DayOfWeek)
 
-        // Primitive conversions: value type -> value type
-        var op = node.NodeType == ExpressionType.ConvertChecked ? IROp.ConvertChecked : IROp.Convert;
+        // Primitive conversions: value type -> value type.
+        // For ConvertChecked from unsigned source, use Conv_Ovf_X_Un opcodes.
+        IROp op;
+        if ( node.NodeType == ExpressionType.ConvertChecked )
+            op = IsUnsigned( effectiveSource ) ? IROp.ConvertCheckedUn : IROp.ConvertChecked;
+        else
+            op = IROp.Convert;
+
         _ir.Emit( op, _ir.AddOperand( effectiveTarget ) );
+    }
+
+    private void LowerNullableToNullableConvert(
+        UnaryExpression node,
+        Type sourceNullable, Type targetNullable,
+        Type sourceUnderlying, Type targetUnderlying )
+    {
+        var endLabel = _ir.DefineLabel();
+        var srcLocal = _ir.DeclareLocal( sourceNullable, "$convSrc" );
+        var resultLocal = _ir.DeclareLocal( targetNullable, "$convResult" );
+
+        LowerExpression( node.Operand );
+        _ir.Emit( IROp.StoreLocal, srcLocal );
+
+        var hasValueGetter = sourceNullable.GetProperty( "HasValue" )!.GetGetMethod()!;
+        var getValueOrDefault = sourceNullable.GetMethod( "GetValueOrDefault", Type.EmptyTypes )!;
+
+        // if (!src.HasValue) goto endLabel (result stays null)
+        _ir.Emit( IROp.LoadAddress, srcLocal );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+        _ir.Emit( IROp.BranchFalse, endLabel );
+
+        // Has value: extract, convert, wrap
+        _ir.Emit( IROp.LoadAddress, srcLocal );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+
+        if ( node.Method != null )
+        {
+            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
+        }
+        else if ( sourceUnderlying != targetUnderlying )
+        {
+            IROp op;
+            if ( node.NodeType == ExpressionType.ConvertChecked )
+                op = IsUnsigned( sourceUnderlying ) ? IROp.ConvertCheckedUn : IROp.ConvertChecked;
+            else
+                op = IROp.Convert;
+            _ir.Emit( op, _ir.AddOperand( targetUnderlying ) );
+        }
+
+        // Wrap in Nullable<T>
+        var ctor = targetNullable.GetConstructor( [targetUnderlying] )!;
+        _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+
+        _ir.MarkLabel( endLabel );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
     }
 
     private void LowerTypeAs( UnaryExpression node )
@@ -1166,6 +1291,14 @@ public class ExpressionLowerer
             }
         }
 
+        // If the block has an explicit void type but the last expression produces a value,
+        // discard that value so the stack stays balanced (e.g., Expression.Block(typeof(void), ..., assign)).
+        var lastExpr = node.Expressions.Count > 0 ? node.Expressions[^1] : null;
+        if ( node.Type == typeof( void ) && lastExpr != null && lastExpr.Type != typeof( void ) )
+        {
+            _ir.Emit( IROp.Pop );
+        }
+
         _ir.ExitScope();
     }
 
@@ -1308,9 +1441,37 @@ public class ExpressionLowerer
                         _ir.AddOperand( setter ) );
                 }
             }
+            else if ( indexExpr.Arguments.Count > 1 )
+            {
+                // Multi-dimensional array: call the runtime-generated Set(i1, i2, ..., value) method.
+                // Save the value first so we can restore it as the assignment result if needed.
+                var setMethod = indexExpr.Object!.Type.GetMethod( "Set" )!;
+
+                if ( needsResult )
+                {
+                    var temp = _ir.DeclareLocal( node.Right.Type, "$arr_assign" );
+                    LowerExpression( node.Right );
+                    _ir.Emit( IROp.StoreLocal, temp );
+
+                    LowerExpression( indexExpr.Object );
+                    foreach ( var arg in indexExpr.Arguments )
+                        LowerExpression( arg );
+                    _ir.Emit( IROp.LoadLocal, temp );
+                    _ir.Emit( IROp.Call, _ir.AddOperand( setMethod ) );
+                    _ir.Emit( IROp.LoadLocal, temp );
+                }
+                else
+                {
+                    LowerExpression( indexExpr.Object );
+                    foreach ( var arg in indexExpr.Arguments )
+                        LowerExpression( arg );
+                    LowerExpression( node.Right );
+                    _ir.Emit( IROp.Call, _ir.AddOperand( setMethod ) );
+                }
+            }
             else
             {
-                // Array element: stelem
+                // 1D array element: stelem
                 LowerExpression( indexExpr.Object );
                 foreach ( var arg in indexExpr.Arguments )
                     LowerExpression( arg );
@@ -1764,8 +1925,13 @@ public class ExpressionLowerer
             // Build the bounds array
             var boundsCount = node.Expressions.Count;
 
-            // Push element type
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( elementType ) );
+            // Push element type using ldtoken + Type.GetTypeFromHandle (Type objects cannot be
+            // embedded directly in IL as constants).
+            _ir.Emit( IROp.LoadToken, _ir.AddOperand( elementType ) );
+            var getTypeFromHandle = typeof( Type ).GetMethod(
+                nameof( Type.GetTypeFromHandle ),
+                [typeof( RuntimeTypeHandle )] )!;
+            _ir.Emit( IROp.Call, _ir.AddOperand( getTypeFromHandle ) );
 
             // Create int[] for bounds
             _ir.Emit( IROp.LoadConst, _ir.AddOperand( boundsCount ) );
@@ -1784,6 +1950,9 @@ public class ExpressionLowerer
                 nameof( Array.CreateInstance ),
                 [typeof( Type ), typeof( int[] )] )!;
             _ir.Emit( IROp.Call, _ir.AddOperand( createInstanceMethod ) );
+
+            // Cast to the actual multi-dimensional array type for IL type safety
+            _ir.Emit( IROp.CastClass, _ir.AddOperand( node.Type ) );
         }
     }
 
@@ -1821,9 +1990,15 @@ public class ExpressionLowerer
                 getter.IsVirtual ? IROp.CallVirt : IROp.Call,
                 _ir.AddOperand( getter ) );
         }
+        else if ( node.Arguments.Count > 1 )
+        {
+            // Multi-dimensional array access: call the runtime-generated Get(i1, i2, ...) method
+            var getMethod = node.Object!.Type.GetMethod( "Get" )!;
+            _ir.Emit( IROp.Call, _ir.AddOperand( getMethod ) );
+        }
         else
         {
-            // Array element access
+            // 1D array element access
             _ir.Emit( IROp.LoadElement, _ir.AddOperand( node.Type ) );
         }
     }
@@ -2112,6 +2287,15 @@ public class ExpressionLowerer
 
     private void LowerPower( BinaryExpression node )
     {
+        // Nullable operands must go through the lifted null-propagation path.
+        // LowerLiftedArithmetic will extract underlying values, call Math.Pow, then wrap.
+        var leftUnderlying = Nullable.GetUnderlyingType( node.Left.Type );
+        if ( leftUnderlying != null )
+        {
+            LowerLiftedBinary( node, leftUnderlying );
+            return;
+        }
+
         if ( node.Method != null )
         {
             LowerExpression( node.Left );
@@ -2599,7 +2783,10 @@ public class ExpressionLowerer
     {
         if ( type == typeof( int ) ) return 1;
         if ( type == typeof( long ) ) return 1L;
+        if ( type == typeof( uint ) ) return 1U;
+        if ( type == typeof( ulong ) ) return 1UL;
         if ( type == typeof( short ) ) return (short) 1;
+        if ( type == typeof( ushort ) ) return (ushort) 1;
         if ( type == typeof( sbyte ) ) return (sbyte) 1;
         if ( type == typeof( byte ) ) return (byte) 1;
         if ( type == typeof( float ) ) return 1f;
@@ -2611,6 +2798,17 @@ public class ExpressionLowerer
     private static bool IsFloatingPoint( Type type )
     {
         return type == typeof( float ) || type == typeof( double );
+    }
+
+    private static bool IsUnsigned( Type type )
+    {
+        return type == typeof( uint ) || type == typeof( ulong )
+            || type == typeof( byte ) || type == typeof( ushort );
+    }
+
+    private static bool IsUnsignedOrFloat( Type type )
+    {
+        return IsUnsigned( type ) || IsFloatingPoint( type );
     }
 
     // --- Closure infrastructure ---

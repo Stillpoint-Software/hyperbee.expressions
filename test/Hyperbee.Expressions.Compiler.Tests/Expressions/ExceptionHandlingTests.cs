@@ -551,4 +551,422 @@ public class ExceptionHandlingTests
 
         Assert.AreEqual( 11, fn() );
     }
+
+    // ================================================================
+    // TryFault — fault block runs only on exception
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryFault_FaultRunsOnException( CompilerType compilerType )
+    {
+        // var ran = false;
+        // try { throw new InvalidOperationException(); }
+        // fault { ran = true; }
+        // return ran; — unreachable but we catch outside
+        var ran = Expression.Variable( typeof( bool ), "ran" );
+        var exParam = Expression.Parameter( typeof( Exception ), "ex" );
+        var outer = Expression.Variable( typeof( bool ), "outer" );
+
+        var tryFault = Expression.TryFault(
+            Expression.Throw( Expression.New( typeof( InvalidOperationException ) ), typeof( void ) ),
+            Expression.Block( typeof( void ), Expression.Assign( ran, Expression.Constant( true ) ) ) );
+
+        var body = Expression.Block(
+            new[] { ran, outer },
+            Expression.Assign( ran, Expression.Constant( false ) ),
+            Expression.Assign( outer, Expression.Constant( false ) ),
+            Expression.TryCatch(
+                tryFault,
+                Expression.Catch(
+                    exParam,
+                    Expression.Block( typeof( void ), Expression.Assign( outer, Expression.Constant( true ) ) ) ) ),
+            Expression.And( ran, outer ) );
+
+        var lambda = Expression.Lambda<Func<bool>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn() );  // fault ran AND outer catch ran
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryFault_FaultDoesNotRunWithoutException( CompilerType compilerType )
+    {
+        // var ran = false;
+        // try { /* no throw */ } fault { ran = true; }
+        // return ran;  // should be false
+        var ran = Expression.Variable( typeof( bool ), "ran" );
+
+        var body = Expression.Block(
+            new[] { ran },
+            Expression.Assign( ran, Expression.Constant( false ) ),
+            Expression.TryFault(
+                Expression.Constant( 42 ),  // no throw
+                Expression.Assign( ran, Expression.Constant( true ) ) ),
+            ran );
+
+        var lambda = Expression.Lambda<Func<bool>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn() );  // fault should NOT have run
+    }
+
+    // ================================================================
+    // Exception variable access in catch
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_ExceptionVariable_AccessMessage( CompilerType compilerType )
+    {
+        // try { throw new Exception("hello"); }
+        // catch (Exception ex) { return ex.Message; }
+        var ex = Expression.Parameter( typeof( Exception ), "ex" );
+        var msgProp = typeof( Exception ).GetProperty( "Message" )!;
+
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.TryCatch(
+                Expression.Throw(
+                    Expression.New(
+                        typeof( Exception ).GetConstructor( [typeof( string )] )!,
+                        Expression.Constant( "hello" ) ),
+                    typeof( string ) ),
+                Expression.Catch(
+                    ex,
+                    Expression.Property( ex, msgProp ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "hello", fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_ExceptionVariable_AccessType( CompilerType compilerType )
+    {
+        // try { throw new ArgumentNullException(); }
+        // catch (Exception ex) { return ex.GetType().Name; }
+        var ex = Expression.Parameter( typeof( Exception ), "ex" );
+        var getTypeMethod = typeof( object ).GetMethod( "GetType" )!;
+        var nameProp = typeof( Type ).GetProperty( "Name" )!;
+
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.TryCatch(
+                Expression.Throw(
+                    Expression.New( typeof( ArgumentNullException ) ),
+                    typeof( string ) ),
+                Expression.Catch(
+                    ex,
+                    Expression.Property(
+                        Expression.Call( ex, getTypeMethod ),
+                        nameProp ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "ArgumentNullException", fn() );
+    }
+
+    // ================================================================
+    // Filter edge cases
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_FilterFalse_FallsToNextHandler( CompilerType compilerType )
+    {
+        // try { throw new Exception(); }
+        // catch (InvalidOperationException) when (false) { return "wrong"; }
+        // catch (Exception) { return "right"; }
+        var ex1 = Expression.Parameter( typeof( Exception ), "ex1" );
+        var ex2 = Expression.Parameter( typeof( Exception ), "ex2" );
+
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.TryCatch(
+                Expression.Throw( Expression.New( typeof( Exception ) ), typeof( string ) ),
+                Expression.Catch(
+                    ex1,
+                    Expression.Constant( "wrong" ),
+                    Expression.Constant( false ) ),
+                Expression.Catch(
+                    ex2,
+                    Expression.Constant( "right" ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "right", fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_MultipleFilterHandlers_FirstMatchWins( CompilerType compilerType )
+    {
+        // try { throw new ArgumentException(); }
+        // catch (ArgumentException ex) when (true) { return "first"; }
+        // catch (Exception ex) { return "second"; }
+        var ex1 = Expression.Parameter( typeof( ArgumentException ), "ex1" );
+        var ex2 = Expression.Parameter( typeof( Exception ), "ex2" );
+
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.TryCatch(
+                Expression.Throw( Expression.New( typeof( ArgumentException ) ), typeof( string ) ),
+                Expression.Catch(
+                    ex1,
+                    Expression.Constant( "first" ),
+                    Expression.Constant( true ) ),
+                Expression.Catch(
+                    ex2,
+                    Expression.Constant( "second" ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "first", fn() );
+    }
+
+    // ================================================================
+    // Nested try — inner finally runs before outer
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_NestedTry_InnerFinallyRunsFirst( CompilerType compilerType )
+    {
+        // var log = "";
+        // try {
+        //   try { throw; } finally { log += "inner"; }
+        // } catch { log += "catch"; }
+        // return log;
+        var log = Expression.Variable( typeof( string ), "log" );
+        var ex = Expression.Parameter( typeof( Exception ), "ex" );
+        var concatMethod = typeof( string ).GetMethod( "Concat", [typeof( string ), typeof( string )] )!;
+
+        var innerTry = Expression.TryFinally(
+            Expression.Throw( Expression.New( typeof( Exception ) ), typeof( void ) ),
+            Expression.Assign( log, Expression.Call( null, concatMethod, log, Expression.Constant( "inner;" ) ) ) );
+
+        var outerTry = Expression.TryCatch(
+            innerTry,
+            Expression.Catch(
+                ex,
+                Expression.Block(
+                    typeof( void ),
+                    Expression.Assign( log, Expression.Call( null, concatMethod, log, Expression.Constant( "catch" ) ) ) ) ) );
+
+        var body = Expression.Block(
+            new[] { log },
+            Expression.Assign( log, Expression.Constant( "" ) ),
+            outerTry,
+            log );
+
+        var lambda = Expression.Lambda<Func<string>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "inner;catch", fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_NestedTry_BothFinallyRun( CompilerType compilerType )
+    {
+        // var x = 0;
+        // try { try { x = 1; } finally { x += 10; } }
+        // finally { x += 100; }
+        // return x;  // expects 111
+        var x = Expression.Variable( typeof( int ), "x" );
+
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 0 ) ),
+            Expression.TryFinally(
+                Expression.TryFinally(
+                    Expression.Assign( x, Expression.Constant( 1 ) ),
+                    Expression.Assign( x, Expression.Add( x, Expression.Constant( 10 ) ) ) ),
+                Expression.Assign( x, Expression.Add( x, Expression.Constant( 100 ) ) ) ),
+            x );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 111, fn() );
+    }
+
+    // ================================================================
+    // Void body catch — side effect only
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_VoidBody_Catch_SideEffect( CompilerType compilerType )
+    {
+        // var result = "ok";
+        // try { throw new Exception(); } catch { result = "caught"; }
+        // return result;
+        var result = Expression.Variable( typeof( string ), "result" );
+        var ex = Expression.Parameter( typeof( Exception ), "ex" );
+
+        var body = Expression.Block(
+            new[] { result },
+            Expression.Assign( result, Expression.Constant( "ok" ) ),
+            Expression.TryCatch(
+                Expression.Throw( Expression.New( typeof( Exception ) ), typeof( void ) ),
+                Expression.Catch(
+                    ex,
+                    Expression.Block(
+                        typeof( void ),
+                        Expression.Assign( result, Expression.Constant( "caught" ) ) ) ) ),
+            result );
+
+        var lambda = Expression.Lambda<Func<string>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "caught", fn() );
+    }
+
+    // ================================================================
+    // Catch by base type — derived exception caught by base handler
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_DerivedExceptionCaughtByBase( CompilerType compilerType )
+    {
+        // try { throw new ArgumentNullException(); }
+        // catch (ArgumentException) { return "caught"; }
+        var ex = Expression.Parameter( typeof( ArgumentException ), "ex" );
+
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.TryCatch(
+                Expression.Throw( Expression.New( typeof( ArgumentNullException ) ), typeof( string ) ),
+                Expression.Catch( ex, Expression.Constant( "caught" ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "caught", fn() );
+    }
+
+    // ================================================================
+    // TryCatchFinally — all three blocks
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatchFinally_AllThreeBlocks_ExceptionPath( CompilerType compilerType )
+    {
+        // var x = 0;
+        // try { throw; x = 1; }
+        // catch (Exception) { x = 2; }
+        // finally { x += 10; }
+        // return x; // expects 12
+        var x = Expression.Variable( typeof( int ), "x" );
+        var ex = Expression.Parameter( typeof( Exception ), "ex" );
+
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 0 ) ),
+            Expression.TryCatchFinally(
+                Expression.Block(
+                    Expression.Throw( Expression.New( typeof( Exception ) ), typeof( void ) ),
+                    Expression.Assign( x, Expression.Constant( 1 ) ) ),
+                Expression.Assign( x, Expression.Add( x, Expression.Constant( 10 ) ) ),
+                Expression.Catch( ex, Expression.Assign( x, Expression.Constant( 2 ) ) ) ),
+            x );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 12, fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatchFinally_AllThreeBlocks_SuccessPath( CompilerType compilerType )
+    {
+        // var x = 0;
+        // try { x = 1; }
+        // catch (Exception) { x = 2; }
+        // finally { x += 10; }
+        // return x; // expects 11
+        var x = Expression.Variable( typeof( int ), "x" );
+        var ex = Expression.Parameter( typeof( Exception ), "ex" );
+
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 0 ) ),
+            Expression.TryCatchFinally(
+                Expression.Assign( x, Expression.Constant( 1 ) ),
+                Expression.Assign( x, Expression.Add( x, Expression.Constant( 10 ) ) ),
+                Expression.Catch( ex, Expression.Assign( x, Expression.Constant( 2 ) ) ) ),
+            x );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 11, fn() );
+    }
+
+    // ================================================================
+    // Rethrow inside catch
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TryCatch_Rethrow_PropagatesOriginalException( CompilerType compilerType )
+    {
+        // try {
+        //   try { throw new InvalidOperationException("original"); }
+        //   catch (Exception) { rethrow; }
+        // } catch (Exception ex) { return ex.Message; }
+        var result = Expression.Variable( typeof( string ), "result" );
+        var ex1 = Expression.Parameter( typeof( Exception ), "ex1" );
+        var ex2 = Expression.Parameter( typeof( Exception ), "ex2" );
+        var msgProp = typeof( Exception ).GetProperty( "Message" )!;
+
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.Block(
+                new[] { result },
+                Expression.TryCatch(
+                    Expression.TryCatch(
+                        Expression.Throw(
+                            Expression.New(
+                                typeof( InvalidOperationException ).GetConstructor( [typeof( string )] )!,
+                                Expression.Constant( "original" ) ),
+                            typeof( void ) ),
+                        Expression.Catch( ex1, Expression.Rethrow( typeof( void ) ) ) ),
+                    Expression.Catch(
+                        ex2,
+                        Expression.Block(
+                            typeof( void ),
+                            Expression.Assign( result, Expression.Property( ex2, msgProp ) ) ) ) ),
+                result ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "original", fn() );
+    }
 }

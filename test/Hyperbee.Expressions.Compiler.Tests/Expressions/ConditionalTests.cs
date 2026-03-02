@@ -107,6 +107,57 @@ public class ConditionalTests
         Assert.AreEqual( 99, fn() );
     }
 
+    // --- Conditional with boxing/unboxing in branches ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Conditional_BoxUnbox_InBranches( CompilerType compilerType )
+    {
+        // a > 0 ? (int)(object)a : -1   — box then unbox in true branch
+        var a = Expression.Parameter( typeof(int), "a" );
+        var lambda = Expression.Lambda<Func<int, int>>(
+            Expression.Condition(
+                Expression.GreaterThan( a, Expression.Constant( 0 ) ),
+                Expression.Convert(
+                    Expression.Convert( a, typeof(object) ),  // box
+                    typeof(int) ),                             // unbox
+                Expression.Constant( -1 ) ),
+            a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42, fn( 42 ) );
+        Assert.AreEqual( -1, fn( -1 ) );
+        Assert.AreEqual( -1, fn( 0 ) );
+    }
+
+    // --- Nested conditional with branches of different types (boxing to object) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Conditional_Nested_DifferentTypeBranches_BoxedToObject( CompilerType compilerType )
+    {
+        // x > 0 ? (x > 10 ? (object)x : (object)"medium") : (object)"negative"
+        var x = Expression.Parameter( typeof(int), "x" );
+        var lambda = Expression.Lambda<Func<int, object>>(
+            Expression.Condition(
+                Expression.GreaterThan( x, Expression.Constant( 0 ) ),
+                Expression.Condition(
+                    Expression.GreaterThan( x, Expression.Constant( 10 ) ),
+                    Expression.Convert( x, typeof(object) ),
+                    Expression.Convert( Expression.Constant( "medium" ), typeof(object) ) ),
+                Expression.Convert( Expression.Constant( "negative" ), typeof(object) ) ),
+            x );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42, fn( 42 ) );
+        Assert.AreEqual( "medium", fn( 5 ) );
+        Assert.AreEqual( "negative", fn( -1 ) );
+    }
+
     // --- IfThenElse with typed result ---
 
     [TestMethod]

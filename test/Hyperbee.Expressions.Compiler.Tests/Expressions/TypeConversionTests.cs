@@ -391,4 +391,324 @@ public class TypeConversionTests
         Assert.AreEqual( 42, fn( 42 ) );
         Assert.AreEqual( 0, fn( 0 ) );
     }
+
+    // --- Convert: char -> int ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_CharToInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(char), "a" );
+        var convert = Expression.Convert( a, typeof(int) );
+        var lambda = Expression.Lambda<Func<char, int>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 65, fn( 'A' ) );
+        Assert.AreEqual( 97, fn( 'a' ) );
+        Assert.AreEqual( 48, fn( '0' ) );
+        Assert.AreEqual( 0, fn( '\0' ) );
+    }
+
+    // --- Convert: int -> char ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_IntToChar( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int), "a" );
+        var convert = Expression.Convert( a, typeof(char) );
+        var lambda = Expression.Lambda<Func<int, char>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 'A', fn( 65 ) );
+        Assert.AreEqual( 'a', fn( 97 ) );
+        Assert.AreEqual( '0', fn( 48 ) );
+    }
+
+    // --- Convert: char -> long ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_CharToLong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(char), "a" );
+        var convert = Expression.Convert( a, typeof(long) );
+        var lambda = Expression.Lambda<Func<char, long>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 65L, fn( 'A' ) );
+        Assert.AreEqual( 0L, fn( '\0' ) );
+    }
+
+    // --- Convert: char -> ushort ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_CharToUShort( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(char), "a" );
+        var convert = Expression.Convert( a, typeof(ushort) );
+        var lambda = Expression.Lambda<Func<char, ushort>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (ushort) 65, fn( 'A' ) );
+        Assert.AreEqual( (ushort) 0, fn( '\0' ) );
+    }
+
+    // --- Convert: int -> uint ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_IntToUInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int), "a" );
+        var convert = Expression.Convert( a, typeof(uint) );
+        var lambda = Expression.Lambda<Func<int, uint>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (uint) 42, fn( 42 ) );
+        Assert.AreEqual( (uint) 0, fn( 0 ) );
+        // Negative values wrap around (unchecked)
+        Assert.AreEqual( uint.MaxValue, fn( -1 ) );
+    }
+
+    // --- Convert: uint -> int ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_UIntToInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var convert = Expression.Convert( a, typeof(int) );
+        var lambda = Expression.Lambda<Func<uint, int>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42, fn( 42u ) );
+        Assert.AreEqual( int.MaxValue, fn( (uint) int.MaxValue ) );
+        // Large uint wraps to negative int (unchecked)
+        Assert.AreEqual( -1, fn( uint.MaxValue ) );
+    }
+
+    // --- Convert: ulong -> long ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_ULongToLong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var convert = Expression.Convert( a, typeof(long) );
+        var lambda = Expression.Lambda<Func<ulong, long>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42L, fn( 42UL ) );
+        Assert.AreEqual( long.MaxValue, fn( (ulong) long.MaxValue ) );
+    }
+
+    // --- Convert: short -> int ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_ShortToInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(short), "a" );
+        var convert = Expression.Convert( a, typeof(int) );
+        var lambda = Expression.Lambda<Func<short, int>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1000, fn( 1000 ) );
+        Assert.AreEqual( -1, fn( -1 ) );
+        Assert.AreEqual( short.MaxValue, fn( short.MaxValue ) );
+    }
+
+    // --- Convert: int -> decimal ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_IntToDecimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int), "a" );
+        var convert = Expression.Convert( a, typeof(decimal) );
+        var lambda = Expression.Lambda<Func<int, decimal>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42m, fn( 42 ) );
+        Assert.AreEqual( 0m, fn( 0 ) );
+        Assert.AreEqual( -1m, fn( -1 ) );
+    }
+
+    // --- Convert: decimal -> int (truncation) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_DecimalToInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal), "a" );
+        var convert = Expression.Convert( a, typeof(int) );
+        var lambda = Expression.Lambda<Func<decimal, int>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42, fn( 42.9m ) );
+        Assert.AreEqual( 0, fn( 0m ) );
+        Assert.AreEqual( -1, fn( -1.5m ) );
+    }
+
+    // --- Convert: double -> decimal ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_DoubleToDecimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(double), "a" );
+        var convert = Expression.Convert( a, typeof(decimal) );
+        var lambda = Expression.Lambda<Func<double, decimal>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3.14m, fn( 3.14 ) );
+        Assert.AreEqual( 0m, fn( 0.0 ) );
+    }
+
+    // --- Convert: decimal -> double ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_DecimalToDouble( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal), "a" );
+        var convert = Expression.Convert( a, typeof(double) );
+        var lambda = Expression.Lambda<Func<decimal, double>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3.14, fn( 3.14m ) );
+        Assert.AreEqual( 0.0, fn( 0m ) );
+    }
+
+    // --- Convert: int -> nullable decimal ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_IntToNullableDecimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int), "a" );
+        var convert = Expression.Convert( a, typeof(decimal?) );
+        var lambda = Expression.Lambda<Func<int, decimal?>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42m, fn( 42 ) );
+        Assert.AreEqual( 0m, fn( 0 ) );
+    }
+
+    // --- TypeIs: object is IEnumerable<int> (interface check) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TypeIs_InterfaceType( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(object), "a" );
+        var typeIs = Expression.TypeIs( a, typeof(System.Collections.IEnumerable) );
+        var lambda = Expression.Lambda<Func<object, bool>>( typeIs, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( "hello" ) );
+        Assert.IsTrue( fn( new int[] { 1, 2, 3 } ) );
+        Assert.IsFalse( fn( 42 ) );
+        Assert.IsFalse( fn( null! ) );
+    }
+
+    // --- TypeAs: object as IEnumerable (interface TypeAs) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TypeAs_InterfaceType( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(object), "a" );
+        var typeAs = Expression.TypeAs( a, typeof(System.Collections.IEnumerable) );
+        var lambda = Expression.Lambda<Func<object, System.Collections.IEnumerable?>>( typeAs, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsNotNull( fn( "hello" ) );
+        Assert.IsNotNull( fn( new int[] { 1, 2, 3 } ) );
+        Assert.IsNull( fn( 42 ) );
+        Assert.IsNull( fn( null! ) );
+    }
+
+    // --- TypeIs: null is string -> false ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void TypeIs_NullIsString_ReturnsFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(object), "a" );
+        var typeIs = Expression.TypeIs( a, typeof(string) );
+        var lambda = Expression.Lambda<Func<object, bool>>( typeIs, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( null! ) );
+    }
+
+    // --- Convert: long -> ulong (unchecked, bit reinterpretation) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_LongToULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var convert = Expression.Convert( a, typeof(ulong) );
+        var lambda = Expression.Lambda<Func<long, ulong>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (ulong) 42L, fn( 42L ) );
+        Assert.AreEqual( ulong.MaxValue, fn( -1L ) ); // unchecked bit reinterpretation
+    }
+
+    // --- Convert: float -> long ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Convert_FloatToLong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float), "a" );
+        var convert = Expression.Convert( a, typeof(long) );
+        var lambda = Expression.Lambda<Func<float, long>>( convert, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42L, fn( 42.9f ) );   // truncates toward zero
+        Assert.AreEqual( 0L, fn( 0.0f ) );
+        Assert.AreEqual( -1L, fn( -1.5f ) );   // truncates toward zero (not floor)
+    }
 }

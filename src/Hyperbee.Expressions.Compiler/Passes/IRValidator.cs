@@ -78,6 +78,7 @@ public static class IRValidator
                 case IROp.Not:
                 case IROp.Convert:
                 case IROp.ConvertChecked:
+                case IROp.ConvertCheckedUn:
                 case IROp.Box:
                 case IROp.Unbox:
                 case IROp.UnboxAny:
@@ -95,6 +96,9 @@ public static class IRValidator
                 case IROp.AddChecked:
                 case IROp.SubChecked:
                 case IROp.MulChecked:
+                case IROp.AddCheckedUn:
+                case IROp.SubCheckedUn:
+                case IROp.MulCheckedUn:
                 case IROp.And:
                 case IROp.Or:
                 case IROp.Xor:

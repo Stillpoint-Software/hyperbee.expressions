@@ -32,9 +32,12 @@ public enum IROp : byte
     Mul, 
     Div, 
     Rem,
-    AddChecked, 
-    SubChecked, 
+    AddChecked,
+    SubChecked,
     MulChecked,
+    AddCheckedUn,           // Unsigned checked add (add.ovf.un)
+    SubCheckedUn,           // Unsigned checked subtract (sub.ovf.un)
+    MulCheckedUn,           // Unsigned checked multiply (mul.ovf.un)
     Negate, 
     NegateChecked,
     And, 
@@ -53,7 +56,8 @@ public enum IROp : byte
 
     // Conversion
     Convert,                // Type conversion (operand -> Type in operand table)
-    ConvertChecked,
+    ConvertChecked,         // Checked conversion from signed source
+    ConvertCheckedUn,       // Checked conversion from unsigned source (conv.ovf.X.un)
     Box, 
     Unbox, 
     UnboxAny,

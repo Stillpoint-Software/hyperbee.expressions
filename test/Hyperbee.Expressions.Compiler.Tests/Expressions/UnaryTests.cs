@@ -332,4 +332,291 @@ public class UnaryTests
         Assert.AreEqual( -1.0, fn( 0.0 ) );
         Assert.AreEqual( 0.5, fn( 1.5 ) );
     }
+
+    // --- Increment (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Increment_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var lambda = Expression.Lambda<Func<long, long>>( Expression.Increment( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1L, fn( 0L ) );
+        Assert.AreEqual( 0L, fn( -1L ) );
+        Assert.AreEqual( 43L, fn( 42L ) );
+    }
+
+    // --- Decrement (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Decrement_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var lambda = Expression.Lambda<Func<long, long>>( Expression.Decrement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -1L, fn( 0L ) );
+        Assert.AreEqual( 0L, fn( 1L ) );
+        Assert.AreEqual( 41L, fn( 42L ) );
+    }
+
+    // --- Increment (float) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Increment_Float( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float), "a" );
+        var lambda = Expression.Lambda<Func<float, float>>( Expression.Increment( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1.0f, fn( 0.0f ) );
+        Assert.AreEqual( 2.5f, fn( 1.5f ) );
+    }
+
+    // --- Increment (uint) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Increment_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var lambda = Expression.Lambda<Func<uint, uint>>( Expression.Increment( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1u, fn( 0u ) );
+        Assert.AreEqual( 43u, fn( 42u ) );
+    }
+
+    // --- Increment (ulong) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Increment_ULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var lambda = Expression.Lambda<Func<ulong, ulong>>( Expression.Increment( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1UL, fn( 0UL ) );
+        Assert.AreEqual( 43UL, fn( 42UL ) );
+    }
+
+    // --- Decrement (uint) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Decrement_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var lambda = Expression.Lambda<Func<uint, uint>>( Expression.Decrement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0u, fn( 1u ) );
+        Assert.AreEqual( 41u, fn( 42u ) );
+    }
+
+    // --- OnesComplement (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void OnesComplement_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var lambda = Expression.Lambda<Func<long, long>>( Expression.OnesComplement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( ~0L, fn( 0L ) );
+        Assert.AreEqual( ~1L, fn( 1L ) );
+        Assert.AreEqual( ~long.MaxValue, fn( long.MaxValue ) );
+    }
+
+    // --- OnesComplement (uint) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void OnesComplement_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var lambda = Expression.Lambda<Func<uint, uint>>( Expression.OnesComplement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( ~0u, fn( 0u ) );
+        Assert.AreEqual( ~1u, fn( 1u ) );
+        Assert.AreEqual( ~uint.MaxValue, fn( uint.MaxValue ) );
+    }
+
+    // --- OnesComplement (ulong) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void OnesComplement_ULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var lambda = Expression.Lambda<Func<ulong, ulong>>( Expression.OnesComplement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( ~0UL, fn( 0UL ) );
+        Assert.AreEqual( ~1UL, fn( 1UL ) );
+    }
+
+    // --- UnaryPlus (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void UnaryPlus_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var lambda = Expression.Lambda<Func<long, long>>( Expression.UnaryPlus( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0L, fn( 0L ) );
+        Assert.AreEqual( 42L, fn( 42L ) );
+        Assert.AreEqual( -42L, fn( -42L ) );
+    }
+
+    // --- UnaryPlus (float) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void UnaryPlus_Float( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float), "a" );
+        var lambda = Expression.Lambda<Func<float, float>>( Expression.UnaryPlus( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0.0f, fn( 0.0f ) );
+        Assert.AreEqual( 1.5f, fn( 1.5f ) );
+        Assert.AreEqual( -1.5f, fn( -1.5f ) );
+    }
+
+    // --- UnaryPlus (decimal) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void UnaryPlus_Decimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal), "a" );
+        var lambda = Expression.Lambda<Func<decimal, decimal>>( Expression.UnaryPlus( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0m, fn( 0m ) );
+        Assert.AreEqual( 3.14m, fn( 3.14m ) );
+        Assert.AreEqual( -3.14m, fn( -3.14m ) );
+    }
+
+    // --- IsTrue (bool) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void IsTrue_Bool( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(bool), "a" );
+        var lambda = Expression.Lambda<Func<bool, bool>>( Expression.IsTrue( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( true ) );
+        Assert.IsFalse( fn( false ) );
+    }
+
+    // --- IsFalse (bool) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void IsFalse_Bool( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(bool), "a" );
+        var lambda = Expression.Lambda<Func<bool, bool>>( Expression.IsFalse( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( true ) );
+        Assert.IsTrue( fn( false ) );
+    }
+
+    // --- Negate (float) — special values ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Negate_Float_SpecialValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float), "a" );
+        var lambda = Expression.Lambda<Func<float, float>>( Expression.Negate( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( float.NegativeInfinity, fn( float.PositiveInfinity ) );
+        Assert.AreEqual( float.PositiveInfinity, fn( float.NegativeInfinity ) );
+    }
+
+    // --- PostIncrementAssign (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void PostIncrementAssign_Long( CompilerType compilerType )
+    {
+        var i = Expression.Variable( typeof(long), "i" );
+        var body = Expression.Block(
+            new[] { i },
+            Expression.Assign( i, Expression.Constant( 10L ) ),
+            Expression.PostIncrementAssign( i ),
+            i );
+        var lambda = Expression.Lambda<Func<long>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 11L, fn() );
+    }
+
+    // --- PostDecrementAssign (long) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void PostDecrementAssign_Long( CompilerType compilerType )
+    {
+        var i = Expression.Variable( typeof(long), "i" );
+        var body = Expression.Block(
+            new[] { i },
+            Expression.Assign( i, Expression.Constant( 10L ) ),
+            Expression.PostDecrementAssign( i ),
+            i );
+        var lambda = Expression.Lambda<Func<long>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 9L, fn() );
+    }
 }
