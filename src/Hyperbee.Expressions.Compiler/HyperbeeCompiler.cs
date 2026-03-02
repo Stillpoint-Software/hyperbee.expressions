@@ -95,6 +95,7 @@ public static class HyperbeeCompiler
     private static void TransformIR( IRBuilder ir )
     {
         StackSpillPass.Run( ir ); // Handle stack spilling for complex expressions and try/catch blocks
+        PeepholePass.Run( ir );   // Remove redundant instructions
     }
 
     private static Delegate EmitDelegate( IRBuilder ir, LambdaExpression lambda, bool needsConstantsArray )
@@ -355,27 +356,24 @@ public static class HyperbeeCompiler
             return;
         }
 
+        // Build a set of operand indices referenced by LoadConst instructions
+        // in a single pass, avoiding O(operands * instructions) scan.
+        var loadConstOperands = new HashSet<int>();
+        foreach ( var inst in ir.Instructions )
+        {
+            if ( inst.Op == IROp.LoadConst )
+                loadConstOperands.Add( inst.Operand );
+        }
+
         constantIndices = new Dictionary<int, int>();
         var constants = new List<object>();
 
         for ( var i = 0; i < ir.Operands.Count; i++ )
         {
-            var operand = ir.Operands[i];
-
-            var isConstant = false;
-            foreach ( var inst in ir.Instructions )
-            {
-                if ( inst.Op == IROp.LoadConst && inst.Operand == i )
-                {
-                    isConstant = true;
-                    break;
-                }
-            }
-
-            if ( isConstant && !IsEmbeddable( operand ) )
+            if ( loadConstOperands.Contains( i ) && !IsEmbeddable( ir.Operands[i] ) )
             {
                 constantIndices[i] = constants.Count;
-                constants.Add( operand );
+                constants.Add( ir.Operands[i] );
             }
         }
 

@@ -22,7 +22,7 @@ public class ExecutionBenchmarks
     {
         _systemFn   = _expr.Compile();
         _fecFn      = _expr.CompileFast()!;
-        _hyperbeeFn = HyperbeeCompiler.CompileWithFallback( _expr );
+        _hyperbeeFn = HyperbeeCompiler.Compile( _expr );
     }
 
     [Benchmark( Baseline = true, Description = "Execute | System" )]

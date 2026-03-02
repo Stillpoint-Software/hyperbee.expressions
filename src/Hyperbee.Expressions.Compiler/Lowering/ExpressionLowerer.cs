@@ -14,10 +14,10 @@ namespace Hyperbee.Expressions.Compiler.Lowering;
 public class ExpressionLowerer
 {
     private readonly IRBuilder _ir;
-    private readonly Dictionary<ParameterExpression, int> _parameterMap = new();
-    private readonly Dictionary<ParameterExpression, int> _localMap = new();
-    private readonly Dictionary<LabelTarget, int> _labelMap = new();
-    private readonly Dictionary<LabelTarget, int> _labelValueLocalMap = new();
+    private readonly Dictionary<ParameterExpression, int> _parameterMap = new( 4 );
+    private readonly Dictionary<ParameterExpression, int> _localMap = new( 8 );
+    private readonly Dictionary<LabelTarget, int> _labelMap = new( 4 );
+    private readonly Dictionary<LabelTarget, int> _labelValueLocalMap = new( 4 );
     private readonly HashSet<ParameterExpression> _capturedVariables;
 
     // Maps captured variable -> local index of its StrongBox<T>
