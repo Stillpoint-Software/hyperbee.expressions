@@ -23,8 +23,8 @@ public static class HyperbeeCompiler
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
     public static Delegate Compile( LambdaExpression lambda )
     {
-        // Fast-path: skip capture scanning when no nested lambdas exist (common case)
-        var capturedVariables = ContainsNestedLambda( lambda.Body )
+        // Fast-path: skip capture scanning when no nested lambdas or RuntimeVariables exist (common case)
+        var capturedVariables = NeedsCaptureScanning( lambda.Body )
             ? CaptureScanner.FindCapturedVariables( lambda )
             : null;
 
@@ -73,6 +73,58 @@ public static class HyperbeeCompiler
     public static Delegate CompileWithFallback( LambdaExpression lambda )
     {
         return TryCompile( lambda ) ?? lambda.Compile();
+    }
+
+    // --- CompileToMethod APIs (MethodBuilder target) ---
+
+    /// <summary>
+    /// Compiles the expression tree into the provided MethodBuilder.
+    /// The MethodBuilder must be a static method whose parameters match the lambda.
+    /// Non-embeddable constants (object references, delegates, nested lambdas) are
+    /// not supported; use <see cref="Compile(LambdaExpression)"/> for those cases.
+    /// </summary>
+    public static void CompileToMethod( LambdaExpression lambda, MethodBuilder method )
+    {
+        ArgumentNullException.ThrowIfNull( lambda );
+        ArgumentNullException.ThrowIfNull( method );
+
+        if ( !method.IsStatic )
+            throw new ArgumentException(
+                "CompileToMethod requires a static method.", nameof( method ) );
+
+        // CompileToMethod cannot use a closure, so all constants must be embeddable.
+        // This also catches nested lambdas (compiled delegates are non-embeddable).
+        if ( ScanForNonEmbeddableConstants( lambda.Body ) )
+            throw new NotSupportedException(
+                "CompileToMethod does not support non-embeddable constants or nested " +
+                "lambda expressions. Replace constant references with parameters, " +
+                "or use Compile() for in-memory compilation." );
+
+        // No constants array needed (all constants are embeddable, no closures)
+        var ir = new IRBuilder();
+        var lowerer = new ExpressionLowerer( ir );
+        lowerer.Lower( lambda, argOffset: 0 );
+
+        TransformIR( ir, lambda.ReturnType == typeof( void ) );
+
+        ILEmissionPass.Run( ir, method.GetILGenerator(), hasConstantsArray: false, constantIndices: null );
+    }
+
+    /// <summary>
+    /// Compiles the expression tree into the provided MethodBuilder.
+    /// Returns false if the expression cannot be compiled (e.g. non-embeddable constants).
+    /// </summary>
+    public static bool TryCompileToMethod( LambdaExpression lambda, MethodBuilder method )
+    {
+        try
+        {
+            CompileToMethod( lambda, method );
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // --- Compilation steps ---
@@ -125,10 +177,11 @@ public static class HyperbeeCompiler
     // --- Private helpers ---
 
     /// <summary>
-    /// Quick check: does the expression tree contain any nested LambdaExpression?
-    /// If not, there can be no captured variables and CaptureScanner can be skipped.
+    /// Quick check: does the expression tree contain any nested LambdaExpression
+    /// or RuntimeVariablesExpression? If not, no captured variables exist and
+    /// CaptureScanner can be skipped.
     /// </summary>
-    private static bool ContainsNestedLambda( Expression? node )
+    private static bool NeedsCaptureScanning( Expression? node )
     {
         if ( node == null )
             return false;
@@ -136,25 +189,26 @@ public static class HyperbeeCompiler
         switch ( node )
         {
             case LambdaExpression:
+            case RuntimeVariablesExpression:
                 return true;
 
             case BinaryExpression b:
-                return ContainsNestedLambda( b.Left ) || ContainsNestedLambda( b.Right );
+                return NeedsCaptureScanning( b.Left ) || NeedsCaptureScanning( b.Right );
 
             case UnaryExpression u:
-                return ContainsNestedLambda( u.Operand );
+                return NeedsCaptureScanning( u.Operand );
 
             case ConditionalExpression c:
-                return ContainsNestedLambda( c.Test )
-                    || ContainsNestedLambda( c.IfTrue )
-                    || ContainsNestedLambda( c.IfFalse );
+                return NeedsCaptureScanning( c.Test )
+                    || NeedsCaptureScanning( c.IfTrue )
+                    || NeedsCaptureScanning( c.IfFalse );
 
             case MethodCallExpression m:
             {
-                if ( ContainsNestedLambda( m.Object ) )
+                if ( NeedsCaptureScanning( m.Object ) )
                     return true;
                 foreach ( var arg in m.Arguments )
-                    if ( ContainsNestedLambda( arg ) )
+                    if ( NeedsCaptureScanning( arg ) )
                         return true;
                 return false;
             }
@@ -162,63 +216,63 @@ public static class HyperbeeCompiler
             case BlockExpression b:
             {
                 foreach ( var expr in b.Expressions )
-                    if ( ContainsNestedLambda( expr ) )
+                    if ( NeedsCaptureScanning( expr ) )
                         return true;
                 return false;
             }
 
             case InvocationExpression inv:
             {
-                if ( ContainsNestedLambda( inv.Expression ) )
+                if ( NeedsCaptureScanning( inv.Expression ) )
                     return true;
                 foreach ( var arg in inv.Arguments )
-                    if ( ContainsNestedLambda( arg ) )
+                    if ( NeedsCaptureScanning( arg ) )
                         return true;
                 return false;
             }
 
             case MemberExpression m:
-                return ContainsNestedLambda( m.Expression );
+                return NeedsCaptureScanning( m.Expression );
 
             case NewExpression n:
             {
                 foreach ( var arg in n.Arguments )
-                    if ( ContainsNestedLambda( arg ) )
+                    if ( NeedsCaptureScanning( arg ) )
                         return true;
                 return false;
             }
 
             case TryExpression t:
             {
-                if ( ContainsNestedLambda( t.Body ) )
+                if ( NeedsCaptureScanning( t.Body ) )
                     return true;
                 foreach ( var h in t.Handlers )
-                    if ( ContainsNestedLambda( h.Body ) || ContainsNestedLambda( h.Filter ) )
+                    if ( NeedsCaptureScanning( h.Body ) || NeedsCaptureScanning( h.Filter ) )
                         return true;
-                return ContainsNestedLambda( t.Finally ) || ContainsNestedLambda( t.Fault );
+                return NeedsCaptureScanning( t.Finally ) || NeedsCaptureScanning( t.Fault );
             }
 
             case LoopExpression l:
-                return ContainsNestedLambda( l.Body );
+                return NeedsCaptureScanning( l.Body );
 
             case SwitchExpression s:
             {
-                if ( ContainsNestedLambda( s.SwitchValue ) )
+                if ( NeedsCaptureScanning( s.SwitchValue ) )
                     return true;
                 foreach ( var c in s.Cases )
-                    if ( ContainsNestedLambda( c.Body ) )
+                    if ( NeedsCaptureScanning( c.Body ) )
                         return true;
-                return ContainsNestedLambda( s.DefaultBody );
+                return NeedsCaptureScanning( s.DefaultBody );
             }
 
             case GotoExpression g:
-                return ContainsNestedLambda( g.Value );
+                return NeedsCaptureScanning( g.Value );
 
             case LabelExpression l:
-                return ContainsNestedLambda( l.DefaultValue );
+                return NeedsCaptureScanning( l.DefaultValue );
 
             case TypeBinaryExpression t:
-                return ContainsNestedLambda( t.Expression );
+                return NeedsCaptureScanning( t.Expression );
 
             default:
                 return false;

@@ -13,8 +13,6 @@ public enum IROp : byte
     StoreLocal,             // Pop and store to local variable
     LoadArg,                // Push argument
     StoreArg,               // Pop and store to argument
-    LoadClosureVar,         // Push variable from closure (post closure-analysis)
-    StoreClosureVar,        // Pop and store to closure variable
 
     // Fields and properties
     LoadField,              // Push field value (instance on stack)
@@ -77,6 +75,8 @@ public enum IROp : byte
     // Exception handling
     BeginTry,               // Enter try block
     BeginCatch,             // Enter catch handler
+    BeginFilter,            // Enter exception filter block (evaluates to bool)
+    BeginFilteredCatch,     // Enter catch handler after filter (operand unused)
     BeginFinally,           // Enter finally handler
     BeginFault,             // Enter fault handler
     EndTryCatch,            // End exception handling block
@@ -92,9 +92,6 @@ public enum IROp : byte
     // Scope markers (for variable lifetime tracking)
     BeginScope,             // Enter a new variable scope
     EndScope,               // Exit variable scope
-
-    // Delegate creation (high-level, expanded during closure pass)
-    CreateDelegate,         // Create delegate from nested lambda IR
 
     // Special
     InitObj,                // Initialize value type

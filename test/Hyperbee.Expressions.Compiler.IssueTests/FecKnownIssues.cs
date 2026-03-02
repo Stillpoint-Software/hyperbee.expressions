@@ -453,4 +453,299 @@ public class FecKnownIssues
         Assert.AreEqual( 42, result.X );
         Assert.AreEqual( "test", result.Name );
     }
+
+    // --- Pattern 11: Compound assignment (AddAssign) in expression position ---
+    //
+    // FEC can mishandle compound assignment operators when the result value
+    // is used (expression position rather than statement position).
+
+    [TestMethod]
+    public void Pattern11_AddAssign_ExpressionPosition_HyperbeeNative()
+    {
+        var x = Expression.Variable( typeof(int), "x" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { x },
+                Expression.Assign( x, Expression.Constant( 10 ) ),
+                // AddAssign returns the new value: x += 5 => 15
+                Expression.AddAssign( x, Expression.Constant( 5 ) )
+            ) );
+
+        Assert.AreEqual( 15, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    [TestMethod]
+    public void Pattern11_SubtractAssign_ExpressionPosition_HyperbeeNative()
+    {
+        var x = Expression.Variable( typeof(int), "x" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { x },
+                Expression.Assign( x, Expression.Constant( 10 ) ),
+                Expression.SubtractAssign( x, Expression.Constant( 3 ) )
+            ) );
+
+        Assert.AreEqual( 7, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    // --- Pattern 12: TypeAs with value that is null ---
+    //
+    // FEC can mishandle TypeAs when the result is null (e.g., incompatible types).
+
+    [TestMethod]
+    public void Pattern12_TypeAs_NullResult_HyperbeeNative()
+    {
+        var obj = Expression.Parameter( typeof(object), "obj" );
+        var lambda = Expression.Lambda<Func<object, string?>>(
+            Expression.TypeAs( obj, typeof(string) ), obj );
+
+        var fn = HyperbeeCompiler.Compile( lambda );
+        Assert.AreEqual( "hello", fn( "hello" ) );
+        Assert.IsNull( fn( 42 ) );
+        Assert.IsNull( fn( null! ) );
+    }
+
+    // --- Pattern 13: Nested lambda capturing multiple variables ---
+    //
+    // FEC sometimes fails to correctly manage multiple captured variables
+    // in deeply nested lambdas.
+
+    [TestMethod]
+    public void Pattern13_MultipleCapturedVariables_HyperbeeNative()
+    {
+        var x = Expression.Variable( typeof(int), "x" );
+        var y = Expression.Variable( typeof(int), "y" );
+        var adder = Expression.Lambda<Func<int>>(
+            Expression.Add( x, y ) );
+        var outer = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { x, y },
+                Expression.Assign( x, Expression.Constant( 10 ) ),
+                Expression.Assign( y, Expression.Constant( 32 ) ),
+                Expression.Invoke( adder )
+            ) );
+
+        Assert.AreEqual( 42, HyperbeeCompiler.Compile<Func<int>>( outer )() );
+    }
+
+    // --- Pattern 14: TryCatch with exception filter ---
+    //
+    // Exception filters (when clauses) are a complex CLR feature that
+    // FEC has limited support for.
+
+    [TestMethod]
+    public void Pattern14_TryCatch_WithFilter_HyperbeeNative()
+    {
+        var ex = Expression.Variable( typeof(Exception), "ex" );
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.TryCatch(
+                Expression.Block(
+                    Expression.Throw( Expression.New(
+                        typeof(InvalidOperationException).GetConstructor(
+                            new[] { typeof(string) } )!,
+                        Expression.Constant( "filtered" ) ) ),
+                    Expression.Constant( "not reached" )
+                ),
+                Expression.Catch(
+                    ex,
+                    Expression.Property( ex, "Message" ),
+                    // Filter: only catch if message contains "filtered"
+                    Expression.Call(
+                        Expression.Property( ex, "Message" ),
+                        typeof(string).GetMethod( "Contains", new[] { typeof(string) } )!,
+                        Expression.Constant( "filtered" ) )
+                )
+            ) );
+
+        Assert.AreEqual( "filtered", HyperbeeCompiler.Compile<Func<string>>( lambda )() );
+    }
+
+    [TestMethod]
+    public void Pattern14_TryCatch_FilterDoesNotMatch_FallsThrough()
+    {
+        var ex = Expression.Variable( typeof(Exception), "ex" );
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.TryCatch(
+                Expression.Block(
+                    Expression.Throw( Expression.New(
+                        typeof(InvalidOperationException).GetConstructor(
+                            new[] { typeof(string) } )!,
+                        Expression.Constant( "wrong message" ) ) ),
+                    Expression.Constant( "not reached" )
+                ),
+                // First handler: filtered, won't match
+                Expression.Catch(
+                    ex,
+                    Expression.Constant( "handler1" ),
+                    Expression.Call(
+                        Expression.Property( ex, "Message" ),
+                        typeof(string).GetMethod( "Contains", new[] { typeof(string) } )!,
+                        Expression.Constant( "NOMATCH" ) )
+                ),
+                // Second handler: catches all
+                Expression.Catch(
+                    typeof(Exception),
+                    Expression.Constant( "handler2" )
+                )
+            ) );
+
+        Assert.AreEqual( "handler2", HyperbeeCompiler.Compile<Func<string>>( lambda )() );
+    }
+
+    // --- Pattern 15: Coalesce with nullable value type ---
+    //
+    // FEC has known issues with coalesce on nullable value types,
+    // especially when conversion lambdas are involved.
+
+    [TestMethod]
+    public void Pattern15_Coalesce_NullableInt_HyperbeeNative()
+    {
+        var x = Expression.Parameter( typeof(int?), "x" );
+        var lambda = Expression.Lambda<Func<int?, int>>(
+            Expression.Coalesce( x, Expression.Constant( -1 ) ), x );
+
+        var fn = HyperbeeCompiler.Compile( lambda );
+        Assert.AreEqual( 42, fn( 42 ) );
+        Assert.AreEqual( -1, fn( null ) );
+    }
+
+    // --- Pattern 16: Value type virtual method call (constrained callvirt) ---
+    //
+    // FEC can produce incorrect IL for virtual calls on value types
+    // (missing constrained. prefix causes boxing or verification failure).
+
+    public struct PointStruct
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public override string ToString() => $"({X},{Y})";
+    }
+
+    [TestMethod]
+    public void Pattern16_ValueType_VirtualCall_ToString_HyperbeeNative()
+    {
+        var p = Expression.Parameter( typeof(PointStruct), "p" );
+        var lambda = Expression.Lambda<Func<PointStruct, string>>(
+            Expression.Call( p, typeof(object).GetMethod( "ToString" )! ), p );
+
+        var fn = HyperbeeCompiler.Compile( lambda );
+        Assert.AreEqual( "(3,4)", fn( new PointStruct { X = 3, Y = 4 } ) );
+    }
+
+    // --- Pattern 17: Switch with enum values ---
+    //
+    // Enum switch expressions can trip up FEC's type handling.
+
+    public enum Color { Red, Green, Blue }
+
+    [TestMethod]
+    public void Pattern17_Switch_Enum_HyperbeeNative()
+    {
+        var color = Expression.Parameter( typeof(Color), "color" );
+        var lambda = Expression.Lambda<Func<Color, string>>(
+            Expression.Switch(
+                color,
+                Expression.Constant( "unknown" ),
+                Expression.SwitchCase( Expression.Constant( "red" ),
+                    Expression.Constant( Color.Red ) ),
+                Expression.SwitchCase( Expression.Constant( "green" ),
+                    Expression.Constant( Color.Green ) ),
+                Expression.SwitchCase( Expression.Constant( "blue" ),
+                    Expression.Constant( Color.Blue ) )
+            ), color );
+
+        var fn = HyperbeeCompiler.Compile( lambda );
+        Assert.AreEqual( "red", fn( Color.Red ) );
+        Assert.AreEqual( "green", fn( Color.Green ) );
+        Assert.AreEqual( "blue", fn( Color.Blue ) );
+        Assert.AreEqual( "unknown", fn( (Color) 99 ) );
+    }
+
+    // --- Pattern 18: Array element assignment inside try/catch ---
+    //
+    // Combining array operations with exception handling is an area
+    // where FEC's single-pass approach can produce incorrect stack layouts.
+
+    [TestMethod]
+    public void Pattern18_ArrayAssign_InsideTryCatch_HyperbeeNative()
+    {
+        var arr = Expression.Variable( typeof(int[]), "arr" );
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { arr },
+                Expression.Assign( arr,
+                    Expression.NewArrayBounds( typeof(int), Expression.Constant( 3 ) ) ),
+                Expression.TryCatch(
+                    Expression.Block(
+                        Expression.Assign(
+                            Expression.ArrayAccess( arr, Expression.Constant( 0 ) ),
+                            Expression.Constant( 10 ) ),
+                        Expression.Assign(
+                            Expression.ArrayAccess( arr, Expression.Constant( 1 ) ),
+                            Expression.Constant( 20 ) ),
+                        Expression.Assign(
+                            Expression.ArrayAccess( arr, Expression.Constant( 2 ) ),
+                            Expression.Constant( 30 ) ),
+                        Expression.Constant( 0 )
+                    ),
+                    Expression.Catch( typeof(Exception), Expression.Constant( -1 ) )
+                ),
+                Expression.ArrayIndex( arr, Expression.Constant( 0 ) )
+            ) );
+
+        Assert.AreEqual( 10, HyperbeeCompiler.Compile<Func<int>>( lambda )() );
+    }
+
+    // --- Pattern 19: Deeply nested conditional with different types ---
+    //
+    // Nested ternary expressions that require boxing or type conversion
+    // in different branches.
+
+    [TestMethod]
+    public void Pattern19_NestedConditional_WithBoxing_HyperbeeNative()
+    {
+        var x = Expression.Parameter( typeof(int), "x" );
+        // x > 0 ? (x > 10 ? (object)x : (object)"medium") : (object)"negative"
+        var lambda = Expression.Lambda<Func<int, object>>(
+            Expression.Condition(
+                Expression.GreaterThan( x, Expression.Constant( 0 ) ),
+                Expression.Condition(
+                    Expression.GreaterThan( x, Expression.Constant( 10 ) ),
+                    Expression.Convert( x, typeof(object) ),
+                    Expression.Convert( Expression.Constant( "medium" ), typeof(object) )
+                ),
+                Expression.Convert( Expression.Constant( "negative" ), typeof(object) )
+            ), x );
+
+        var fn = HyperbeeCompiler.Compile( lambda );
+        Assert.AreEqual( 42, fn( 42 ) );
+        Assert.AreEqual( "medium", fn( 5 ) );
+        Assert.AreEqual( "negative", fn( -1 ) );
+    }
+
+    // --- Pattern 20: Complex closure - lambda returned from block ---
+    //
+    // Returning a compiled delegate from a block that captures local variables.
+
+    [TestMethod]
+    public void Pattern20_ReturnDelegateFromBlock_HyperbeeNative()
+    {
+        var multiplier = Expression.Variable( typeof(int), "multiplier" );
+        var x = Expression.Parameter( typeof(int), "x" );
+        var innerLambda = Expression.Lambda<Func<int, int>>(
+            Expression.Multiply( x, multiplier ), x );
+
+        var outer = Expression.Lambda<Func<Func<int, int>>>(
+            Expression.Block(
+                new[] { multiplier },
+                Expression.Assign( multiplier, Expression.Constant( 3 ) ),
+                innerLambda
+            ) );
+
+        var getMultiplier = HyperbeeCompiler.Compile( outer );
+        var multiply = getMultiplier();
+        Assert.AreEqual( 21, multiply( 7 ) );
+        Assert.AreEqual( 0, multiply( 0 ) );
+        Assert.AreEqual( -3, multiply( -1 ) );
+    }
 }

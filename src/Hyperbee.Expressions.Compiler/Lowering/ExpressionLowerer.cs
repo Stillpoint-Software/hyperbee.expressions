@@ -54,7 +54,24 @@ public class ExpressionLowerer
 
         for ( var i = 0; i < lambda.Parameters.Count; i++ )
         {
-            _parameterMap[lambda.Parameters[i]] = i + _argOffset;
+            var param = lambda.Parameters[i];
+            _parameterMap[param] = i + _argOffset;
+
+            // If this parameter is captured (e.g. by RuntimeVariables or a nested lambda),
+            // it needs StrongBox wrapping. Load the arg value and store it into a StrongBox local.
+            if ( IsCaptured( param ) )
+            {
+                var strongBoxType = typeof( StrongBox<> ).MakeGenericType( param.Type );
+                var boxLocal = _ir.DeclareLocal( strongBoxType, $"$box_{param.Name}" );
+                _strongBoxLocalMap ??= new( 2 );
+                _strongBoxLocalMap[param] = boxLocal;
+
+                // Emit: box = new StrongBox<T>(argValue)
+                var ctor = strongBoxType.GetConstructor( [param.Type] )!;
+                _ir.Emit( IROp.LoadArg, i + _argOffset );
+                _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+                _ir.Emit( IROp.StoreLocal, boxLocal );
+            }
         }
 
         LowerExpression( lambda.Body );
@@ -119,6 +136,7 @@ public class ExpressionLowerer
             case ExpressionType.Negate:
             case ExpressionType.NegateChecked:
             case ExpressionType.Not:
+            case ExpressionType.OnesComplement:
             case ExpressionType.UnaryPlus:
             case ExpressionType.Increment:
             case ExpressionType.Decrement:
@@ -272,11 +290,21 @@ public class ExpressionLowerer
             case ExpressionType.DebugInfo:
                 break;
 
-            // RuntimeVariables and Dynamic are low priority
+            // RuntimeVariables
             case ExpressionType.RuntimeVariables:
+                LowerRuntimeVariables( (RuntimeVariablesExpression) node );
+                break;
+
+            // Dynamic expressions (DLR) are not supported.
+            // This is a deliberate design choice: DynamicExpression requires the
+            // Dynamic Language Runtime (DLR) infrastructure, which adds significant
+            // overhead for a feature rarely used with compiled expression trees.
             case ExpressionType.Dynamic:
                 throw new NotSupportedException(
-                    $"Expression type {node.NodeType} is not supported." );
+                    "DynamicExpression is not supported by HyperbeeCompiler. " +
+                    "Dynamic expressions require the DLR (Dynamic Language Runtime) " +
+                    "infrastructure. Use Expression.Call() with explicit method " +
+                    "bindings instead, or use the System compiler." );
 
             default:
                 if ( node.CanReduce )
@@ -341,10 +369,23 @@ public class ExpressionLowerer
             return;
         }
 
+        // Check for lifted nullable operations
+        var leftUnderlying = Nullable.GetUnderlyingType( node.Left.Type );
+
+        if ( leftUnderlying != null )
+        {
+            LowerLiftedBinary( node, leftUnderlying );
+            return;
+        }
+
         LowerExpression( node.Left );
         LowerExpression( node.Right );
+        EmitBinaryOp( node.NodeType, node.Left.Type );
+    }
 
-        switch ( node.NodeType )
+    private void EmitBinaryOp( ExpressionType nodeType, Type leftType )
+    {
+        switch ( nodeType )
         {
             case ExpressionType.Add:
                 _ir.Emit( IROp.Add );
@@ -402,19 +443,180 @@ public class ExpressionLowerer
                 break;
             case ExpressionType.LessThanOrEqual:
                 // Use cgt.un for floating-point so NaN comparisons return false
-                _ir.Emit( IsFloatingPoint( node.Left.Type ) ? IROp.CgtUn : IROp.Cgt );
+                _ir.Emit( IsFloatingPoint( leftType ) ? IROp.CgtUn : IROp.Cgt );
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
                 _ir.Emit( IROp.Ceq );
                 break;
             case ExpressionType.GreaterThanOrEqual:
                 // Use clt.un for floating-point so NaN comparisons return false
-                _ir.Emit( IsFloatingPoint( node.Left.Type ) ? IROp.CltUn : IROp.Clt );
+                _ir.Emit( IsFloatingPoint( leftType ) ? IROp.CltUn : IROp.Clt );
                 _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
                 _ir.Emit( IROp.Ceq );
                 break;
             default:
-                throw new NotSupportedException( $"Binary op {node.NodeType} is not supported." );
+                throw new NotSupportedException( $"Binary op {nodeType} is not supported." );
         }
+    }
+
+    private void LowerLiftedBinary( BinaryExpression node, Type underlyingType )
+    {
+        var nullableType = node.Left.Type;
+        var hasValueGetter = nullableType.GetProperty( "HasValue" )!.GetGetMethod()!;
+        var getValueOrDefault = nullableType.GetMethod( "GetValueOrDefault", Type.EmptyTypes )!;
+
+        // Store operands into temp locals
+        var tempA = _ir.DeclareLocal( nullableType, "$liftA" );
+        var tempB = _ir.DeclareLocal( nullableType, "$liftB" );
+
+        LowerExpression( node.Left );
+        _ir.Emit( IROp.StoreLocal, tempA );
+        LowerExpression( node.Right );
+        _ir.Emit( IROp.StoreLocal, tempB );
+
+        var isComparison = node.NodeType is ExpressionType.Equal or ExpressionType.NotEqual
+            or ExpressionType.LessThan or ExpressionType.GreaterThan
+            or ExpressionType.LessThanOrEqual or ExpressionType.GreaterThanOrEqual;
+
+        var isEqualityOp = node.NodeType is ExpressionType.Equal or ExpressionType.NotEqual;
+
+        if ( isComparison && !node.IsLiftedToNull )
+        {
+            // Lifted comparison returning bool (not bool?)
+            LowerLiftedComparison( node, underlyingType, tempA, tempB, hasValueGetter, getValueOrDefault, isEqualityOp );
+        }
+        else
+        {
+            // Lifted arithmetic returning Nullable<T>
+            LowerLiftedArithmetic( node, underlyingType, nullableType, tempA, tempB, hasValueGetter, getValueOrDefault );
+        }
+    }
+
+    private void LowerLiftedComparison(
+        BinaryExpression node, Type underlyingType,
+        int tempA, int tempB,
+        System.Reflection.MethodInfo hasValueGetter,
+        System.Reflection.MethodInfo getValueOrDefault,
+        bool isEqualityOp )
+    {
+        var resultLocal = _ir.DeclareLocal( typeof( bool ), "$liftCmpResult" );
+        var endLabel = _ir.DefineLabel();
+
+        if ( isEqualityOp )
+        {
+            // Equality/inequality: null==null is true, null!=null is false
+            var compareLabel = _ir.DefineLabel();
+            var mismatchLabel = _ir.DefineLabel();
+            var bothNullLabel = _ir.DefineLabel();
+            var hasALocal = _ir.DeclareLocal( typeof( bool ), "$hasA" );
+            var hasBLocal = _ir.DeclareLocal( typeof( bool ), "$hasB" );
+
+            // hasA = tempA.HasValue
+            _ir.Emit( IROp.LoadAddress, tempA );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.StoreLocal, hasALocal );
+
+            // hasB = tempB.HasValue
+            _ir.Emit( IROp.LoadAddress, tempB );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.StoreLocal, hasBLocal );
+
+            // if (hasA != hasB) → one null, one not → mismatch
+            _ir.Emit( IROp.LoadLocal, hasALocal );
+            _ir.Emit( IROp.LoadLocal, hasBLocal );
+            _ir.Emit( IROp.Ceq );
+            _ir.Emit( IROp.BranchFalse, mismatchLabel );
+
+            // hasA == hasB: if !hasA → both null
+            _ir.Emit( IROp.LoadLocal, hasALocal );
+            _ir.Emit( IROp.BranchFalse, bothNullLabel );
+
+            // Both have values: compare
+            _ir.MarkLabel( compareLabel );
+            _ir.Emit( IROp.LoadAddress, tempA );
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+            _ir.Emit( IROp.LoadAddress, tempB );
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+            EmitBinaryOp( node.NodeType, underlyingType );
+            _ir.Emit( IROp.StoreLocal, resultLocal );
+            _ir.Emit( IROp.Branch, endLabel );
+
+            // mismatchLabel: one null one not → Equal:false, NotEqual:true
+            _ir.MarkLabel( mismatchLabel );
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.NodeType == ExpressionType.NotEqual ? 1 : 0 ) );
+            _ir.Emit( IROp.StoreLocal, resultLocal );
+            _ir.Emit( IROp.Branch, endLabel );
+
+            // bothNullLabel: null==null → true, null!=null → false
+            _ir.MarkLabel( bothNullLabel );
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.NodeType == ExpressionType.Equal ? 1 : 0 ) );
+            _ir.Emit( IROp.StoreLocal, resultLocal );
+        }
+        else
+        {
+            // Relational: any null -> false (resultLocal starts as 0/false)
+            var falseLabel = _ir.DefineLabel();
+
+            _ir.Emit( IROp.LoadAddress, tempA );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.BranchFalse, falseLabel );
+
+            _ir.Emit( IROp.LoadAddress, tempB );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.BranchFalse, falseLabel );
+
+            // Both have values: compare
+            _ir.Emit( IROp.LoadAddress, tempA );
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+            _ir.Emit( IROp.LoadAddress, tempB );
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+            EmitBinaryOp( node.NodeType, underlyingType );
+            _ir.Emit( IROp.StoreLocal, resultLocal );
+
+            // falseLabel: resultLocal is already 0 (false)
+            _ir.MarkLabel( falseLabel );
+        }
+
+        // endLabel: push result
+        _ir.MarkLabel( endLabel );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
+    }
+
+    private void LowerLiftedArithmetic(
+        BinaryExpression node, Type underlyingType, Type nullableType,
+        int tempA, int tempB,
+        System.Reflection.MethodInfo hasValueGetter,
+        System.Reflection.MethodInfo getValueOrDefault )
+    {
+        var endLabel = _ir.DefineLabel();
+        var resultLocal = _ir.DeclareLocal( nullableType, "$liftResult" );
+
+        // resultLocal starts as default(Nullable<T>) = null (CLR zero-init)
+
+        // if (!tempA.HasValue) goto endLabel (result stays null)
+        _ir.Emit( IROp.LoadAddress, tempA );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+        _ir.Emit( IROp.BranchFalse, endLabel );
+
+        // if (!tempB.HasValue) goto endLabel (result stays null)
+        _ir.Emit( IROp.LoadAddress, tempB );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+        _ir.Emit( IROp.BranchFalse, endLabel );
+
+        // Both have values: extract, apply op, wrap
+        _ir.Emit( IROp.LoadAddress, tempA );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+        _ir.Emit( IROp.LoadAddress, tempB );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+        EmitBinaryOp( node.NodeType, underlyingType );
+
+        // Wrap result: new Nullable<T>(result)
+        var ctor = nullableType.GetConstructor( [underlyingType] )!;
+        _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+
+        // endLabel: push result (either computed or default null)
+        _ir.MarkLabel( endLabel );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
     }
 
     private void LowerAndAlso( BinaryExpression node )
@@ -483,8 +685,21 @@ public class ExpressionLowerer
             return;
         }
 
-        LowerExpression( node.Operand );
+        // Check for lifted nullable operations
+        var operandUnderlying = Nullable.GetUnderlyingType( node.Operand.Type );
 
+        if ( operandUnderlying != null && Nullable.GetUnderlyingType( node.Type ) != null )
+        {
+            LowerLiftedUnary( node, operandUnderlying );
+            return;
+        }
+
+        LowerExpression( node.Operand );
+        EmitUnaryOp( node );
+    }
+
+    private void EmitUnaryOp( UnaryExpression node )
+    {
         switch ( node.NodeType )
         {
             case ExpressionType.Negate:
@@ -514,6 +729,9 @@ public class ExpressionLowerer
                     _ir.Emit( IROp.Not );
                 }
                 break;
+            case ExpressionType.OnesComplement:
+                _ir.Emit( IROp.Not );
+                break;
             case ExpressionType.UnaryPlus:
                 // No-op: value is already on the stack
                 break;
@@ -528,6 +746,77 @@ public class ExpressionLowerer
             default:
                 throw new NotSupportedException( $"Unary op {node.NodeType} is not supported." );
         }
+    }
+
+    private void LowerLiftedUnary( UnaryExpression node, Type underlyingType )
+    {
+        var nullableType = node.Operand.Type;
+        var hasValueGetter = nullableType.GetProperty( "HasValue" )!.GetGetMethod()!;
+        var getValueOrDefault = nullableType.GetMethod( "GetValueOrDefault", Type.EmptyTypes )!;
+
+        var endLabel = _ir.DefineLabel();
+        var resultLocal = _ir.DeclareLocal( nullableType, "$liftResult" );
+        var tempOperand = _ir.DeclareLocal( nullableType, "$liftOp" );
+
+        // resultLocal starts as default(Nullable<T>) = null (CLR zero-init)
+
+        // Store operand
+        LowerExpression( node.Operand );
+        _ir.Emit( IROp.StoreLocal, tempOperand );
+
+        // if (!operand.HasValue) goto endLabel (result stays null)
+        _ir.Emit( IROp.LoadAddress, tempOperand );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+        _ir.Emit( IROp.BranchFalse, endLabel );
+
+        // Has value: extract, apply op, wrap
+        _ir.Emit( IROp.LoadAddress, tempOperand );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefault ) );
+
+        // Emit the underlying unary operation on the extracted value
+        switch ( node.NodeType )
+        {
+            case ExpressionType.Negate:
+                _ir.Emit( IROp.Negate );
+                break;
+            case ExpressionType.NegateChecked:
+            {
+                var temp = _ir.DeclareLocal( underlyingType, "$neg_temp" );
+                _ir.Emit( IROp.StoreLocal, temp );
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetZeroForType( underlyingType ) ) );
+                _ir.Emit( IROp.LoadLocal, temp );
+                _ir.Emit( IROp.SubChecked );
+                break;
+            }
+            case ExpressionType.Not:
+                if ( underlyingType == typeof( bool ) )
+                {
+                    _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                    _ir.Emit( IROp.Ceq );
+                }
+                else
+                {
+                    _ir.Emit( IROp.Not );
+                }
+                break;
+            case ExpressionType.OnesComplement:
+                _ir.Emit( IROp.Not );
+                break;
+            case ExpressionType.UnaryPlus:
+                // No-op
+                break;
+            default:
+                throw new NotSupportedException( $"Lifted unary op {node.NodeType} is not supported." );
+        }
+
+        // Wrap result: new Nullable<T>(result)
+        var ctor = nullableType.GetConstructor( [underlyingType] )!;
+        _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+
+        // endLabel: push result (either computed or default null)
+        _ir.MarkLabel( endLabel );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
     }
 
     private void LowerConvert( UnaryExpression node )
@@ -547,6 +836,27 @@ public class ExpressionLowerer
         // Identity conversion -- no-op
         if ( sourceType == targetType )
             return;
+
+        // Nullable<T> -> T: call Nullable<T>.get_Value()
+        var sourceUnderlying = Nullable.GetUnderlyingType( sourceType );
+        if ( sourceUnderlying != null && targetType == sourceUnderlying )
+        {
+            var temp = _ir.DeclareLocal( sourceType, "$nullable_temp" );
+            _ir.Emit( IROp.StoreLocal, temp );
+            _ir.Emit( IROp.LoadAddress, temp );
+            var getValueMethod = sourceType.GetProperty( "Value" )!.GetGetMethod()!;
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueMethod ) );
+            return;
+        }
+
+        // T -> Nullable<T>: call new Nullable<T>(T)
+        var targetUnderlying = Nullable.GetUnderlyingType( targetType );
+        if ( targetUnderlying != null && sourceType == targetUnderlying )
+        {
+            var ctor = targetType.GetConstructor( [targetUnderlying] )!;
+            _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+            return;
+        }
 
         // Reference type conversions
         if ( !targetType.IsValueType && !sourceType.IsValueType )
@@ -570,9 +880,16 @@ public class ExpressionLowerer
             return;
         }
 
+        // Enum conversions: resolve to underlying type for primitive conversion
+        var effectiveSource = sourceType.IsEnum ? Enum.GetUnderlyingType( sourceType ) : sourceType;
+        var effectiveTarget = targetType.IsEnum ? Enum.GetUnderlyingType( targetType ) : targetType;
+
+        if ( effectiveSource == effectiveTarget )
+            return; // Same underlying representation (e.g., int <-> DayOfWeek)
+
         // Primitive conversions: value type -> value type
         var op = node.NodeType == ExpressionType.ConvertChecked ? IROp.ConvertChecked : IROp.Convert;
-        _ir.Emit( op, _ir.AddOperand( targetType ) );
+        _ir.Emit( op, _ir.AddOperand( effectiveTarget ) );
     }
 
     private void LowerTypeAs( UnaryExpression node )
@@ -1075,19 +1392,49 @@ public class ExpressionLowerer
         // Lower catch handlers
         foreach ( var handler in node.Handlers )
         {
-            _ir.Emit( IROp.BeginCatch, _ir.AddOperand( handler.Test ) );
-
-            if ( handler.Variable != null )
+            if ( handler.Filter != null )
             {
-                // Declare a local for the caught exception and store it
-                var exLocal = _ir.DeclareLocal( handler.Variable.Type, handler.Variable.Name );
-                ( _localMap ??= new( 8 ) )[handler.Variable] = exLocal;
-                _ir.Emit( IROp.StoreLocal, exLocal );
+                // Exception filter: emit BeginFilter, filter expression, then BeginFilteredCatch
+                _ir.Emit( IROp.BeginFilter );
+
+                if ( handler.Variable != null )
+                {
+                    // Declare the exception variable and store for use in filter
+                    var exLocal = _ir.DeclareLocal( handler.Variable.Type, handler.Variable.Name );
+                    ( _localMap ??= new( 8 ) )[handler.Variable] = exLocal;
+                    _ir.Emit( IROp.StoreLocal, exLocal );
+                }
+                else
+                {
+                    // Discard the exception pushed by BeginFilter
+                    _ir.Emit( IROp.Pop );
+                }
+
+                // Lower the filter expression (must evaluate to bool)
+                LowerExpression( handler.Filter );
+
+                // BeginFilteredCatch: transitions from filter to catch handler
+                _ir.Emit( IROp.BeginFilteredCatch );
+
+                // CLR pushes exception on stack again at catch entry; discard it
+                _ir.Emit( IROp.Pop );
             }
             else
             {
-                // CLR pushes exception on stack at catch entry; discard it
-                _ir.Emit( IROp.Pop );
+                _ir.Emit( IROp.BeginCatch, _ir.AddOperand( handler.Test ) );
+
+                if ( handler.Variable != null )
+                {
+                    // Declare a local for the caught exception and store it
+                    var exLocal = _ir.DeclareLocal( handler.Variable.Type, handler.Variable.Name );
+                    ( _localMap ??= new( 8 ) )[handler.Variable] = exLocal;
+                    _ir.Emit( IROp.StoreLocal, exLocal );
+                }
+                else
+                {
+                    // CLR pushes exception on stack at catch entry; discard it
+                    _ir.Emit( IROp.Pop );
+                }
             }
 
             // Lower handler body
@@ -1743,8 +2090,10 @@ public class ExpressionLowerer
         var getTypeMethod = typeof( object ).GetMethod( nameof( object.GetType ) )!;
         _ir.Emit( IROp.CallVirt, _ir.AddOperand( getTypeMethod ) );
 
-        // Load the Type token
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.TypeOperand ) );
+        // Load the Type via ldtoken + Type.GetTypeFromHandle (embeddable in IL)
+        _ir.Emit( IROp.LoadToken, _ir.AddOperand( node.TypeOperand ) );
+        var getTypeFromHandle = typeof( Type ).GetMethod( nameof( Type.GetTypeFromHandle ) )!;
+        _ir.Emit( IROp.Call, _ir.AddOperand( getTypeFromHandle ) );
 
         // Compare
         _ir.Emit( IROp.Ceq );
@@ -1784,6 +2133,37 @@ public class ExpressionLowerer
     {
         LowerExpression( node.Operand );
         _ir.Emit( IROp.UnboxAny, _ir.AddOperand( node.Type ) );
+    }
+
+    // --- RuntimeVariables ---
+
+    private void LowerRuntimeVariables( RuntimeVariablesExpression node )
+    {
+        var variables = node.Variables;
+        var count = variables.Count;
+
+        // Create IStrongBox[] array
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( count ) );
+        _ir.Emit( IROp.NewArray, _ir.AddOperand( typeof( IStrongBox ) ) );
+
+        // Store each variable's StrongBox into the array
+        for ( var i = 0; i < count; i++ )
+        {
+            _ir.Emit( IROp.Dup ); // keep array reference on stack
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( i ) );
+
+            // Load the StrongBox local for this variable
+            var boxLocal = _strongBoxLocalMap![variables[i]];
+            _ir.Emit( IROp.LoadLocal, boxLocal );
+
+            _ir.Emit( IROp.StoreElement, _ir.AddOperand( typeof( IStrongBox ) ) );
+        }
+
+        // Call RuntimeVariablesHelper.Create(IStrongBox[]) → IRuntimeVariables
+        var createMethod = typeof( RuntimeVariablesHelper ).GetMethod(
+            nameof( RuntimeVariablesHelper.Create ),
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public )!;
+        _ir.Emit( IROp.Call, _ir.AddOperand( createMethod ) );
     }
 
     // --- Lambda / Invoke (Phase 3: Closures) ---
@@ -1835,7 +2215,8 @@ public class ExpressionLowerer
     /// <summary>
     /// Lower a nested lambda expression. For lambdas without captures, compile
     /// directly with the System compiler and push on stack. For lambdas with
-    /// captures, prepare closure info and push on stack.
+    /// captures, build a binder delegate that partially applies the StrongBox
+    /// locals to produce a correctly-typed delegate at runtime.
     /// </summary>
     private void LowerNestedLambda( LambdaExpression nestedLambda )
     {
@@ -1851,11 +2232,88 @@ public class ExpressionLowerer
         else
         {
             // Has captures -- this lambda is used as a value (not via Invoke).
-            // We can't easily represent a partially-applied delegate in IL,
-            // so emit the compiled inner delegate as a constant.
-            // Note: standalone closure lambdas (not invoked) are an edge case.
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( closureInfo.CompiledDelegate ) );
+            // Build a "binder" delegate that takes StrongBox locals and returns
+            // a correctly-typed delegate.
+            //
+            // Example: inner = Func<int, StrongBox<int>, int>
+            //   binder = Func<StrongBox<int>, Func<int, int>>
+            //     = (box) => (x) => inner(x, box)
+            //
+            // At runtime: load binder, load StrongBox locals, invoke binder.
+            var binder = BuildClosureBinder( nestedLambda, closureInfo );
+
+            // Load the binder delegate
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( binder ) );
+
+            // Load each StrongBox local as arguments to the binder
+            foreach ( var capture in closureInfo.Captures )
+            {
+                var boxLocal = _strongBoxLocalMap![capture];
+                _ir.Emit( IROp.LoadLocal, boxLocal );
+            }
+
+            // Invoke the binder to produce the correctly-typed delegate
+            var binderInvoke = binder.GetType().GetMethod( "Invoke" )!;
+            _ir.Emit( IROp.CallVirt, _ir.AddOperand( binderInvoke ) );
         }
+    }
+
+    /// <summary>
+    /// Build a binder delegate that takes StrongBox locals and returns a delegate
+    /// with the original lambda's signature. The binder partially applies the
+    /// captured variables to the inner compiled delegate.
+    /// </summary>
+    private static Delegate BuildClosureBinder(
+        LambdaExpression nestedLambda,
+        ClosureInfo closureInfo )
+    {
+        // Create parameter expressions for StrongBox parameters (binder's args)
+        var boxParams = new ParameterExpression[closureInfo.Captures.Count];
+        for ( var i = 0; i < closureInfo.Captures.Count; i++ )
+        {
+            var captureType = closureInfo.Captures[i].Type;
+            var strongBoxType = typeof( StrongBox<> ).MakeGenericType( captureType );
+            boxParams[i] = Expression.Parameter( strongBoxType, $"box_{closureInfo.Captures[i].Name}" );
+        }
+
+        // Create parameter expressions for the original lambda's parameters
+        var originalParams = new ParameterExpression[nestedLambda.Parameters.Count];
+        for ( var i = 0; i < nestedLambda.Parameters.Count; i++ )
+        {
+            originalParams[i] = Expression.Parameter(
+                nestedLambda.Parameters[i].Type, nestedLambda.Parameters[i].Name );
+        }
+
+        // Build the inner call: closureInfo.CompiledDelegate(originalParams..., boxParams...)
+        var invokeArgs = new Expression[originalParams.Length + boxParams.Length];
+        for ( var i = 0; i < originalParams.Length; i++ )
+            invokeArgs[i] = originalParams[i];
+        for ( var i = 0; i < boxParams.Length; i++ )
+            invokeArgs[originalParams.Length + i] = boxParams[i];
+
+        var innerCall = Expression.Invoke(
+            Expression.Constant( closureInfo.CompiledDelegate ),
+            invokeArgs );
+
+        // Build the inner wrapper lambda with the original signature:
+        //   (originalParams...) => compiledDelegate(originalParams..., boxParams...)
+        var innerWrapper = Expression.Lambda( nestedLambda.Type, innerCall, originalParams );
+
+        // Build the outer binder lambda that takes StrongBox params and returns
+        // the correctly-typed delegate:
+        //   (boxParams...) => innerWrapper
+        //
+        // Determine the binder delegate type: Func<StrongBox<T1>, ..., OriginalDelegateType>
+        var binderParamTypes = new Type[boxParams.Length + 1];
+        for ( var i = 0; i < boxParams.Length; i++ )
+            binderParamTypes[i] = boxParams[i].Type;
+        binderParamTypes[^1] = nestedLambda.Type; // return type = original delegate type
+
+        var binderDelegateType = Expression.GetFuncType( binderParamTypes );
+        var binderLambda = Expression.Lambda( binderDelegateType, innerWrapper, boxParams );
+
+        // Compile the binder using System compiler (one-time cost at lowering time)
+        return binderLambda.Compile();
     }
 
     /// <summary>

@@ -52,6 +52,8 @@ public static class DeadCodePass
         return op is IROp.Label
             or IROp.BeginTry
             or IROp.BeginCatch
+            or IROp.BeginFilter
+            or IROp.BeginFilteredCatch
             or IROp.BeginFinally
             or IROp.BeginFault
             or IROp.EndTryCatch;

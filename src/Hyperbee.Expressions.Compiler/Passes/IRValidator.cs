@@ -53,7 +53,6 @@ public static class IRValidator
                 case IROp.LoadNull:
                 case IROp.LoadLocal:
                 case IROp.LoadArg:
-                case IROp.LoadClosureVar:
                 case IROp.LoadStaticField:
                 case IROp.Dup:
                 case IROp.LoadAddress:
@@ -66,7 +65,6 @@ public static class IRValidator
                 case IROp.Pop:
                 case IROp.StoreLocal:
                 case IROp.StoreArg:
-                case IROp.StoreClosureVar:
                 case IROp.StoreStaticField:
                 case IROp.BranchTrue:
                 case IROp.BranchFalse:
@@ -197,6 +195,14 @@ public static class IRValidator
                     stackDepth = 1; // catch pushes exception object
                     break;
 
+                case IROp.BeginFilter:
+                    stackDepth = 1; // filter pushes exception object
+                    break;
+
+                case IROp.BeginFilteredCatch:
+                    stackDepth = 1; // filtered catch pushes exception object
+                    break;
+
                 case IROp.BeginFinally:
                 case IROp.BeginFault:
                     stackDepth = 0;
@@ -241,10 +247,6 @@ public static class IRValidator
                     stackDepth--; // pops the switch value
                     break;
 
-                // --- Delegate creation ---
-                case IROp.CreateDelegate:
-                    stackDepth++; // pushes delegate
-                    break;
             }
 
             // Validate local references

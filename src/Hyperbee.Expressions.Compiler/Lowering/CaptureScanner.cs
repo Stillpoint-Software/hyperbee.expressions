@@ -11,7 +11,7 @@ public static class CaptureScanner
 {
     /// <summary>
     /// Find all <see cref="ParameterExpression"/>s in the root lambda that are
-    /// captured by nested lambda expressions.
+    /// captured by nested lambda expressions or referenced by RuntimeVariables.
     /// </summary>
     public static HashSet<ParameterExpression> FindCapturedVariables( LambdaExpression rootLambda )
     {
@@ -29,6 +29,9 @@ public static class CaptureScanner
 
         // Walk nested lambdas and find which outer-scope variables they reference
         FindCapturesInNestedLambdas( rootLambda.Body, outerScope, captured );
+
+        // RuntimeVariables requires live read/write access, so variables must be in StrongBox
+        FindRuntimeVariablesCaptures( rootLambda.Body, captured );
 
         return captured;
     }
@@ -344,6 +347,103 @@ public static class CaptureScanner
             case ConstantExpression:
             case DefaultExpression:
                 // Leaf nodes -- nothing to scan
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Recursively scan for RuntimeVariablesExpression nodes and force their
+    /// referenced variables into the captured set. RuntimeVariables requires
+    /// live read/write access, which is only possible through StrongBox.
+    /// </summary>
+    private static void FindRuntimeVariablesCaptures(
+        Expression? node,
+        HashSet<ParameterExpression> captured )
+    {
+        if ( node == null )
+            return;
+
+        switch ( node )
+        {
+            case RuntimeVariablesExpression runtimeVars:
+                foreach ( var variable in runtimeVars.Variables )
+                {
+                    captured.Add( variable );
+                }
+                break;
+
+            case BlockExpression block:
+                foreach ( var expr in block.Expressions )
+                {
+                    FindRuntimeVariablesCaptures( expr, captured );
+                }
+                break;
+
+            case ConditionalExpression conditional:
+                FindRuntimeVariablesCaptures( conditional.Test, captured );
+                FindRuntimeVariablesCaptures( conditional.IfTrue, captured );
+                FindRuntimeVariablesCaptures( conditional.IfFalse, captured );
+                break;
+
+            case BinaryExpression binary:
+                FindRuntimeVariablesCaptures( binary.Left, captured );
+                FindRuntimeVariablesCaptures( binary.Right, captured );
+                break;
+
+            case UnaryExpression unary:
+                FindRuntimeVariablesCaptures( unary.Operand, captured );
+                break;
+
+            case MethodCallExpression methodCall:
+                FindRuntimeVariablesCaptures( methodCall.Object, captured );
+                foreach ( var arg in methodCall.Arguments )
+                {
+                    FindRuntimeVariablesCaptures( arg, captured );
+                }
+                break;
+
+            case InvocationExpression invocation:
+                FindRuntimeVariablesCaptures( invocation.Expression, captured );
+                foreach ( var arg in invocation.Arguments )
+                {
+                    FindRuntimeVariablesCaptures( arg, captured );
+                }
+                break;
+
+            case TryExpression tryExpr:
+                FindRuntimeVariablesCaptures( tryExpr.Body, captured );
+                foreach ( var handler in tryExpr.Handlers )
+                {
+                    FindRuntimeVariablesCaptures( handler.Filter, captured );
+                    FindRuntimeVariablesCaptures( handler.Body, captured );
+                }
+                FindRuntimeVariablesCaptures( tryExpr.Finally, captured );
+                FindRuntimeVariablesCaptures( tryExpr.Fault, captured );
+                break;
+
+            case LambdaExpression lambda:
+                FindRuntimeVariablesCaptures( lambda.Body, captured );
+                break;
+
+            case LoopExpression loop:
+                FindRuntimeVariablesCaptures( loop.Body, captured );
+                break;
+
+            case SwitchExpression switchExpr:
+                FindRuntimeVariablesCaptures( switchExpr.SwitchValue, captured );
+                foreach ( var c in switchExpr.Cases )
+                {
+                    FindRuntimeVariablesCaptures( c.Body, captured );
+                }
+                FindRuntimeVariablesCaptures( switchExpr.DefaultBody, captured );
+                break;
+
+            case GotoExpression gotoExpr:
+                FindRuntimeVariablesCaptures( gotoExpr.Value, captured );
+                break;
+
+            case LabelExpression labelExpr:
+                FindRuntimeVariablesCaptures( labelExpr.DefaultValue, captured );
                 break;
         }
     }

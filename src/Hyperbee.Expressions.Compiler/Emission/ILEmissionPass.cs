@@ -283,6 +283,15 @@ public static class ILEmissionPass
                     ilg.BeginCatchBlock( (Type) ir.Operands[inst.Operand] );
                     break;
 
+                case IROp.BeginFilter:
+                    ilg.BeginExceptFilterBlock();
+                    break;
+
+                case IROp.BeginFilteredCatch:
+                    // null type signals a filtered catch (following a filter block)
+                    ilg.BeginCatchBlock( null! );
+                    break;
+
                 case IROp.BeginFinally:
                     ilg.BeginFinallyBlock();
                     break;
@@ -342,13 +351,6 @@ public static class ILEmissionPass
                 case IROp.LoadToken:
                     ilg.Emit( OpCodes.Ldtoken, (Type) ir.Operands[inst.Operand] );
                     break;
-
-                // Not in Phase 1
-                case IROp.CreateDelegate:
-                case IROp.LoadClosureVar:
-                case IROp.StoreClosureVar:
-                    throw new NotSupportedException(
-                        $"IR op {inst.Op} is not supported in this compiler phase." );
 
                 default:
                     throw new NotSupportedException( $"IR op {inst.Op} is not supported." );
