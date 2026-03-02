@@ -346,4 +346,67 @@ public class AssignmentTests
 
         Assert.AreEqual( 1024.0, fn() );
     }
+
+    // --- PostIncrementAssign ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void PostIncrementAssign_Int( CompilerType compilerType )
+    {
+        var x = Expression.Variable( typeof(int), "x" );
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 5 ) ),
+            Expression.PostIncrementAssign( x ), // returns 5, x becomes 6
+            x // should be 6
+        );
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6, fn() );
+    }
+
+    // --- PreIncrementAssign ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void PreIncrementAssign_Int( CompilerType compilerType )
+    {
+        var x = Expression.Variable( typeof(int), "x" );
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 5 ) ),
+            Expression.PreIncrementAssign( x ), // x becomes 6, returns 6
+            x // should be 6
+        );
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6, fn() );
+    }
+
+    // --- PostDecrementAssign ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void PostDecrementAssign_Int( CompilerType compilerType )
+    {
+        var x = Expression.Variable( typeof(int), "x" );
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 5 ) ),
+            Expression.PostDecrementAssign( x ), // returns 5, x becomes 4
+            x // should be 4
+        );
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 4, fn() );
+    }
 }

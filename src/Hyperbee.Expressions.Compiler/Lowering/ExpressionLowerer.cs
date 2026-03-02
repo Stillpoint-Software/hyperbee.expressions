@@ -1291,6 +1291,9 @@ public class ExpressionLowerer
         var switchValueLocal = _ir.DeclareLocal( node.SwitchValue.Type, "$switchValue" );
         _ir.Emit( IROp.StoreLocal, switchValueLocal );
 
+        // For non-void switches, use a result local so stack is empty at labels
+        var resultLocal = !isVoid ? _ir.DeclareLocal( node.Type, "$switchResult" ) : -1;
+
         var endLabel = _ir.DefineLabel();
         var caseLabels = new int[node.Cases.Count];
         for ( var i = 0; i < node.Cases.Count; i++ )
@@ -1335,13 +1338,16 @@ public class ExpressionLowerer
 
             if ( isVoid && node.Cases[i].Body.Type != typeof( void ) )
             {
-                // Non-void body in void switch -- discard result
                 _ir.Emit( IROp.Pop );
             }
             else if ( !isVoid && node.Cases[i].Body.Type == typeof( void ) )
             {
-                // Void body in non-void switch -- push default
                 LowerDefault( Expression.Default( node.Type ) );
+                _ir.Emit( IROp.StoreLocal, resultLocal );
+            }
+            else if ( !isVoid )
+            {
+                _ir.Emit( IROp.StoreLocal, resultLocal );
             }
 
             _ir.Emit( IROp.Branch, endLabel );
@@ -1357,11 +1363,20 @@ public class ExpressionLowerer
             {
                 _ir.Emit( IROp.Pop );
             }
+            else if ( !isVoid )
+            {
+                _ir.Emit( IROp.StoreLocal, resultLocal );
+            }
 
             _ir.Emit( IROp.Branch, endLabel );
         }
 
         _ir.MarkLabel( endLabel );
+
+        if ( !isVoid )
+        {
+            _ir.Emit( IROp.LoadLocal, resultLocal );
+        }
     }
 
     // --- Array operations ---

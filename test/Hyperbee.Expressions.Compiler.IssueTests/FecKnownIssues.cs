@@ -384,11 +384,10 @@ public class FecKnownIssues
     // --- Pattern 8: Conditional with boxing and unboxing ---
     //
     // FEC can mishandle type conversions when boxing/unboxing is involved
-    // in conditional branches. Hyperbee currently fails with IR validation
-    // error (stack depth 0 at Ret) — falls back to System until fix lands.
+    // in conditional branches.
 
     [TestMethod]
-    public void Pattern8_BoxUnbox_InConditional()
+    public void Pattern8_BoxUnbox_InConditional_HyperbeeNative()
     {
         var a = Expression.Parameter( typeof(int), "a" );
         var lambda = Expression.Lambda<Func<int, int>>(
@@ -400,7 +399,7 @@ public class FecKnownIssues
                 Expression.Constant( -1 )
             ), a );
 
-        var fn = HyperbeeCompiler.CompileWithFallback( lambda );
+        var fn = HyperbeeCompiler.Compile( lambda );
         Assert.AreEqual( 42, fn( 42 ) );
         Assert.AreEqual( -1, fn( -1 ) );
         Assert.AreEqual( -1, fn( 0 ) );

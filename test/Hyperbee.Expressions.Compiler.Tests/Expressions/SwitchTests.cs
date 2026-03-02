@@ -138,4 +138,30 @@ public class SwitchTests
         Assert.AreEqual( 20, fn( 2 ) );
         Assert.AreEqual( 0, fn( 99 ) );
     }
+
+    // ================================================================
+    // String switch without explicit comparison
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Switch_StringCases_NoExplicitComparison( CompilerType compilerType )
+    {
+        // Expression.Switch auto-resolves string.op_Equality when no comparison is provided
+        var s = Expression.Parameter( typeof(string), "s" );
+
+        var switchExpr = Expression.Switch(
+            s,
+            Expression.Constant( 0 ),
+            Expression.SwitchCase( Expression.Constant( 1 ), Expression.Constant( "hello" ) ),
+            Expression.SwitchCase( Expression.Constant( 2 ), Expression.Constant( "world" ) ) );
+
+        var lambda = Expression.Lambda<Func<string, int>>( switchExpr, s );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1, fn( "hello" ) );
+        Assert.AreEqual( 2, fn( "world" ) );
+        Assert.AreEqual( 0, fn( "other" ) );
+    }
 }
