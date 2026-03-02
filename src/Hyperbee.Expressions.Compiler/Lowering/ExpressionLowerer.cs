@@ -201,11 +201,81 @@ public class ExpressionLowerer
                 LowerInvoke( (InvocationExpression) node );
                 break;
 
-            // Unsupported types that should throw
+            // Loop
             case ExpressionType.Loop:
+                LowerLoop( (LoopExpression) node );
+                break;
+
+            // Switch
             case ExpressionType.Switch:
+                LowerSwitch( (SwitchExpression) node );
+                break;
+
+            // Array operations
+            case ExpressionType.NewArrayInit:
+                LowerNewArrayInit( (NewArrayExpression) node );
+                break;
+
+            case ExpressionType.NewArrayBounds:
+                LowerNewArrayBounds( (NewArrayExpression) node );
+                break;
+
+            case ExpressionType.ArrayIndex:
+                LowerArrayIndex( (BinaryExpression) node );
+                break;
+
+            case ExpressionType.ArrayLength:
+                LowerArrayLength( (UnaryExpression) node );
+                break;
+
+            // Index (indexer property or array access)
+            case ExpressionType.Index:
+                LowerIndex( (IndexExpression) node );
+                break;
+
+            // Collection initializers
+            case ExpressionType.ListInit:
+                LowerListInit( (ListInitExpression) node );
+                break;
+
+            case ExpressionType.MemberInit:
+                LowerMemberInit( (MemberInitExpression) node );
+                break;
+
+            // Null coalescing
+            case ExpressionType.Coalesce:
+                LowerCoalesce( (BinaryExpression) node );
+                break;
+
+            // Type equality (exact match)
+            case ExpressionType.TypeEqual:
+                LowerTypeEqual( (TypeBinaryExpression) node );
+                break;
+
+            // Quote (expression as data)
+            case ExpressionType.Quote:
+                LowerQuote( (UnaryExpression) node );
+                break;
+
+            // Power (Math.Pow)
+            case ExpressionType.Power:
+                LowerPower( (BinaryExpression) node );
+                break;
+
+            // Unbox
+            case ExpressionType.Unbox:
+                LowerUnbox( (UnaryExpression) node );
+                break;
+
+            // DebugInfo (no-op)
+            case ExpressionType.DebugInfo:
+                break;
+
+            // RuntimeVariables and Dynamic are low priority
+            case ExpressionType.RuntimeVariables:
+            case ExpressionType.Dynamic:
                 throw new NotSupportedException(
-                    $"Expression type {node.NodeType} is not supported in this compiler phase." );
+                    $"Expression type {node.NodeType} is not supported." );
 
             default:
                 if ( node.CanReduce )
@@ -545,10 +615,18 @@ public class ExpressionLowerer
             _ir.Emit( IROp.BranchFalse, falseLabel );
 
             LowerExpression( node.IfTrue );
+            if ( isVoidConditional && node.IfTrue.Type != typeof( void ) )
+            {
+                _ir.Emit( IROp.Pop );
+            }
             _ir.Emit( IROp.Branch, endLabel );
 
             _ir.MarkLabel( falseLabel );
             LowerExpression( node.IfFalse );
+            if ( isVoidConditional && node.IfFalse.Type != typeof( void ) )
+            {
+                _ir.Emit( IROp.Pop );
+            }
 
             _ir.MarkLabel( endLabel );
         }
@@ -938,6 +1016,542 @@ public class ExpressionLowerer
                 _ir.Emit( IROp.Pop );
             }
         }
+    }
+
+    // --- Loop ---
+
+    private void LowerLoop( LoopExpression node )
+    {
+        // Allocate labels for continue (top of loop) and break (after loop)
+        int continueLabel;
+        if ( node.ContinueLabel != null )
+        {
+            continueLabel = GetOrCreateLabel( node.ContinueLabel );
+        }
+        else
+        {
+            continueLabel = _ir.DefineLabel();
+        }
+
+        int breakLabel;
+        if ( node.BreakLabel != null )
+        {
+            breakLabel = GetOrCreateLabel( node.BreakLabel );
+        }
+        else
+        {
+            breakLabel = _ir.DefineLabel();
+        }
+
+        // continueLabel:
+        _ir.MarkLabel( continueLabel );
+
+        // Lower body
+        LowerExpression( node.Body );
+
+        // If body produces a value, discard it
+        if ( node.Body.Type != typeof( void ) )
+        {
+            _ir.Emit( IROp.Pop );
+        }
+
+        // Branch back to continue label
+        _ir.Emit( IROp.Branch, continueLabel );
+
+        // breakLabel:
+        _ir.MarkLabel( breakLabel );
+
+        // If the loop has a non-void break label, load the value
+        if ( node.BreakLabel != null && node.BreakLabel.Type != typeof( void ) )
+        {
+            var valueLocal = GetOrCreateLabelValueLocal( node.BreakLabel );
+            _ir.Emit( IROp.LoadLocal, valueLocal );
+        }
+    }
+
+    // --- Switch ---
+
+    private void LowerSwitch( SwitchExpression node )
+    {
+        var isVoid = node.Type == typeof( void );
+
+        // Lower the switch value and store in a temp
+        LowerExpression( node.SwitchValue );
+        var switchValueLocal = _ir.DeclareLocal( node.SwitchValue.Type, "$switchValue" );
+        _ir.Emit( IROp.StoreLocal, switchValueLocal );
+
+        var endLabel = _ir.DefineLabel();
+        var caseLabels = new int[node.Cases.Count];
+        for ( var i = 0; i < node.Cases.Count; i++ )
+        {
+            caseLabels[i] = _ir.DefineLabel();
+        }
+
+        var defaultLabel = node.DefaultBody != null ? _ir.DefineLabel() : endLabel;
+
+        // Emit test conditions
+        for ( var i = 0; i < node.Cases.Count; i++ )
+        {
+            var switchCase = node.Cases[i];
+
+            foreach ( var testValue in switchCase.TestValues )
+            {
+                _ir.Emit( IROp.LoadLocal, switchValueLocal );
+                LowerExpression( testValue );
+
+                if ( node.Comparison != null )
+                {
+                    // Use custom comparison method
+                    _ir.Emit( IROp.Call, _ir.AddOperand( node.Comparison ) );
+                }
+                else
+                {
+                    _ir.Emit( IROp.Ceq );
+                }
+
+                _ir.Emit( IROp.BranchTrue, caseLabels[i] );
+            }
+        }
+
+        // Branch to default or end
+        _ir.Emit( IROp.Branch, defaultLabel );
+
+        // Emit case bodies
+        for ( var i = 0; i < node.Cases.Count; i++ )
+        {
+            _ir.MarkLabel( caseLabels[i] );
+            LowerExpression( node.Cases[i].Body );
+
+            if ( isVoid && node.Cases[i].Body.Type != typeof( void ) )
+            {
+                // Non-void body in void switch -- discard result
+                _ir.Emit( IROp.Pop );
+            }
+            else if ( !isVoid && node.Cases[i].Body.Type == typeof( void ) )
+            {
+                // Void body in non-void switch -- push default
+                LowerDefault( Expression.Default( node.Type ) );
+            }
+
+            _ir.Emit( IROp.Branch, endLabel );
+        }
+
+        // Default body
+        if ( node.DefaultBody != null )
+        {
+            _ir.MarkLabel( defaultLabel );
+            LowerExpression( node.DefaultBody );
+
+            if ( isVoid && node.DefaultBody.Type != typeof( void ) )
+            {
+                _ir.Emit( IROp.Pop );
+            }
+
+            _ir.Emit( IROp.Branch, endLabel );
+        }
+
+        _ir.MarkLabel( endLabel );
+    }
+
+    // --- Array operations ---
+
+    private void LowerNewArrayInit( NewArrayExpression node )
+    {
+        var elementType = node.Type.GetElementType()!;
+
+        // Push array length
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Expressions.Count ) );
+
+        // newarr elementType
+        _ir.Emit( IROp.NewArray, _ir.AddOperand( elementType ) );
+
+        // For each element: dup, ldc.i4 index, lower element, stelem
+        for ( var i = 0; i < node.Expressions.Count; i++ )
+        {
+            _ir.Emit( IROp.Dup );
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( i ) );
+            LowerExpression( node.Expressions[i] );
+            _ir.Emit( IROp.StoreElement, _ir.AddOperand( elementType ) );
+        }
+    }
+
+    private void LowerNewArrayBounds( NewArrayExpression node )
+    {
+        var elementType = node.Type.GetElementType()!;
+
+        if ( node.Expressions.Count == 1 )
+        {
+            // Single dimension: push length, newarr
+            LowerExpression( node.Expressions[0] );
+            _ir.Emit( IROp.NewArray, _ir.AddOperand( elementType ) );
+        }
+        else
+        {
+            // Multi-dimensional: call Array.CreateInstance(Type, int[])
+            // Build the bounds array
+            var boundsCount = node.Expressions.Count;
+
+            // Push element type
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( elementType ) );
+
+            // Create int[] for bounds
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( boundsCount ) );
+            _ir.Emit( IROp.NewArray, _ir.AddOperand( typeof( int ) ) );
+
+            for ( var i = 0; i < boundsCount; i++ )
+            {
+                _ir.Emit( IROp.Dup );
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( i ) );
+                LowerExpression( node.Expressions[i] );
+                _ir.Emit( IROp.StoreElement, _ir.AddOperand( typeof( int ) ) );
+            }
+
+            // Call Array.CreateInstance(Type, int[])
+            var createInstanceMethod = typeof( Array ).GetMethod(
+                nameof( Array.CreateInstance ),
+                [typeof( Type ), typeof( int[] )] )!;
+            _ir.Emit( IROp.Call, _ir.AddOperand( createInstanceMethod ) );
+        }
+    }
+
+    private void LowerArrayIndex( BinaryExpression node )
+    {
+        // Lower array, lower index, ldelem
+        LowerExpression( node.Left );
+        LowerExpression( node.Right );
+        _ir.Emit( IROp.LoadElement, _ir.AddOperand( node.Type ) );
+    }
+
+    private void LowerArrayLength( UnaryExpression node )
+    {
+        LowerExpression( node.Operand );
+        _ir.Emit( IROp.LoadArrayLength );
+    }
+
+    // --- Index expression (indexer or array access) ---
+
+    private void LowerIndex( IndexExpression node )
+    {
+        LowerExpression( node.Object! );
+
+        foreach ( var arg in node.Arguments )
+        {
+            LowerExpression( arg );
+        }
+
+        if ( node.Indexer != null )
+        {
+            // Indexer property access -- call the getter
+            var getter = node.Indexer.GetGetMethod( true )
+                ?? throw new InvalidOperationException( $"Indexer '{node.Indexer.Name}' has no getter." );
+            _ir.Emit(
+                getter.IsVirtual ? IROp.CallVirt : IROp.Call,
+                _ir.AddOperand( getter ) );
+        }
+        else
+        {
+            // Array element access
+            _ir.Emit( IROp.LoadElement, _ir.AddOperand( node.Type ) );
+        }
+    }
+
+    // --- ListInit ---
+
+    private void LowerListInit( ListInitExpression node )
+    {
+        // Lower the new expression
+        LowerNewObject( node.NewExpression );
+
+        // For each initializer: dup, lower args, call Add method
+        foreach ( var initializer in node.Initializers )
+        {
+            _ir.Emit( IROp.Dup );
+
+            foreach ( var arg in initializer.Arguments )
+            {
+                LowerExpression( arg );
+            }
+
+            _ir.Emit(
+                initializer.AddMethod.IsVirtual ? IROp.CallVirt : IROp.Call,
+                _ir.AddOperand( initializer.AddMethod ) );
+
+            // If Add returns a value, discard it (most Add methods return void, but some like HashSet.Add return bool)
+            if ( initializer.AddMethod.ReturnType != typeof( void ) )
+            {
+                _ir.Emit( IROp.Pop );
+            }
+        }
+    }
+
+    // --- MemberInit ---
+
+    private void LowerMemberInit( MemberInitExpression node )
+    {
+        // Lower the new expression
+        LowerNewObject( node.NewExpression );
+
+        // Process each binding
+        foreach ( var binding in node.Bindings )
+        {
+            LowerMemberBinding( binding );
+        }
+    }
+
+    private void LowerMemberBinding( MemberBinding binding )
+    {
+        switch ( binding )
+        {
+            case MemberAssignment assignment:
+            {
+                _ir.Emit( IROp.Dup );
+                LowerExpression( assignment.Expression );
+
+                if ( assignment.Member is FieldInfo field )
+                {
+                    _ir.Emit( IROp.StoreField, _ir.AddOperand( field ) );
+                }
+                else if ( assignment.Member is PropertyInfo property )
+                {
+                    var setter = property.GetSetMethod( true )
+                        ?? throw new InvalidOperationException( $"Property '{property.Name}' has no setter." );
+                    _ir.Emit(
+                        setter.IsVirtual ? IROp.CallVirt : IROp.Call,
+                        _ir.AddOperand( setter ) );
+                }
+                break;
+            }
+
+            case MemberListBinding listBinding:
+            {
+                _ir.Emit( IROp.Dup );
+
+                // Load the member value
+                if ( listBinding.Member is FieldInfo field )
+                {
+                    _ir.Emit( IROp.LoadField, _ir.AddOperand( field ) );
+                }
+                else if ( listBinding.Member is PropertyInfo property )
+                {
+                    var getter = property.GetGetMethod( true )!;
+                    _ir.Emit(
+                        getter.IsVirtual ? IROp.CallVirt : IROp.Call,
+                        _ir.AddOperand( getter ) );
+                }
+
+                // For each initializer: dup, lower args, call Add method
+                foreach ( var initializer in listBinding.Initializers )
+                {
+                    _ir.Emit( IROp.Dup );
+
+                    foreach ( var arg in initializer.Arguments )
+                    {
+                        LowerExpression( arg );
+                    }
+
+                    _ir.Emit(
+                        initializer.AddMethod.IsVirtual ? IROp.CallVirt : IROp.Call,
+                        _ir.AddOperand( initializer.AddMethod ) );
+
+                    if ( initializer.AddMethod.ReturnType != typeof( void ) )
+                    {
+                        _ir.Emit( IROp.Pop );
+                    }
+                }
+
+                // Pop the member value (list reference)
+                _ir.Emit( IROp.Pop );
+                break;
+            }
+
+            case MemberMemberBinding memberBinding:
+            {
+                _ir.Emit( IROp.Dup );
+
+                // Load the member value
+                if ( memberBinding.Member is FieldInfo field )
+                {
+                    _ir.Emit( IROp.LoadField, _ir.AddOperand( field ) );
+                }
+                else if ( memberBinding.Member is PropertyInfo property )
+                {
+                    var getter = property.GetGetMethod( true )!;
+                    _ir.Emit(
+                        getter.IsVirtual ? IROp.CallVirt : IROp.Call,
+                        _ir.AddOperand( getter ) );
+                }
+
+                // Recursively process inner bindings
+                foreach ( var innerBinding in memberBinding.Bindings )
+                {
+                    LowerMemberBinding( innerBinding );
+                }
+
+                // Pop the member value
+                _ir.Emit( IROp.Pop );
+                break;
+            }
+
+            default:
+                throw new NotSupportedException( $"Member binding type {binding.BindingType} is not supported." );
+        }
+    }
+
+    // --- Coalesce (null coalescing ??) ---
+
+    private void LowerCoalesce( BinaryExpression node )
+    {
+        // Method-based coalescing
+        if ( node.Method != null )
+        {
+            LowerExpression( node.Left );
+            LowerExpression( node.Right );
+            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
+            return;
+        }
+
+        var endLabel = _ir.DefineLabel();
+        var useRightLabel = _ir.DefineLabel();
+
+        LowerExpression( node.Left );
+        _ir.Emit( IROp.Dup );
+
+        // For nullable value types, we need HasValue check
+        var leftType = node.Left.Type;
+        if ( leftType.IsValueType && Nullable.GetUnderlyingType( leftType ) != null )
+        {
+            // Store the nullable in a temp for HasValue check
+            var temp = _ir.DeclareLocal( leftType, "$coalesceTemp" );
+            _ir.Emit( IROp.StoreLocal, temp );
+            _ir.Emit( IROp.Pop ); // pop the dup'd value
+
+            // Load address and call HasValue
+            _ir.Emit( IROp.LoadLocal, temp );
+
+            var hasValueGetter = leftType.GetProperty( "HasValue" )!.GetGetMethod()!;
+            // For value types we need to store and load address
+            _ir.Emit( IROp.StoreLocal, temp );
+            _ir.Emit( IROp.LoadAddress, temp );
+            _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetter ) );
+            _ir.Emit( IROp.BranchFalse, useRightLabel );
+
+            // Has value -- get the value
+            _ir.Emit( IROp.LoadAddress, temp );
+            var getValueGetter = leftType.GetProperty( "Value" )!.GetGetMethod()!;
+            _ir.Emit( IROp.Call, _ir.AddOperand( getValueGetter ) );
+
+            // If the coalesce conversion exists, apply it
+            if ( node.Conversion != null )
+            {
+                var convDelegate = node.Conversion.Compile();
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( convDelegate ) );
+                // Stack: [value] [delegate]
+                // Need to swap -- use temp
+                var valTemp = _ir.DeclareLocal( Nullable.GetUnderlyingType( leftType )!, "$coalesceVal" );
+                var delTemp = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
+                _ir.Emit( IROp.StoreLocal, delTemp );
+                _ir.Emit( IROp.StoreLocal, valTemp );
+                _ir.Emit( IROp.LoadLocal, delTemp );
+                _ir.Emit( IROp.LoadLocal, valTemp );
+                var invokeMethod = convDelegate.GetType().GetMethod( "Invoke" )!;
+                _ir.Emit( IROp.CallVirt, _ir.AddOperand( invokeMethod ) );
+            }
+
+            _ir.Emit( IROp.Branch, endLabel );
+
+            _ir.MarkLabel( useRightLabel );
+            LowerExpression( node.Right );
+            _ir.MarkLabel( endLabel );
+        }
+        else
+        {
+            // Reference type -- use brfalse (null check)
+            _ir.Emit( IROp.BranchFalse, useRightLabel );
+
+            // If there is a conversion lambda, apply it
+            if ( node.Conversion != null )
+            {
+                var convDelegate = node.Conversion.Compile();
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( convDelegate ) );
+                // Stack: [left] [delegate] -- need swap
+                var leftTemp = _ir.DeclareLocal( node.Left.Type, "$coalesceLeft" );
+                var delTemp = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
+                _ir.Emit( IROp.StoreLocal, delTemp );
+                _ir.Emit( IROp.StoreLocal, leftTemp );
+                _ir.Emit( IROp.LoadLocal, delTemp );
+                _ir.Emit( IROp.LoadLocal, leftTemp );
+                var invokeMethod = convDelegate.GetType().GetMethod( "Invoke" )!;
+                _ir.Emit( IROp.CallVirt, _ir.AddOperand( invokeMethod ) );
+            }
+
+            _ir.Emit( IROp.Branch, endLabel );
+
+            _ir.MarkLabel( useRightLabel );
+            _ir.Emit( IROp.Pop ); // discard the dup'd null
+            LowerExpression( node.Right );
+
+            _ir.MarkLabel( endLabel );
+        }
+    }
+
+    // --- TypeEqual (exact type match) ---
+
+    private void LowerTypeEqual( TypeBinaryExpression node )
+    {
+        // expr.GetType() == typeof(T)
+        LowerExpression( node.Expression );
+
+        // If value type, box it first
+        if ( node.Expression.Type.IsValueType )
+        {
+            _ir.Emit( IROp.Box, _ir.AddOperand( node.Expression.Type ) );
+        }
+
+        // Call object.GetType()
+        var getTypeMethod = typeof( object ).GetMethod( nameof( object.GetType ) )!;
+        _ir.Emit( IROp.CallVirt, _ir.AddOperand( getTypeMethod ) );
+
+        // Load the Type token
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.TypeOperand ) );
+
+        // Compare
+        _ir.Emit( IROp.Ceq );
+    }
+
+    // --- Quote ---
+
+    private void LowerQuote( UnaryExpression node )
+    {
+        // Quote wraps an expression tree as data.
+        // Store the inner expression as a non-embeddable constant.
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Operand ) );
+    }
+
+    // --- Power ---
+
+    private void LowerPower( BinaryExpression node )
+    {
+        if ( node.Method != null )
+        {
+            LowerExpression( node.Left );
+            LowerExpression( node.Right );
+            _ir.Emit( IROp.Call, _ir.AddOperand( node.Method ) );
+            return;
+        }
+
+        LowerExpression( node.Left );
+        LowerExpression( node.Right );
+
+        var mathPow = typeof( Math ).GetMethod( nameof( Math.Pow ), [typeof( double ), typeof( double )] )!;
+        _ir.Emit( IROp.Call, _ir.AddOperand( mathPow ) );
+    }
+
+    // --- Unbox ---
+
+    private void LowerUnbox( UnaryExpression node )
+    {
+        LowerExpression( node.Operand );
+        _ir.Emit( IROp.UnboxAny, _ir.AddOperand( node.Type ) );
     }
 
     // --- Lambda / Invoke (Phase 3: Closures) ---

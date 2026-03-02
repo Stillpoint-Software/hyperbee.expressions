@@ -223,9 +223,110 @@ public static class HyperbeeCompiler
                 return false;
             }
 
+            case LoopExpression loop:
+                return ScanForNonEmbeddableConstants( loop.Body );
+
+            case SwitchExpression switchExpr:
+            {
+                if ( ScanForNonEmbeddableConstants( switchExpr.SwitchValue ) )
+                    return true;
+                foreach ( var switchCase in switchExpr.Cases )
+                {
+                    foreach ( var testValue in switchCase.TestValues )
+                    {
+                        if ( ScanForNonEmbeddableConstants( testValue ) )
+                            return true;
+                    }
+                    if ( ScanForNonEmbeddableConstants( switchCase.Body ) )
+                        return true;
+                }
+                if ( switchExpr.DefaultBody != null && ScanForNonEmbeddableConstants( switchExpr.DefaultBody ) )
+                    return true;
+                return false;
+            }
+
+            case IndexExpression indexExpr:
+            {
+                if ( indexExpr.Object != null && ScanForNonEmbeddableConstants( indexExpr.Object ) )
+                    return true;
+                foreach ( var arg in indexExpr.Arguments )
+                {
+                    if ( ScanForNonEmbeddableConstants( arg ) )
+                        return true;
+                }
+                return false;
+            }
+
+            case ListInitExpression listInit:
+            {
+                foreach ( var arg in listInit.NewExpression.Arguments )
+                {
+                    if ( ScanForNonEmbeddableConstants( arg ) )
+                        return true;
+                }
+                foreach ( var init in listInit.Initializers )
+                {
+                    foreach ( var arg in init.Arguments )
+                    {
+                        if ( ScanForNonEmbeddableConstants( arg ) )
+                            return true;
+                    }
+                }
+                return false;
+            }
+
+            case MemberInitExpression memberInit:
+            {
+                foreach ( var arg in memberInit.NewExpression.Arguments )
+                {
+                    if ( ScanForNonEmbeddableConstants( arg ) )
+                        return true;
+                }
+                return ScanMemberBindings( memberInit.Bindings );
+            }
+
+            case NewArrayExpression newArray:
+            {
+                foreach ( var expr in newArray.Expressions )
+                {
+                    if ( ScanForNonEmbeddableConstants( expr ) )
+                        return true;
+                }
+                return false;
+            }
+
             default:
                 return false;
         }
+    }
+
+    private static bool ScanMemberBindings( IEnumerable<MemberBinding> bindings )
+    {
+        foreach ( var binding in bindings )
+        {
+            switch ( binding )
+            {
+                case MemberAssignment assignment:
+                    if ( ScanForNonEmbeddableConstants( assignment.Expression ) )
+                        return true;
+                    break;
+                case MemberListBinding listBinding:
+                    foreach ( var init in listBinding.Initializers )
+                    {
+                        foreach ( var arg in init.Arguments )
+                        {
+                            if ( ScanForNonEmbeddableConstants( arg ) )
+                                return true;
+                        }
+                    }
+                    break;
+                case MemberMemberBinding memberBinding:
+                    if ( ScanMemberBindings( memberBinding.Bindings ) )
+                        return true;
+                    break;
+            }
+        }
+        return false;
     }
 
     /// <summary>

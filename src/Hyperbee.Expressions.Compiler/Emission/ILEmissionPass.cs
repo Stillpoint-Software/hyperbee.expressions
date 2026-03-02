@@ -306,6 +306,34 @@ public static class ILEmissionPass
                     ilg.Emit( OpCodes.Leave, ilLabels[inst.Operand] );
                     break;
 
+                // Array operations
+                case IROp.NewArray:
+                    ilg.Emit( OpCodes.Newarr, (Type) ir.Operands[inst.Operand] );
+                    break;
+
+                case IROp.LoadElement:
+                    EmitLoadElement( ilg, (Type) ir.Operands[inst.Operand] );
+                    break;
+
+                case IROp.StoreElement:
+                    EmitStoreElement( ilg, (Type) ir.Operands[inst.Operand] );
+                    break;
+
+                case IROp.LoadArrayLength:
+                    ilg.Emit( OpCodes.Ldlen );
+                    ilg.Emit( OpCodes.Conv_I4 );
+                    break;
+
+                // Load address of local variable
+                case IROp.LoadAddress:
+                    EmitLoadLocalAddress( ilg, inst.Operand );
+                    break;
+
+                // Load runtime type token
+                case IROp.LoadToken:
+                    ilg.Emit( OpCodes.Ldtoken, (Type) ir.Operands[inst.Operand] );
+                    break;
+
                 // Not in Phase 1
                 case IROp.CreateDelegate:
                 case IROp.LoadClosureVar:
@@ -504,6 +532,68 @@ public static class ILEmissionPass
 
         else if ( targetType != typeof( object ) )
             ilg.Emit( OpCodes.Castclass, targetType );
+    }
+
+    private static void EmitLoadLocalAddress( ILGenerator ilg, int index )
+    {
+        if ( index <= 255 )
+            ilg.Emit( OpCodes.Ldloca_S, (byte) index );
+        else
+            ilg.Emit( OpCodes.Ldloca, (short) index );
+    }
+
+    private static void EmitLoadElement( ILGenerator ilg, Type elementType )
+    {
+        if ( elementType == typeof( sbyte ) || elementType == typeof( bool ) )
+            ilg.Emit( OpCodes.Ldelem_I1 );
+        else if ( elementType == typeof( byte ) )
+            ilg.Emit( OpCodes.Ldelem_U1 );
+        else if ( elementType == typeof( short ) )
+            ilg.Emit( OpCodes.Ldelem_I2 );
+        else if ( elementType == typeof( ushort ) || elementType == typeof( char ) )
+            ilg.Emit( OpCodes.Ldelem_U2 );
+        else if ( elementType == typeof( int ) )
+            ilg.Emit( OpCodes.Ldelem_I4 );
+        else if ( elementType == typeof( uint ) )
+            ilg.Emit( OpCodes.Ldelem_U4 );
+        else if ( elementType == typeof( long ) || elementType == typeof( ulong ) )
+            ilg.Emit( OpCodes.Ldelem_I8 );
+        else if ( elementType == typeof( float ) )
+            ilg.Emit( OpCodes.Ldelem_R4 );
+        else if ( elementType == typeof( double ) )
+            ilg.Emit( OpCodes.Ldelem_R8 );
+        else if ( elementType == typeof( nint ) || elementType == typeof( nuint ) )
+            ilg.Emit( OpCodes.Ldelem_I );
+        else if ( elementType.IsValueType )
+            ilg.Emit( OpCodes.Ldelem, elementType );
+        else
+            ilg.Emit( OpCodes.Ldelem_Ref );
+    }
+
+    private static void EmitStoreElement( ILGenerator ilg, Type elementType )
+    {
+        if ( elementType == typeof( sbyte ) || elementType == typeof( bool ) )
+            ilg.Emit( OpCodes.Stelem_I1 );
+        else if ( elementType == typeof( byte ) )
+            ilg.Emit( OpCodes.Stelem_I1 );
+        else if ( elementType == typeof( short ) )
+            ilg.Emit( OpCodes.Stelem_I2 );
+        else if ( elementType == typeof( ushort ) || elementType == typeof( char ) )
+            ilg.Emit( OpCodes.Stelem_I2 );
+        else if ( elementType == typeof( int ) || elementType == typeof( uint ) )
+            ilg.Emit( OpCodes.Stelem_I4 );
+        else if ( elementType == typeof( long ) || elementType == typeof( ulong ) )
+            ilg.Emit( OpCodes.Stelem_I8 );
+        else if ( elementType == typeof( float ) )
+            ilg.Emit( OpCodes.Stelem_R4 );
+        else if ( elementType == typeof( double ) )
+            ilg.Emit( OpCodes.Stelem_R8 );
+        else if ( elementType == typeof( nint ) || elementType == typeof( nuint ) )
+            ilg.Emit( OpCodes.Stelem_I );
+        else if ( elementType.IsValueType )
+            ilg.Emit( OpCodes.Stelem, elementType );
+        else
+            ilg.Emit( OpCodes.Stelem_Ref );
     }
 
     private static void EmitConvert( ILGenerator ilg, Type targetType, bool isChecked )
