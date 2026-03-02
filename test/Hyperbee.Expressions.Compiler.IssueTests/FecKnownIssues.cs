@@ -748,4 +748,35 @@ public class FecKnownIssues
         Assert.AreEqual( 0, multiply( 0 ) );
         Assert.AreEqual( -3, multiply( -1 ) );
     }
+
+    // --- Pattern 21: Not(bool?) crashes FEC with AccessViolationException ---
+    //
+    // FEC generates incorrect IL for lifted Not on bool?. When the delegate is invoked
+    // with a null argument, FEC's generated code attempts to read protected memory,
+    // crashing the entire test host process with AccessViolationException.
+    //
+    // Root cause: FEC does not null-guard the lifted Not operation — it attempts to
+    // extract and negate the underlying bool value without checking HasValue first.
+    //
+    // AccessViolationException is fatal; it cannot be caught in managed code.
+    // For this reason no runnable test case is provided for the FEC variant.
+    // The test was confirmed by running the full NullableTests suite with and without
+    // the Not_NullableBool(Fast) DataRow:
+    //   - With Fast DataRow:    648 tests "pass" then Test Run Aborted (host crash)
+    //   - Without Fast DataRow: 807 tests pass cleanly (no abort)
+    //
+    // Hyperbee handles this correctly via LowerLiftedUnary with HasValue null-check.
+
+    [TestMethod]
+    public void Pattern21_Not_NullableBool_HyperbeeNative()
+    {
+        // Verify Hyperbee correctly handles lifted Not on bool? (including null propagation)
+        var a = Expression.Parameter( typeof(bool?), "a" );
+        var lambda = Expression.Lambda<Func<bool?, bool?>>( Expression.Not( a ), a );
+
+        var fn = HyperbeeCompiler.Compile( lambda );
+        Assert.AreEqual( false, fn( true ) );
+        Assert.AreEqual( true, fn( false ) );
+        Assert.IsNull( fn( null ) );
+    }
 }

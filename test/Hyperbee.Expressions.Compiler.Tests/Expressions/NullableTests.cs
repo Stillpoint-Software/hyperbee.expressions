@@ -174,6 +174,15 @@ public class NullableTests
     [DataRow( CompilerType.Hyperbee )]
     public void Not_NullableBool( CompilerType compilerType )
     {
+        // FEC known bug: FEC generates incorrect IL for Not(bool?).
+        // Calling ANY value through the compiled delegate causes AccessViolationException
+        // (crashes the test host). We fail immediately rather than invoking the delegate.
+        // See FecKnownIssues.Pattern21_Not_NullableBool_HyperbeeNative for Hyperbee verification.
+        if ( compilerType == CompilerType.Fast )
+            Assert.Fail( "FEC known bug: Not(bool?) with any Nullable<bool> arg causes " +
+                         "AccessViolationException (crashes test host). " +
+                         "Pattern documented in FecKnownIssues.Pattern21." );
+
         var a = Expression.Parameter( typeof(bool?), "a" );
         var not = Expression.Not( a );
         var lambda = Expression.Lambda<Func<bool?, bool?>>( not, a );
