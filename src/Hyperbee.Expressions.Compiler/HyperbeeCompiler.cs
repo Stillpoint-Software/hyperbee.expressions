@@ -23,7 +23,7 @@ public static class HyperbeeCompiler
     {
         var ir = LowerToIR( lambda, out var needsConstantsArray );
 
-        RunPasses( ir );
+        TransformIR( ir );
 
         return EmitDelegate( ir, lambda, needsConstantsArray );
     }
@@ -41,7 +41,7 @@ public static class HyperbeeCompiler
         return ir;
     }
 
-    private static void RunPasses( IRBuilder ir )
+    private static void TransformIR( IRBuilder ir )
     {
         StackSpillPass.Run( ir );
     }
