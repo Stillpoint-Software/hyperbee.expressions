@@ -25,6 +25,7 @@
     <Project Path="test/Hyperbee.Expressions.Tests/Hyperbee.Expressions.Tests.csproj" />
   </Folder>
   <Project Path="src/Hyperbee.ExpressionCompiler/Hyperbee.ExpressionCompiler.csproj" />
+  <Project Path="src/Hyperbee.Expressions.Compiler/Hyperbee.Expressions.Compiler.csproj" />
   <Project Path="src/Hyperbee.Expressions.Lab/Hyperbee.Expressions.Lab.csproj" />
   <Project Path="src/Hyperbee.Expressions/Hyperbee.Expressions.csproj" />
 </Solution>
