@@ -783,4 +783,282 @@ public class NullableArithmeticTests
         Assert.AreEqual( -1, fn( -1L ) );
         Assert.IsNull( fn( null ) );
     }
+
+    // ================================================================
+    // Divide — nullable float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Divide_NullableFloat( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float?), "a" );
+        var b = Expression.Parameter( typeof(float?), "b" );
+        var lambda = Expression.Lambda<Func<float?, float?, float?>>( Expression.Divide( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 2.0f, fn( 6.0f, 3.0f ) );
+        Assert.IsNull( fn( 6.0f, null ) );
+        Assert.IsNull( fn( null, 3.0f ) );
+    }
+
+    // ================================================================
+    // Modulo — nullable decimal
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Modulo_NullableDecimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal?), "a" );
+        var b = Expression.Parameter( typeof(decimal?), "b" );
+        var lambda = Expression.Lambda<Func<decimal?, decimal?, decimal?>>( Expression.Modulo( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1m, fn( 7m, 3m ) );
+        Assert.AreEqual( 0m, fn( 6m, 3m ) );
+        Assert.IsNull( fn( 7m, null ) );
+        Assert.IsNull( fn( null, 3m ) );
+    }
+
+    // ================================================================
+    // Multiply — nullable double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Multiply_NullableDouble( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(double?), "a" );
+        var b = Expression.Parameter( typeof(double?), "b" );
+        var lambda = Expression.Lambda<Func<double?, double?, double?>>( Expression.Multiply( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6.0, fn( 2.0, 3.0 ) );
+        Assert.IsNull( fn( 2.0, null ) );
+        Assert.IsNull( fn( null, 3.0 ) );
+    }
+
+    // ================================================================
+    // NotEqual — nullable double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NotEqual_NullableDouble( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(double?), "a" );
+        var b = Expression.Parameter( typeof(double?), "b" );
+        var lambda = Expression.Lambda<Func<double?, double?, bool>>( Expression.NotEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( 1.5, 1.5 ) );
+        Assert.IsTrue( fn( 1.5, 2.5 ) );
+        Assert.IsTrue( fn( 1.5, null ) );
+        Assert.IsTrue( fn( null, 1.5 ) );
+        Assert.IsFalse( fn( null, null ) );
+    }
+
+    // ================================================================
+    // NotEqual — nullable int
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NotEqual_NullableInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int?), "a" );
+        var b = Expression.Parameter( typeof(int?), "b" );
+        var lambda = Expression.Lambda<Func<int?, int?, bool>>( Expression.NotEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( 5, 5 ) );
+        Assert.IsTrue( fn( 5, 6 ) );
+        Assert.IsTrue( fn( 5, null ) );
+        Assert.IsTrue( fn( null, 5 ) );
+        Assert.IsFalse( fn( null, null ) );
+    }
+
+    // ================================================================
+    // LessThan — nullable double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThan_NullableDouble( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(double?), "a" );
+        var b = Expression.Parameter( typeof(double?), "b" );
+        var lambda = Expression.Lambda<Func<double?, double?, bool>>( Expression.LessThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 1.0, 2.0 ) );
+        Assert.IsFalse( fn( 2.0, 1.0 ) );
+        Assert.IsFalse( fn( 2.0, 2.0 ) );
+        Assert.IsFalse( fn( null, 2.0 ) );
+        Assert.IsFalse( fn( 1.0, null ) );
+    }
+
+    // ================================================================
+    // Equal — nullable float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Equal_NullableFloat( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float?), "a" );
+        var b = Expression.Parameter( typeof(float?), "b" );
+        var lambda = Expression.Lambda<Func<float?, float?, bool>>( Expression.Equal( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 1.5f, 1.5f ) );
+        Assert.IsFalse( fn( 1.5f, 2.5f ) );
+        Assert.IsFalse( fn( 1.5f, null ) );
+        Assert.IsTrue( fn( null, null ) );
+    }
+
+    // ================================================================
+    // GreaterThan — nullable float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThan_NullableFloat( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float?), "a" );
+        var b = Expression.Parameter( typeof(float?), "b" );
+        var lambda = Expression.Lambda<Func<float?, float?, bool>>( Expression.GreaterThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 3.0f, 1.0f ) );
+        Assert.IsFalse( fn( 1.0f, 3.0f ) );
+        Assert.IsFalse( fn( null, 1.0f ) );
+        Assert.IsFalse( fn( 3.0f, null ) );
+    }
+
+    // ================================================================
+    // GreaterThanOrEqual — nullable long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThanOrEqual_NullableLong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long?), "a" );
+        var b = Expression.Parameter( typeof(long?), "b" );
+        var lambda = Expression.Lambda<Func<long?, long?, bool>>( Expression.GreaterThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 5L, 3L ) );
+        Assert.IsTrue( fn( 5L, 5L ) );
+        Assert.IsFalse( fn( 3L, 5L ) );
+        Assert.IsFalse( fn( null, 5L ) );
+        Assert.IsFalse( fn( 5L, null ) );
+        Assert.IsFalse( fn( null, null ) );
+    }
+
+    // ================================================================
+    // AddChecked — nullable long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void AddChecked_NullableLong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long?), "a" );
+        var b = Expression.Parameter( typeof(long?), "b" );
+        var lambda = Expression.Lambda<Func<long?, long?, long?>>( Expression.AddChecked( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 10L, fn( 4L, 6L ) );
+        Assert.IsNull( fn( 4L, null ) );
+        Assert.IsNull( fn( null, 6L ) );
+
+        var threw = false;
+        try { fn( long.MaxValue, 1L ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from AddChecked overflow on long?." );
+    }
+
+    // ================================================================
+    // SubtractChecked — nullable long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void SubtractChecked_NullableLong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long?), "a" );
+        var b = Expression.Parameter( typeof(long?), "b" );
+        var lambda = Expression.Lambda<Func<long?, long?, long?>>( Expression.SubtractChecked( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 4L, fn( 10L, 6L ) );
+        Assert.IsNull( fn( 10L, null ) );
+        Assert.IsNull( fn( null, 6L ) );
+
+        var threw = false;
+        try { fn( long.MinValue, 1L ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from SubtractChecked overflow on long?." );
+    }
+
+    // ================================================================
+    // Coalesce — nullable decimal
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Coalesce_NullableDecimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal?), "a" );
+        var coalesce = Expression.Coalesce( a, Expression.Constant( 0m ) );
+        var lambda = Expression.Lambda<Func<decimal?, decimal>>( coalesce, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3.14m, fn( 3.14m ) );
+        Assert.AreEqual( 0m, fn( null ) );
+    }
+
+    // ================================================================
+    // GetValueOrDefault with explicit default — nullable int
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GetValueOrDefault_WithDefault_NullableInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int?), "a" );
+        var getVal = Expression.Call( a, typeof(int?).GetMethod( "GetValueOrDefault", [typeof(int)] )!, Expression.Constant( 99 ) );
+        var lambda = Expression.Lambda<Func<int?, int>>( getVal, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42, fn( 42 ) );
+        Assert.AreEqual( 99, fn( null ) );
+    }
 }

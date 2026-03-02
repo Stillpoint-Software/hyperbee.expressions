@@ -455,4 +455,325 @@ public class ArrayTests
         var fn = lambda.Compile( compilerType );
         Assert.AreEqual( 20, fn() );
     }
+
+    // ================================================================
+    // ================================================================
+    // ArrayAccess — read and write element
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayAccess_ReadAfterWrite_ReturnsWrittenValue( CompilerType compilerType )
+    {
+        var arr = Expression.Parameter( typeof( int[] ), "arr" );
+        var idx = Expression.Parameter( typeof( int ), "idx" );
+        var val = Expression.Parameter( typeof( int ), "val" );
+
+        var body = Expression.Block(
+            Expression.Assign( Expression.ArrayAccess( arr, idx ), val ),
+            Expression.ArrayAccess( arr, idx ) );
+
+        var lambda = Expression.Lambda<Func<int[], int, int, int>>( body, arr, idx, val );
+        var fn = lambda.Compile( compilerType );
+
+        var testArr = new int[5];
+        Assert.AreEqual( 42, fn( testArr, 2, 42 ) );
+        Assert.AreEqual( 42, testArr[2] );
+    }
+
+    // ================================================================
+    // ArrayLength — empty and non-empty
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayLength_Property_ReturnsCount( CompilerType compilerType )
+    {
+        var arr = Expression.Parameter( typeof( string[] ), "arr" );
+        var lengthProp = typeof( string[] ).GetProperty( "Length" )!;
+        var lambda = Expression.Lambda<Func<string[], int>>( Expression.Property( arr, lengthProp ), arr );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0, fn( [] ) );
+        Assert.AreEqual( 3, fn( ["a", "b", "c"] ) );
+    }
+
+    // ================================================================
+    // NewArrayInit — computed values
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NewArrayInit_ComputedValues( CompilerType compilerType )
+    {
+        var n = Expression.Parameter( typeof( int ), "n" );
+        var lambda = Expression.Lambda<Func<int, int[]>>(
+            Expression.NewArrayInit( typeof( int ),
+                n,
+                Expression.Multiply( n, Expression.Constant( 2 ) ),
+                Expression.Multiply( n, Expression.Constant( 3 ) ) ),
+            n );
+        var fn = lambda.Compile( compilerType );
+        var result = fn( 5 );
+
+        Assert.AreEqual( 3, result.Length );
+        Assert.AreEqual( 5, result[0] );
+        Assert.AreEqual( 10, result[1] );
+        Assert.AreEqual( 15, result[2] );
+    }
+
+    // ================================================================
+    // ArrayIndex — with negative-testing (would throw, test valid range)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayIndex_LastElement_ReturnsCorrect( CompilerType compilerType )
+    {
+        var arr = Expression.Parameter( typeof( int[] ), "arr" );
+        var len = Expression.Property( arr, "Length" );
+        var lastIdx = Expression.Subtract( len, Expression.Constant( 1 ) );
+        var lambda = Expression.Lambda<Func<int[], int>>( Expression.ArrayIndex( arr, lastIdx ), arr );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 5, fn( [1, 2, 3, 4, 5] ) );
+        Assert.AreEqual( 99, fn( [99] ) );
+    }
+
+    // ================================================================
+    // NewArrayInit — string array
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NewArrayInit_StringArray_ThreeElements( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<string[]>>(
+            Expression.NewArrayInit( typeof( string ),
+                Expression.Constant( "a" ),
+                Expression.Constant( "b" ),
+                Expression.Constant( "c" ) ) );
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+
+        Assert.AreEqual( 3, result.Length );
+        Assert.AreEqual( "a", result[0] );
+        Assert.AreEqual( "b", result[1] );
+        Assert.AreEqual( "c", result[2] );
+    }
+
+    // ================================================================
+    // Array — mutate multiple elements then sum
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayAccess_MutateMultipleElements_SumViaIndex( CompilerType compilerType )
+    {
+        var arr = Expression.Variable( typeof( int[] ), "arr" );
+        var body = Expression.Block(
+            new[] { arr },
+            Expression.Assign( arr, Expression.NewArrayInit( typeof( int ),
+                Expression.Constant( 1 ), Expression.Constant( 2 ), Expression.Constant( 3 ) ) ),
+            Expression.Assign( Expression.ArrayAccess( arr, Expression.Constant( 0 ) ), Expression.Constant( 10 ) ),
+            Expression.Assign( Expression.ArrayAccess( arr, Expression.Constant( 2 ) ), Expression.Constant( 30 ) ),
+            Expression.Add(
+                Expression.Add( Expression.ArrayIndex( arr, Expression.Constant( 0 ) ),
+                               Expression.ArrayIndex( arr, Expression.Constant( 1 ) ) ),
+                Expression.ArrayIndex( arr, Expression.Constant( 2 ) ) ) );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42, fn() );  // 10 + 2 + 30 = 42
+    }
+
+    // ================================================================
+    // More 2D array and access patterns
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayAccess_2D_WriteAndRead( CompilerType compilerType )
+    {
+        // new int[2,2]; arr[1,1] = 99; return arr[1,1]
+        var arr = Expression.Variable( typeof( int[,] ), "arr" );
+        var body = Expression.Block(
+            new[] { arr },
+            Expression.Assign( arr, Expression.NewArrayBounds( typeof( int ),
+                Expression.Constant( 2 ), Expression.Constant( 2 ) ) ),
+            Expression.Assign(
+                Expression.ArrayAccess( arr, Expression.Constant( 1 ), Expression.Constant( 1 ) ),
+                Expression.Constant( 99 ) ),
+            Expression.ArrayAccess( arr, Expression.Constant( 1 ), Expression.Constant( 1 ) ) );
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 99, fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayAccess_2D_DefaultValueIsZero( CompilerType compilerType )
+    {
+        // new int[3,3]; return arr[2,2] (should be default 0)
+        var arr = Expression.Variable( typeof( int[,] ), "arr" );
+        var body = Expression.Block(
+            new[] { arr },
+            Expression.Assign( arr, Expression.NewArrayBounds( typeof( int ),
+                Expression.Constant( 3 ), Expression.Constant( 3 ) ) ),
+            Expression.ArrayAccess( arr, Expression.Constant( 2 ), Expression.Constant( 2 ) ) );
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0, fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NewArrayBounds_3D_CreatesCorrectDimensions( CompilerType compilerType )
+    {
+        // new int[2, 3, 4]
+        var lambda = Expression.Lambda<Func<int[,,]>>(
+            Expression.NewArrayBounds( typeof( int ),
+                Expression.Constant( 2 ),
+                Expression.Constant( 3 ),
+                Expression.Constant( 4 ) ) );
+        var fn = lambda.Compile( compilerType );
+
+        var arr = fn();
+        Assert.AreEqual( 2, arr.GetLength( 0 ) );
+        Assert.AreEqual( 3, arr.GetLength( 1 ) );
+        Assert.AreEqual( 4, arr.GetLength( 2 ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NewArrayBounds_1D_ZeroLength_EmptyArray( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<int[]>>(
+            Expression.NewArrayBounds( typeof( int ), Expression.Constant( 0 ) ) );
+        var fn = lambda.Compile( compilerType );
+
+        var arr = fn();
+        Assert.AreEqual( 0, arr.Length );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NewArrayInit_BoolArray_AllTrue( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<bool[]>>(
+            Expression.NewArrayInit( typeof( bool ),
+                Expression.Constant( true ),
+                Expression.Constant( true ),
+                Expression.Constant( true ) ) );
+        var fn = lambda.Compile( compilerType );
+
+        var arr = fn();
+        Assert.AreEqual( 3, arr.Length );
+        Assert.IsTrue( arr[0] );
+        Assert.IsTrue( arr[1] );
+        Assert.IsTrue( arr[2] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayLength_ViaPropertyAccess_EqualsCount( CompilerType compilerType )
+    {
+        var arr = Expression.Parameter( typeof( int[] ), "arr" );
+        var lengthProp = typeof( int[] ).GetProperty( "Length" )!;
+        var lambda = Expression.Lambda<Func<int[], int>>(
+            Expression.Property( arr, lengthProp ), arr );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 5, fn( new int[5] ) );
+        Assert.AreEqual( 0, fn( Array.Empty<int>() ) );
+        Assert.AreEqual( 1, fn( new int[1] ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayIndex_OutOfBounds_Throws( CompilerType compilerType )
+    {
+        var arr = Expression.Parameter( typeof( int[] ), "arr" );
+        var lambda = Expression.Lambda<Func<int[], int>>(
+            Expression.ArrayIndex( arr, Expression.Constant( 10 ) ), arr );
+        var fn = lambda.Compile( compilerType );
+
+        var threw = false;
+        try { fn( new[] { 1, 2, 3 } ); }
+        catch ( IndexOutOfRangeException ) { threw = true; }
+        Assert.IsTrue( threw );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NewArrayInit_LongArray_AccessLastElement( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<long[]>>(
+            Expression.NewArrayInit( typeof( long ),
+                Expression.Constant( 1L ),
+                Expression.Constant( long.MaxValue ),
+                Expression.Constant( long.MinValue ) ) );
+        var fn = lambda.Compile( compilerType );
+
+        var arr = fn();
+        Assert.AreEqual( 3, arr.Length );
+        Assert.AreEqual( 1L, arr[0] );
+        Assert.AreEqual( long.MaxValue, arr[1] );
+        Assert.AreEqual( long.MinValue, arr[2] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ArrayAccess_SumAllElements( CompilerType compilerType )
+    {
+        var arr = Expression.Variable( typeof( int[] ), "arr" );
+        var body = Expression.Block(
+            new[] { arr },
+            Expression.Assign( arr, Expression.NewArrayInit( typeof( int ),
+                Expression.Constant( 10 ),
+                Expression.Constant( 20 ),
+                Expression.Constant( 30 ) ) ),
+            Expression.Add(
+                Expression.Add(
+                    Expression.ArrayIndex( arr, Expression.Constant( 0 ) ),
+                    Expression.ArrayIndex( arr, Expression.Constant( 1 ) ) ),
+                Expression.ArrayIndex( arr, Expression.Constant( 2 ) ) ) );
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 60, fn() );
+    }
 }

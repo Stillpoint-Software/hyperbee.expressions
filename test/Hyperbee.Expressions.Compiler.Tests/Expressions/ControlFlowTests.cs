@@ -428,4 +428,236 @@ public class ControlFlowTests
         Assert.AreEqual( -1, fn( -3 ) );
         Assert.AreEqual( -1, fn( 0 ) );
     }
+
+    // ================================================================
+    // Goto — skip over multiple expressions in a block
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Goto_SkipsMultipleExpressionsInBlock( CompilerType compilerType )
+    {
+        // var x = 1; goto end;
+        // x += 10; x += 100; x += 1000;  // all skipped
+        // end: return x;
+        var x = Expression.Variable( typeof( int ), "x" );
+        var end = Expression.Label( typeof( int ), "end" );
+
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 1 ) ),
+            Expression.Goto( end, x ),
+            Expression.AddAssign( x, Expression.Constant( 10 ) ),
+            Expression.AddAssign( x, Expression.Constant( 100 ) ),
+            Expression.AddAssign( x, Expression.Constant( 1000 ) ),
+            Expression.Label( end, x ) );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1, fn() );
+    }
+
+    // ================================================================
+    // Label with string type default
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Label_StringType_DefaultNull_WhenFallThrough( CompilerType compilerType )
+    {
+        var done = Expression.Label( typeof( string ), "done" );
+
+        // Fall through to the label — default(string) = null
+        var body = Expression.Block(
+            Expression.Label( done, Expression.Default( typeof( string ) ) ) );
+
+        var lambda = Expression.Lambda<Func<string>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsNull( fn() );
+    }
+
+    // ================================================================
+    // Goto — from inner block to outer label
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Goto_FromInnerBlock_JumpsToOuterLabel( CompilerType compilerType )
+    {
+        // outer block:
+        //   var x = 0;
+        //   inner block:
+        //     x = 5;
+        //     goto done;
+        //     x = 99;  // skipped
+        //   done: return x;
+        var x = Expression.Variable( typeof( int ), "x" );
+        var done = Expression.Label( typeof( int ), "done" );
+
+        var inner = Expression.Block(
+            Expression.Assign( x, Expression.Constant( 5 ) ),
+            Expression.Goto( done, x ),
+            Expression.Assign( x, Expression.Constant( 99 ) ) );
+
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 0 ) ),
+            inner,
+            Expression.Assign( x, Expression.Constant( -1 ) ),  // skipped
+            Expression.Label( done, x ) );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 5, fn() );
+    }
+
+    // ================================================================
+    // Multiple gotos to same label
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Goto_MultipleJumpsToSameLabel_CorrectValueUsed( CompilerType compilerType )
+    {
+        // if (x > 10) goto done(100); if (x > 5) goto done(50); done: return default(-1)
+        var x = Expression.Parameter( typeof( int ), "x" );
+        var done = Expression.Label( typeof( int ), "done" );
+
+        var body = Expression.Block(
+            Expression.IfThen(
+                Expression.GreaterThan( x, Expression.Constant( 10 ) ),
+                Expression.Goto( done, Expression.Constant( 100 ) ) ),
+            Expression.IfThen(
+                Expression.GreaterThan( x, Expression.Constant( 5 ) ),
+                Expression.Goto( done, Expression.Constant( 50 ) ) ),
+            Expression.Label( done, Expression.Constant( -1 ) ) );
+
+        var lambda = Expression.Lambda<Func<int, int>>( body, x );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 100, fn( 15 ) );
+        Assert.AreEqual( 50, fn( 7 ) );
+        Assert.AreEqual( -1, fn( 3 ) );
+    }
+
+    // ================================================================
+    // Return — two conditional early exits, first one taken
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Return_TwoEarlyExits_CorrectPathTaken( CompilerType compilerType )
+    {
+        // if (x < 0) return -1;
+        // if (x > 100) return 2;
+        // return 0;
+        var x = Expression.Parameter( typeof( int ), "x" );
+        var ret = Expression.Label( typeof( int ), "ret" );
+
+        var body = Expression.Block(
+            Expression.IfThen(
+                Expression.LessThan( x, Expression.Constant( 0 ) ),
+                Expression.Goto( ret, Expression.Constant( -1 ) ) ),
+            Expression.IfThen(
+                Expression.GreaterThan( x, Expression.Constant( 100 ) ),
+                Expression.Goto( ret, Expression.Constant( 2 ) ) ),
+            Expression.Label( ret, Expression.Constant( 0 ) ) );
+
+        var lambda = Expression.Lambda<Func<int, int>>( body, x );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -1, fn( -5 ) );
+        Assert.AreEqual( 2, fn( 200 ) );
+        Assert.AreEqual( 0, fn( 50 ) );
+    }
+
+    // ================================================================
+    // Goto — chained jumps through multiple labels
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Goto_ChainedJumps_ReachesFinalLabel( CompilerType compilerType )
+    {
+        // goto A; ... A: goto B; ... B: goto C; ... C: return 42;
+        var x = Expression.Variable( typeof( int ), "x" );
+        var labelA = Expression.Label( "A" );
+        var labelB = Expression.Label( "B" );
+        var labelC = Expression.Label( typeof( int ), "C" );
+
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 0 ) ),
+            Expression.Goto( labelA ),
+            Expression.Assign( x, Expression.Constant( -100 ) ),  // skipped
+            Expression.Label( labelA ),
+            Expression.Goto( labelB ),
+            Expression.Assign( x, Expression.Constant( -200 ) ),  // skipped
+            Expression.Label( labelB ),
+            Expression.Assign( x, Expression.Constant( 42 ) ),
+            Expression.Goto( labelC, x ),
+            Expression.Label( labelC, Expression.Constant( 0 ) ) );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42, fn() );
+    }
+
+    // ================================================================
+    // Goto in loop body — exits loop via outer label
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Goto_InsideLoopBody_ExitsViaLabel( CompilerType compilerType )
+    {
+        // Finds first element > threshold and returns it
+        var arr = Expression.Parameter( typeof( int[] ), "arr" );
+        var threshold = Expression.Parameter( typeof( int ), "threshold" );
+        var i = Expression.Variable( typeof( int ), "i" );
+        var breakLabel = Expression.Label( "loopBreak" );
+        var found = Expression.Label( typeof( int ), "found" );
+        var lengthProp = typeof( int[] ).GetProperty( "Length" )!;
+
+        var loop = Expression.Loop(
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.GreaterThanOrEqual( i, Expression.Property( arr, lengthProp ) ),
+                    Expression.Break( breakLabel ) ),
+                Expression.IfThen(
+                    Expression.GreaterThan( Expression.ArrayIndex( arr, i ), threshold ),
+                    Expression.Goto( found, Expression.ArrayIndex( arr, i ) ) ),
+                Expression.PostIncrementAssign( i ) ),
+            breakLabel );
+
+        var body = Expression.Block(
+            new[] { i },
+            Expression.Assign( i, Expression.Constant( 0 ) ),
+            loop,
+            Expression.Label( found, Expression.Constant( -1 ) ) );
+
+        var lambda = Expression.Lambda<Func<int[], int, int>>( body, arr, threshold );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6, fn( [1, 3, 6, 9], 5 ) );   // first > 5 is 6
+        Assert.AreEqual( -1, fn( [1, 2, 3], 10 ) );     // none > 10
+    }
 }

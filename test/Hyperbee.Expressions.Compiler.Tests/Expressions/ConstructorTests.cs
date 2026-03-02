@@ -219,4 +219,155 @@ public class ConstructorTests
         Assert.AreEqual( 5, result.Length );
         Assert.AreEqual( 0, result[0] );
     }
+
+    // ================================================================
+    // New — StringBuilder (no args)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void New_StringBuilder_NoArgs( CompilerType compilerType )
+    {
+        var ctor = typeof( System.Text.StringBuilder ).GetConstructor( Type.EmptyTypes )!;
+        var lambda = Expression.Lambda<Func<System.Text.StringBuilder>>( Expression.New( ctor ) );
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+        Assert.IsNotNull( result );
+        Assert.AreEqual( "", result.ToString() );
+    }
+
+    // ================================================================
+    // New — StringBuilder with string arg
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void New_StringBuilder_WithStringArg( CompilerType compilerType )
+    {
+        var ctor = typeof( System.Text.StringBuilder ).GetConstructor( [typeof( string )] )!;
+        var lambda = Expression.Lambda<Func<System.Text.StringBuilder>>(
+            Expression.New( ctor, Expression.Constant( "hello" ) ) );
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+        Assert.AreEqual( "hello", result.ToString() );
+    }
+
+    // ================================================================
+    // New — Tuple<int,string>
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void New_TupleIntString( CompilerType compilerType )
+    {
+        var ctor = typeof( Tuple<int, string> ).GetConstructor( [typeof( int ), typeof( string )] )!;
+        var lambda = Expression.Lambda<Func<Tuple<int, string>>>(
+            Expression.New( ctor, Expression.Constant( 42 ), Expression.Constant( "abc" ) ) );
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+        Assert.AreEqual( 42, result.Item1 );
+        Assert.AreEqual( "abc", result.Item2 );
+    }
+
+    // ================================================================
+    // New — List<string>
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void New_ListString_EmptyConstructor( CompilerType compilerType )
+    {
+        var ctor = typeof( List<string> ).GetConstructor( Type.EmptyTypes )!;
+        var lambda = Expression.Lambda<Func<List<string>>>( Expression.New( ctor ) );
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+        Assert.IsNotNull( result );
+        Assert.AreEqual( 0, result.Count );
+    }
+
+    // ================================================================
+    // New — KeyValuePair<int,int>
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void New_KeyValuePair_ValueType( CompilerType compilerType )
+    {
+        var ctor = typeof( KeyValuePair<int, int> ).GetConstructor( [typeof( int ), typeof( int )] )!;
+        var lambda = Expression.Lambda<Func<KeyValuePair<int, int>>>(
+            Expression.New( ctor, Expression.Constant( 1 ), Expression.Constant( 2 ) ) );
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+        Assert.AreEqual( 1, result.Key );
+        Assert.AreEqual( 2, result.Value );
+    }
+
+    // ================================================================
+    // New — object with derived type
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void New_DerivedType_AssignableToBase( CompilerType compilerType )
+    {
+        var ctor = typeof( ArgumentException ).GetConstructor( [typeof( string )] )!;
+        var lambda = Expression.Lambda<Func<Exception>>(
+            Expression.New( ctor, Expression.Constant( "test" ) ) );
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+        Assert.IsInstanceOfType<ArgumentException>( result );
+        Assert.AreEqual( "test", result.Message );
+    }
+
+    // ================================================================
+    // New — DateTime with year/month/day
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void New_DateTime_YearMonthDay( CompilerType compilerType )
+    {
+        var ctor = typeof( DateTime ).GetConstructor( [typeof( int ), typeof( int ), typeof( int )] )!;
+        var lambda = Expression.Lambda<Func<DateTime>>(
+            Expression.New( ctor, Expression.Constant( 2025 ), Expression.Constant( 6 ), Expression.Constant( 15 ) ) );
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+        Assert.AreEqual( 2025, result.Year );
+        Assert.AreEqual( 6, result.Month );
+        Assert.AreEqual( 15, result.Day );
+    }
+
+    // ================================================================
+    // NewArrayBounds — string array
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NewArrayBounds_StringArray_DefaultsToNull( CompilerType compilerType )
+    {
+        var n = Expression.Parameter( typeof( int ), "n" );
+        var lambda = Expression.Lambda<Func<int, string[]>>(
+            Expression.NewArrayBounds( typeof( string ), n ), n );
+        var fn = lambda.Compile( compilerType );
+        var result = fn( 3 );
+        Assert.AreEqual( 3, result.Length );
+        Assert.IsNull( result[0] );
+        Assert.IsNull( result[2] );
+    }
 }

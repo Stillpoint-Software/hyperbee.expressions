@@ -44,8 +44,9 @@ public enum IROp : byte
     Or, 
     Xor, 
     Not,
-    LeftShift, 
+    LeftShift,
     RightShift,
+    RightShiftUn,           // Unsigned/logical right shift (shr.un)
 
     // Comparison
     Ceq, 

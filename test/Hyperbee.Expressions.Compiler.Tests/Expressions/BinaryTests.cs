@@ -657,4 +657,415 @@ public class BinaryTests
         Assert.IsTrue( double.IsNaN( fn( 1.0, double.NaN ) ) );
         Assert.AreEqual( double.PositiveInfinity, fn( double.PositiveInfinity, 1.0 ) );
     }
+
+    // ================================================================
+    // Add — byte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Add_Byte( CompilerType compilerType )
+    {
+        // byte arithmetic requires widening to int first (Expression API design)
+        var a = Expression.Parameter( typeof( byte ), "a" );
+        var b = Expression.Parameter( typeof( byte ), "b" );
+        var add = Expression.Convert(
+            Expression.Add( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( byte ) );
+        var lambda = Expression.Lambda<Func<byte, byte, byte>>( add, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (byte) 3, fn( 1, 2 ) );
+        Assert.AreEqual( (byte) 255, fn( 200, 55 ) );
+    }
+
+    // ================================================================
+    // Subtract — byte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Subtract_Byte( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( byte ), "a" );
+        var b = Expression.Parameter( typeof( byte ), "b" );
+        var sub = Expression.Convert(
+            Expression.Subtract( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( byte ) );
+        var lambda = Expression.Lambda<Func<byte, byte, byte>>( sub, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (byte) 5, fn( 10, 5 ) );
+        Assert.AreEqual( (byte) 0, fn( 42, 42 ) );
+    }
+
+    // ================================================================
+    // Add — short
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Add_Short( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( short ), "a" );
+        var b = Expression.Parameter( typeof( short ), "b" );
+        var add = Expression.Convert(
+            Expression.Add( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( short ) );
+        var lambda = Expression.Lambda<Func<short, short, short>>( add, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 300, fn( 100, 200 ) );
+        Assert.AreEqual( (short) -100, fn( -50, -50 ) );
+    }
+
+    // ================================================================
+    // Subtract — float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Subtract_Float( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, float>>( Expression.Subtract( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1.0f, fn( 3.0f, 2.0f ), 1e-6f );
+        Assert.AreEqual( -2.5f, fn( 0.5f, 3.0f ), 1e-6f );
+    }
+
+    // ================================================================
+    // Multiply — float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Multiply_Float( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, float>>( Expression.Multiply( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6.0f, fn( 2.0f, 3.0f ), 1e-6f );
+        Assert.AreEqual( -4.0f, fn( 2.0f, -2.0f ), 1e-6f );
+    }
+
+    // ================================================================
+    // Divide — float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Divide_Float( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, float>>( Expression.Divide( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 2.0f, fn( 6.0f, 3.0f ), 1e-6f );
+        Assert.AreEqual( 0.5f, fn( 1.0f, 2.0f ), 1e-6f );
+    }
+
+    // ================================================================
+    // Divide — double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Divide_Double( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, double>>( Expression.Divide( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 2.5, fn( 5.0, 2.0 ), 1e-9 );
+        Assert.AreEqual( -1.0, fn( 3.0, -3.0 ), 1e-9 );
+    }
+
+    // ================================================================
+    // Subtract — double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Subtract_Double( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, double>>( Expression.Subtract( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1.5, fn( 3.0, 1.5 ), 1e-9 );
+        Assert.AreEqual( -5.0, fn( -2.0, 3.0 ), 1e-9 );
+    }
+
+    // ================================================================
+    // Multiply — double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Multiply_Double( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, double>>( Expression.Multiply( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6.28, fn( 3.14, 2.0 ), 1e-9 );
+        Assert.AreEqual( -0.5, fn( 0.5, -1.0 ), 1e-9 );
+    }
+
+    // ================================================================
+    // Modulo — float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Modulo_Float( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, float>>( Expression.Modulo( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1.0f, fn( 7.0f, 3.0f ), 1e-6f );
+        Assert.AreEqual( 0.0f, fn( 6.0f, 2.0f ), 1e-6f );
+    }
+
+    // ================================================================
+    // Add — ushort
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Add_UShort( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( ushort ), "a" );
+        var b = Expression.Parameter( typeof( ushort ), "b" );
+        var add = Expression.Convert(
+            Expression.Add( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( ushort ) );
+        var lambda = Expression.Lambda<Func<ushort, ushort, ushort>>( add, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (ushort) 500, fn( 200, 300 ) );
+        Assert.AreEqual( (ushort) 0, fn( 0, 0 ) );
+    }
+
+    // ================================================================
+    // Subtract — short
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Subtract_Short( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( short ), "a" );
+        var b = Expression.Parameter( typeof( short ), "b" );
+        var sub = Expression.Convert(
+            Expression.Subtract( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( short ) );
+        var lambda = Expression.Lambda<Func<short, short, short>>( sub, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 100, fn( 300, 200 ) );
+        Assert.AreEqual( (short) -50, fn( 50, 100 ) );
+    }
+
+    // ================================================================
+    // Multiply — short
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Multiply_Short( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( short ), "a" );
+        var b = Expression.Parameter( typeof( short ), "b" );
+        var mul = Expression.Convert(
+            Expression.Multiply( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( short ) );
+        var lambda = Expression.Lambda<Func<short, short, short>>( mul, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 6, fn( 2, 3 ) );
+        Assert.AreEqual( (short) -100, fn( 10, -10 ) );
+    }
+
+    // ================================================================
+    // Divide — decimal
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Divide_Decimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( decimal ), "a" );
+        var b = Expression.Parameter( typeof( decimal ), "b" );
+        var lambda = Expression.Lambda<Func<decimal, decimal, decimal>>( Expression.Divide( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 2.5m, fn( 5m, 2m ) );
+        Assert.AreEqual( -3m, fn( 9m, -3m ) );
+    }
+
+    // ================================================================
+    // Modulo — double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Modulo_Double( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, double>>( Expression.Modulo( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1.0, fn( 7.0, 3.0 ), 1e-9 );
+        Assert.AreEqual( 0.5, fn( 5.5, 2.5 ), 1e-9 );
+    }
+
+    // ================================================================
+    // Add — sbyte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Add_SByte( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( sbyte ), "a" );
+        var b = Expression.Parameter( typeof( sbyte ), "b" );
+        var add = Expression.Convert(
+            Expression.Add( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( sbyte ) );
+        var lambda = Expression.Lambda<Func<sbyte, sbyte, sbyte>>( add, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (sbyte) 3, fn( 1, 2 ) );
+        Assert.AreEqual( (sbyte) -1, fn( -3, 2 ) );
+    }
+
+    // ================================================================
+    // Subtract — decimal
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Subtract_Decimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( decimal ), "a" );
+        var b = Expression.Parameter( typeof( decimal ), "b" );
+        var lambda = Expression.Lambda<Func<decimal, decimal, decimal>>( Expression.Subtract( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1.5m, fn( 3.5m, 2.0m ) );
+        Assert.AreEqual( -10m, fn( 5m, 15m ) );
+    }
+
+    // ================================================================
+    // Multiply — byte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Multiply_Byte( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( byte ), "a" );
+        var b = Expression.Parameter( typeof( byte ), "b" );
+        var mul = Expression.Convert(
+            Expression.Multiply( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( byte ) );
+        var lambda = Expression.Lambda<Func<byte, byte, byte>>( mul, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (byte) 6, fn( 2, 3 ) );
+        Assert.AreEqual( (byte) 0, fn( 0, 100 ) );
+    }
+
+    // ================================================================
+    // Divide — byte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Divide_Byte( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( byte ), "a" );
+        var b = Expression.Parameter( typeof( byte ), "b" );
+        var div = Expression.Convert(
+            Expression.Divide( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( byte ) );
+        var lambda = Expression.Lambda<Func<byte, byte, byte>>( div, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (byte) 5, fn( 10, 2 ) );
+        Assert.AreEqual( (byte) 1, fn( 7, 4 ) );
+    }
+
+    // ================================================================
+    // Modulo — byte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Modulo_Byte( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( byte ), "a" );
+        var b = Expression.Parameter( typeof( byte ), "b" );
+        var mod = Expression.Convert(
+            Expression.Modulo( Expression.Convert( a, typeof( int ) ), Expression.Convert( b, typeof( int ) ) ),
+            typeof( byte ) );
+        var lambda = Expression.Lambda<Func<byte, byte, byte>>( mod, a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (byte) 1, fn( 7, 3 ) );
+        Assert.AreEqual( (byte) 0, fn( 10, 2 ) );
+    }
 }

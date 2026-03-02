@@ -193,4 +193,92 @@ public class DefaultExpressionTests
         Assert.AreEqual( "default", fn( null! ) );
         Assert.AreEqual( "hello", fn( "hello" ) );
     }
+
+    // --- Default — nullable int ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Default_NullableInt_IsNull( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<int?>>( Expression.Default( typeof( int? ) ) );
+        Assert.IsNull( lambda.Compile( compilerType )() );
+    }
+
+    // --- Default — double ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Default_Double_IsZero( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<double>>( Expression.Default( typeof( double ) ) );
+        Assert.AreEqual( 0.0, lambda.Compile( compilerType )() );
+    }
+
+    // --- Default — long ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Default_Long_IsZero( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<long>>( Expression.Default( typeof( long ) ) );
+        Assert.AreEqual( 0L, lambda.Compile( compilerType )() );
+    }
+
+    // --- Default — char ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Default_Char_IsNul( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<char>>( Expression.Default( typeof( char ) ) );
+        Assert.AreEqual( '\0', lambda.Compile( compilerType )() );
+    }
+
+    // --- Default — decimal ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Default_Decimal_IsZero( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<decimal>>( Expression.Default( typeof( decimal ) ) );
+        Assert.AreEqual( 0m, lambda.Compile( compilerType )() );
+    }
+
+    // --- Default — used in arithmetic ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Default_Int_UsedInArithmetic( CompilerType compilerType )
+    {
+        var n = Expression.Parameter( typeof( int ), "n" );
+        var body = Expression.Add( n, Expression.Default( typeof( int ) ) );
+        var lambda = Expression.Lambda<Func<int, int>>( body, n );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 5, fn( 5 ) );
+        Assert.AreEqual( 0, fn( 0 ) );
+    }
+
+    // --- Default — object type ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Default_Object_IsNull( CompilerType compilerType )
+    {
+        var lambda = Expression.Lambda<Func<object>>( Expression.Default( typeof( object ) ) );
+        Assert.IsNull( lambda.Compile( compilerType )() );
+    }
 }

@@ -260,6 +260,138 @@ public class MemberAccessTests
         Assert.AreEqual( "readonly", fn( new TestData() ) );
     }
 
+    // --- Property write then read ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Property_WriteAndRead_ViaBlock( CompilerType compilerType )
+    {
+        var obj = Expression.Parameter( typeof( TestData ), "obj" );
+        var nameProp = typeof( TestData ).GetProperty( nameof( TestData.Name ) )!;
+
+        var body = Expression.Block(
+            Expression.Assign( Expression.Property( obj, nameProp ), Expression.Constant( "written" ) ),
+            Expression.Property( obj, nameProp ) );
+
+        var lambda = Expression.Lambda<Func<TestData, string>>( body, obj );
+        var fn = lambda.Compile( compilerType );
+
+        var data = new TestData();
+        Assert.AreEqual( "written", fn( data ) );
+        Assert.AreEqual( "written", data.Name );
+    }
+
+    // --- Field write then read ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Field_WriteAndRead_ViaBlock( CompilerType compilerType )
+    {
+        var obj = Expression.Parameter( typeof( TestData ), "obj" );
+        var field = typeof( TestData ).GetField( nameof( TestData.IntField ) )!;
+
+        var body = Expression.Block(
+            Expression.Assign( Expression.Field( obj, field ), Expression.Constant( 77 ) ),
+            Expression.Field( obj, field ) );
+
+        var lambda = Expression.Lambda<Func<TestData, int>>( body, obj );
+        var fn = lambda.Compile( compilerType );
+
+        var data = new TestData();
+        Assert.AreEqual( 77, fn( data ) );
+        Assert.AreEqual( 77, data.IntField );
+    }
+
+    // --- Static property — Environment.NewLine ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Property_Static_EnvironmentNewLine( CompilerType compilerType )
+    {
+        var prop = typeof( Environment ).GetProperty( nameof( Environment.NewLine ) )!;
+        var body = Expression.Property( null, prop );
+        var lambda = Expression.Lambda<Func<string>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( Environment.NewLine, fn() );
+    }
+
+    // --- Array Length property ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Property_Array_Length( CompilerType compilerType )
+    {
+        var arr = Expression.Parameter( typeof( int[] ), "arr" );
+        var lengthProp = typeof( int[] ).GetProperty( "Length" )!;
+        var lambda = Expression.Lambda<Func<int[], int>>( Expression.Property( arr, lengthProp ), arr );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3, fn( [1, 2, 3] ) );
+        Assert.AreEqual( 0, fn( [] ) );
+        Assert.AreEqual( 1, fn( [42] ) );
+    }
+
+    // --- String.Length property ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Property_String_Length( CompilerType compilerType )
+    {
+        var s = Expression.Parameter( typeof( string ), "s" );
+        var lengthProp = typeof( string ).GetProperty( nameof( string.Length ) )!;
+        var lambda = Expression.Lambda<Func<string, int>>( Expression.Property( s, lengthProp ), s );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 5, fn( "hello" ) );
+        Assert.AreEqual( 0, fn( "" ) );
+    }
+
+    // --- Type.EmptyTypes field (static readonly array) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Field_Static_TypeEmptyTypes( CompilerType compilerType )
+    {
+        var field = typeof( Type ).GetField( "EmptyTypes" )!;
+        var lambda = Expression.Lambda<Func<Type[]>>( Expression.Field( null, field ) );
+        var result = lambda.Compile( compilerType )();
+        Assert.IsNotNull( result );
+        Assert.AreEqual( 0, result.Length );
+    }
+
+    // --- Nested property — string length of name ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Property_NestedPropertyChain_StringLength( CompilerType compilerType )
+    {
+        var obj = Expression.Parameter( typeof( TestData ), "obj" );
+        var nameProp = typeof( TestData ).GetProperty( nameof( TestData.Name ) )!;
+        var lengthProp = typeof( string ).GetProperty( nameof( string.Length ) )!;
+
+        var body = Expression.Property( Expression.Property( obj, nameProp ), lengthProp );
+        var lambda = Expression.Lambda<Func<TestData, int>>( body, obj );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 5, fn( new TestData { Name = "hello" } ) );
+        Assert.AreEqual( 0, fn( new TestData { Name = "" } ) );
+    }
+
     // Test data classes
 
     public class TestData

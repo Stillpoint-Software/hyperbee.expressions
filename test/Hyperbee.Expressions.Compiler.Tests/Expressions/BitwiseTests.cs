@@ -334,4 +334,102 @@ public class BitwiseTests
         Assert.AreEqual( true, fn( false, true ) );
         Assert.AreEqual( false, fn( true, true ) );
     }
+
+    // ================================================================
+    // And — byte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void And_Byte( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( byte ), "a" );
+        var b = Expression.Parameter( typeof( byte ), "b" );
+        var lambda = Expression.Lambda<Func<byte, byte, byte>>( Expression.Convert( Expression.And( a, b ), typeof( byte ) ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (byte) 0x00, fn( 0xFF, 0x00 ) );
+        Assert.AreEqual( (byte) 0x0F, fn( 0xFF, 0x0F ) );
+        Assert.AreEqual( (byte) 0xFF, fn( 0xFF, 0xFF ) );
+    }
+
+    // ================================================================
+    // OnesComplement — int
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void OnesComplement_Int( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( int ), "a" );
+        var lambda = Expression.Lambda<Func<int, int>>( Expression.OnesComplement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -1, fn( 0 ) );
+        Assert.AreEqual( 0, fn( -1 ) );
+        Assert.AreEqual( ~42, fn( 42 ) );
+    }
+
+    // ================================================================
+    // OnesComplement — long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void OnesComplement_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( long ), "a" );
+        var lambda = Expression.Lambda<Func<long, long>>( Expression.OnesComplement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -1L, fn( 0L ) );
+        Assert.AreEqual( 0L, fn( -1L ) );
+        Assert.AreEqual( ~long.MaxValue, fn( long.MaxValue ) );
+    }
+
+    // ================================================================
+    // LeftShift — uint
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LeftShift_UInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( uint ), "a" );
+        var b = Expression.Parameter( typeof( int ), "b" );
+        var lambda = Expression.Lambda<Func<uint, int, uint>>( Expression.LeftShift( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 2u, fn( 1u, 1 ) );
+        Assert.AreEqual( 16u, fn( 1u, 4 ) );
+        Assert.AreEqual( 0x80000000u, fn( 1u, 31 ) );
+    }
+
+    // ================================================================
+    // RightShift — uint (logical, not arithmetic)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void RightShift_UInt_Logical( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( uint ), "a" );
+        var b = Expression.Parameter( typeof( int ), "b" );
+        var lambda = Expression.Lambda<Func<uint, int, uint>>( Expression.RightShift( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 1u, fn( 2u, 1 ) );
+        Assert.AreEqual( 1u, fn( uint.MaxValue, 31 ) );  // logical shift: no sign extension
+    }
+
 }

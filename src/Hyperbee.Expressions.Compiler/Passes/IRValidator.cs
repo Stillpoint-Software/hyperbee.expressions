@@ -41,6 +41,7 @@ public static class IRValidator
         var stackDepth = 0;
         var tryDepth = 0;
         var referencedLabels = new HashSet<int>();
+        var labelDepths = new Dictionary<int, int>(); // expected stack depth at each label
 
         for ( var i = 0; i < instructions.Count; i++ )
         {
@@ -66,11 +67,19 @@ public static class IRValidator
                 case IROp.StoreLocal:
                 case IROp.StoreArg:
                 case IROp.StoreStaticField:
-                case IROp.BranchTrue:
-                case IROp.BranchFalse:
                 case IROp.Throw:
                     stackDepth--;
                     break;
+
+                case IROp.BranchTrue:
+                case IROp.BranchFalse:
+                {
+                    stackDepth--;
+                    // Record expected depth at branch target (after pop)
+                    referencedLabels.Add( inst.Operand );
+                    labelDepths[inst.Operand] = stackDepth;
+                    break;
+                }
 
                 // --- Stack neutral (pop+push) ---
                 case IROp.Negate:
@@ -104,6 +113,7 @@ public static class IRValidator
                 case IROp.Xor:
                 case IROp.LeftShift:
                 case IROp.RightShift:
+                case IROp.RightShiftUn:
                 case IROp.Ceq:
                 case IROp.Clt:
                 case IROp.Cgt:
@@ -164,12 +174,14 @@ public static class IRValidator
                 case IROp.Branch:
                     ValidateLabel( inst.Operand, labelCount, i, "Branch" );
                     referencedLabels.Add( inst.Operand );
+                    labelDepths[inst.Operand] = stackDepth; // record depth at branch target
                     stackDepth = 0; // unreachable after unconditional branch
                     break;
 
                 case IROp.Label:
                     ValidateLabel( inst.Operand, labelCount, i, "Label" );
-                    stackDepth = 0; // labels are branch targets; stack must be empty
+                    // Restore the expected stack depth from branch sites; default 0 for unreferenced labels
+                    stackDepth = labelDepths.GetValueOrDefault( inst.Operand, 0 );
                     break;
 
                 case IROp.Leave:

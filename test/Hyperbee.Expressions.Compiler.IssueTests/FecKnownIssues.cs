@@ -277,4 +277,34 @@ public class FecKnownIssues
     // No runnable FEC test: JIT rejects on first invocation.
     //
     // Main test: LoopTests.Loop_MultipleBreakPoints_EarlyExitOnNegative — Fast DataRow suppressed.
+
+    // --- Pattern 27: ConvertChecked uint→int emits conv.ovf.i4 instead of conv.ovf.i4.un ---
+    //
+    // FEC emits `conv.ovf.i4` (signed source) for ConvertChecked(uint→int).
+    // The correct instruction is `conv.ovf.i4.un` (unsigned source).
+    // FEC does not throw OverflowException for uint values exceeding int.MaxValue.
+    // Confirmed: FEC silently returns a wrong value (wraps to negative) instead of throwing.
+
+    [TestMethod]
+    public void Pattern27_ConvertChecked_UIntToInt_FecBug()
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var lambda = Expression.Lambda<Func<uint, int>>( Expression.ConvertChecked( a, typeof(int) ), a );
+
+        var overflowValue = (uint) int.MaxValue + 1;
+
+        // FEC emits conv.ovf.i4 (signed) — does not throw for uint > int.MaxValue
+        var fec = FastExpressionCompiler.ExpressionCompiler.CompileFast( lambda );
+        var fecThrew = false;
+        try { fec( overflowValue ); } catch ( OverflowException ) { fecThrew = true; }
+        Assert.IsFalse( fecThrew, "FEC known bug: ConvertChecked(uint→int) does not throw on overflow." );
+
+        // Hyperbee emits conv.ovf.i4.un (unsigned) — must throw correctly
+        var hb = HyperbeeCompiler.Compile( lambda );
+        Assert.AreEqual( 42, hb( 42u ) );
+        Assert.AreEqual( int.MaxValue, hb( (uint) int.MaxValue ) );
+        var hbThrew = false;
+        try { hb( overflowValue ); } catch ( OverflowException ) { hbThrew = true; }
+        Assert.IsTrue( hbThrew, "Hyperbee must throw OverflowException for uint > int.MaxValue." );
+    }
 }

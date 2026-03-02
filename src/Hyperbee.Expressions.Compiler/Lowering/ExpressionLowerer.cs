@@ -438,7 +438,7 @@ public class ExpressionLowerer
                 _ir.Emit( IROp.LeftShift );
                 break;
             case ExpressionType.RightShift:
-                _ir.Emit( IROp.RightShift );
+                _ir.Emit( IsUnsigned( leftType ) ? IROp.RightShiftUn : IROp.RightShift );
                 break;
             case ExpressionType.Equal:
                 _ir.Emit( IROp.Ceq );
@@ -619,6 +619,17 @@ public class ExpressionLowerer
         System.Reflection.MethodInfo hasValueGetterB,
         System.Reflection.MethodInfo getValueOrDefaultB )
     {
+        // bool? & bool? and bool? | bool? use three-valued SQL-like logic:
+        //   false & null = false,  null & false = false  (false dominates And)
+        //   true  | null = true,   null | true  = true   (true  dominates Or)
+        if ( underlyingType == typeof( bool ) && node.Method == null &&
+             node.NodeType is ExpressionType.And or ExpressionType.Or )
+        {
+            LowerLiftedBoolLogic( node.NodeType, nullableType, tempA, tempB,
+                hasValueGetterA, getValueOrDefaultA, hasValueGetterB, getValueOrDefaultB );
+            return;
+        }
+
         var endLabel = _ir.DefineLabel();
         var resultLocal = _ir.DeclareLocal( nullableType, "$liftResult" );
 
@@ -653,6 +664,111 @@ public class ExpressionLowerer
         _ir.Emit( IROp.StoreLocal, resultLocal );
 
         // endLabel: push result (either computed or default null)
+        _ir.MarkLabel( endLabel );
+        _ir.Emit( IROp.LoadLocal, resultLocal );
+    }
+
+    private void LowerLiftedBoolLogic(
+        ExpressionType nodeType,
+        Type nullableType,
+        int tempA, int tempB,
+        System.Reflection.MethodInfo hasValueGetterA,
+        System.Reflection.MethodInfo getValueOrDefaultA,
+        System.Reflection.MethodInfo hasValueGetterB,
+        System.Reflection.MethodInfo getValueOrDefaultB )
+    {
+        // Three-valued logic for bool? & bool? and bool? | bool?:
+        //   And: if either is known-false  → result = false (dominates)
+        //        else if both non-null     → result = a & b (must both be true)
+        //        else                      → result = null
+        //   Or:  if either is known-true   → result = true  (dominates)
+        //        else if both non-null     → result = a | b (must both be false)
+        //        else                      → result = null
+
+        var resultLocal = _ir.DeclareLocal( nullableType, "$liftBoolResult" );
+        var endLabel = _ir.DefineLabel();
+        var checkBLabel = _ir.DefineLabel();
+        var checkBothLabel = _ir.DefineLabel();
+        var ctor = nullableType.GetConstructor( [typeof( bool )] )!;
+
+        bool isAnd = nodeType == ExpressionType.And;
+
+        // --- Phase 1: check if A is the dominating value ---
+        // For And: dominating = false (HasValue && !GetValueOrDefault)
+        // For Or:  dominating = true  (HasValue &&  GetValueOrDefault)
+
+        // if (!tempA.HasValue) goto checkBLabel  (A is null, can't dominate)
+        _ir.Emit( IROp.LoadAddress, tempA );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterA ) );
+        _ir.Emit( IROp.BranchFalse, checkBLabel );
+
+        // Load A's value
+        _ir.Emit( IROp.LoadAddress, tempA );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultA ) );
+
+        // For And: branch to checkBLabel if A is true (not dominating)
+        // For Or:  branch to checkBLabel if A is false (not dominating)
+        if ( isAnd )
+            _ir.Emit( IROp.BranchTrue, checkBLabel );
+        else
+            _ir.Emit( IROp.BranchFalse, checkBLabel );
+
+        // A is the dominating value → result = new bool?(dominatingBool)
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( isAnd ? 0 : 1 ) );
+        _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+        _ir.Emit( IROp.Branch, endLabel );
+
+        // --- Phase 2: check if B is the dominating value ---
+        _ir.MarkLabel( checkBLabel );
+
+        // if (!tempB.HasValue) goto checkBothLabel (B is null, can't dominate)
+        _ir.Emit( IROp.LoadAddress, tempB );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterB ) );
+        _ir.Emit( IROp.BranchFalse, checkBothLabel );
+
+        // Load B's value
+        _ir.Emit( IROp.LoadAddress, tempB );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultB ) );
+
+        // For And: branch to checkBothLabel if B is true (not dominating)
+        // For Or:  branch to checkBothLabel if B is false (not dominating)
+        if ( isAnd )
+            _ir.Emit( IROp.BranchTrue, checkBothLabel );
+        else
+            _ir.Emit( IROp.BranchFalse, checkBothLabel );
+
+        // B is the dominating value → result = new bool?(dominatingBool)
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( isAnd ? 0 : 1 ) );
+        _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+        _ir.Emit( IROp.Branch, endLabel );
+
+        // --- Phase 3: neither is dominating ---
+        // A is either null or non-dominating; B is either null or non-dominating.
+        // If both have values → both are non-dominating → apply the op (result = a & b or a | b)
+        // If either is null   → result = null (stays default)
+        _ir.MarkLabel( checkBothLabel );
+
+        // if (!tempA.HasValue) goto endLabel (result stays null)
+        _ir.Emit( IROp.LoadAddress, tempA );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterA ) );
+        _ir.Emit( IROp.BranchFalse, endLabel );
+
+        // if (!tempB.HasValue) goto endLabel (result stays null)
+        _ir.Emit( IROp.LoadAddress, tempB );
+        _ir.Emit( IROp.Call, _ir.AddOperand( hasValueGetterB ) );
+        _ir.Emit( IROp.BranchFalse, endLabel );
+
+        // Both non-null and non-dominating → compute a op b
+        _ir.Emit( IROp.LoadAddress, tempA );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultA ) );
+        _ir.Emit( IROp.LoadAddress, tempB );
+        _ir.Emit( IROp.Call, _ir.AddOperand( getValueOrDefaultB ) );
+        _ir.Emit( isAnd ? IROp.And : IROp.Or );
+        _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+        _ir.Emit( IROp.StoreLocal, resultLocal );
+
         _ir.MarkLabel( endLabel );
         _ir.Emit( IROp.LoadLocal, resultLocal );
     }
@@ -861,6 +977,14 @@ public class ExpressionLowerer
                     break;
                 case ExpressionType.UnaryPlus:
                     // No-op
+                    break;
+                case ExpressionType.IsTrue:
+                    // bool value is already on stack (0 or 1); no-op
+                    break;
+                case ExpressionType.IsFalse:
+                    // Negate: false (0) → true (1), true (1) → false (0)
+                    _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                    _ir.Emit( IROp.Ceq );
                     break;
                 default:
                     throw new NotSupportedException( $"Lifted unary op {node.NodeType} is not supported." );

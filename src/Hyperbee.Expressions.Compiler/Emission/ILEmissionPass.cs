@@ -170,6 +170,10 @@ public static class ILEmissionPass
                     ilg.Emit( OpCodes.Shr );
                     break;
 
+                case IROp.RightShiftUn:
+                    ilg.Emit( OpCodes.Shr_Un );
+                    break;
+
                 // Comparison
                 case IROp.Ceq:
                     ilg.Emit( OpCodes.Ceq );

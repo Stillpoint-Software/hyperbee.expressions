@@ -255,6 +255,179 @@ public class MethodCallTests
         Assert.AreEqual( "A", fn( "a" ) );
     }
 
+    // --- Math.Abs ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Static_MathAbs( CompilerType compilerType )
+    {
+        var n = Expression.Parameter( typeof( int ), "n" );
+        var method = typeof( Math ).GetMethod( nameof( Math.Abs ), [typeof( int )] )!;
+        var lambda = Expression.Lambda<Func<int, int>>( Expression.Call( method, n ), n );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 5, fn( -5 ) );
+        Assert.AreEqual( 5, fn( 5 ) );
+        Assert.AreEqual( 0, fn( 0 ) );
+    }
+
+    // --- Math.Min ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Static_MathMin( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( int ), "a" );
+        var b = Expression.Parameter( typeof( int ), "b" );
+        var method = typeof( Math ).GetMethod( nameof( Math.Min ), [typeof( int ), typeof( int )] )!;
+        var lambda = Expression.Lambda<Func<int, int, int>>( Expression.Call( method, a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3, fn( 3, 5 ) );
+        Assert.AreEqual( 3, fn( 5, 3 ) );
+        Assert.AreEqual( int.MinValue, fn( int.MinValue, 0 ) );
+    }
+
+    // --- string.Replace ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Instance_StringReplace( CompilerType compilerType )
+    {
+        var s = Expression.Parameter( typeof( string ), "s" );
+        var method = typeof( string ).GetMethod( nameof( string.Replace ), [typeof( string ), typeof( string )] )!;
+        var call = Expression.Call( s, method, Expression.Constant( "o" ), Expression.Constant( "0" ) );
+        var lambda = Expression.Lambda<Func<string, string>>( call, s );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "hell0 w0rld", fn( "hello world" ) );
+        Assert.AreEqual( "f00", fn( "foo" ) );
+        Assert.AreEqual( "bar", fn( "bar" ) );
+    }
+
+    // --- string.StartsWith ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Instance_StringStartsWith( CompilerType compilerType )
+    {
+        var s = Expression.Parameter( typeof( string ), "s" );
+        var prefix = Expression.Parameter( typeof( string ), "prefix" );
+        var method = typeof( string ).GetMethod( nameof( string.StartsWith ), [typeof( string )] )!;
+        var call = Expression.Call( s, method, prefix );
+        var lambda = Expression.Lambda<Func<string, string, bool>>( call, s, prefix );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( "hello world", "hello" ) );
+        Assert.IsFalse( fn( "hello world", "world" ) );
+        Assert.IsTrue( fn( "abc", "" ) );
+    }
+
+    // --- string.PadLeft ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Instance_StringPadLeft( CompilerType compilerType )
+    {
+        var s = Expression.Parameter( typeof( string ), "s" );
+        var width = Expression.Parameter( typeof( int ), "width" );
+        var method = typeof( string ).GetMethod( nameof( string.PadLeft ), [typeof( int )] )!;
+        var call = Expression.Call( s, method, width );
+        var lambda = Expression.Lambda<Func<string, int, string>>( call, s, width );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "   42", fn( "42", 5 ) );
+        Assert.AreEqual( "42", fn( "42", 2 ) );  // no padding needed
+    }
+
+    // --- Math.Pow ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Static_MathPow( CompilerType compilerType )
+    {
+        var baseVal = Expression.Parameter( typeof( double ), "baseVal" );
+        var exp = Expression.Parameter( typeof( double ), "exp" );
+        var method = typeof( Math ).GetMethod( nameof( Math.Pow ) )!;
+        var lambda = Expression.Lambda<Func<double, double, double>>(
+            Expression.Call( method, baseVal, exp ), baseVal, exp );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 8.0, fn( 2.0, 3.0 ), 1e-9 );
+        Assert.AreEqual( 1.0, fn( 5.0, 0.0 ), 1e-9 );
+        Assert.AreEqual( 0.25, fn( 2.0, -2.0 ), 1e-9 );
+    }
+
+    // --- Convert.ToInt32 ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Static_ConvertToInt32( CompilerType compilerType )
+    {
+        var s = Expression.Parameter( typeof( string ), "s" );
+        var method = typeof( Convert ).GetMethod( nameof( Convert.ToInt32 ), [typeof( string )] )!;
+        var lambda = Expression.Lambda<Func<string, int>>( Expression.Call( method, s ), s );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42, fn( "42" ) );
+        Assert.AreEqual( 0, fn( "0" ) );
+        Assert.AreEqual( -1, fn( "-1" ) );
+    }
+
+    // --- string.Format with one arg ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Static_StringFormat_OneArg( CompilerType compilerType )
+    {
+        var n = Expression.Parameter( typeof( int ), "n" );
+        var method = typeof( string ).GetMethod( nameof( string.Format ), [typeof( string ), typeof( object )] )!;
+        var call = Expression.Call( method, Expression.Constant( "Value={0}" ),
+            Expression.Convert( n, typeof( object ) ) );
+        var lambda = Expression.Lambda<Func<int, string>>( call, n );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "Value=42", fn( 42 ) );
+        Assert.AreEqual( "Value=0", fn( 0 ) );
+    }
+
+    // --- Enumerable.Sum ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_Static_EnumerableSum( CompilerType compilerType )
+    {
+        var list = Expression.Parameter( typeof( int[] ), "list" );
+        var sumExpr = Expression.Call(
+            typeof( System.Linq.Enumerable ),
+            nameof( System.Linq.Enumerable.Sum ),
+            null,
+            list );
+        var lambda = Expression.Lambda<Func<int[], int>>( sumExpr, list );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 15, fn( [1, 2, 3, 4, 5] ) );
+        Assert.AreEqual( 0, fn( [] ) );
+    }
+
     // Helper methods for tests
 
     public static int ReturnFortyTwo() => 42;

@@ -409,4 +409,83 @@ public class AssignmentTests
 
         Assert.AreEqual( 4, fn() );
     }
+
+    // ================================================================
+    // Assign — long variable
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Assign_LongVariable( CompilerType compilerType )
+    {
+        var x = Expression.Variable( typeof( long ), "x" );
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( long.MaxValue ) ),
+            x );
+        var lambda = Expression.Lambda<Func<long>>( body );
+        Assert.AreEqual( long.MaxValue, lambda.Compile( compilerType )() );
+    }
+
+    // ================================================================
+    // Assign — double variable
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Assign_DoubleVariable( CompilerType compilerType )
+    {
+        var x = Expression.Variable( typeof( double ), "x" );
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 3.14 ) ),
+            x );
+        var lambda = Expression.Lambda<Func<double>>( body );
+        Assert.AreEqual( 3.14, lambda.Compile( compilerType )(), 1e-9 );
+    }
+
+    // ================================================================
+    // Assign — string variable reassigned
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Assign_StringVariable_Reassigned( CompilerType compilerType )
+    {
+        var s = Expression.Variable( typeof( string ), "s" );
+        var body = Expression.Block(
+            new[] { s },
+            Expression.Assign( s, Expression.Constant( "first" ) ),
+            Expression.Assign( s, Expression.Constant( "second" ) ),
+            s );
+        var lambda = Expression.Lambda<Func<string>>( body );
+        Assert.AreEqual( "second", lambda.Compile( compilerType )() );
+    }
+
+    // ================================================================
+    // AddAssign — long type
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void AddAssign_Long( CompilerType compilerType )
+    {
+        var x = Expression.Variable( typeof( long ), "x" );
+        var body = Expression.Block(
+            new[] { x },
+            Expression.Assign( x, Expression.Constant( 100L ) ),
+            Expression.AddAssign( x, Expression.Constant( 200L ) ),
+            x );
+        var lambda = Expression.Lambda<Func<long>>( body );
+        Assert.AreEqual( 300L, lambda.Compile( compilerType )() );
+    }
+
 }

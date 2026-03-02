@@ -531,4 +531,353 @@ public class ConvertCheckedTests
         try { fn( double.PositiveInfinity ); } catch ( OverflowException ) { threw = true; }
         Assert.IsTrue( threw, "Expected OverflowException for +Infinity -> int." );
     }
+
+    // ================================================================
+    // int -> long (widening — never overflows)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_IntToLong_InRange( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int), "a" );
+        var lambda = Expression.Lambda<Func<int, long>>( Expression.ConvertChecked( a, typeof(long) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0L, fn( 0 ) );
+        Assert.AreEqual( (long) int.MaxValue, fn( int.MaxValue ) );
+        Assert.AreEqual( (long) int.MinValue, fn( int.MinValue ) );
+        Assert.AreEqual( -1L, fn( -1 ) );
+    }
+
+    // ================================================================
+    // byte -> int (unsigned widening — never overflows)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_ByteToInt_InRange( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(byte), "a" );
+        var lambda = Expression.Lambda<Func<byte, int>>( Expression.ConvertChecked( a, typeof(int) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0, fn( 0 ) );
+        Assert.AreEqual( 127, fn( 127 ) );
+        Assert.AreEqual( 255, fn( 255 ) );
+    }
+
+    // ================================================================
+    // byte -> sbyte (overflow: byte > sbyte.MaxValue = 127)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_ByteToSByte_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(byte), "a" );
+        var lambda = Expression.Lambda<Func<byte, sbyte>>( Expression.ConvertChecked( a, typeof(sbyte) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (sbyte) 0, fn( 0 ) );
+        Assert.AreEqual( (sbyte) 127, fn( 127 ) );
+
+        var threw = false;
+        try { fn( 128 ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for byte(128) -> sbyte." );
+    }
+
+    // ================================================================
+    // long -> short (overflow)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_LongToShort_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var lambda = Expression.Lambda<Func<long, short>>( Expression.ConvertChecked( a, typeof(short) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 1000, fn( 1000L ) );
+        Assert.AreEqual( (short) -1, fn( -1L ) );
+
+        var threw = false;
+        try { fn( (long) short.MaxValue + 1 ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for long > short.MaxValue -> short." );
+
+        threw = false;
+        try { fn( (long) short.MinValue - 1 ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for long < short.MinValue -> short." );
+    }
+
+    // ================================================================
+    // uint -> int (in-range: values that fit in int)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_UIntToInt_InRange( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var lambda = Expression.Lambda<Func<uint, int>>( Expression.ConvertChecked( a, typeof(int) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0, fn( 0u ) );
+        Assert.AreEqual( int.MaxValue, fn( (uint) int.MaxValue ) );
+        Assert.AreEqual( 42, fn( 42u ) );
+    }
+
+    // ================================================================
+    // uint -> int (overflow: value > int.MaxValue)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_UIntToInt_Overflow( CompilerType compilerType )
+    {
+        // FEC known bug: FEC emits conv.ovf.i4 (signed source) instead of conv.ovf.i4.un
+        // (unsigned source) for uint→int ConvertChecked, so overflow is not detected.
+        // See FecKnownIssues.Pattern27.
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC uses wrong conv opcode for uint→int ConvertChecked, missing overflow. See FecKnownIssues.Pattern27." );
+
+        var a = Expression.Parameter( typeof(uint), "a" );
+        var lambda = Expression.Lambda<Func<uint, int>>( Expression.ConvertChecked( a, typeof(int) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        var threw = false;
+        try { fn( (uint) int.MaxValue + 1 ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for uint > int.MaxValue -> int." );
+    }
+
+    // ================================================================
+    // long -> byte (overflow)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_LongToByte_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long), "a" );
+        var lambda = Expression.Lambda<Func<long, byte>>( Expression.ConvertChecked( a, typeof(byte) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (byte) 255, fn( 255L ) );
+        Assert.AreEqual( (byte) 0, fn( 0L ) );
+
+        var threw = false;
+        try { fn( 256L ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for 256 -> byte." );
+
+        threw = false;
+        try { fn( -1L ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for -1 -> byte." );
+    }
+
+    // ================================================================
+    // float -> long (overflow)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_FloatToLong_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float), "a" );
+        var lambda = Expression.Lambda<Func<float, long>>( Expression.ConvertChecked( a, typeof(long) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 100L, fn( 100.0f ) );
+
+        var threw = false;
+        try { fn( float.MaxValue ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for float.MaxValue -> long." );
+    }
+
+    // ================================================================
+    // float -> short (overflow)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_FloatToShort_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(float), "a" );
+        var lambda = Expression.Lambda<Func<float, short>>( Expression.ConvertChecked( a, typeof(short) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 1000, fn( 1000.0f ) );
+
+        var threw = false;
+        try { fn( (float) short.MaxValue + 1.0f ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for float > short.MaxValue -> short." );
+    }
+
+    // ================================================================
+    // double -> uint (overflow: negative value)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_DoubleToUInt_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(double), "a" );
+        var lambda = Expression.Lambda<Func<double, uint>>( Expression.ConvertChecked( a, typeof(uint) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (uint) 42, fn( 42.0 ) );
+        Assert.AreEqual( uint.MaxValue, fn( (double) uint.MaxValue ) );
+
+        var threw = false;
+        try { fn( -1.0 ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for -1.0 -> uint." );
+    }
+
+    // ================================================================
+    // decimal -> short (overflow)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_DecimalToShort_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal), "a" );
+        var lambda = Expression.Lambda<Func<decimal, short>>( Expression.ConvertChecked( a, typeof(short) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 1000, fn( 1000m ) );
+
+        var threw = false;
+        try { fn( (decimal) short.MaxValue + 1m ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for decimal > short.MaxValue -> short." );
+    }
+
+    // ================================================================
+    // decimal -> uint (overflow: negative value)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_DecimalToUInt_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal), "a" );
+        var lambda = Expression.Lambda<Func<decimal, uint>>( Expression.ConvertChecked( a, typeof(uint) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (uint) 42, fn( 42m ) );
+
+        var threw = false;
+        try { fn( -1m ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for -1m -> uint." );
+    }
+
+    // ================================================================
+    // Nullable double? -> double (null throws InvalidOperationException)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_NullableDoubleToDouble_ThrowsOnNull( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(double?), "a" );
+        var lambda = Expression.Lambda<Func<double?, double>>( Expression.ConvertChecked( a, typeof(double) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3.14, fn( 3.14 ) );
+
+        var threw = false;
+        try { fn( null ); } catch ( InvalidOperationException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected InvalidOperationException unwrapping null double?." );
+    }
+
+    // ================================================================
+    // Nullable decimal? -> decimal (null throws InvalidOperationException)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_NullableDecimalToDecimal_ThrowsOnNull( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal?), "a" );
+        var lambda = Expression.Lambda<Func<decimal?, decimal>>( Expression.ConvertChecked( a, typeof(decimal) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42m, fn( 42m ) );
+
+        var threw = false;
+        try { fn( null ); } catch ( InvalidOperationException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected InvalidOperationException unwrapping null decimal?." );
+    }
+
+    // ================================================================
+    // Nullable int? -> short? (nullable-to-nullable narrowing with overflow)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_NullableIntToNullableShort_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int?), "a" );
+        var lambda = Expression.Lambda<Func<int?, short?>>( Expression.ConvertChecked( a, typeof(short?) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 1000, fn( 1000 ) );
+        Assert.IsNull( fn( null ) );
+
+        var threw = false;
+        try { fn( (int) short.MaxValue + 1 ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for int? > short.MaxValue -> short?." );
+    }
+
+    // ================================================================
+    // ulong -> uint (overflow)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ConvertChecked_ULongToUInt_Overflow( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(ulong), "a" );
+        var lambda = Expression.Lambda<Func<ulong, uint>>( Expression.ConvertChecked( a, typeof(uint) ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (uint) 42, fn( 42UL ) );
+        Assert.AreEqual( uint.MaxValue, fn( (ulong) uint.MaxValue ) );
+
+        var threw = false;
+        try { fn( (ulong) uint.MaxValue + 1 ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException for ulong > uint.MaxValue -> uint." );
+    }
 }

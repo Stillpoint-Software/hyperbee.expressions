@@ -347,4 +347,211 @@ public class ClosureTests
 
         Assert.AreEqual( 1, fn() );
     }
+
+    // ================================================================
+    // Captured variable — long type
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Invoke_CapturedLongVariable_IncrementsByLarge( CompilerType compilerType )
+    {
+        var total = Expression.Variable( typeof( long ), "total" );
+        var addLarge = Expression.Lambda<Action>(
+            Expression.Assign( total, Expression.Add( total, Expression.Constant( 1_000_000L ) ) ) );
+
+        var lambda = Expression.Lambda<Func<long>>(
+            Expression.Block(
+                new[] { total },
+                Expression.Assign( total, Expression.Constant( 0L ) ),
+                Expression.Invoke( addLarge ),
+                Expression.Invoke( addLarge ),
+                Expression.Invoke( addLarge ),
+                total ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3_000_000L, fn() );
+    }
+
+    // ================================================================
+    // Captured variable — bool type
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Invoke_CapturedBoolVariable_Toggled( CompilerType compilerType )
+    {
+        var flag = Expression.Variable( typeof( bool ), "flag" );
+        var toggle = Expression.Lambda<Action>(
+            Expression.Assign( flag, Expression.Not( flag ) ) );
+
+        var lambda = Expression.Lambda<Func<bool>>(
+            Expression.Block(
+                new[] { flag },
+                Expression.Assign( flag, Expression.Constant( false ) ),
+                Expression.Invoke( toggle ),
+                Expression.Invoke( toggle ),
+                Expression.Invoke( toggle ),
+                flag ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn() );  // false → true → false → true
+    }
+
+    // ================================================================
+    // Captured variable — string mutated
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Invoke_CapturedStringVariable_Mutated( CompilerType compilerType )
+    {
+        var greeting = Expression.Variable( typeof( string ), "greeting" );
+        var concatMethod = typeof( string ).GetMethod( "Concat", [typeof( string ), typeof( string )] )!;
+        var appendWorld = Expression.Lambda<Action>(
+            Expression.Assign( greeting,
+                Expression.Call( null, concatMethod, greeting, Expression.Constant( " world" ) ) ) );
+
+        var lambda = Expression.Lambda<Func<string>>(
+            Expression.Block(
+                new[] { greeting },
+                Expression.Assign( greeting, Expression.Constant( "hello" ) ),
+                Expression.Invoke( appendWorld ),
+                greeting ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "hello world", fn() );
+    }
+
+    // ================================================================
+    // Captured variable — used in conditional
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Invoke_CapturedVariable_UsedInConditionalInsideLambda( CompilerType compilerType )
+    {
+        // The inner lambda checks a captured flag and conditionally adds
+        var total = Expression.Variable( typeof( int ), "total" );
+        var enabled = Expression.Variable( typeof( bool ), "enabled" );
+        var tryAdd = Expression.Lambda<Action>(
+            Expression.IfThen(
+                enabled,
+                Expression.Assign( total, Expression.Add( total, Expression.Constant( 10 ) ) ) ) );
+
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { total, enabled },
+                Expression.Assign( total, Expression.Constant( 0 ) ),
+                Expression.Assign( enabled, Expression.Constant( true ) ),
+                Expression.Invoke( tryAdd ),  // adds 10
+                Expression.Assign( enabled, Expression.Constant( false ) ),
+                Expression.Invoke( tryAdd ),  // skipped
+                Expression.Assign( enabled, Expression.Constant( true ) ),
+                Expression.Invoke( tryAdd ),  // adds 10
+                total ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 20, fn() );
+    }
+
+    // ================================================================
+    // Captured variable — accumulated by repeated invocations
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Invoke_CapturedVariable_FiveIncrements_Accumulates( CompilerType compilerType )
+    {
+        // sum starts at 0; call add5 five times, each adds 5
+        var sum = Expression.Variable( typeof( int ), "sum" );
+        var add5 = Expression.Lambda<Action>(
+            Expression.Assign( sum, Expression.Add( sum, Expression.Constant( 5 ) ) ) );
+
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { sum },
+                Expression.Assign( sum, Expression.Constant( 0 ) ),
+                Expression.Invoke( add5 ),
+                Expression.Invoke( add5 ),
+                Expression.Invoke( add5 ),
+                Expression.Invoke( add5 ),
+                Expression.Invoke( add5 ),
+                sum ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 25, fn() );  // 5 × 5 = 25
+    }
+
+    // ================================================================
+    // Captured variable — two nested levels
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Invoke_TwoNestedLambdas_ModifyCaptured( CompilerType compilerType )
+    {
+        // outer var: count
+        // inner1 = () => count += 1
+        // inner2 = () => { count += 5; invoke inner1; }
+        // call inner2 twice
+        var count = Expression.Variable( typeof( int ), "count" );
+        var inner1 = Expression.Lambda<Action>(
+            Expression.Assign( count, Expression.Add( count, Expression.Constant( 1 ) ) ) );
+        var inner2 = Expression.Lambda<Action>(
+            Expression.Block(
+                Expression.Assign( count, Expression.Add( count, Expression.Constant( 5 ) ) ),
+                Expression.Invoke( inner1 ) ) );
+
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { count },
+                Expression.Assign( count, Expression.Constant( 0 ) ),
+                Expression.Invoke( inner2 ),
+                Expression.Invoke( inner2 ),
+                count ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 12, fn() );  // (5+1) + (5+1) = 12
+    }
+
+    // ================================================================
+    // Captured double variable
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Invoke_CapturedDoubleVariable_AccumulatesFraction( CompilerType compilerType )
+    {
+        var val = Expression.Variable( typeof( double ), "val" );
+        var addHalf = Expression.Lambda<Action>(
+            Expression.Assign( val, Expression.Add( val, Expression.Constant( 0.5 ) ) ) );
+
+        var lambda = Expression.Lambda<Func<double>>(
+            Expression.Block(
+                new[] { val },
+                Expression.Assign( val, Expression.Constant( 0.0 ) ),
+                Expression.Invoke( addHalf ),
+                Expression.Invoke( addHalf ),
+                Expression.Invoke( addHalf ),
+                Expression.Invoke( addHalf ),
+                val ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 2.0, fn(), 1e-9 );  // 4 × 0.5 = 2.0
+    }
 }

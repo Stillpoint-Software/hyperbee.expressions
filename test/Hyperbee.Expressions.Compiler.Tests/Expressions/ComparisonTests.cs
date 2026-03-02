@@ -624,4 +624,617 @@ public class ComparisonTests
         Assert.IsFalse( fn( ulong.MaxValue, 0UL ) );
         Assert.IsFalse( fn( ulong.MaxValue, ulong.MaxValue ) );
     }
+
+    // ================================================================
+    // GreaterThan — long boundary
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThan_Long_BoundaryValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( long ), "a" );
+        var b = Expression.Parameter( typeof( long ), "b" );
+        var lambda = Expression.Lambda<Func<long, long, bool>>( Expression.GreaterThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( long.MaxValue, long.MinValue ) );
+        Assert.IsFalse( fn( long.MinValue, long.MaxValue ) );
+        Assert.IsFalse( fn( 0L, 0L ) );
+    }
+
+    // ================================================================
+    // LessThan — long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThan_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( long ), "a" );
+        var b = Expression.Parameter( typeof( long ), "b" );
+        var lambda = Expression.Lambda<Func<long, long, bool>>( Expression.LessThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( -1L, 1L ) );
+        Assert.IsFalse( fn( 1L, -1L ) );
+        Assert.IsFalse( fn( long.MaxValue, long.MaxValue ) );
+    }
+
+    // ================================================================
+    // GreaterThanOrEqual — long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThanOrEqual_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( long ), "a" );
+        var b = Expression.Parameter( typeof( long ), "b" );
+        var lambda = Expression.Lambda<Func<long, long, bool>>( Expression.GreaterThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 5L, 5L ) );
+        Assert.IsTrue( fn( 6L, 5L ) );
+        Assert.IsFalse( fn( 4L, 5L ) );
+    }
+
+    // ================================================================
+    // LessThanOrEqual — long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThanOrEqual_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( long ), "a" );
+        var b = Expression.Parameter( typeof( long ), "b" );
+        var lambda = Expression.Lambda<Func<long, long, bool>>( Expression.LessThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 5L, 5L ) );
+        Assert.IsTrue( fn( 4L, 5L ) );
+        Assert.IsFalse( fn( 6L, 5L ) );
+    }
+
+    // ================================================================
+    // Equal — byte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Equal_Byte( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( byte ), "a" );
+        var b = Expression.Parameter( typeof( byte ), "b" );
+        var lambda = Expression.Lambda<Func<byte, byte, bool>>( Expression.Equal( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 255, 255 ) );
+        Assert.IsFalse( fn( 0, 1 ) );
+        Assert.IsTrue( fn( 0, 0 ) );
+    }
+
+    // ================================================================
+    // NotEqual — long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NotEqual_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( long ), "a" );
+        var b = Expression.Parameter( typeof( long ), "b" );
+        var lambda = Expression.Lambda<Func<long, long, bool>>( Expression.NotEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 1L, 2L ) );
+        Assert.IsFalse( fn( long.MaxValue, long.MaxValue ) );
+        Assert.IsTrue( fn( long.MinValue, long.MaxValue ) );
+    }
+
+    // ================================================================
+    // GreaterThan — uint
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThan_UInt( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for uint, returning wrong results. See FecKnownIssues.Pattern23." );
+
+        var a = Expression.Parameter( typeof( uint ), "a" );
+        var b = Expression.Parameter( typeof( uint ), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, bool>>( Expression.GreaterThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( uint.MaxValue, 0u ) );
+        Assert.IsFalse( fn( 0u, uint.MaxValue ) );
+        Assert.IsFalse( fn( 5u, 5u ) );
+    }
+
+    // ================================================================
+    // LessThan — uint
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThan_UInt( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for uint, returning wrong results. See FecKnownIssues.Pattern23." );
+
+        var a = Expression.Parameter( typeof( uint ), "a" );
+        var b = Expression.Parameter( typeof( uint ), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, bool>>( Expression.LessThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 0u, uint.MaxValue ) );
+        Assert.IsFalse( fn( uint.MaxValue, 0u ) );
+        Assert.IsFalse( fn( 3u, 3u ) );
+    }
+
+    // ================================================================
+    // GreaterThanOrEqual — decimal
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThanOrEqual_Decimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( decimal ), "a" );
+        var b = Expression.Parameter( typeof( decimal ), "b" );
+        var lambda = Expression.Lambda<Func<decimal, decimal, bool>>( Expression.GreaterThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 3.14m, 3.14m ) );
+        Assert.IsTrue( fn( 100m, 0m ) );
+        Assert.IsFalse( fn( -1m, 0m ) );
+    }
+
+    // ================================================================
+    // Equal — null string vs non-null
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Equal_NullString_VsNonNull( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( string ), "a" );
+        var b = Expression.Parameter( typeof( string ), "b" );
+        var lambda = Expression.Lambda<Func<string, string, bool>>( Expression.Equal( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( null!, "hello" ) );
+        Assert.IsFalse( fn( "hello", null! ) );
+        Assert.IsTrue( fn( null!, null! ) );
+    }
+
+    // ================================================================
+    // LessThanOrEqual — uint
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThanOrEqual_UInt( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for uint. See FecKnownIssues.Pattern23." );
+
+        var a = Expression.Parameter( typeof( uint ), "a" );
+        var b = Expression.Parameter( typeof( uint ), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, bool>>( Expression.LessThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 5u, 5u ) );
+        Assert.IsTrue( fn( 4u, 5u ) );
+        Assert.IsFalse( fn( 6u, 5u ) );
+    }
+
+    // ================================================================
+    // Equal — long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Equal_Long( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( long ), "a" );
+        var b = Expression.Parameter( typeof( long ), "b" );
+        var lambda = Expression.Lambda<Func<long, long, bool>>( Expression.Equal( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( long.MaxValue, long.MaxValue ) );
+        Assert.IsFalse( fn( long.MinValue, long.MaxValue ) );
+        Assert.IsTrue( fn( 0L, 0L ) );
+    }
+
+    // ================================================================
+    // GreaterThanOrEqual — uint
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThanOrEqual_UInt( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for uint. See FecKnownIssues.Pattern23." );
+
+        var a = Expression.Parameter( typeof( uint ), "a" );
+        var b = Expression.Parameter( typeof( uint ), "b" );
+        var lambda = Expression.Lambda<Func<uint, uint, bool>>( Expression.GreaterThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 5u, 5u ) );
+        Assert.IsTrue( fn( uint.MaxValue, 0u ) );
+        Assert.IsFalse( fn( 0u, 1u ) );
+    }
+
+    // ================================================================
+    // NaN comparisons — float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Equal_Float_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.Equal( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( float.NaN, float.NaN ) );
+        Assert.IsFalse( fn( float.NaN, 0f ) );
+        Assert.IsFalse( fn( 0f, float.NaN ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NotEqual_Float_NaN_IsAlwaysTrue( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.NotEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( float.NaN, float.NaN ) );
+        Assert.IsTrue( fn( float.NaN, 0f ) );
+        Assert.IsTrue( fn( 0f, float.NaN ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThan_Float_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.GreaterThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( float.NaN, 5f ) );
+        Assert.IsFalse( fn( 5f, float.NaN ) );
+        Assert.IsFalse( fn( float.NaN, float.NaN ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThan_Float_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.LessThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( float.NaN, 5f ) );
+        Assert.IsFalse( fn( 5f, float.NaN ) );
+        Assert.IsFalse( fn( float.NaN, float.NaN ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThanOrEqual_Float_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.GreaterThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( float.NaN, 5f ) );
+        Assert.IsFalse( fn( 5f, float.NaN ) );
+        Assert.IsFalse( fn( float.NaN, float.NaN ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThanOrEqual_Float_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.LessThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( float.NaN, 5f ) );
+        Assert.IsFalse( fn( 5f, float.NaN ) );
+        Assert.IsFalse( fn( float.NaN, float.NaN ) );
+    }
+
+    // ================================================================
+    // NaN comparisons — double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThan_Double_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, bool>>( Expression.GreaterThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( double.NaN, 5.0 ) );
+        Assert.IsFalse( fn( 5.0, double.NaN ) );
+        Assert.IsFalse( fn( double.NaN, double.NaN ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThan_Double_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, bool>>( Expression.LessThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( double.NaN, 5.0 ) );
+        Assert.IsFalse( fn( 5.0, double.NaN ) );
+        Assert.IsFalse( fn( double.NaN, double.NaN ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThanOrEqual_Double_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, bool>>( Expression.GreaterThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( double.NaN, 5.0 ) );
+        Assert.IsFalse( fn( 5.0, double.NaN ) );
+        Assert.IsFalse( fn( double.NaN, double.NaN ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThanOrEqual_Double_NaN_IsAlwaysFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, bool>>( Expression.LessThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( double.NaN, 5.0 ) );
+        Assert.IsFalse( fn( 5.0, double.NaN ) );
+        Assert.IsFalse( fn( double.NaN, double.NaN ) );
+    }
+
+    // ================================================================
+    // Infinity comparisons — double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Equal_Double_Infinity_VsInfinity( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, bool>>( Expression.Equal( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( double.PositiveInfinity, double.PositiveInfinity ) );
+        Assert.IsTrue( fn( double.NegativeInfinity, double.NegativeInfinity ) );
+        Assert.IsFalse( fn( double.PositiveInfinity, double.NegativeInfinity ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThan_Double_Infinity_VsNormal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, bool>>( Expression.GreaterThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( double.PositiveInfinity, double.MaxValue ) );
+        Assert.IsFalse( fn( double.NegativeInfinity, double.MinValue ) );
+        Assert.IsFalse( fn( double.PositiveInfinity, double.PositiveInfinity ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThan_Double_NegInfinity_VsNormal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( double ), "a" );
+        var b = Expression.Parameter( typeof( double ), "b" );
+        var lambda = Expression.Lambda<Func<double, double, bool>>( Expression.LessThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( double.NegativeInfinity, double.MinValue ) );
+        Assert.IsFalse( fn( double.PositiveInfinity, double.MaxValue ) );
+        Assert.IsFalse( fn( double.NegativeInfinity, double.NegativeInfinity ) );
+    }
+
+    // ================================================================
+    // Float basic comparisons
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Equal_Float_BasicValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.Equal( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 1.5f, 1.5f ) );
+        Assert.IsFalse( fn( 1.5f, 1.6f ) );
+        Assert.IsTrue( fn( 0f, 0f ) );
+        Assert.IsTrue( fn( float.MaxValue, float.MaxValue ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThan_Float_BasicValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.GreaterThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 2.0f, 1.0f ) );
+        Assert.IsFalse( fn( 1.0f, 2.0f ) );
+        Assert.IsFalse( fn( 1.0f, 1.0f ) );
+        Assert.IsTrue( fn( float.MaxValue, float.MinValue ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThan_Float_BasicValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.LessThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 1.0f, 2.0f ) );
+        Assert.IsFalse( fn( 2.0f, 1.0f ) );
+        Assert.IsFalse( fn( 1.0f, 1.0f ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void GreaterThanOrEqual_Float_BasicValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.GreaterThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 2.0f, 2.0f ) );
+        Assert.IsTrue( fn( 3.0f, 2.0f ) );
+        Assert.IsFalse( fn( 1.0f, 2.0f ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThanOrEqual_Float_BasicValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var b = Expression.Parameter( typeof( float ), "b" );
+        var lambda = Expression.Lambda<Func<float, float, bool>>( Expression.LessThanOrEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 2.0f, 2.0f ) );
+        Assert.IsTrue( fn( 1.0f, 2.0f ) );
+        Assert.IsFalse( fn( 3.0f, 2.0f ) );
+    }
+
+    // ================================================================
+    // Decimal comparisons
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Equal_Decimal_BasicValues( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( decimal ), "a" );
+        var b = Expression.Parameter( typeof( decimal ), "b" );
+        var lambda = Expression.Lambda<Func<decimal, decimal, bool>>( Expression.Equal( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 1.5m, 1.5m ) );
+        Assert.IsFalse( fn( 1.5m, 1.6m ) );
+        Assert.IsTrue( fn( decimal.MaxValue, decimal.MaxValue ) );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void LessThan_Decimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( decimal ), "a" );
+        var b = Expression.Parameter( typeof( decimal ), "b" );
+        var lambda = Expression.Lambda<Func<decimal, decimal, bool>>( Expression.LessThan( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 1.0m, 2.0m ) );
+        Assert.IsFalse( fn( 2.0m, 1.0m ) );
+        Assert.IsFalse( fn( 1.0m, 1.0m ) );
+    }
 }

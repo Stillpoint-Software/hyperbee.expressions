@@ -438,4 +438,206 @@ public class NullableBitwiseTests
         Assert.AreEqual( true, fn( false ) );
         Assert.IsNull( fn( null ) );
     }
+
+    // ================================================================
+    // And — nullable bool (three-valued logic: false & null = false)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void And_NullableBool_ThreeValuedLogic( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC does not implement three-valued bool? & logic (false & null = false)." );
+
+        var a = Expression.Parameter( typeof(bool?), "a" );
+        var b = Expression.Parameter( typeof(bool?), "b" );
+        var lambda = Expression.Lambda<Func<bool?, bool?, bool?>>( Expression.And( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( true,  fn( true,  true  ) );
+        Assert.AreEqual( false, fn( true,  false ) );
+        Assert.AreEqual( false, fn( false, true  ) );
+        Assert.AreEqual( false, fn( false, false ) );
+        Assert.IsNull( fn( true,  null  ) );   // null (unknown)
+        Assert.AreEqual( false, fn( false, null  ) );  // false wins
+        Assert.AreEqual( false, fn( null,  false ) );  // false wins
+        Assert.IsNull( fn( null,  null  ) );
+    }
+
+    // ================================================================
+    // Or — nullable bool (three-valued logic: true | null = true)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Or_NullableBool_ThreeValuedLogic( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC does not implement three-valued bool? | logic (true | null = true)." );
+
+        var a = Expression.Parameter( typeof(bool?), "a" );
+        var b = Expression.Parameter( typeof(bool?), "b" );
+        var lambda = Expression.Lambda<Func<bool?, bool?, bool?>>( Expression.Or( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( true,  fn( true,  true  ) );
+        Assert.AreEqual( true,  fn( true,  false ) );
+        Assert.AreEqual( true,  fn( false, true  ) );
+        Assert.AreEqual( false, fn( false, false ) );
+        Assert.AreEqual( true,  fn( true,  null  ) );  // true wins
+        Assert.AreEqual( true,  fn( null,  true  ) );  // true wins
+        Assert.IsNull( fn( false, null  ) );  // null (unknown)
+        Assert.IsNull( fn( null,  null  ) );
+    }
+
+    // ================================================================
+    // Or — nullable uint
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Or_NullableUInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint?), "a" );
+        var b = Expression.Parameter( typeof(uint?), "b" );
+        var lambda = Expression.Lambda<Func<uint?, uint?, uint?>>( Expression.Or( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (uint)0xF0 | (uint)0x0F, fn( 0xF0u, 0x0Fu ) );
+        Assert.AreEqual( uint.MaxValue, fn( uint.MaxValue, 0u ) );
+        Assert.IsNull( fn( 0xF0u, null ) );
+        Assert.IsNull( fn( null, 0x0Fu ) );
+    }
+
+    // ================================================================
+    // Xor — nullable uint
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Xor_NullableUInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(uint?), "a" );
+        var b = Expression.Parameter( typeof(uint?), "b" );
+        var lambda = Expression.Lambda<Func<uint?, uint?, uint?>>( Expression.ExclusiveOr( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (uint)0xFF ^ (uint)0x0F, fn( 0xFFu, 0x0Fu ) );
+        Assert.AreEqual( (uint)0, fn( 42u, 42u ) );
+        Assert.IsNull( fn( 0xFFu, null ) );
+        Assert.IsNull( fn( null, 0x0Fu ) );
+    }
+
+    // ================================================================
+    // Negate — nullable int
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Negate_NullableInt( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(int?), "a" );
+        var lambda = Expression.Lambda<Func<int?, int?>>( Expression.Negate( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -42, fn( 42 ) );
+        Assert.AreEqual( 42, fn( -42 ) );
+        Assert.AreEqual( 0, fn( 0 ) );
+        Assert.IsNull( fn( null ) );
+    }
+
+    // ================================================================
+    // Negate — nullable double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Negate_NullableDouble( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(double?), "a" );
+        var lambda = Expression.Lambda<Func<double?, double?>>( Expression.Negate( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -3.14, fn( 3.14 ) );
+        Assert.AreEqual( 3.14, fn( -3.14 ) );
+        Assert.IsNull( fn( null ) );
+    }
+
+    // ================================================================
+    // UnaryPlus — nullable long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void UnaryPlus_NullableLong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(long?), "a" );
+        var lambda = Expression.Lambda<Func<long?, long?>>( Expression.UnaryPlus( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( long.MaxValue, fn( long.MaxValue ) );
+        Assert.AreEqual( -1L, fn( -1L ) );
+        Assert.AreEqual( 0L, fn( 0L ) );
+        Assert.IsNull( fn( null ) );
+    }
+
+    // ================================================================
+    // UnaryPlus — nullable decimal
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void UnaryPlus_NullableDecimal( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof(decimal?), "a" );
+        var lambda = Expression.Lambda<Func<decimal?, decimal?>>( Expression.UnaryPlus( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 3.14m, fn( 3.14m ) );
+        Assert.AreEqual( -1.0m, fn( -1.0m ) );
+        Assert.IsNull( fn( null ) );
+    }
+
+    // ================================================================
+    // NegateChecked — nullable long (overflow)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NegateChecked_NullableLong_Overflow( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC emits bare neg instead of sub.ovf for NegateChecked. See FecKnownIssues.Pattern4." );
+
+        var a = Expression.Parameter( typeof(long?), "a" );
+        var lambda = Expression.Lambda<Func<long?, long?>>( Expression.NegateChecked( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -42L, fn( 42L ) );
+        Assert.AreEqual( 42L, fn( -42L ) );
+        Assert.IsNull( fn( null ) );
+
+        var threw = false;
+        try { fn( long.MinValue ); } catch ( OverflowException ) { threw = true; }
+        Assert.IsTrue( threw, "Expected OverflowException from NegateChecked(long?.MinValue)." );
+    }
 }

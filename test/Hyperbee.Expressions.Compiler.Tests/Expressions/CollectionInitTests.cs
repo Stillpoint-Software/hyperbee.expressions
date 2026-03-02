@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Compiler.Tests.TestSupport;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -382,5 +383,275 @@ public class CollectionInitTests
         Assert.AreEqual( 2, result.Count );  // "a" deduplicated
         Assert.IsTrue( result.Contains( "a" ) );
         Assert.IsTrue( result.Contains( "b" ) );
+    }
+
+    // ================================================================
+    // ListInit — single element list
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ListInit_SingleElement_ReturnsListWithOne( CompilerType compilerType )
+    {
+        var ctor = typeof( List<int> ).GetConstructor( Type.EmptyTypes )!;
+        var addMethod = typeof( List<int> ).GetMethod( "Add" )!;
+
+        var lambda = Expression.Lambda<Func<List<int>>>(
+            Expression.ListInit(
+                Expression.New( ctor ),
+                Expression.ElementInit( addMethod, Expression.Constant( 42 ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+
+        Assert.AreEqual( 1, result.Count );
+        Assert.AreEqual( 42, result[0] );
+    }
+
+    // ================================================================
+    // ListInit — five elements
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ListInit_FiveElements_CountAndValues( CompilerType compilerType )
+    {
+        var ctor = typeof( List<int> ).GetConstructor( Type.EmptyTypes )!;
+        var addMethod = typeof( List<int> ).GetMethod( "Add" )!;
+
+        var lambda = Expression.Lambda<Func<List<int>>>(
+            Expression.ListInit(
+                Expression.New( ctor ),
+                Expression.ElementInit( addMethod, Expression.Constant( 10 ) ),
+                Expression.ElementInit( addMethod, Expression.Constant( 20 ) ),
+                Expression.ElementInit( addMethod, Expression.Constant( 30 ) ),
+                Expression.ElementInit( addMethod, Expression.Constant( 40 ) ),
+                Expression.ElementInit( addMethod, Expression.Constant( 50 ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+
+        Assert.AreEqual( 5, result.Count );
+        Assert.AreEqual( 150, result.Sum() );
+    }
+
+    // ================================================================
+    // ListInit — three dictionary entries
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ListInit_ThreeDictionaryEntries_ReturnsAll( CompilerType compilerType )
+    {
+        var ctor = typeof( Dictionary<string, int> ).GetConstructor( Type.EmptyTypes )!;
+        var addMethod = typeof( Dictionary<string, int> ).GetMethod( "Add" )!;
+
+        var lambda = Expression.Lambda<Func<Dictionary<string, int>>>(
+            Expression.ListInit(
+                Expression.New( ctor ),
+                Expression.ElementInit( addMethod, Expression.Constant( "x" ), Expression.Constant( 1 ) ),
+                Expression.ElementInit( addMethod, Expression.Constant( "y" ), Expression.Constant( 2 ) ),
+                Expression.ElementInit( addMethod, Expression.Constant( "z" ), Expression.Constant( 3 ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+
+        Assert.AreEqual( 3, result.Count );
+        Assert.AreEqual( 1, result["x"] );
+        Assert.AreEqual( 2, result["y"] );
+        Assert.AreEqual( 3, result["z"] );
+    }
+
+    // ================================================================
+    // MemberInit — computed binding expression
+    // ================================================================
+
+    public class ComputedDto
+    {
+        public int Total { get; set; }
+        public int Half { get; set; }
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void MemberInit_ComputedBinding_ArithmeticExpression( CompilerType compilerType )
+    {
+        // () => new ComputedDto { Total = 6 + 4, Half = (6 + 4) / 2 }
+        var ctor = typeof( ComputedDto ).GetConstructor( Type.EmptyTypes )!;
+        var total = Expression.Add( Expression.Constant( 6 ), Expression.Constant( 4 ) );
+        var half = Expression.Divide( total, Expression.Constant( 2 ) );
+
+        var lambda = Expression.Lambda<Func<ComputedDto>>(
+            Expression.MemberInit(
+                Expression.New( ctor ),
+                Expression.Bind( typeof( ComputedDto ).GetProperty( "Total" )!, total ),
+                Expression.Bind( typeof( ComputedDto ).GetProperty( "Half" )!, half ) ) );
+
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+
+        Assert.AreEqual( 10, result.Total );
+        Assert.AreEqual( 5, result.Half );
+    }
+
+    // ================================================================
+    // MemberInit — three-level nested objects
+    // ================================================================
+
+    public class CityDto
+    {
+        public string? Name { get; set; }
+        public int Population { get; set; }
+    }
+
+    public class RegionDto
+    {
+        public string? RegionName { get; set; }
+        public CityDto? Capital { get; set; }
+    }
+
+    public class CountryDto
+    {
+        public string? CountryName { get; set; }
+        public RegionDto? MainRegion { get; set; }
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void MemberInit_ThreeLevelNested_AllPropertiesSet( CompilerType compilerType )
+    {
+        var countryCtor = typeof( CountryDto ).GetConstructor( Type.EmptyTypes )!;
+        var regionCtor = typeof( RegionDto ).GetConstructor( Type.EmptyTypes )!;
+        var cityCtor = typeof( CityDto ).GetConstructor( Type.EmptyTypes )!;
+
+        var lambda = Expression.Lambda<Func<CountryDto>>(
+            Expression.MemberInit(
+                Expression.New( countryCtor ),
+                Expression.Bind( typeof( CountryDto ).GetProperty( "CountryName" )!, Expression.Constant( "US" ) ),
+                Expression.Bind(
+                    typeof( CountryDto ).GetProperty( "MainRegion" )!,
+                    Expression.MemberInit(
+                        Expression.New( regionCtor ),
+                        Expression.Bind( typeof( RegionDto ).GetProperty( "RegionName" )!, Expression.Constant( "East" ) ),
+                        Expression.Bind(
+                            typeof( RegionDto ).GetProperty( "Capital" )!,
+                            Expression.MemberInit(
+                                Expression.New( cityCtor ),
+                                Expression.Bind( typeof( CityDto ).GetProperty( "Name" )!, Expression.Constant( "DC" ) ),
+                                Expression.Bind( typeof( CityDto ).GetProperty( "Population" )!, Expression.Constant( 700000 ) ) ) ) ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+
+        Assert.AreEqual( "US", result.CountryName );
+        Assert.AreEqual( "East", result.MainRegion!.RegionName );
+        Assert.AreEqual( "DC", result.MainRegion.Capital!.Name );
+        Assert.AreEqual( 700000, result.MainRegion.Capital.Population );
+    }
+
+    // ================================================================
+    // MemberInit — inherited property
+    // ================================================================
+
+    public class BaseEntity
+    {
+        public int Id { get; set; }
+    }
+
+    public class DerivedEntity : BaseEntity
+    {
+        public string? Name { get; set; }
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void MemberInit_InheritedProperty_SetsCorrectly( CompilerType compilerType )
+    {
+        var ctor = typeof( DerivedEntity ).GetConstructor( Type.EmptyTypes )!;
+        var idProp = typeof( BaseEntity ).GetProperty( "Id" )!;     // inherited from base
+        var nameProp = typeof( DerivedEntity ).GetProperty( "Name" )!;
+
+        var lambda = Expression.Lambda<Func<DerivedEntity>>(
+            Expression.MemberInit(
+                Expression.New( ctor ),
+                Expression.Bind( idProp, Expression.Constant( 99 ) ),
+                Expression.Bind( nameProp, Expression.Constant( "Widget" ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+
+        Assert.AreEqual( 99, result.Id );
+        Assert.AreEqual( "Widget", result.Name );
+    }
+
+    // ================================================================
+    // MemberInit — two siblings, same ctor
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void MemberInit_TwoSiblingObjects_IndependentInstances( CompilerType compilerType )
+    {
+        // Creates two SimpleDto instances and checks they are independent
+        var ctor = typeof( SimpleDto ).GetConstructor( Type.EmptyTypes )!;
+        var makeFirst = Expression.Lambda<Func<SimpleDto>>(
+            Expression.MemberInit(
+                Expression.New( ctor ),
+                Expression.Bind( typeof( SimpleDto ).GetProperty( "Id" )!, Expression.Constant( 1 ) ),
+                Expression.Bind( typeof( SimpleDto ).GetProperty( "Name" )!, Expression.Constant( "first" ) ) ) );
+
+        var makeSecond = Expression.Lambda<Func<SimpleDto>>(
+            Expression.MemberInit(
+                Expression.New( ctor ),
+                Expression.Bind( typeof( SimpleDto ).GetProperty( "Id" )!, Expression.Constant( 2 ) ),
+                Expression.Bind( typeof( SimpleDto ).GetProperty( "Name" )!, Expression.Constant( "second" ) ) ) );
+
+        var first = makeFirst.Compile( compilerType )();
+        var second = makeSecond.Compile( compilerType )();
+
+        Assert.AreEqual( 1, first.Id );
+        Assert.AreEqual( "first", first.Name );
+        Assert.AreEqual( 2, second.Id );
+        Assert.AreEqual( "second", second.Name );
+        Assert.AreNotSame( first, second );
+    }
+
+    // ================================================================
+    // ListInit — string list from parameter
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void ListInit_NullableIntList_ReturnsPopulated( CompilerType compilerType )
+    {
+        // () => new List<int?> { 1, 2, 3 }
+        var ctor = typeof( List<int?> ).GetConstructor( Type.EmptyTypes )!;
+        var addMethod = typeof( List<int?> ).GetMethod( "Add" )!;
+
+        var lambda = Expression.Lambda<Func<List<int?>>>(
+            Expression.ListInit(
+                Expression.New( ctor ),
+                Expression.ElementInit( addMethod, Expression.Constant( 1, typeof( int? ) ) ),
+                Expression.ElementInit( addMethod, Expression.Constant( 2, typeof( int? ) ) ),
+                Expression.ElementInit( addMethod, Expression.Constant( 3, typeof( int? ) ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+        var result = fn();
+
+        Assert.AreEqual( 3, result.Count );
+        Assert.AreEqual( 1, result[0] );
+        Assert.AreEqual( 2, result[1] );
+        Assert.AreEqual( 3, result[2] );
     }
 }

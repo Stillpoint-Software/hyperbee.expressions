@@ -491,4 +491,316 @@ public class LoopTests
         Assert.AreEqual( 6, fn( [1, 2, 3, 4, 5] ) );  // stops at count 3
         Assert.AreEqual( 3, fn( [1, 2, -1, 4, 5] ) );  // stops at negative
     }
+
+    // ================================================================
+    // GCD algorithm — Euclidean loop
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Loop_GcdAlgorithm_Euclidean( CompilerType compilerType )
+    {
+        // while (b != 0) { t = b; b = a % b; a = t; }
+        // return a;
+        var a = Expression.Variable( typeof( int ), "a" );
+        var b = Expression.Variable( typeof( int ), "b" );
+        var t = Expression.Variable( typeof( int ), "t" );
+        var pA = Expression.Parameter( typeof( int ), "pA" );
+        var pB = Expression.Parameter( typeof( int ), "pB" );
+        var breakLabel = Expression.Label( "break" );
+
+        var loop = Expression.Loop(
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.Equal( b, Expression.Constant( 0 ) ),
+                    Expression.Break( breakLabel ) ),
+                Expression.Assign( t, b ),
+                Expression.Assign( b, Expression.Modulo( a, b ) ),
+                Expression.Assign( a, t ) ),
+            breakLabel );
+
+        var body = Expression.Block(
+            new[] { a, b, t },
+            Expression.Assign( a, pA ),
+            Expression.Assign( b, pB ),
+            loop,
+            a );
+
+        var lambda = Expression.Lambda<Func<int, int, int>>( body, pA, pB );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6, fn( 48, 18 ) );  // gcd(48,18)=6
+        Assert.AreEqual( 1, fn( 17, 5 ) );   // gcd(17,5)=1
+        Assert.AreEqual( 12, fn( 12, 0 ) );  // gcd(12,0)=12
+    }
+
+    // ================================================================
+    // Loop inside block — shared outer variable
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Loop_InsideBlock_ModifiesOuterVariable( CompilerType compilerType )
+    {
+        // var total = 10;
+        // loop { if (i >= 5) break; total += i; i++; }
+        // return total;  // 10 + (0+1+2+3+4) = 20
+        var total = Expression.Variable( typeof( int ), "total" );
+        var i = Expression.Variable( typeof( int ), "i" );
+        var breakLabel = Expression.Label( "break" );
+
+        var loop = Expression.Loop(
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.GreaterThanOrEqual( i, Expression.Constant( 5 ) ),
+                    Expression.Break( breakLabel ) ),
+                Expression.AddAssign( total, i ),
+                Expression.PostIncrementAssign( i ) ),
+            breakLabel );
+
+        var body = Expression.Block(
+            new[] { total, i },
+            Expression.Assign( total, Expression.Constant( 10 ) ),
+            Expression.Assign( i, Expression.Constant( 0 ) ),
+            loop,
+            total );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 20, fn() );  // 10 + 0+1+2+3+4 = 20
+    }
+
+    // ================================================================
+    // Loop power — double until exceeds limit
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Loop_PowerOf2_DoublesUntilLimit( CompilerType compilerType )
+    {
+        // var v = 1; var count = 0;
+        // while (v < 1000) { v *= 2; count++; }
+        // return count;
+        var v = Expression.Variable( typeof( int ), "v" );
+        var count = Expression.Variable( typeof( int ), "count" );
+        var breakLabel = Expression.Label( "break" );
+
+        var loop = Expression.Loop(
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.GreaterThanOrEqual( v, Expression.Constant( 1000 ) ),
+                    Expression.Break( breakLabel ) ),
+                Expression.MultiplyAssign( v, Expression.Constant( 2 ) ),
+                Expression.PostIncrementAssign( count ) ),
+            breakLabel );
+
+        var body = Expression.Block(
+            new[] { v, count },
+            Expression.Assign( v, Expression.Constant( 1 ) ),
+            Expression.Assign( count, Expression.Constant( 0 ) ),
+            loop,
+            count );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 10, fn() );  // 1→2→4→8→...→1024 ≥ 1000 after 10 doublings
+    }
+
+    // ================================================================
+    // Loop inner break only affects inner
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Loop_InnerBreak_OnlyBreaksInner( CompilerType compilerType )
+    {
+        // Outer loop runs 3 times; inner loop always breaks after 1 iteration
+        // total inner body executions = 3
+        var outerCount = Expression.Variable( typeof( int ), "outerCount" );
+        var innerCount = Expression.Variable( typeof( int ), "innerCount" );
+        var o = Expression.Variable( typeof( int ), "o" );
+        var outerBreak = Expression.Label( "outerBreak" );
+        var innerBreak = Expression.Label( "innerBreak" );
+
+        var innerLoop = Expression.Loop(
+            Expression.Block(
+                Expression.PostIncrementAssign( innerCount ),
+                Expression.Break( innerBreak ) ),
+            innerBreak );
+
+        var outerLoop = Expression.Loop(
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.GreaterThanOrEqual( o, Expression.Constant( 3 ) ),
+                    Expression.Break( outerBreak ) ),
+                innerLoop,
+                Expression.PostIncrementAssign( outerCount ),
+                Expression.PostIncrementAssign( o ) ),
+            outerBreak );
+
+        var body = Expression.Block(
+            new[] { outerCount, innerCount, o },
+            Expression.Assign( outerCount, Expression.Constant( 0 ) ),
+            Expression.Assign( innerCount, Expression.Constant( 0 ) ),
+            Expression.Assign( o, Expression.Constant( 0 ) ),
+            outerLoop,
+            Expression.Add( outerCount, innerCount ) );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 6, fn() );  // outerCount=3, innerCount=3 → 6
+    }
+
+    // ================================================================
+    // Loop negative counter — counts from 0 down to −5
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Loop_NegativeCounter_SumsToNegative( CompilerType compilerType )
+    {
+        // sum = 0; i = 0;
+        // loop { if (i <= -5) break; i--; sum += i; }
+        // return sum; // -1 + -2 + -3 + -4 + -5 = -15
+        var sum = Expression.Variable( typeof( int ), "sum" );
+        var i = Expression.Variable( typeof( int ), "i" );
+        var breakLabel = Expression.Label( "break" );
+
+        var loop = Expression.Loop(
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.LessThanOrEqual( i, Expression.Constant( -5 ) ),
+                    Expression.Break( breakLabel ) ),
+                Expression.PostDecrementAssign( i ),
+                Expression.AddAssign( sum, i ) ),
+            breakLabel );
+
+        var body = Expression.Block(
+            new[] { sum, i },
+            Expression.Assign( sum, Expression.Constant( 0 ) ),
+            Expression.Assign( i, Expression.Constant( 0 ) ),
+            loop,
+            sum );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -15, fn() );  // -1 + -2 + -3 + -4 + -5 = -15
+    }
+
+    // ================================================================
+    // Loop string concat — builds a string in a loop
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Loop_StringConcat_NTimes( CompilerType compilerType )
+    {
+        // var s = ""; var i = 0;
+        // loop { if (i >= 3) break; s += "x"; i++; }
+        // return s; // "xxx"
+        var s = Expression.Variable( typeof( string ), "s" );
+        var i = Expression.Variable( typeof( int ), "i" );
+        var breakLabel = Expression.Label( "break" );
+        var concatMethod = typeof( string ).GetMethod( "Concat", [typeof( string ), typeof( string )] )!;
+
+        var loop = Expression.Loop(
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.GreaterThanOrEqual( i, Expression.Constant( 3 ) ),
+                    Expression.Break( breakLabel ) ),
+                Expression.Assign( s, Expression.Call( null, concatMethod, s, Expression.Constant( "x" ) ) ),
+                Expression.PostIncrementAssign( i ) ),
+            breakLabel );
+
+        var body = Expression.Block(
+            new[] { s, i },
+            Expression.Assign( s, Expression.Constant( "" ) ),
+            Expression.Assign( i, Expression.Constant( 0 ) ),
+            loop,
+            s );
+
+        var lambda = Expression.Lambda<Func<string>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( "xxx", fn() );
+    }
+
+    // ================================================================
+    // Loop running sum — accumulate with param
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Loop_RunningSum_WithParameter( CompilerType compilerType )
+    {
+        // (int n) => sum 1..n
+        var n = Expression.Parameter( typeof( int ), "n" );
+        var sum = Expression.Variable( typeof( int ), "sum" );
+        var i = Expression.Variable( typeof( int ), "i" );
+        var breakLabel = Expression.Label( "break" );
+
+        var loop = Expression.Loop(
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.GreaterThan( i, n ),
+                    Expression.Break( breakLabel ) ),
+                Expression.AddAssign( sum, i ),
+                Expression.PostIncrementAssign( i ) ),
+            breakLabel );
+
+        var body = Expression.Block(
+            new[] { sum, i },
+            Expression.Assign( sum, Expression.Constant( 0 ) ),
+            Expression.Assign( i, Expression.Constant( 1 ) ),
+            loop,
+            sum );
+
+        var lambda = Expression.Lambda<Func<int, int>>( body, n );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 0, fn( 0 ) );
+        Assert.AreEqual( 1, fn( 1 ) );
+        Assert.AreEqual( 55, fn( 10 ) );  // 1+2+...+10 = 55
+    }
+
+    // ================================================================
+    // Loop — empty body terminates on first iteration
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Loop_EmptyBody_BreakImmediately_ReturnsValue( CompilerType compilerType )
+    {
+        // loop { break(7); }
+        var breakLabel = Expression.Label( typeof( int ), "break" );
+
+        var loop = Expression.Loop(
+            Expression.Break( breakLabel, Expression.Constant( 7 ) ),
+            breakLabel );
+
+        var lambda = Expression.Lambda<Func<int>>( loop );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 7, fn() );
+    }
 }

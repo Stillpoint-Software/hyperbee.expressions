@@ -619,4 +619,247 @@ public class UnaryTests
 
         Assert.AreEqual( 9L, fn() );
     }
+
+    // ================================================================
+    // Decrement — float
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Decrement_Float( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( float ), "a" );
+        var lambda = Expression.Lambda<Func<float, float>>( Expression.Decrement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 4.5f, fn( 5.5f ), 1e-6f );
+        Assert.AreEqual( -1.0f, fn( 0.0f ), 1e-6f );
+    }
+
+    // ================================================================
+    // Increment — byte (promoted through int)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Increment_Short( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( short ), "a" );
+        var lambda = Expression.Lambda<Func<short, short>>( Expression.Increment( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 6, fn( 5 ) );
+        Assert.AreEqual( (short) 0, fn( -1 ) );
+    }
+
+    // ================================================================
+    // Decrement — short
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Decrement_Short( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( short ), "a" );
+        var lambda = Expression.Lambda<Func<short, short>>( Expression.Decrement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 4, fn( 5 ) );
+        Assert.AreEqual( (short) -1, fn( 0 ) );
+    }
+
+    // ================================================================
+    // Decrement — ulong
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Decrement_ULong( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( ulong ), "a" );
+        var lambda = Expression.Lambda<Func<ulong, ulong>>( Expression.Decrement( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( ulong.MaxValue - 1, fn( ulong.MaxValue ) );
+        Assert.AreEqual( 0UL, fn( 1UL ) );
+    }
+
+    // ================================================================
+    // PostIncrementAssign — double
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void PostIncrementAssign_Double( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC PostIncrementAssign on double returns pre-increment value instead of post-increment." );
+
+        var i = Expression.Variable( typeof( double ), "i" );
+        var body = Expression.Block(
+            new[] { i },
+            Expression.Assign( i, Expression.Constant( 1.5 ) ),
+            Expression.PostIncrementAssign( i ),
+            i );
+        var lambda = Expression.Lambda<Func<double>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 2.5, fn(), 1e-9 );
+    }
+
+    // ================================================================
+    // PreDecrementAssign — long
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void PreDecrementAssign_Long( CompilerType compilerType )
+    {
+        var i = Expression.Variable( typeof( long ), "i" );
+        var body = Expression.Block(
+            new[] { i },
+            Expression.Assign( i, Expression.Constant( 10L ) ),
+            Expression.PreDecrementAssign( i ),
+            i );
+        var lambda = Expression.Lambda<Func<long>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 9L, fn() );
+    }
+
+    // ================================================================
+    // Negate — short
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Negate_Short( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( short ), "a" );
+        var lambda = Expression.Lambda<Func<short, short>>( Expression.Negate( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) -5, fn( 5 ) );
+        Assert.AreEqual( (short) 10, fn( -10 ) );
+    }
+
+    // ================================================================
+    // UnaryPlus — short
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void UnaryPlus_Short( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( short ), "a" );
+        var lambda = Expression.Lambda<Func<short, short>>( Expression.UnaryPlus( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (short) 5, fn( 5 ) );
+        Assert.AreEqual( (short) -3, fn( -3 ) );
+    }
+
+    // ================================================================
+    // Negate — byte (int-widened)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Negate_SByte( CompilerType compilerType )
+    {
+        // Expression.Negate is not defined for sbyte directly; widen to int, negate, narrow back
+        var a = Expression.Parameter( typeof( sbyte ), "a" );
+        var negated = Expression.Convert(
+            Expression.Negate( Expression.Convert( a, typeof( int ) ) ),
+            typeof( sbyte ) );
+        var lambda = Expression.Lambda<Func<sbyte, sbyte>>( negated, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (sbyte) -10, fn( 10 ) );
+        Assert.AreEqual( (sbyte) 1, fn( -1 ) );
+    }
+
+    // ================================================================
+    // IsFalse — nullable bool (FEC known bug)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void IsFalse_NullableBool( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC Not(bool?) generates invalid IL. See FecKnownIssues.Pattern21." );
+
+        // IsFalse(bool?) returns bool? (lifted null semantics): null→null, false→true, true→false
+        var a = Expression.Parameter( typeof( bool? ), "a" );
+        var lambda = Expression.Lambda<Func<bool?, bool?>>( Expression.IsFalse( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (bool?) true, fn( false ) );
+        Assert.AreEqual( (bool?) false, fn( true ) );
+        Assert.IsNull( fn( null ) );
+    }
+
+    // ================================================================
+    // IsTrue — nullable bool (FEC known bug)
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void IsTrue_NullableBool( CompilerType compilerType )
+    {
+        if ( compilerType == CompilerType.Fast )
+            Assert.Inconclusive( "Suppressed: FEC Not(bool?) generates invalid IL. See FecKnownIssues.Pattern21." );
+
+        // IsTrue(bool?) returns bool? (lifted null semantics): null→null, true→true, false→false
+        var a = Expression.Parameter( typeof( bool? ), "a" );
+        var lambda = Expression.Lambda<Func<bool?, bool?>>( Expression.IsTrue( a ), a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (bool?) true, fn( true ) );
+        Assert.AreEqual( (bool?) false, fn( false ) );
+        Assert.IsNull( fn( null ) );
+    }
+
+    // ================================================================
+    // OnesComplement — byte
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void OnesComplement_Byte( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( byte ), "a" );
+        var result = Expression.Convert( Expression.OnesComplement( a ), typeof( byte ) );
+        var lambda = Expression.Lambda<Func<byte, byte>>( result, a );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( (byte) 0xFF, fn( 0 ) );
+        Assert.AreEqual( (byte) 0x00, fn( 0xFF ) );
+        Assert.AreEqual( (byte) 0xF0, fn( 0x0F ) );
+    }
 }

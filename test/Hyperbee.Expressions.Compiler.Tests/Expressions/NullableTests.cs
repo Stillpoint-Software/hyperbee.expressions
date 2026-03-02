@@ -303,4 +303,98 @@ public class NullableTests
         Assert.AreEqual( 43, fn( 42 ) );
         Assert.AreEqual( -1, fn( null ) );
     }
+
+    // --- Nullable<double> HasValue and Value ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NullableDouble_HasValue_Property( CompilerType compilerType )
+    {
+        var n = Expression.Parameter( typeof( double? ), "n" );
+        var hasValue = Expression.Property( n, "HasValue" );
+        var lambda = Expression.Lambda<Func<double?, bool>>( hasValue, n );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( 3.14 ) );
+        Assert.IsFalse( fn( null ) );
+    }
+
+    // --- Nullable<bool> conditional ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NullableBool_Conditional_HasValueBranch( CompilerType compilerType )
+    {
+        var n = Expression.Parameter( typeof( bool? ), "n" );
+        var body = Expression.Condition(
+            Expression.Property( n, "HasValue" ),
+            Expression.Convert( n, typeof( bool ) ),
+            Expression.Constant( false ) );
+        var lambda = Expression.Lambda<Func<bool?, bool>>( body, n );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsTrue( fn( true ) );
+        Assert.IsFalse( fn( false ) );
+        Assert.IsFalse( fn( null ) );
+    }
+
+    // --- Nullable<long> GetValueOrDefault ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NullableLong_GetValueOrDefault_WithDefault( CompilerType compilerType )
+    {
+        var n = Expression.Parameter( typeof( long? ), "n" );
+        var getValueOrDefault = typeof( long? ).GetMethod( "GetValueOrDefault", [typeof( long )] )!;
+        var body = Expression.Call( n, getValueOrDefault, Expression.Constant( 99L ) );
+        var lambda = Expression.Lambda<Func<long?, long>>( body, n );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 42L, fn( 42L ) );
+        Assert.AreEqual( 99L, fn( null ) );
+    }
+
+    // --- Nullable<int> arithmetic — result is nullable ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NullableInt_Add_ReturnsNullable( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( int? ), "a" );
+        var b = Expression.Parameter( typeof( int? ), "b" );
+        var lambda = Expression.Lambda<Func<int?, int?, int?>>( Expression.Add( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 7, fn( 3, 4 ) );
+        Assert.IsNull( fn( null, 4 ) );
+        Assert.IsNull( fn( 3, null ) );
+    }
+
+    // --- Nullable<int> — not equal comparison ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void NullableInt_NotEqual_BothNull_IsFalse( CompilerType compilerType )
+    {
+        var a = Expression.Parameter( typeof( int? ), "a" );
+        var b = Expression.Parameter( typeof( int? ), "b" );
+        var lambda = Expression.Lambda<Func<int?, int?, bool>>( Expression.NotEqual( a, b ), a, b );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.IsFalse( fn( null, null ) );
+        Assert.IsTrue( fn( 1, null ) );
+        Assert.IsTrue( fn( null, 1 ) );
+        Assert.IsFalse( fn( 5, 5 ) );
+        Assert.IsTrue( fn( 5, 6 ) );
+    }
 }
