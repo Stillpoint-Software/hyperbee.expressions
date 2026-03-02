@@ -235,4 +235,47 @@ public class FecKnownIssues
 
         Assert.AreEqual( 13, HyperbeeCompiler.CompileWithFallback<Func<int>>( outer )() );
     }
+
+    // --- Pattern 3: HyperbeeCompiler.Compile (no fallback) ---
+    //
+    // After Phase 3 implementation, closure patterns with mutable captured
+    // variables are natively compiled by HyperbeeCompiler without needing
+    // fallback to System compiler.
+
+    [TestMethod]
+    public void Pattern3_MutableCapturedVariable_HyperbeeNative()
+    {
+        var counter = Expression.Variable( typeof(int), "counter" );
+        var increment = Expression.Lambda<Action>(
+            Expression.Assign( counter, Expression.Add( counter, Expression.Constant( 1 ) ) ) );
+        var outer = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { counter },
+                Expression.Assign( counter, Expression.Constant( 0 ) ),
+                Expression.Invoke( increment ),
+                Expression.Invoke( increment ),
+                counter
+            ) );
+
+        Assert.AreEqual( 2, HyperbeeCompiler.Compile<Func<int>>( outer )() );
+    }
+
+    [TestMethod]
+    public void Pattern3_MutableCapturedVariable_MultipleIncrements_HyperbeeNative()
+    {
+        var counter = Expression.Variable( typeof(int), "counter" );
+        var increment = Expression.Lambda<Action>(
+            Expression.Assign( counter, Expression.Add( counter, Expression.Constant( 1 ) ) ) );
+        var outer = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                new[] { counter },
+                Expression.Assign( counter, Expression.Constant( 10 ) ),
+                Expression.Invoke( increment ),
+                Expression.Invoke( increment ),
+                Expression.Invoke( increment ),
+                counter
+            ) );
+
+        Assert.AreEqual( 13, HyperbeeCompiler.Compile<Func<int>>( outer )() );
+    }
 }

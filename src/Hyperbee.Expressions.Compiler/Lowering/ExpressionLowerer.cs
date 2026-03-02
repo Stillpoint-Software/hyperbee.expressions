@@ -1,12 +1,15 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Hyperbee.Expressions.Compiler.IR;
 
 namespace Hyperbee.Expressions.Compiler.Lowering;
 
 /// <summary>
 /// Lowers a System.Linq.Expressions expression tree into flat IR instructions.
-/// Single traversal. Handles all Phase 1 node types.
+/// Single traversal. Handles constants, parameters, binary/unary, conversions,
+/// method calls, conditionals, blocks, assignments, member access, new objects,
+/// try/catch/finally/throw/goto/label, and nested lambdas with closures.
 /// </summary>
 public class ExpressionLowerer
 {
@@ -15,14 +18,32 @@ public class ExpressionLowerer
     private readonly Dictionary<ParameterExpression, int> _localMap = new();
     private readonly Dictionary<LabelTarget, int> _labelMap = new();
     private readonly Dictionary<LabelTarget, int> _labelValueLocalMap = new();
+    private readonly HashSet<ParameterExpression> _capturedVariables;
+
+    // Maps captured variable -> local index of its StrongBox<T>
+    private readonly Dictionary<ParameterExpression, int> _strongBoxLocalMap = new();
+
+    // Maps a nested lambda (by reference identity) to its closure info
+    private readonly Dictionary<LambdaExpression, ClosureInfo> _closureInfoMap = new();
+
     private int _argOffset;
 
     /// <summary>
     /// Creates a new expression lowerer targeting the given IR builder.
     /// </summary>
     public ExpressionLowerer( IRBuilder ir )
+        : this( ir, null )
+    {
+    }
+
+    /// <summary>
+    /// Creates a new expression lowerer targeting the given IR builder,
+    /// with a set of captured variables that need StrongBox wrapping.
+    /// </summary>
+    public ExpressionLowerer( IRBuilder ir, HashSet<ParameterExpression>? capturedVariables )
     {
         _ir = ir;
+        _capturedVariables = capturedVariables ?? new HashSet<ParameterExpression>();
     }
 
     /// <summary>
@@ -39,6 +60,11 @@ public class ExpressionLowerer
 
         LowerExpression( lambda.Body );
         _ir.Emit( IROp.Ret );
+    }
+
+    private bool IsCaptured( ParameterExpression variable )
+    {
+        return _capturedVariables.Contains( variable );
     }
 
     private void LowerExpression( Expression node )
@@ -165,8 +191,17 @@ public class ExpressionLowerer
                 LowerLabel( (LabelExpression) node );
                 break;
 
-            // Unsupported types that should throw
+            // Lambda (nested)
             case ExpressionType.Lambda:
+                LowerNestedLambda( (LambdaExpression) node );
+                break;
+
+            // Invoke (delegate invocation)
+            case ExpressionType.Invoke:
+                LowerInvoke( (InvocationExpression) node );
+                break;
+
+            // Unsupported types that should throw
             case ExpressionType.Loop:
             case ExpressionType.Switch:
                 throw new NotSupportedException(
@@ -200,6 +235,13 @@ public class ExpressionLowerer
 
     private void LowerParameter( ParameterExpression node )
     {
+        // Captured variable -- load through StrongBox<T>.Value
+        if ( IsCaptured( node ) && _strongBoxLocalMap.ContainsKey( node ) )
+        {
+            EmitLoadCapturedValue( node );
+            return;
+        }
+
         if ( _parameterMap.TryGetValue( node, out var argIndex ) )
         {
             _ir.Emit( IROp.LoadArg, argIndex );
@@ -571,8 +613,23 @@ public class ExpressionLowerer
         // Declare block variables
         foreach ( var variable in node.Variables )
         {
-            var local = _ir.DeclareLocal( variable.Type, variable.Name );
-            _localMap[variable] = local;
+            if ( IsCaptured( variable ) )
+            {
+                // Captured variable: allocate a StrongBox<T> local
+                var strongBoxType = typeof( StrongBox<> ).MakeGenericType( variable.Type );
+                var boxLocal = _ir.DeclareLocal( strongBoxType, $"$box_{variable.Name}" );
+                _strongBoxLocalMap[variable] = boxLocal;
+
+                // Emit: new StrongBox<T>() and store
+                var ctor = strongBoxType.GetConstructor( Type.EmptyTypes )!;
+                _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
+                _ir.Emit( IROp.StoreLocal, boxLocal );
+            }
+            else
+            {
+                var local = _ir.DeclareLocal( variable.Type, variable.Name );
+                _localMap[variable] = local;
+            }
         }
 
         // Lower all expressions in the block
@@ -596,6 +653,13 @@ public class ExpressionLowerer
         // The left side must be a ParameterExpression (variable)
         if ( node.Left is ParameterExpression variable )
         {
+            // Captured variable -- store through StrongBox<T>.Value
+            if ( IsCaptured( variable ) && _strongBoxLocalMap.ContainsKey( variable ) )
+            {
+                EmitStoreCapturedValue( variable, node.Right );
+                return;
+            }
+
             LowerExpression( node.Right );
 
             // Dup the value so it remains on the stack as the result of the assignment
@@ -844,21 +908,6 @@ public class ExpressionLowerer
     {
         var labelIndex = GetOrCreateLabel( node.Target );
 
-        // If the label has a type (carries a value), we need to handle two arrival paths:
-        //  1. Via Goto: the Goto already stored the value into the label's value local.
-        //     The Goto branches directly to the "after default" point.
-        //  2. Via fallthrough: the default value is stored into the value local.
-        //
-        // Pattern:
-        //   [fallthrough default store]
-        //   Branch afterDefaultLabel     -- skip for fallthrough (already stored default)
-        //   -- Wait, simpler: Goto branches to afterDefaultLabel, fallthrough stores default.
-        //
-        // Actually the simplest correct pattern:
-        //   [default value store]        -- fallthrough stores default
-        //   afterDefaultLabel:           -- Goto jumps here (value already stored by Goto)
-        //   LoadLocal valueLocal         -- load the value
-
         if ( node.Target.Type != typeof( void ) )
         {
             var valueLocal = GetOrCreateLabelValueLocal( node.Target );
@@ -888,6 +937,374 @@ public class ExpressionLowerer
                 LowerExpression( node.DefaultValue );
                 _ir.Emit( IROp.Pop );
             }
+        }
+    }
+
+    // --- Lambda / Invoke (Phase 3: Closures) ---
+
+    /// <summary>
+    /// Emit code to load a captured variable's value through its StrongBox&lt;T&gt;.
+    /// Stack effect: pushes the value of the captured variable.
+    /// </summary>
+    private void EmitLoadCapturedValue( ParameterExpression variable )
+    {
+        var boxLocal = _strongBoxLocalMap[variable];
+        var strongBoxType = typeof( StrongBox<> ).MakeGenericType( variable.Type );
+        var valueField = strongBoxType.GetField( "Value" )!;
+
+        _ir.Emit( IROp.LoadLocal, boxLocal );
+        _ir.Emit( IROp.LoadField, _ir.AddOperand( valueField ) );
+    }
+
+    /// <summary>
+    /// Emit code to store a value into a captured variable through its StrongBox&lt;T&gt;.
+    /// The right-hand side expression is lowered and the result is dup'd so the
+    /// assignment expression still has a value on the stack.
+    /// </summary>
+    private void EmitStoreCapturedValue( ParameterExpression variable, Expression rightSide )
+    {
+        var boxLocal = _strongBoxLocalMap[variable];
+        var strongBoxType = typeof( StrongBox<> ).MakeGenericType( variable.Type );
+        var valueField = strongBoxType.GetField( "Value" )!;
+
+        // Pattern: LoadLocal box, LowerExpression right, Dup, StoreLocal temp, StoreField Value, LoadLocal temp
+        // This leaves the assigned value on the stack as the expression result.
+        _ir.Emit( IROp.LoadLocal, boxLocal );
+        LowerExpression( rightSide );
+        _ir.Emit( IROp.Dup );
+
+        // Stack: [box] [value] [value]
+        // stfld expects [box][value], but the dup'd value is on top.
+        // Use a temp to hold the result.
+        var tempLocal = _ir.DeclareLocal( variable.Type, $"$temp_{variable.Name}" );
+        _ir.Emit( IROp.StoreLocal, tempLocal ); // Stack: [box] [value]
+        _ir.Emit( IROp.StoreField, _ir.AddOperand( valueField ) ); // Stack: empty
+        _ir.Emit( IROp.LoadLocal, tempLocal ); // Stack: [value] (assignment result)
+    }
+
+    /// <summary>
+    /// Lower a nested lambda expression. For lambdas without captures, compile
+    /// directly with the System compiler and push on stack. For lambdas with
+    /// captures, prepare closure info and push on stack.
+    /// </summary>
+    private void LowerNestedLambda( LambdaExpression nestedLambda )
+    {
+        // Ensure closure info is prepared (shared with LowerInvoke)
+        var closureInfo = GetOrBuildClosureInfo( nestedLambda );
+
+        if ( closureInfo == null )
+        {
+            // No captures -- compile directly with System compiler
+            var compiledDelegate = nestedLambda.Compile();
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( compiledDelegate ) );
+        }
+        else
+        {
+            // Has captures -- this lambda is used as a value (not via Invoke).
+            // We can't easily represent a partially-applied delegate in IL,
+            // so emit the compiled inner delegate as a constant.
+            // Note: standalone closure lambdas (not invoked) are an edge case.
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( closureInfo.CompiledDelegate ) );
+        }
+    }
+
+    /// <summary>
+    /// Lower an invocation expression (Expression.Invoke).
+    /// For closure lambdas, passes the StrongBox locals as extra arguments.
+    /// For non-closure delegates, calls Invoke normally.
+    /// </summary>
+    private void LowerInvoke( InvocationExpression node )
+    {
+        // Check if this invocation targets a nested lambda that may have closures
+        if ( node.Expression is LambdaExpression lambdaExpr )
+        {
+            var closureInfo = GetOrBuildClosureInfo( lambdaExpr );
+
+            if ( closureInfo != null )
+            {
+                // Closure lambda: load compiled delegate, args, and StrongBox locals
+                _ir.Emit( IROp.LoadConst, _ir.AddOperand( closureInfo.CompiledDelegate ) );
+
+                // Lower the original arguments
+                foreach ( var arg in node.Arguments )
+                {
+                    LowerExpression( arg );
+                }
+
+                // Load the StrongBox locals for captured variables
+                foreach ( var capture in closureInfo.Captures )
+                {
+                    var boxLocal = _strongBoxLocalMap[capture];
+                    _ir.Emit( IROp.LoadLocal, boxLocal );
+                }
+
+                // Call Invoke on the rewritten delegate type (original params + StrongBox params)
+                var invokeMethod = closureInfo.CompiledDelegate.GetType().GetMethod( "Invoke" )!;
+                _ir.Emit( IROp.CallVirt, _ir.AddOperand( invokeMethod ) );
+                return;
+            }
+
+            // No captures -- compile the lambda directly and invoke
+            var compiledDelegate = lambdaExpr.Compile();
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( compiledDelegate ) );
+
+            foreach ( var arg in node.Arguments )
+            {
+                LowerExpression( arg );
+            }
+
+            var delegateInvokeMethod = compiledDelegate.GetType().GetMethod( "Invoke" )!;
+            _ir.Emit( IROp.CallVirt, _ir.AddOperand( delegateInvokeMethod ) );
+            return;
+        }
+
+        // Generic delegate invocation -- lower the target and arguments
+        LowerExpression( node.Expression );
+
+        foreach ( var arg in node.Arguments )
+        {
+            LowerExpression( arg );
+        }
+
+        // Call Invoke on the delegate type
+        var delegateType = node.Expression.Type;
+        var invokeMethod2 = delegateType.GetMethod( "Invoke" )!;
+        _ir.Emit( IROp.CallVirt, _ir.AddOperand( invokeMethod2 ) );
+    }
+
+    /// <summary>
+    /// Get or build the closure info for a nested lambda. Returns null if the
+    /// lambda has no captured variables and doesn't need closure treatment.
+    /// </summary>
+    private ClosureInfo? GetOrBuildClosureInfo( LambdaExpression lambda )
+    {
+        // Check if already built
+        if ( _closureInfoMap.TryGetValue( lambda, out var existing ) )
+        {
+            return existing;
+        }
+
+        // Find which captured variables this nested lambda references
+        var innerCaptures = new List<ParameterExpression>();
+        foreach ( var capturedVar in _capturedVariables )
+        {
+            if ( _strongBoxLocalMap.ContainsKey( capturedVar )
+                && ReferencesVariable( lambda.Body, capturedVar ) )
+            {
+                innerCaptures.Add( capturedVar );
+            }
+        }
+
+        if ( innerCaptures.Count == 0 )
+        {
+            return null;
+        }
+
+        // Build the closure: rewrite inner lambda to take StrongBox<T> parameters
+        var boxParams = new ParameterExpression[innerCaptures.Count];
+        var boxTypes = new Type[innerCaptures.Count];
+
+        for ( var i = 0; i < innerCaptures.Count; i++ )
+        {
+            var strongBoxType = typeof( StrongBox<> ).MakeGenericType( innerCaptures[i].Type );
+            boxParams[i] = Expression.Parameter( strongBoxType, $"box_{innerCaptures[i].Name}" );
+            boxTypes[i] = strongBoxType;
+        }
+
+        // Build a mapping from captured variable to StrongBox<T>.Value access
+        var replacements = new Dictionary<ParameterExpression, Expression>();
+        for ( var i = 0; i < innerCaptures.Count; i++ )
+        {
+            var valueField = boxTypes[i].GetField( "Value" )!;
+            replacements[innerCaptures[i]] = Expression.Field( boxParams[i], valueField );
+        }
+
+        // Rewrite the inner lambda body to use StrongBox parameters
+        var rewrittenBody = (Expression) new CaptureRewriter( replacements ).Visit( lambda.Body )!;
+
+        // Build a new lambda that takes the original params + StrongBox params
+        var allParams = new List<ParameterExpression>( lambda.Parameters );
+        allParams.AddRange( boxParams );
+
+        // If the original lambda has a void return type but the rewritten body has
+        // a non-void type, wrap in a void block to discard the value.
+        var originalReturnType = lambda.ReturnType;
+        if ( originalReturnType == typeof( void ) && rewrittenBody.Type != typeof( void ) )
+        {
+            rewrittenBody = Expression.Block( typeof( void ), rewrittenBody );
+        }
+
+        // Build the correct delegate type that matches the original return type
+        // but includes the extra StrongBox parameters.
+        var allParamTypes = allParams.Select( p => p.Type ).ToArray();
+        Type delegateType;
+
+        if ( originalReturnType == typeof( void ) )
+        {
+            delegateType = Expression.GetActionType( allParamTypes );
+        }
+        else
+        {
+            var funcTypes = new Type[allParamTypes.Length + 1];
+            Array.Copy( allParamTypes, funcTypes, allParamTypes.Length );
+            funcTypes[^1] = originalReturnType;
+            delegateType = Expression.GetFuncType( funcTypes );
+        }
+
+        // Create and compile the rewritten lambda with explicit delegate type
+        var rewrittenLambda = Expression.Lambda( delegateType, rewrittenBody, allParams );
+        var compiledInner = rewrittenLambda.Compile();
+
+        var closureInfo = new ClosureInfo( compiledInner, innerCaptures );
+        _closureInfoMap[lambda] = closureInfo;
+        return closureInfo;
+    }
+
+    /// <summary>
+    /// Check if an expression tree references a specific parameter variable.
+    /// </summary>
+    private static bool ReferencesVariable( Expression node, ParameterExpression variable )
+    {
+        if ( node == null )
+            return false;
+
+        if ( node is ParameterExpression param && param == variable )
+            return true;
+
+        switch ( node )
+        {
+            case BinaryExpression binary:
+                return ReferencesVariable( binary.Left, variable )
+                    || ReferencesVariable( binary.Right, variable );
+
+            case UnaryExpression unary:
+                return ReferencesVariable( unary.Operand, variable );
+
+            case ConditionalExpression conditional:
+                return ReferencesVariable( conditional.Test, variable )
+                    || ReferencesVariable( conditional.IfTrue, variable )
+                    || ReferencesVariable( conditional.IfFalse, variable );
+
+            case MethodCallExpression methodCall:
+            {
+                if ( methodCall.Object != null && ReferencesVariable( methodCall.Object, variable ) )
+                    return true;
+                foreach ( var arg in methodCall.Arguments )
+                {
+                    if ( ReferencesVariable( arg, variable ) )
+                        return true;
+                }
+                return false;
+            }
+
+            case BlockExpression block:
+            {
+                foreach ( var expr in block.Expressions )
+                {
+                    if ( ReferencesVariable( expr, variable ) )
+                        return true;
+                }
+                return false;
+            }
+
+            case MemberExpression member:
+                return ReferencesVariable( member.Expression, variable );
+
+            case InvocationExpression invocation:
+            {
+                if ( ReferencesVariable( invocation.Expression, variable ) )
+                    return true;
+                foreach ( var arg in invocation.Arguments )
+                {
+                    if ( ReferencesVariable( arg, variable ) )
+                        return true;
+                }
+                return false;
+            }
+
+            case LambdaExpression lambda:
+                return ReferencesVariable( lambda.Body, variable );
+
+            case NewExpression newExpr:
+            {
+                foreach ( var arg in newExpr.Arguments )
+                {
+                    if ( ReferencesVariable( arg, variable ) )
+                        return true;
+                }
+                return false;
+            }
+
+            case TryExpression tryExpr:
+            {
+                if ( ReferencesVariable( tryExpr.Body, variable ) )
+                    return true;
+                foreach ( var handler in tryExpr.Handlers )
+                {
+                    if ( ReferencesVariable( handler.Filter, variable )
+                        || ReferencesVariable( handler.Body, variable ) )
+                        return true;
+                }
+                if ( ReferencesVariable( tryExpr.Finally, variable ) )
+                    return true;
+                if ( ReferencesVariable( tryExpr.Fault, variable ) )
+                    return true;
+                return false;
+            }
+
+            case GotoExpression gotoExpr:
+                return ReferencesVariable( gotoExpr.Value, variable );
+
+            case LabelExpression labelExpr:
+                return ReferencesVariable( labelExpr.DefaultValue, variable );
+
+            case TypeBinaryExpression typeBinary:
+                return ReferencesVariable( typeBinary.Expression, variable );
+
+            default:
+                return false;
+        }
+    }
+
+    // --- Closure infrastructure ---
+
+    /// <summary>
+    /// Contains info about a compiled closure: the inner delegate and which
+    /// captured variables it needs as StrongBox arguments.
+    /// </summary>
+    private record ClosureInfo( Delegate CompiledDelegate, List<ParameterExpression> Captures );
+
+    /// <summary>
+    /// An ExpressionVisitor that replaces captured ParameterExpression references
+    /// with StrongBox&lt;T&gt;.Value field accesses.
+    /// </summary>
+    private class CaptureRewriter : ExpressionVisitor
+    {
+        private readonly Dictionary<ParameterExpression, Expression> _replacements;
+
+        public CaptureRewriter( Dictionary<ParameterExpression, Expression> replacements )
+        {
+            _replacements = replacements;
+        }
+
+        protected override Expression VisitParameter( ParameterExpression node )
+        {
+            return _replacements.TryGetValue( node, out var replacement )
+                ? replacement
+                : base.VisitParameter( node );
+        }
+
+        protected override Expression VisitBinary( BinaryExpression node )
+        {
+            if ( node.NodeType == ExpressionType.Assign && node.Left is ParameterExpression param
+                && _replacements.TryGetValue( param, out var replacement ) )
+            {
+                // Rewrite: Assign(param, value) -> Assign(box.Value, value)
+                var newRight = Visit( node.Right );
+                return Expression.Assign( replacement, newRight! );
+            }
+
+            return base.VisitBinary( node );
         }
     }
 }

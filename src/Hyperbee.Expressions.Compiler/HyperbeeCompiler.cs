@@ -16,54 +16,21 @@ public static class HyperbeeCompiler
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
     public static TDelegate Compile<TDelegate>( Expression<TDelegate> lambda )
         where TDelegate : Delegate
-        => (TDelegate) Compile( (LambdaExpression) lambda );
+    {
+        return (TDelegate) Compile( (LambdaExpression) lambda );
+    }
 
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
     public static Delegate Compile( LambdaExpression lambda )
     {
-        var ir = LowerToIR( lambda, out var needsConstantsArray );
+        // Scan for captured variables before lowering
+        var capturedVariables = CaptureScanner.FindCapturedVariables( lambda );
+
+        var ir = LowerToIR( lambda, capturedVariables, out var needsConstantsArray );
 
         TransformIR( ir );
 
         return EmitDelegate( ir, lambda, needsConstantsArray );
-    }
-
-    private static IRBuilder LowerToIR( LambdaExpression lambda, out bool needsConstantsArray )
-    {
-        needsConstantsArray = ScanForNonEmbeddableConstants( lambda.Body );
-
-        var ir = new IRBuilder();
-        var lowerer = new ExpressionLowerer( ir );
-        var argOffset = needsConstantsArray ? 1 : 0;
-
-        lowerer.Lower( lambda, argOffset );
-
-        return ir;
-    }
-
-    private static void TransformIR( IRBuilder ir )
-    {
-        StackSpillPass.Run( ir );
-    }
-
-    private static Delegate EmitDelegate( IRBuilder ir, LambdaExpression lambda, bool needsConstantsArray )
-    {
-        BuildConstantsMapping( ir, needsConstantsArray, out var constantIndices, out var constantsArray );
-
-        var paramTypes = BuildParameterTypes( lambda, needsConstantsArray );
-
-        var method = new DynamicMethod(
-            string.Empty,
-            lambda.ReturnType,
-            paramTypes,
-            typeof( HyperbeeCompiler ),
-            skipVisibility: true );
-
-        ILEmissionPass.Run( ir, method.GetILGenerator(), needsConstantsArray, constantIndices );
-
-        return needsConstantsArray
-            ? method.CreateDelegate( lambda.Type, constantsArray )
-            : method.CreateDelegate( lambda.Type );
     }
 
     /// <summary>Compiles the expression. Returns null on unsupported patterns.</summary>
@@ -96,11 +63,59 @@ public static class HyperbeeCompiler
     /// <summary>Compiles the expression. Falls back to system compiler on failure.</summary>
     public static TDelegate CompileWithFallback<TDelegate>( Expression<TDelegate> lambda )
         where TDelegate : Delegate
-        => (TDelegate) CompileWithFallback( (LambdaExpression) lambda );
+    {
+        return (TDelegate) CompileWithFallback( (LambdaExpression) lambda );
+    }
 
     /// <summary>Compiles the expression. Falls back to system compiler on failure.</summary>
     public static Delegate CompileWithFallback( LambdaExpression lambda )
-        => TryCompile( lambda ) ?? lambda.Compile();
+    {
+        return TryCompile( lambda ) ?? lambda.Compile();
+    }
+
+    // --- Compilation steps ---
+
+    private static IRBuilder LowerToIR(
+        LambdaExpression lambda,
+        HashSet<ParameterExpression> capturedVariables,
+        out bool needsConstantsArray )
+    {
+        needsConstantsArray = ScanForNonEmbeddableConstants( lambda.Body )
+            || capturedVariables.Count > 0; // closures always need constants array for delegates
+
+        var ir = new IRBuilder();
+        var lowerer = new ExpressionLowerer( ir, capturedVariables );
+        var argOffset = needsConstantsArray ? 1 : 0;
+
+        lowerer.Lower( lambda, argOffset );
+
+        return ir;
+    }
+
+    private static void TransformIR( IRBuilder ir )
+    {
+        StackSpillPass.Run( ir ); // Handle stack spilling for complex expressions and try/catch blocks
+    }
+
+    private static Delegate EmitDelegate( IRBuilder ir, LambdaExpression lambda, bool needsConstantsArray )
+    {
+        BuildConstantsMapping( ir, needsConstantsArray, out var constantIndices, out var constantsArray );
+
+        var paramTypes = BuildParameterTypes( lambda, needsConstantsArray );
+
+        var method = new DynamicMethod(
+            string.Empty,
+            lambda.ReturnType,
+            paramTypes,
+            typeof( HyperbeeCompiler ),
+            skipVisibility: true );
+
+        ILEmissionPass.Run( ir, method.GetILGenerator(), needsConstantsArray, constantIndices );
+
+        return needsConstantsArray
+            ? method.CreateDelegate( lambda.Type, constantsArray )
+            : method.CreateDelegate( lambda.Type );
+    }
 
     // --- Private helpers ---
 
@@ -191,6 +206,22 @@ public static class HyperbeeCompiler
 
             case LabelExpression labelExpr:
                 return labelExpr.DefaultValue != null && ScanForNonEmbeddableConstants( labelExpr.DefaultValue );
+
+            case LambdaExpression:
+                // Nested lambda -- always needs constants array (delegate is non-embeddable)
+                return true;
+
+            case InvocationExpression invocation:
+            {
+                if ( ScanForNonEmbeddableConstants( invocation.Expression ) )
+                    return true;
+                foreach ( var arg in invocation.Arguments )
+                {
+                    if ( ScanForNonEmbeddableConstants( arg ) )
+                        return true;
+                }
+                return false;
+            }
 
             default:
                 return false;
