@@ -126,6 +126,10 @@ public static class IRValidator
                 case IROp.LoadField:
                     // pop instance, push value => net 0
                     break;
+
+                case IROp.LoadFieldAddress:
+                    // pop instance, push managed pointer to field => net 0
+                    break;
                 case IROp.StoreField:
                     // pop instance + value => -2
                     stackDepth -= 2;

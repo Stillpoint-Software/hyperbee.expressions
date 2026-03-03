@@ -19,6 +19,7 @@ public enum IROp : byte
     StoreField,             // Store to field (instance and value on stack)
     LoadStaticField,        // Push static field value
     StoreStaticField,       // Pop and store to static field
+    LoadFieldAddress,       // Push managed pointer to instance field (ldflda)
 
     // Array operations
     LoadElement,            // Push array element

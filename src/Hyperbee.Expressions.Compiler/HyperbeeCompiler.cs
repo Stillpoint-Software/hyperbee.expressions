@@ -127,6 +127,58 @@ public static class HyperbeeCompiler
         }
     }
 
+    /// <summary>
+    /// Emits the expression tree directly into an instance or static MethodBuilder.
+    /// Unlike <see cref="CompileToMethod"/>, no static-method requirement is enforced —
+    /// the caller is responsible for matching the lambda signature to the method signature.
+    /// For value-type instance methods (e.g. <c>IAsyncStateMachine.MoveNext()</c>), the
+    /// lambda's first parameter maps to IL <c>arg.0</c> which is the implicit <c>this</c>
+    /// managed pointer.
+    /// All constants in the expression must be embeddable (no heap-object closures).
+    /// </summary>
+    public static void CompileToInstanceMethod( LambdaExpression lambda, MethodBuilder method )
+    {
+        ArgumentNullException.ThrowIfNull( lambda );
+        ArgumentNullException.ThrowIfNull( method );
+
+        if ( ScanForNonEmbeddableConstants( lambda.Body ) )
+            throw new NotSupportedException(
+                "CompileToInstanceMethod does not support non-embeddable constants. " +
+                "Replace constant references with parameters or struct fields." );
+
+        var ir = new IRBuilder();
+        var lowerer = new ExpressionLowerer( ir );
+        lowerer.Lower( lambda, argOffset: 0 );
+
+        TransformIR( ir, lambda.ReturnType == typeof( void ) );
+
+        ILEmissionPass.Run( ir, method.GetILGenerator(), hasConstantsArray: false, constantIndices: null );
+    }
+
+    /// <summary>
+    /// Returns false if the expression cannot be compiled into the instance method.
+    /// </summary>
+    public static bool TryCompileToInstanceMethod( LambdaExpression lambda, MethodBuilder method )
+    {
+        try
+        {
+            CompileToInstanceMethod( lambda, method );
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Pre-bound delegate for use as <see cref="ExpressionRuntimeOptions.MoveNextCompiler"/>.
+    /// Compiles the MoveNext <see cref="LambdaExpression"/> using the HEC IR pipeline and
+    /// returns the resulting <see cref="Delegate"/>. Assign this to
+    /// <c>ExpressionRuntimeOptions.MoveNextCompiler</c> to opt into HEC-compiled async state machines.
+    /// </summary>
+    public static readonly Func<LambdaExpression, Delegate> StateMachineCompiler = Compile;
+
     // --- Compilation steps ---
 
     private static IRBuilder LowerToIR(

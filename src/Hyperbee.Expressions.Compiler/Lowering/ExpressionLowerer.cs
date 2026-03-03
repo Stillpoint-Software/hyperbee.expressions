@@ -1191,9 +1191,15 @@ public class ExpressionLowerer
             }
         }
 
+        var parameters = node.Method.GetParameters();
         for ( var i = 0; i < node.Arguments.Count; i++ )
         {
-            LowerExpression( node.Arguments[i] );
+            var arg = node.Arguments[i];
+            var isByRef = i < parameters.Length && parameters[i].ParameterType.IsByRef;
+            if ( isByRef )
+                EmitLoadAddress( arg );
+            else
+                LowerExpression( arg );
         }
 
         if ( needsConstrained )
@@ -1275,8 +1281,8 @@ public class ExpressionLowerer
     }
 
     /// <summary>
-    /// Emit the address of a value-type expression onto the stack.
-    /// Used for constrained virtual calls on value types.
+    /// Emit the address of an expression onto the evaluation stack, suitable for passing
+    /// as a <c>ref</c>/<c>out</c>/<c>in</c> argument or for constrained virtual calls.
     /// </summary>
     private void EmitLoadAddress( Expression node )
     {
@@ -1287,15 +1293,65 @@ public class ExpressionLowerer
                 return;
 
             case ParameterExpression param when _parameterMap.TryGetValue( param, out var argIndex ):
-                _ir.Emit( IROp.LoadArgAddress, argIndex );
+                // Byref parameters already hold a managed pointer — ldarg loads it directly.
+                // Non-byref: ldarga loads the address of the value in the argument slot.
+                if ( param.IsByRef )
+                    _ir.Emit( IROp.LoadArg, argIndex );
+                else
+                    _ir.Emit( IROp.LoadArgAddress, argIndex );
+                return;
+
+            case MemberExpression { Member: FieldInfo fieldInfo } memberExpr when !fieldInfo.IsStatic:
+                // Push instance pointer then ldflda to get managed pointer to the field.
+                EmitInstancePointer( memberExpr.Expression! );
+                _ir.Emit( IROp.LoadFieldAddress, _ir.AddOperand( fieldInfo ) );
                 return;
 
             default:
-                // Complex expression: lower it, store to a temp local, load address of temp
+                // Complex expression: lower it, store to a temp local, load address of temp.
                 LowerExpression( node );
                 var temp = _ir.DeclareLocal( node.Type, "$addr_temp" );
                 _ir.Emit( IROp.StoreLocal, temp );
                 _ir.Emit( IROp.LoadAddress, temp );
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Emit a managed pointer or object reference for use as the instance operand of a
+    /// field-address instruction (<c>ldflda</c>). For value types this is a managed pointer;
+    /// for reference types this is the object reference.
+    /// </summary>
+    private void EmitInstancePointer( Expression instance )
+    {
+        switch ( instance )
+        {
+            case ParameterExpression param when _localMap != null && _localMap.TryGetValue( param, out var localIndex ):
+                if ( param.Type.IsValueType )
+                    _ir.Emit( IROp.LoadAddress, localIndex );  // ldloca — managed pointer to struct
+                else
+                    _ir.Emit( IROp.LoadLocal, localIndex );    // ldloc — object reference
+                return;
+
+            case ParameterExpression param when _parameterMap.TryGetValue( param, out var argIndex ):
+                // Byref args carry a managed pointer; reference-type args carry an object reference.
+                // In both cases ldarg is correct. Only non-byref value-type args need ldarga.
+                if ( param.IsByRef || !param.Type.IsValueType )
+                    _ir.Emit( IROp.LoadArg, argIndex );
+                else
+                    _ir.Emit( IROp.LoadArgAddress, argIndex );
+                return;
+
+            default:
+                // For reference types: lowering yields the object reference — ldflda works on it.
+                // For value types: spill to a temp and take its address.
+                LowerExpression( instance );
+                if ( instance.Type.IsValueType )
+                {
+                    var temp = _ir.DeclareLocal( instance.Type, "$inst_ptr" );
+                    _ir.Emit( IROp.StoreLocal, temp );
+                    _ir.Emit( IROp.LoadAddress, temp );
+                }
                 return;
         }
     }

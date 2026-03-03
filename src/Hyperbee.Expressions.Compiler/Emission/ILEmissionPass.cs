@@ -89,6 +89,10 @@ public static class ILEmissionPass
                     ilg.Emit( OpCodes.Stsfld, (FieldInfo) ir.Operands[inst.Operand] );
                     break;
 
+                case IROp.LoadFieldAddress:
+                    ilg.Emit( OpCodes.Ldflda, (FieldInfo) ir.Operands[inst.Operand] );
+                    break;
+
                 // Arithmetic
                 case IROp.Add:
                     ilg.Emit( OpCodes.Add );
