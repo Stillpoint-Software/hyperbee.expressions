@@ -16,6 +16,7 @@ public class ExpressionLowerer
     private readonly IRBuilder _ir;
     private readonly Dictionary<ParameterExpression, int> _parameterMap = new( 4 );
     private readonly HashSet<ParameterExpression>? _capturedVariables;
+    private readonly Func<LambdaExpression, Delegate>? _nestedCompiler;
 
     // Lazy-initialized maps: avoid allocation overhead for simple expressions
     private Dictionary<ParameterExpression, int>? _localMap;
@@ -31,7 +32,7 @@ public class ExpressionLowerer
     /// Creates a new expression lowerer targeting the given IR builder.
     /// </summary>
     public ExpressionLowerer( IRBuilder ir )
-        : this( ir, null )
+        : this( ir, null, null )
     {
     }
 
@@ -40,9 +41,21 @@ public class ExpressionLowerer
     /// with a set of captured variables that need StrongBox wrapping.
     /// </summary>
     public ExpressionLowerer( IRBuilder ir, HashSet<ParameterExpression>? capturedVariables )
+        : this( ir, capturedVariables, null )
+    {
+    }
+
+    /// <summary>
+    /// Creates a new expression lowerer targeting the given IR builder,
+    /// with a set of captured variables that need StrongBox wrapping,
+    /// and an optional nested compiler for compiling nested lambdas.
+    /// When <paramref name="nestedCompiler"/> is null, <see cref="LambdaExpression.Compile()"/> is used.
+    /// </summary>
+    public ExpressionLowerer( IRBuilder ir, HashSet<ParameterExpression>? capturedVariables, Func<LambdaExpression, Delegate>? nestedCompiler )
     {
         _ir = ir;
         _capturedVariables = capturedVariables;
+        _nestedCompiler = nestedCompiler;
     }
 
     /// <summary>
@@ -2599,8 +2612,8 @@ public class ExpressionLowerer
 
         if ( closureInfo == null )
         {
-            // No captures -- compile directly with System compiler
-            var compiledDelegate = nestedLambda.Compile();
+            // No captures -- compile directly
+            var compiledDelegate = _nestedCompiler != null ? _nestedCompiler( nestedLambda ) : nestedLambda.Compile();
             _ir.Emit( IROp.LoadConst, _ir.AddOperand( compiledDelegate ) );
         }
         else
@@ -2727,7 +2740,7 @@ public class ExpressionLowerer
             }
 
             // No captures -- compile the lambda directly and invoke
-            var compiledDelegate = lambdaExpr.Compile();
+            var compiledDelegate = _nestedCompiler != null ? _nestedCompiler( lambdaExpr ) : lambdaExpr.Compile();
             _ir.Emit( IROp.LoadConst, _ir.AddOperand( compiledDelegate ) );
 
             foreach ( var arg in node.Arguments )
@@ -2838,7 +2851,7 @@ public class ExpressionLowerer
 
         // Create and compile the rewritten lambda with explicit delegate type
         var rewrittenLambda = Expression.Lambda( delegateType, rewrittenBody, allParams );
-        var compiledInner = rewrittenLambda.Compile();
+        var compiledInner = _nestedCompiler != null ? _nestedCompiler( rewrittenLambda ) : rewrittenLambda.Compile();
 
         var closureInfo = new ClosureInfo( compiledInner, innerCaptures );
         _closureInfoMap ??= new( 2 );

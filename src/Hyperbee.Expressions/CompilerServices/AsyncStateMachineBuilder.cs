@@ -63,6 +63,14 @@ internal class AsyncStateMachineBuilder<TResult>
         var delegateType = typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType );
         var moveNextExpression = CreateMoveNextBody( id, context, stateMachineType, fields, delegateType );
 
+        // Use the delegate builder when a custom one is provided.
+        // For the default DefaultCoroutineDelegateBuilder, embed the raw lambda so that the outer
+        // compiler compiles MoveNext in context — preserving closure-based nested-block variable sharing.
+        // For custom builders (e.g. HyperbeeCoroutineDelegateBuilder), pre-compile and embed as a Constant.
+        Expression moveNextDelegate = _options.DelegateBuilder is DefaultCoroutineDelegateBuilder
+            ? moveNextExpression
+            : Constant( _options.DelegateBuilder.Create( moveNextExpression ), delegateType );
+
         var stateMachineVariable = Variable( stateMachineType, $"stateMachine<{id}>" );
 
         var bodyExpression = new List<Expression>
@@ -80,7 +88,7 @@ internal class AsyncStateMachineBuilder<TResult>
             ),
             Assign(
                 Field( stateMachineVariable, stateMachineType.GetField( FieldName.MoveNextDelegate )! ),
-                moveNextExpression
+                moveNextDelegate
             ),
             Call(
                 Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
@@ -393,10 +401,10 @@ public static class AsyncStateMachineBuilder
         var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName, options );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
-        if ( options.SourceHandler != null )
+        if ( options.ExpressionCapture != null )
         {
             var debugView = GetDebugView( stateMachineExpression );
-            options.SourceHandler( debugView );
+            options.ExpressionCapture( debugView );
         }
 
         return stateMachineExpression; // the-best expression breakpoint ever
@@ -404,4 +412,21 @@ public static class AsyncStateMachineBuilder
 
     [UnsafeAccessor( UnsafeAccessorKind.Method, Name = "get_DebugView" )]
     private static extern string GetDebugView( Expression expression );
+}
+
+// ---------------------------------------------------------------------------
+// Default ICoroutineDelegateBuilder — uses Expression.Compile() (System compiler).
+// This is the default for ExpressionRuntimeOptions.DelegateBuilder.
+// When the default is active, the raw MoveNext LambdaExpression is embedded in
+// the state machine block so the outer compiler handles it in context (which
+// preserves closure-based nested-block variable sharing).
+// ---------------------------------------------------------------------------
+
+internal sealed class DefaultCoroutineDelegateBuilder : ICoroutineDelegateBuilder
+{
+    public static readonly ICoroutineDelegateBuilder Instance = new DefaultCoroutineDelegateBuilder();
+
+    private DefaultCoroutineDelegateBuilder() { }
+
+    public Delegate Create( LambdaExpression lambda ) => lambda.Compile();
 }

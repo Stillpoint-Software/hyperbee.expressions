@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection.Emit;
+using Hyperbee.Expressions.Compiler.Diagnostics;
 using Hyperbee.Expressions.Compiler.Emission;
 using Hyperbee.Expressions.Compiler.IR;
 using Hyperbee.Expressions.Compiler.Lowering;
@@ -14,14 +15,14 @@ namespace Hyperbee.Expressions.Compiler;
 public static class HyperbeeCompiler
 {
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
-    public static TDelegate Compile<TDelegate>( Expression<TDelegate> lambda )
+    public static TDelegate Compile<TDelegate>( Expression<TDelegate> lambda, CompilerDiagnostics? diagnostics = null )
         where TDelegate : Delegate
     {
-        return (TDelegate) Compile( (LambdaExpression) lambda );
+        return (TDelegate) Compile( (LambdaExpression) lambda, diagnostics );
     }
 
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
-    public static Delegate Compile( LambdaExpression lambda )
+    public static Delegate Compile( LambdaExpression lambda, CompilerDiagnostics? diagnostics = null )
     {
         // Fast-path: skip capture scanning when no nested lambdas or RuntimeVariables exist (common case)
         var capturedVariables = NeedsCaptureScanning( lambda.Body )
@@ -31,6 +32,8 @@ public static class HyperbeeCompiler
         var ir = LowerToIR( lambda, capturedVariables, out var needsConstantsArray );
 
         TransformIR( ir, lambda.ReturnType == typeof( void ) );
+
+        diagnostics?.IRCapture?.Invoke( IRFormatter.Format( ir ) );
 
         return EmitDelegate( ir, lambda, needsConstantsArray );
     }
@@ -172,12 +175,11 @@ public static class HyperbeeCompiler
     }
 
     /// <summary>
-    /// Pre-bound delegate for use as <see cref="ExpressionRuntimeOptions.MoveNextCompiler"/>.
-    /// Compiles the MoveNext <see cref="LambdaExpression"/> using the HEC IR pipeline and
-    /// returns the resulting <see cref="Delegate"/>. Assign this to
-    /// <c>ExpressionRuntimeOptions.MoveNextCompiler</c> to opt into HEC-compiled async state machines.
+    /// Pre-bound delegate that compiles a <see cref="LambdaExpression"/> using the HEC IR pipeline.
+    /// Can be passed as the <c>nestedCompiler</c> to an <see cref="ExpressionLowerer"/>, or used
+    /// directly as an <c>ICoroutineDelegateBuilder.Create</c> implementation.
     /// </summary>
-    public static readonly Func<LambdaExpression, Delegate> StateMachineCompiler = Compile;
+    public static readonly Func<LambdaExpression, Delegate> StateMachineCompiler = lambda => Compile( lambda );
 
     // --- Compilation steps ---
 
@@ -190,7 +192,7 @@ public static class HyperbeeCompiler
             || ( capturedVariables != null && capturedVariables.Count > 0 );
 
         var ir = new IRBuilder();
-        var lowerer = new ExpressionLowerer( ir, capturedVariables );
+        var lowerer = new ExpressionLowerer( ir, capturedVariables, lambda => Compile( lambda ) );
         var argOffset = needsConstantsArray ? 1 : 0;
 
         lowerer.Lower( lambda, argOffset );
