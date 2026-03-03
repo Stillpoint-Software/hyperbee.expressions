@@ -821,6 +821,124 @@ public class SwitchTests
     }
 
     // ================================================================
+    // Switch-as-dispatch-table: null default, SwitchCase bodies are Goto(label)
+    // This is the pattern the async lowerer emits for state dispatch:
+    //   switch(state) { case 0: goto resume0; case 1: goto resume1; }
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Switch_GotoDispatchTable_NoMatch_FallsThrough( CompilerType compilerType )
+    {
+        // state = 99 (no match) → falls through switch, reaches default code, returns -1
+        var state = Expression.Variable( typeof( int ), "state" );
+        var resume0 = Expression.Label( typeof( void ), "resume0" );
+        var resume1 = Expression.Label( typeof( void ), "resume1" );
+
+        var body = Expression.Block(
+            [state],
+            Expression.Assign( state, Expression.Constant( 99 ) ),
+            Expression.Switch(
+                state,
+                (Expression?) null,   // no default — fall through
+                Expression.SwitchCase( Expression.Goto( resume0 ), Expression.Constant( 0 ) ),
+                Expression.SwitchCase( Expression.Goto( resume1 ), Expression.Constant( 1 ) )
+            ),
+            Expression.Label( resume0 ),
+            Expression.Label( resume1 ),
+            Expression.Constant( -1 )
+        );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( -1, fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Switch_GotoDispatchTable_MatchesCase_JumpsToResumeLabel( CompilerType compilerType )
+    {
+        // state = 1 → dispatches to resume1, skips resume0 code, reads result = 30
+        var state = Expression.Variable( typeof( int ), "state" );
+        var result = Expression.Variable( typeof( int ), "result" );
+        var resume0 = Expression.Label( typeof( void ), "resume0" );
+        var resume1 = Expression.Label( typeof( void ), "resume1" );
+        var end = Expression.Label( typeof( int ), "end" );
+
+        var body = Expression.Block(
+            [state, result],
+            Expression.Assign( state, Expression.Constant( 1 ) ),
+            Expression.Switch(
+                state,
+                (Expression?) null,
+                Expression.SwitchCase( Expression.Goto( resume0 ), Expression.Constant( 0 ) ),
+                Expression.SwitchCase( Expression.Goto( resume1 ), Expression.Constant( 1 ) )
+            ),
+            Expression.Assign( result, Expression.Constant( 10 ) ),
+            Expression.Goto( end, result ),
+            Expression.Label( resume0 ),
+            Expression.Assign( result, Expression.Constant( 20 ) ),
+            Expression.Goto( end, result ),
+            Expression.Label( resume1 ),
+            Expression.Assign( result, Expression.Constant( 30 ) ),
+            Expression.Label( end, result )
+        );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 30, fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Switch_GotoDispatchTable_ThreeStates_EachJumpsCorrectly( CompilerType compilerType )
+    {
+        // Three-state dispatch: verify each state routes to the right resume block
+        var state = Expression.Variable( typeof( int ), "state" );
+        var result = Expression.Variable( typeof( int ), "result" );
+        var resume0 = Expression.Label( typeof( void ), "resume0" );
+        var resume1 = Expression.Label( typeof( void ), "resume1" );
+        var resume2 = Expression.Label( typeof( void ), "resume2" );
+        var end = Expression.Label( typeof( int ), "end" );
+
+        Expression BuildBody( int stateVal )
+        {
+            return Expression.Block(
+                [state, result],
+                Expression.Assign( state, Expression.Constant( stateVal ) ),
+                Expression.Switch(
+                    state,
+                    (Expression?) null,
+                    Expression.SwitchCase( Expression.Goto( resume0 ), Expression.Constant( 0 ) ),
+                    Expression.SwitchCase( Expression.Goto( resume1 ), Expression.Constant( 1 ) ),
+                    Expression.SwitchCase( Expression.Goto( resume2 ), Expression.Constant( 2 ) )
+                ),
+                Expression.Assign( result, Expression.Constant( -1 ) ),    // initial path
+                Expression.Goto( end, result ),
+                Expression.Label( resume0 ),
+                Expression.Assign( result, Expression.Constant( 100 ) ),
+                Expression.Goto( end, result ),
+                Expression.Label( resume1 ),
+                Expression.Assign( result, Expression.Constant( 200 ) ),
+                Expression.Goto( end, result ),
+                Expression.Label( resume2 ),
+                Expression.Assign( result, Expression.Constant( 300 ) ),
+                Expression.Label( end, result )
+            );
+        }
+
+        Assert.AreEqual( -1,  Expression.Lambda<Func<int>>( BuildBody( -1 ) ).Compile( compilerType )() );
+        Assert.AreEqual( 100, Expression.Lambda<Func<int>>( BuildBody( 0 ) ).Compile( compilerType )() );
+        Assert.AreEqual( 200, Expression.Lambda<Func<int>>( BuildBody( 1 ) ).Compile( compilerType )() );
+        Assert.AreEqual( 300, Expression.Lambda<Func<int>>( BuildBody( 2 ) ).Compile( compilerType )() );
+    }
+
+    // ================================================================
     // Switch inside block with outer variable
     // ================================================================
 

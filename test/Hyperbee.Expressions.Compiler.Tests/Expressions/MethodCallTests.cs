@@ -428,9 +428,152 @@ public class MethodCallTests
         Assert.AreEqual( 0, fn( [] ) );
     }
 
+    // --- Ref parameter: single ref local — method increments the value ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_RefParameter_Local_ModifiesValue( CompilerType compilerType )
+    {
+        var x = Expression.Variable( typeof( int ), "x" );
+        var method = typeof( MethodCallTests ).GetMethod( nameof( IncrementByRef ) )!;
+
+        var body = Expression.Block(
+            [x],
+            Expression.Assign( x, Expression.Constant( 10 ) ),
+            Expression.Call( method, x ),
+            x
+        );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 11, fn() );
+    }
+
+    // --- Ref parameter: field address — method writes through a field ref ---
+
+    public class RefFieldHost
+    {
+        public int Value;
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_RefParameter_Field_ModifiesField( CompilerType compilerType )
+    {
+        var host = Expression.Parameter( typeof( RefFieldHost ), "host" );
+        var field = typeof( RefFieldHost ).GetField( nameof( RefFieldHost.Value ) )!;
+        var method = typeof( MethodCallTests ).GetMethod( nameof( IncrementByRef ) )!;
+
+        var body = Expression.Block(
+            typeof( void ),
+            Expression.Call( method, Expression.Field( host, field ) )
+        );
+
+        var lambda = Expression.Lambda<Action<RefFieldHost>>( body, host );
+        var fn = lambda.Compile( compilerType );
+
+        var instance = new RefFieldHost { Value = 5 };
+        fn( instance );
+
+        Assert.AreEqual( 6, instance.Value );
+    }
+
+    // --- Ref parameter: two ref locals — models AwaitOnCompleted(ref awaiter, ref sm) ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_RefParameter_TwoRefLocals_BothModified( CompilerType compilerType )
+    {
+        var a = Expression.Variable( typeof( int ), "a" );
+        var b = Expression.Variable( typeof( int ), "b" );
+        var method = typeof( MethodCallTests ).GetMethod( nameof( SwapByRef ) )!;
+
+        var body = Expression.Block(
+            [a, b],
+            Expression.Assign( a, Expression.Constant( 1 ) ),
+            Expression.Assign( b, Expression.Constant( 2 ) ),
+            Expression.Call( method, a, b ),
+            Expression.Add( Expression.Multiply( a, Expression.Constant( 10 ) ), b )  // a*10 + b = 20+1 = 21
+        );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 21, fn() );
+    }
+
+    // --- Ref parameter: two ref fields on a class instance — the AwaitOnCompleted field pattern ---
+
+    public class DualRefHost
+    {
+        public int Awaiter;
+        public int State;
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_RefParameter_TwoRefFields_BothModified( CompilerType compilerType )
+    {
+        var host = Expression.Parameter( typeof( DualRefHost ), "host" );
+        var awaiterField = typeof( DualRefHost ).GetField( nameof( DualRefHost.Awaiter ) )!;
+        var stateField = typeof( DualRefHost ).GetField( nameof( DualRefHost.State ) )!;
+        var method = typeof( MethodCallTests ).GetMethod( nameof( SwapByRef ) )!;
+
+        var body = Expression.Block(
+            typeof( void ),
+            Expression.Call(
+                method,
+                Expression.Field( host, awaiterField ),
+                Expression.Field( host, stateField )
+            )
+        );
+
+        var lambda = Expression.Lambda<Action<DualRefHost>>( body, host );
+        var fn = lambda.Compile( compilerType );
+
+        var instance = new DualRefHost { Awaiter = 10, State = 20 };
+        fn( instance );
+
+        Assert.AreEqual( 20, instance.Awaiter );
+        Assert.AreEqual( 10, instance.State );
+    }
+
+    // --- Out parameter: method produces a value via out ---
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Call_OutParameter_Local_ReceivesValue( CompilerType compilerType )
+    {
+        var result = Expression.Variable( typeof( int ), "result" );
+        var method = typeof( MethodCallTests ).GetMethod( nameof( ProduceOut ) )!;
+
+        var body = Expression.Block(
+            [result],
+            Expression.Call( method, Expression.Constant( 7 ), result ),
+            result
+        );
+
+        var lambda = Expression.Lambda<Func<int>>( body );
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 14, fn() );
+    }
+
     // Helper methods for tests
 
     public static int ReturnFortyTwo() => 42;
 
     public static int AddThree( int a, int b, int c ) => a + b + c;
+
+    public static void IncrementByRef( ref int value ) => value++;
+
+    public static void SwapByRef( ref int a, ref int b ) => (a, b) = (b, a);
+
+    public static void ProduceOut( int input, out int output ) => output = input * 2;
 }

@@ -1509,6 +1509,10 @@ public class ExpressionLowerer
     {
         var needsResult = !_discardResult;
 
+        // Reset _discardResult so that nested assignments used as the RHS correctly produce
+        // a value on the stack. The outer discard decision is already captured in needsResult.
+        _discardResult = false;
+
         // The left side must be a ParameterExpression (variable)
         if ( node.Left is ParameterExpression variable )
         {

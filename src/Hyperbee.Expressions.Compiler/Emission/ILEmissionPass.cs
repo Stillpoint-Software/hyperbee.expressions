@@ -250,18 +250,19 @@ public static class ILEmissionPass
                     break;
 
                 // Control flow
-                // Short-form branches: ILGenerator auto-expands to long-form
-                // if the target exceeds sbyte range, so short-form is always safe.
+                // Use long-form branches unconditionally. MethodBuilder's ILGenerator
+                // auto-expands short branches, but DynamicMethod's does not — short branches
+                // whose offsets exceed ±127 bytes throw InvalidProgramException at runtime.
                 case IROp.Branch:
-                    ilg.Emit( OpCodes.Br_S, ilLabels[inst.Operand] );
+                    ilg.Emit( OpCodes.Br, ilLabels[inst.Operand] );
                     break;
 
                 case IROp.BranchTrue:
-                    ilg.Emit( OpCodes.Brtrue_S, ilLabels[inst.Operand] );
+                    ilg.Emit( OpCodes.Brtrue, ilLabels[inst.Operand] );
                     break;
 
                 case IROp.BranchFalse:
-                    ilg.Emit( OpCodes.Brfalse_S, ilLabels[inst.Operand] );
+                    ilg.Emit( OpCodes.Brfalse, ilLabels[inst.Operand] );
                     break;
 
                 case IROp.Label:
@@ -337,7 +338,7 @@ public static class ILEmissionPass
                     break;
 
                 case IROp.Leave:
-                    ilg.Emit( OpCodes.Leave_S, ilLabels[inst.Operand] );
+                    ilg.Emit( OpCodes.Leave, ilLabels[inst.Operand] );
                     break;
 
                 // Array operations

@@ -510,7 +510,10 @@ public static class HyperbeeCompiler
             }
 
             default:
-                return false;
+                // Extension nodes (e.g. AsyncBlockExpression) reduce to code that may
+                // contain non-embeddable constants (e.g. MoveNextDelegate closures).
+                // Conservatively assume they do.
+                return node.NodeType == ExpressionType.Extension;
         }
     }
 

@@ -4,7 +4,7 @@ using Hyperbee.Expressions.CompilerServices;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
-namespace Hyperbee.Expressions.Compiler.Tests.Expressions;
+namespace Hyperbee.Expressions.Compiler.Tests.Integration;
 
 /// <summary>
 /// Integration tests verifying that BlockAsync works end-to-end when
@@ -12,7 +12,7 @@ namespace Hyperbee.Expressions.Compiler.Tests.Expressions;
 /// (via <see cref="HyperbeeCoroutineDelegateBuilder"/>).
 /// </summary>
 [TestClass]
-public class BlockAsyncHecTests
+public class BlockAsyncCoreTests
 {
     private static ExpressionRuntimeOptions HecOptions() => new()
     {
@@ -26,7 +26,7 @@ public class BlockAsyncHecTests
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_SingleAwait_HEC_ReturnsResult( CompilerType compiler )
+    public async Task BlockAsync_SingleAwait_ReturnsResult( CompilerType compiler )
     {
         // Arrange
         var block = BlockAsync(
@@ -51,7 +51,7 @@ public class BlockAsyncHecTests
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_SequentialAwaits_HEC_ReturnsSum( CompilerType compiler )
+    public async Task BlockAsync_SequentialAwaits_ReturnsSum( CompilerType compiler )
     {
         // Arrange
         var a = Variable( typeof( int ), "a" );
@@ -85,7 +85,7 @@ public class BlockAsyncHecTests
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_ConditionalAwait_HEC_TrueBranch( CompilerType compiler )
+    public async Task BlockAsync_ConditionalAwait_TrueBranch( CompilerType compiler )
     {
         // Arrange
         var result = Variable( typeof( int ), "result" );
@@ -121,7 +121,7 @@ public class BlockAsyncHecTests
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_TryCatchWithAwait_HEC_NoException( CompilerType compiler )
+    public async Task BlockAsync_TryCatchWithAwait_NoException( CompilerType compiler )
     {
         // Arrange
         var result = Variable( typeof( int ), "result" );
@@ -157,7 +157,7 @@ public class BlockAsyncHecTests
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_VoidResult_HEC_CompletesWithoutError( CompilerType compiler )
+    public async Task BlockAsync_VoidResult_CompletesWithoutError( CompilerType compiler )
     {
         // Arrange
         var block = BlockAsync(
@@ -178,7 +178,7 @@ public class BlockAsyncHecTests
     // -----------------------------------------------------------------------
 
     [TestMethod]
-    public async Task BlockAsync_HEC_IRCapture_Fires()
+    public async Task BlockAsync_IRCapture_Fires()
     {
         // Arrange
         string? captured = null;
