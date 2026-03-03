@@ -5,6 +5,7 @@ using Hyperbee.Expressions.Compiler.Emission;
 using Hyperbee.Expressions.Compiler.IR;
 using Hyperbee.Expressions.Compiler.Lowering;
 using Hyperbee.Expressions.Compiler.Passes;
+using Hyperbee.Expressions.CompilerServices;
 
 namespace Hyperbee.Expressions.Compiler;
 
@@ -24,18 +25,28 @@ public static class HyperbeeCompiler
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
     public static Delegate Compile( LambdaExpression lambda, CompilerDiagnostics? diagnostics = null )
     {
-        // Fast-path: skip capture scanning when no nested lambdas or RuntimeVariables exist (common case)
-        var capturedVariables = NeedsCaptureScanning( lambda.Body )
-            ? CaptureScanner.FindCapturedVariables( lambda )
-            : null;
+        // Set the per-compilation ambient so that any AsyncBlockExpression.Reduce() calls
+        // encountered during compilation use HEC to compile the MoveNext lambda.
+        var previous = CoroutineBuilderContext.Exchange( HyperbeeCoroutineDelegateBuilder.Instance );
+        try
+        {
+            // Fast-path: skip capture scanning when no nested lambdas or RuntimeVariables exist (common case)
+            var capturedVariables = NeedsCaptureScanning( lambda.Body )
+                ? CaptureScanner.FindCapturedVariables( lambda )
+                : null;
 
-        var ir = LowerToIR( lambda, capturedVariables, out var needsConstantsArray );
+            var ir = LowerToIR( lambda, capturedVariables, out var needsConstantsArray );
 
-        TransformIR( ir, lambda.ReturnType == typeof( void ) );
+            TransformIR( ir, lambda.ReturnType == typeof( void ) );
 
-        diagnostics?.IRCapture?.Invoke( IRFormatter.Format( ir ) );
+            diagnostics?.IRCapture?.Invoke( IRFormatter.Format( ir ) );
 
-        return EmitDelegate( ir, lambda, needsConstantsArray );
+            return EmitDelegate( ir, lambda, needsConstantsArray );
+        }
+        finally
+        {
+            CoroutineBuilderContext.Exchange( previous );
+        }
     }
 
     /// <summary>Compiles the expression. Returns null on unsupported patterns.</summary>
@@ -77,6 +88,22 @@ public static class HyperbeeCompiler
     {
         return TryCompile( lambda ) ?? lambda.Compile();
     }
+
+    /// <summary>
+    /// Sets HEC as the process-wide default <see cref="ICoroutineDelegateBuilder"/> for all
+    /// <see cref="AsyncBlockExpression"/> reductions that do not provide an explicit builder.
+    /// Returns the previous default (useful for test cleanup).
+    /// Call at application startup or in <c>[AssemblyInitialize]</c>.
+    /// </summary>
+    public static ICoroutineDelegateBuilder? UseAsDefault() =>
+        CoroutineBuilderContext.SetDefault( HyperbeeCoroutineDelegateBuilder.Instance );
+
+    /// <summary>
+    /// Clears the process-wide default builder, restoring the built-in System compiler as fallback.
+    /// Returns the previous default (useful for test cleanup).
+    /// </summary>
+    public static ICoroutineDelegateBuilder? ClearDefault() =>
+        CoroutineBuilderContext.SetDefault( null );
 
     // --- CompileToMethod APIs (MethodBuilder target) ---
 

@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Compiler.Tests.TestSupport;
-using Hyperbee.Expressions.CompilerServices;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -14,11 +13,6 @@ namespace Hyperbee.Expressions.Compiler.Tests.Integration;
 [TestClass]
 public class BlockAsyncBasicTests
 {
-    private static ExpressionRuntimeOptions HecOptions() => new()
-    {
-        DelegateBuilder = HyperbeeCoroutineDelegateBuilder.Instance
-    };
-
     // -----------------------------------------------------------------------
     // Faulted task — exception propagates through await
     // -----------------------------------------------------------------------
@@ -32,8 +26,7 @@ public class BlockAsyncBasicTests
         var faulted = Task.FromException<int>( new InvalidOperationException( "hec-test" ) );
 
         var block = BlockAsync(
-            new Expression[] { Await( Constant( faulted ) ) },
-            HecOptions()
+            new Expression[] { Await( Constant( faulted ) ) }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -58,8 +51,7 @@ public class BlockAsyncBasicTests
         var canceled = Task.FromCanceled<int>( cts.Token );
 
         var block = BlockAsync(
-            new Expression[] { Await( Constant( canceled ) ) },
-            HecOptions()
+            new Expression[] { Await( Constant( canceled ) ) }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -82,8 +74,7 @@ public class BlockAsyncBasicTests
         var delayed = Task.Delay( 50 ).ContinueWith( _ => 42 );
 
         var block = BlockAsync(
-            new Expression[] { Await( Constant( delayed ) ) },
-            HecOptions()
+            new Expression[] { Await( Constant( delayed ) ) }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -107,8 +98,7 @@ public class BlockAsyncBasicTests
     {
         // Arrange
         var inner = BlockAsync(
-            new Expression[] { Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 7 ) ) ) },
-            HecOptions()
+            new Expression[] { Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 7 ) ) ) }
         );
 
         var block = BlockAsync(
@@ -116,8 +106,7 @@ public class BlockAsyncBasicTests
             {
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 3 ) ) ),
                 Await( inner )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -145,8 +134,7 @@ public class BlockAsyncBasicTests
             {
                 Constant( 10 ),
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 99 ) ) )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -179,8 +167,7 @@ public class BlockAsyncBasicTests
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 0 ) ) ),
                 Assign( result, Add( result, Constant( 10 ) ) ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -209,8 +196,7 @@ public class BlockAsyncBasicTests
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 1 ) ) ),
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 2 ) ) ),
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 3 ) ) )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -243,8 +229,7 @@ public class BlockAsyncBasicTests
                 Assign( a, Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 6 ) ) ) ),
                 Assign( b, Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 4 ) ) ) ),
                 Multiply( a, b )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -278,8 +263,7 @@ public class BlockAsyncBasicTests
                     Return( returnLabel, Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 20 ) ) ) )
                 ),
                 Label( returnLabel, Constant( 30 ) )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -303,8 +287,7 @@ public class BlockAsyncBasicTests
     {
         // Arrange
         var block = BlockAsync(
-            new Expression[] { Await( Constant( Task.CompletedTask, typeof( Task ) ) ) },
-            HecOptions()
+            new Expression[] { Await( Constant( Task.CompletedTask, typeof( Task ) ) ) }
         );
 
         var lambda = Lambda<Func<Task>>( block );
@@ -331,8 +314,7 @@ public class BlockAsyncBasicTests
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 72 ) ) ),
                     Constant( 5 )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );

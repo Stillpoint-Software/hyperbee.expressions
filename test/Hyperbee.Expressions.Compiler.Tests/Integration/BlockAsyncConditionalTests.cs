@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Compiler.Tests.TestSupport;
-using Hyperbee.Expressions.CompilerServices;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -13,11 +12,6 @@ namespace Hyperbee.Expressions.Compiler.Tests.Integration;
 [TestClass]
 public class BlockAsyncConditionalTests
 {
-    private static ExpressionRuntimeOptions HecOptions() => new()
-    {
-        DelegateBuilder = HyperbeeCoroutineDelegateBuilder.Instance
-    };
-
     // -----------------------------------------------------------------------
     // IfThen with an awaited condition — void result
     // -----------------------------------------------------------------------
@@ -35,8 +29,7 @@ public class BlockAsyncConditionalTests
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( bool )], Constant( true ) ) ),
                     Constant( 1 )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task>>( block );
@@ -70,8 +63,7 @@ public class BlockAsyncConditionalTests
                     )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -102,8 +94,7 @@ public class BlockAsyncConditionalTests
                     Constant( 0 ),
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 2 ) ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -134,8 +125,7 @@ public class BlockAsyncConditionalTests
                     Constant( 1 ),
                     Constant( 0 )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -166,8 +156,7 @@ public class BlockAsyncConditionalTests
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 10 ) ) ),
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 20 ) ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -198,8 +187,7 @@ public class BlockAsyncConditionalTests
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 10 ) ) ),
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 20 ) ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -228,8 +216,7 @@ public class BlockAsyncConditionalTests
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 5 ) ) ),
                 Condition( Constant( true ), Constant( 10 ), Constant( 0 ) ),
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 15 ) ) )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -265,8 +252,7 @@ public class BlockAsyncConditionalTests
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 1 ) ) ),
                     Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 2 ) ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -301,8 +287,7 @@ public class BlockAsyncConditionalTests
                     ),
                     Constant( 0 )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -335,8 +320,7 @@ public class BlockAsyncConditionalTests
                         Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 20 ) )
                     )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );

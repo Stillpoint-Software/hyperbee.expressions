@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Compiler.Tests.TestSupport;
-using Hyperbee.Expressions.CompilerServices;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -13,11 +12,6 @@ namespace Hyperbee.Expressions.Compiler.Tests.Integration;
 [TestClass]
 public class BlockAsyncSwitchTests
 {
-    private static ExpressionRuntimeOptions HecOptions() => new()
-    {
-        DelegateBuilder = HyperbeeCoroutineDelegateBuilder.Instance
-    };
-
     // -----------------------------------------------------------------------
     // Awaited value used as the switch discriminant
     // -----------------------------------------------------------------------
@@ -37,8 +31,7 @@ public class BlockAsyncSwitchTests
                     SwitchCase( Constant( 10 ), Constant( 1 ) ),
                     SwitchCase( Constant( 20 ), Constant( 2 ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -70,8 +63,7 @@ public class BlockAsyncSwitchTests
                     SwitchCase( Constant( 10 ), Constant( 1 ) ),
                     SwitchCase( Constant( 20 ), Constant( 2 ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -106,8 +98,7 @@ public class BlockAsyncSwitchTests
                     ),
                     SwitchCase( Constant( 200 ), Constant( 2 ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -142,8 +133,7 @@ public class BlockAsyncSwitchTests
                     ),
                     SwitchCase( Constant( 20 ), Constant( 3 ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -184,8 +174,7 @@ public class BlockAsyncSwitchTests
                     innerSwitch,
                     SwitchCase( Constant( 20 ), Constant( 2 ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -223,8 +212,7 @@ public class BlockAsyncSwitchTests
                     SwitchCase( Constant( 10 ), Constant( 3 ) ),
                     SwitchCase( Constant( 20 ), Constant( 4 ) )
                 )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -258,8 +246,7 @@ public class BlockAsyncSwitchTests
                     SwitchCase( Constant( 20 ), Constant( 2 ) )
                 ),
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 15 ) ) )
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );

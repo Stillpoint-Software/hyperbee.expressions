@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Compiler.Tests.TestSupport;
-using Hyperbee.Expressions.CompilerServices;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -13,11 +12,6 @@ namespace Hyperbee.Expressions.Compiler.Tests.Integration;
 [TestClass]
 public class BlockAsyncTryCatchTests
 {
-    private static ExpressionRuntimeOptions HecOptions() => new()
-    {
-        DelegateBuilder = HyperbeeCoroutineDelegateBuilder.Instance
-    };
-
     // -----------------------------------------------------------------------
     // Await in try block, no exception thrown
     // -----------------------------------------------------------------------
@@ -40,8 +34,7 @@ public class BlockAsyncTryCatchTests
                     Catch( ex, Assign( result, Constant( 0 ) ) )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -82,8 +75,7 @@ public class BlockAsyncTryCatchTests
                     )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -117,8 +109,7 @@ public class BlockAsyncTryCatchTests
                     Assign( result, Constant( 25 ) )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -156,8 +147,7 @@ public class BlockAsyncTryCatchTests
                     )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -198,8 +188,7 @@ public class BlockAsyncTryCatchTests
                     )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -239,8 +228,7 @@ public class BlockAsyncTryCatchTests
                     Catch( ex, Assign( result, Constant( 50 ) ) )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -284,8 +272,7 @@ public class BlockAsyncTryCatchTests
                     Catch( outerEx, Assign( result, Constant( 0 ) ) )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -333,8 +320,7 @@ public class BlockAsyncTryCatchTests
                     Catch( outerEx, Assign( result, Constant( 50 ) ) )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -381,8 +367,7 @@ public class BlockAsyncTryCatchTests
                     Catch( typeof( Exception ), Assign( result, Constant( 6 ) ) )
                 ),
                 result
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );

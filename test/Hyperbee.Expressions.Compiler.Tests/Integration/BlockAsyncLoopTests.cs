@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Hyperbee.Expressions.Compiler.Tests.TestSupport;
-using Hyperbee.Expressions.CompilerServices;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 
@@ -13,11 +12,6 @@ namespace Hyperbee.Expressions.Compiler.Tests.Integration;
 [TestClass]
 public class BlockAsyncLoopTests
 {
-    private static ExpressionRuntimeOptions HecOptions() => new()
-    {
-        DelegateBuilder = HyperbeeCoroutineDelegateBuilder.Instance
-    };
-
     // -----------------------------------------------------------------------
     // Await before break — loop exits after one iteration
     // -----------------------------------------------------------------------
@@ -49,8 +43,7 @@ public class BlockAsyncLoopTests
                     null
                 ),
                 count
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -94,8 +87,7 @@ public class BlockAsyncLoopTests
                 ),
                 Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 5 ) ) ),
                 count
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -141,8 +133,7 @@ public class BlockAsyncLoopTests
                     continueLabel
                 ),
                 count
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -188,8 +179,7 @@ public class BlockAsyncLoopTests
                     continueLabel
                 ),
                 count
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -231,8 +221,7 @@ public class BlockAsyncLoopTests
                     null
                 ),
                 count
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -281,8 +270,7 @@ public class BlockAsyncLoopTests
                     continueLabel
                 ),
                 count
-            },
-            HecOptions()
+            }
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );

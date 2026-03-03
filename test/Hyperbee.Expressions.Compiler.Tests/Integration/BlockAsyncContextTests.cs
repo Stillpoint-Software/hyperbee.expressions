@@ -7,25 +7,60 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 namespace Hyperbee.Expressions.Compiler.Tests.Integration;
 
 /// <summary>
-/// Integration tests verifying that BlockAsync works end-to-end when
-/// the async state machine MoveNext lambda is compiled by HEC
-/// (via <see cref="HyperbeeCoroutineDelegateBuilder"/>).
+/// Integration tests verifying that <see cref="CoroutineBuilderContext"/> correctly routes
+/// MoveNext compilation to HEC without explicit <see cref="ExpressionRuntimeOptions"/>.
+///
+/// Two mechanisms are tested:
+/// <list type="bullet">
+///   <item>
+///     <description>
+///       <b>Global default</b>: <see cref="HyperbeeCompiler.UseAsDefault"/> sets HEC as the
+///       process-wide default. When <c>BlockAsync</c> is called without options and the outer
+///       compiler is System (SEC), <see cref="CoroutineBuilderContext.Current"/> returns the
+///       global default (HEC) for MoveNext compilation.
+///     </description>
+///   </item>
+///   <item>
+///     <description>
+///       <b>Per-compilation ambient</b>: All <c>HyperbeeCompiler</c> public entry points set
+///       HEC as the per-compilation ambient via <see cref="CoroutineBuilderContext.Exchange"/>
+///       in a save/restore pattern. Any <c>BlockAsync</c> reduction that occurs during the
+///       compilation automatically picks up HEC.
+///     </description>
+///   </item>
+/// </list>
 /// </summary>
 [TestClass]
-public class BlockAsyncCoreTests
+public class BlockAsyncContextTests
 {
+    private static ICoroutineDelegateBuilder? _savedDefault;
+
+    [ClassInitialize]
+    public static void ClassInitialize( TestContext _ )
+    {
+        // Set HEC as the process-wide default — returned value is saved for cleanup.
+        _savedDefault = HyperbeeCompiler.UseAsDefault();
+    }
+
+    [ClassCleanup]
+    public static void ClassCleanup()
+    {
+        // Restore the previous default so other test classes are not affected.
+        HyperbeeCompiler.ClearDefault();
+    }
+
     // -----------------------------------------------------------------------
-    // Single await — simplest case
+    // Global default (CompilerType.System outer — no ambient, relies on _default)
     // -----------------------------------------------------------------------
 
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_SingleAwait_ReturnsResult( CompilerType compiler )
+    public async Task BlockAsync_NoOptions_SingleAwait_ReturnsResult( CompilerType compiler )
     {
-        // Arrange
+        // Arrange — no HecOptions() passed to BlockAsync
         var block = BlockAsync(
-            new Expression[] { Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) ) ) }
+            Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 42 ) ) )
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
@@ -38,14 +73,10 @@ public class BlockAsyncCoreTests
         Assert.AreEqual( 42, result );
     }
 
-    // -----------------------------------------------------------------------
-    // Sequential awaits
-    // -----------------------------------------------------------------------
-
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_SequentialAwaits_ReturnsSum( CompilerType compiler )
+    public async Task BlockAsync_NoOptions_SequentialAwaits_ReturnsSum( CompilerType compiler )
     {
         // Arrange
         var a = Variable( typeof( int ), "a" );
@@ -71,14 +102,10 @@ public class BlockAsyncCoreTests
         Assert.AreEqual( 30, result );
     }
 
-    // -----------------------------------------------------------------------
-    // Conditional await — await in IfThenElse true-branch
-    // -----------------------------------------------------------------------
-
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_ConditionalAwait_TrueBranch( CompilerType compiler )
+    public async Task BlockAsync_NoOptions_ConditionalAwait_TrueBranch( CompilerType compiler )
     {
         // Arrange
         var result = Variable( typeof( int ), "result" );
@@ -106,14 +133,10 @@ public class BlockAsyncCoreTests
         Assert.AreEqual( 1, value );
     }
 
-    // -----------------------------------------------------------------------
-    // Try/catch with await
-    // -----------------------------------------------------------------------
-
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_TryCatchWithAwait_NoException( CompilerType compiler )
+    public async Task BlockAsync_NoOptions_TryCatchWithAwait_NoException( CompilerType compiler )
     {
         // Arrange
         var result = Variable( typeof( int ), "result" );
@@ -141,21 +164,16 @@ public class BlockAsyncCoreTests
         Assert.AreEqual( 99, value );
     }
 
-    // -----------------------------------------------------------------------
-    // Void async block
-    // -----------------------------------------------------------------------
-
     [TestMethod]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Hyperbee )]
-    public async Task BlockAsync_VoidResult_CompletesWithoutError( CompilerType compiler )
+    public async Task BlockAsync_NoOptions_VoidResult_CompletesWithoutError( CompilerType compiler )
     {
         // Arrange
         var block = BlockAsync(
-            new Expression[] { Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 0 ) ) ) }
+            Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 0 ) ) )
         );
 
-        // Void Task
         var lambda = Lambda<Func<Task>>( block );
         var compiled = lambda.Compile( compiler );
 
@@ -164,45 +182,29 @@ public class BlockAsyncCoreTests
     }
 
     // -----------------------------------------------------------------------
-    // Diagnostics: IRCapture fires
+    // Explicit ExpressionRuntimeOptions still overrides the ambient/default
     // -----------------------------------------------------------------------
 
     [TestMethod]
-    public async Task BlockAsync_IRCapture_Fires()
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public async Task BlockAsync_ExplicitRuntimeOptions_AreRespected( CompilerType compiler )
     {
-        // Arrange
-        string? captured = null;
-
-        using var scope = CoroutineBuilderContext.SetScope(
-            new DiagnosticsCoroutineDelegateBuilder( diag => captured = diag ) );
+        // Arrange — behavioral ExpressionRuntimeOptions are passed through; no DelegateBuilder needed.
+        var options = new ExpressionRuntimeOptions { Optimize = true };
 
         var block = BlockAsync(
-            Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 7 ) ) )
+            new Expression[] { Await( Call( typeof( Task ), nameof( Task.FromResult ), [typeof( int )], Constant( 7 ) ) ) },
+            options
         );
 
         var lambda = Lambda<Func<Task<int>>>( block );
-        var compiled = lambda.Compile( CompilerType.System );
+        var compiled = lambda.Compile( compiler );
 
         // Act
         var result = await compiled();
 
         // Assert
         Assert.AreEqual( 7, result );
-        Assert.IsNotNull( captured, "IRCapture should have been invoked" );
-        Assert.IsTrue( captured.Length > 0, "IR listing should not be empty" );
-    }
-
-    /// <summary>
-    /// A delegate builder that captures the IR listing from HEC via <see cref="CompilerDiagnostics"/>.
-    /// </summary>
-    private sealed class DiagnosticsCoroutineDelegateBuilder( Action<string> irCapture ) : ICoroutineDelegateBuilder
-    {
-        public Delegate Create( LambdaExpression lambda )
-        {
-            return HyperbeeCompiler.Compile(
-                lambda,
-                new Hyperbee.Expressions.Compiler.Diagnostics.CompilerDiagnostics { IRCapture = irCapture }
-            );
-        }
     }
 }

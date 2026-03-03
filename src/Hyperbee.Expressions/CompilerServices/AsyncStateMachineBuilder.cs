@@ -63,13 +63,14 @@ internal class AsyncStateMachineBuilder<TResult>
         var delegateType = typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType );
         var moveNextExpression = CreateMoveNextBody( id, context, stateMachineType, fields, delegateType );
 
-        // Use the delegate builder when a custom one is provided.
-        // For the default DefaultCoroutineDelegateBuilder, embed the raw lambda so that the outer
-        // compiler compiles MoveNext in context — preserving closure-based nested-block variable sharing.
-        // For custom builders (e.g. HyperbeeCoroutineDelegateBuilder), pre-compile and embed as a Constant.
-        Expression moveNextDelegate = _options.DelegateBuilder is DefaultCoroutineDelegateBuilder
+        // Compiler choice flows through the ambient context (CoroutineBuilderContext.Current),
+        // never through ExpressionRuntimeOptions. Null ambient = System compiler handles MoveNext
+        // in the outer compilation context, preserving closure-based variable sharing.
+        // Non-null ambient = pre-compile the lambda and embed as a Constant.
+        var coroutineBuilder = CoroutineBuilderContext.Current;
+        Expression moveNextDelegate = coroutineBuilder == null
             ? moveNextExpression
-            : Constant( _options.DelegateBuilder.Create( moveNextExpression ), delegateType );
+            : Constant( coroutineBuilder.Create( moveNextExpression ), delegateType );
 
         var stateMachineVariable = Variable( stateMachineType, $"stateMachine<{id}>" );
 
@@ -414,19 +415,3 @@ public static class AsyncStateMachineBuilder
     private static extern string GetDebugView( Expression expression );
 }
 
-// ---------------------------------------------------------------------------
-// Default ICoroutineDelegateBuilder — uses Expression.Compile() (System compiler).
-// This is the default for ExpressionRuntimeOptions.DelegateBuilder.
-// When the default is active, the raw MoveNext LambdaExpression is embedded in
-// the state machine block so the outer compiler handles it in context (which
-// preserves closure-based nested-block variable sharing).
-// ---------------------------------------------------------------------------
-
-internal sealed class DefaultCoroutineDelegateBuilder : ICoroutineDelegateBuilder
-{
-    public static readonly ICoroutineDelegateBuilder Instance = new DefaultCoroutineDelegateBuilder();
-
-    private DefaultCoroutineDelegateBuilder() { }
-
-    public Delegate Create( LambdaExpression lambda ) => lambda.Compile();
-}
