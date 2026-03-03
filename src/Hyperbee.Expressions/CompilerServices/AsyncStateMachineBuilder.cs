@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -16,6 +16,7 @@ internal class AsyncStateMachineBuilder<TResult>
 {
     private readonly ModuleBuilder _moduleBuilder;
     private readonly string _typeName;
+    private readonly ExpressionRuntimeOptions _options;
 
     protected static class FieldName
     {
@@ -27,100 +28,74 @@ internal class AsyncStateMachineBuilder<TResult>
         public const string State = "__state<>";
     }
 
-    public AsyncStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
+    public AsyncStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName, ExpressionRuntimeOptions options )
     {
         _moduleBuilder = moduleBuilder;
         _typeName = typeName;
+        _options = options;
     }
 
     public Expression CreateStateMachine( AsyncLoweringTransformer loweringTransformer, int id )
     {
         ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
 
-        // Lower the async expression
-        //
         var loweringInfo = loweringTransformer();
-
-        // Create the state-machine builder context
-        //
         var context = new StateMachineContext { LoweringInfo = loweringInfo };
 
-        // Create the state-machine
-        //
+        return BuildStateMachineExpression( id, context );
+    }
+
+    private Expression BuildStateMachineExpression( int id, StateMachineContext context )
+    {
         // Conceptually:
         //
         // var stateMachine = new StateMachine();
-        // 
+        //
         // stateMachine.__builder<> = new AsyncInterpreterTaskBuilder<TResult>();
         // stateMachine.__state<> = -1;
         //
-        // stateMachine.__moveNextDelegate<> = (ref StateMachine stateMachine) => { ... }
-        // stateMachine._builder.Start<StateMachineType>( ref stateMachine );
+        // stateMachine.__moveNextDelegate<> = (StateMachine sm) => { ... }
+        // stateMachine.__builder<>.Start<StateMachineType>( ref stateMachine );
         //
         // return stateMachine.__builder<>.Task;
 
         var stateMachineType = CreateStateMachineType( context, out var fields );
-        var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
+        var delegateType = typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType );
+        var moveNextExpression = CreateMoveNextBody( id, context, stateMachineType, fields, delegateType );
 
-        var taskBuilderConstructor = typeof( AsyncInterpreterTaskBuilder<> )
-            .MakeGenericType( typeof( TResult ) )
-            .GetConstructor( Type.EmptyTypes )!;
-
-        // Initialize the state machine
-
-        var stateMachineVariable = Variable(
-            stateMachineType,
-            $"stateMachine<{id}>"
-        );
+        var stateMachineVariable = Variable( stateMachineType, $"stateMachine<{id}>" );
 
         var bodyExpression = new List<Expression>
         {
-            Assign( // Create the state-machine
-                stateMachineVariable,
-                New( stateMachineType )
+            Assign( stateMachineVariable, New( stateMachineType ) ),
+            Assign(
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
+                New( typeof( AsyncInterpreterTaskBuilder<> )
+                    .MakeGenericType( typeof( TResult ) )
+                    .GetConstructor( Type.EmptyTypes )! )
             ),
-            Assign( // Set the state-machine builder to new AsyncInterpreterTaskBuilder
-                Field(
-                    stateMachineVariable,
-                    stateMachineType.GetField( FieldName.Builder )!
-                ),
-                New( taskBuilderConstructor )
-            ),
-            Assign( // Set the state-machine state to -1
-                Field(
-                    stateMachineVariable,
-                    stateMachineType.GetField( FieldName.State )!
-                ),
+            Assign(
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.State )! ),
                 Constant( -1 )
-            )
-        };
-
-        bodyExpression.AddRange( [
-            Assign( // Set the state-machine moveNextDelegate
-                Field(
-                    stateMachineVariable,
-                    stateMachineType.GetField( FieldName.MoveNextDelegate )!
-                ),
-                moveNextLambda
             ),
-            Call( // Start the state-machine
+            Assign(
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.MoveNextDelegate )! ),
+                moveNextExpression
+            ),
+            Call(
                 Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
                 stateMachineType.GetField( FieldName.Builder )!.FieldType
                     .GetMethod( "Start" )!
                     .MakeGenericMethod( stateMachineType ),
                 stateMachineVariable
             ),
-            //stateMachineTask
             Property(
                 Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
                 stateMachineType.GetField( FieldName.Builder )!.FieldType.GetProperty( "Task" )!
             )
-        ] );
+        };
 
-        return Block(
-            [stateMachineVariable],
-            bodyExpression
-        );
+        return Block( [stateMachineVariable], bodyExpression );
     }
 
     private Type CreateStateMachineType( StateMachineContext context, out FieldInfo[] fields )
@@ -150,7 +125,7 @@ internal class AsyncStateMachineBuilder<TResult>
 
         var builderField = typeBuilder.DefineField(
             FieldName.Builder,
-            typeof( AsyncInterpreterTaskBuilder<> ).MakeGenericType( typeof( TResult ) ), //typeof( AsyncTaskMethodBuilder<> ).MakeGenericType( typeof( TResult ) ),
+            typeof( AsyncInterpreterTaskBuilder<> ).MakeGenericType( typeof( TResult ) ),
             FieldAttributes.Public
         );
 
@@ -182,6 +157,8 @@ internal class AsyncStateMachineBuilder<TResult>
 
         return stateMachineType;
     }
+
+    // --- Implementation methods ---
 
     private static void ImplementSetStateMachine( TypeBuilder typeBuilder, FieldBuilder builderFieldInfo )
     {
@@ -252,16 +229,17 @@ internal class AsyncStateMachineBuilder<TResult>
         int id,
         StateMachineContext context,
         Type stateMachineType,
-        FieldInfo[] fields
+        FieldInfo[] fields,
+        Type lambdaType = null
     )
     {
         // Set context state-machine-info
 
         var stateMachine = Parameter( stateMachineType, $"sm<{id}>" );
 
-        var stateField = Field( stateMachine, FieldName.State );
-        var builderField = Field( stateMachine, FieldName.Builder );
-        var finalResultField = Field( stateMachine, FieldName.FinalResult );
+        var stateField = Field( stateMachine, Array.Find( fields, f => f.Name == FieldName.State )! );
+        var builderField = Field( stateMachine, Array.Find( fields, f => f.Name == FieldName.Builder )! );
+        var finalResultField = Field( stateMachine, Array.Find( fields, f => f.Name == FieldName.FinalResult )! );
 
         var exitLabel = Label( "ST_EXIT" );
 
@@ -277,41 +255,41 @@ internal class AsyncStateMachineBuilder<TResult>
 
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
-        return Lambda(
-            typeof( MoveNextDelegate<> ).MakeGenericType( stateMachineType ),
-            Block(
-                TryCatch(
-                    Block(
-                        typeof( void ),
-                        CreateBody(
-                            fields,
-                            context,
-                            Assign( stateField, Constant( -2 ) ),
-                            Call(
-                                builderField,
-                                nameof( AsyncInterpreterTaskBuilder<TResult>.SetResult ),
-                                null,
-                                finalResultField
-                            )
-                        )
-                    ),
-                    Catch(
-                        exceptionParam,
-                        Block(
-                            Assign( stateField, Constant( -2 ) ),
-                            Call(
-                                builderField,
-                                nameof( AsyncInterpreterTaskBuilder<TResult>.SetException ),
-                                null,
-                                exceptionParam
-                            )
+        var body = Block(
+            TryCatch(
+                Block(
+                    typeof( void ),
+                    CreateBody(
+                        fields,
+                        context,
+                        Assign( stateField, Constant( -2 ) ),
+                        Call(
+                            builderField,
+                            nameof( AsyncInterpreterTaskBuilder<TResult>.SetResult ),
+                            null,
+                            finalResultField
                         )
                     )
                 ),
-                Label( exitLabel )
+                Catch(
+                    exceptionParam,
+                    Block(
+                        Assign( stateField, Constant( -2 ) ),
+                        Call(
+                            builderField,
+                            nameof( AsyncInterpreterTaskBuilder<TResult>.SetException ),
+                            null,
+                            exceptionParam
+                        )
+                    )
+                )
             ),
-            stateMachine
+            Label( exitLabel )
         );
+
+        return lambdaType != null
+            ? Lambda( lambdaType, body, stateMachine )
+            : Lambda( body, stateMachine );
     }
 
     private static IEnumerable<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context, params Expression[] antecedents )
@@ -405,14 +383,14 @@ public static class AsyncStateMachineBuilder
     internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
     {
         options ??= new ExpressionRuntimeOptions();
-        
+
         var typeId = Interlocked.Increment( ref __id );
         var typeName = $"{StateMachineTypeName}{typeId}";
 
         // Get ModuleBuilder from provider using ModuleKind.Async
         var moduleBuilder = options.ModuleBuilderProvider.GetModuleBuilder( ModuleKind.Async );
 
-        var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName );
+        var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName, options );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
         if ( options.SourceHandler != null )
