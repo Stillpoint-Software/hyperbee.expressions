@@ -51,7 +51,7 @@ internal class AsyncStateMachineBuilder<TResult>
         //
         // var stateMachine = new StateMachine();
         //
-        // stateMachine.__builder<> = new AsyncInterpreterTaskBuilder<TResult>();
+        // stateMachine.__builder<> = new AsyncTaskMethodBuilderBox<TResult>();
         // stateMachine.__state<> = -1;
         //
         // stateMachine.__moveNextDelegate<> = (StateMachine sm) => { ... }
@@ -78,7 +78,7 @@ internal class AsyncStateMachineBuilder<TResult>
             Assign( stateMachineVariable, New( stateMachineType ) ),
             Assign(
                 Field( stateMachineVariable, stateMachineType.GetField( FieldName.Builder )! ),
-                New( typeof( AsyncInterpreterTaskBuilder<> )
+                New( typeof( AsyncTaskMethodBuilderBox<> )
                     .MakeGenericType( typeof( TResult ) )
                     .GetConstructor( Type.EmptyTypes )! )
             ),
@@ -133,7 +133,7 @@ internal class AsyncStateMachineBuilder<TResult>
 
         var builderField = typeBuilder.DefineField(
             FieldName.Builder,
-            typeof( AsyncInterpreterTaskBuilder<> ).MakeGenericType( typeof( TResult ) ),
+            typeof( AsyncTaskMethodBuilderBox<> ).MakeGenericType( typeof( TResult ) ),
             FieldAttributes.Public
         );
 
@@ -273,7 +273,7 @@ internal class AsyncStateMachineBuilder<TResult>
                         Assign( stateField, Constant( -2 ) ),
                         Call(
                             builderField,
-                            nameof( AsyncInterpreterTaskBuilder<TResult>.SetResult ),
+                            nameof( AsyncTaskMethodBuilderBox<TResult>.SetResult ),
                             null,
                             finalResultField
                         )
@@ -285,7 +285,7 @@ internal class AsyncStateMachineBuilder<TResult>
                         Assign( stateField, Constant( -2 ) ),
                         Call(
                             builderField,
-                            nameof( AsyncInterpreterTaskBuilder<TResult>.SetException ),
+                            nameof( AsyncTaskMethodBuilderBox<TResult>.SetException ),
                             null,
                             exceptionParam
                         )
