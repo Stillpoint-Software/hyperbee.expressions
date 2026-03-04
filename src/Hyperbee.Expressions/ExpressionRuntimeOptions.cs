@@ -1,3 +1,5 @@
+using Hyperbee.Expressions.CompilerServices;
+
 namespace Hyperbee.Expressions;
 
 /// <summary>
@@ -19,8 +21,8 @@ public class ExpressionRuntimeOptions
     public bool Optimize { get; init; } = true;
 
     /// <summary>
-    /// Gets or sets an optional callback to receive the generated state machine source.
-    /// When set, the state machine expression debug view is passed as a string for inspection.
+    /// Gets or sets an optional callback that captures the generated state machine expression
+    /// debug view as a string. When set, the expression tree's DebugView is passed for inspection.
     /// </summary>
-    public Action<string> SourceHandler { get; init; }
+    public Action<string> ExpressionCapture { get; init; }
 }

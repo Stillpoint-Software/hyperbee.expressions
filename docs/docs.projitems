@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
@@ -9,8 +9,42 @@
     <Import_RootNamespace>docs</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Root -->
     <None Include="$(MSBuildThisFileDirectory)index.md" />
-    <None Include="$(MSBuildThisFileDirectory).todo.md" />
     <None Include="$(MSBuildThisFileDirectory)_config.yml" />
+    <None Include="$(MSBuildThisFileDirectory).todo.md" />
+    <!-- Expressions -->
+    <None Include="$(MSBuildThisFileDirectory)expressions\expressions.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\async-block.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\enumerable-block.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\await.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\yield.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\for.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\foreach.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\while.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\using.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\debug.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\string-format.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\inject.md" />
+    <None Include="$(MSBuildThisFileDirectory)expressions\configuration-value.md" />
+    <!-- Configuration -->
+    <None Include="$(MSBuildThisFileDirectory)configuration\configuration.md" />
+    <None Include="$(MSBuildThisFileDirectory)configuration\runtime-options.md" />
+    <None Include="$(MSBuildThisFileDirectory)configuration\module-providers.md" />
+    <None Include="$(MSBuildThisFileDirectory)configuration\dependency-injection.md" />
+    <!-- Compiler -->
+    <None Include="$(MSBuildThisFileDirectory)compiler\compiler.md" />
+    <None Include="$(MSBuildThisFileDirectory)compiler\overview.md" />
+    <None Include="$(MSBuildThisFileDirectory)compiler\api.md" />
+    <None Include="$(MSBuildThisFileDirectory)compiler\diagnostics.md" />
+    <None Include="$(MSBuildThisFileDirectory)compiler\performance.md" />
+    <!-- Lab -->
+    <None Include="$(MSBuildThisFileDirectory)lab\lab.md" />
+    <None Include="$(MSBuildThisFileDirectory)lab\fetch.md" />
+    <None Include="$(MSBuildThisFileDirectory)lab\json.md" />
+    <None Include="$(MSBuildThisFileDirectory)lab\map-reduce.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)_includes\nav_footer_custom.html" />
   </ItemGroup>
 </Project>
