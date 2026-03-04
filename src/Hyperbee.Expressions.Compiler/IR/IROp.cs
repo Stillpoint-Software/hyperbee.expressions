@@ -77,6 +77,21 @@ public enum IROp : byte
     Branch,                 // Unconditional branch
     BranchTrue,             // Branch if true
     BranchFalse,            // Branch if false
+
+    // Fused comparison-branch (peephole-generated from Ceq/Clt/Cgt + BranchTrue/BranchFalse)
+    BranchEqual,            // beq   (Ceq + BranchTrue)
+    BranchNotEqual,         // bne.un (Ceq + BranchFalse)
+    BranchLessThan,         // blt   (Clt + BranchTrue)
+    BranchLessThanUn,       // blt.un (CltUn + BranchTrue)
+    BranchGreaterThan,      // bgt   (Cgt + BranchTrue)
+    BranchGreaterThanUn,    // bgt.un (CgtUn + BranchTrue)
+    BranchGreaterEqual,     // bge   (Clt + BranchFalse)
+    BranchGreaterEqualUn,   // bge.un (CltUn + BranchFalse)
+    BranchLessEqual,        // ble   (Cgt + BranchFalse)
+    BranchLessEqualUn,      // ble.un (CgtUn + BranchFalse)
+
+    Switch,                 // CIL switch jump table (operand -> int[] of label indices in operand table)
+
     Label,                  // Branch target marker
 
     // Exception handling
