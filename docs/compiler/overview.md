@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Overview
 parent: Compiler
@@ -8,7 +8,7 @@ nav_order: 1
 # Compiler Overview
 
 `HyperbeeCompiler` compiles `LambdaExpression` trees to `DynamicMethod` delegates through a
-four-stage pipeline: **Lower → Transform → Map → Emit**.
+four-stage pipeline: **Lower -> Transform -> Map -> Emit**.
 
 ---
 
@@ -16,26 +16,26 @@ four-stage pipeline: **Lower → Transform → Map → Emit**.
 
 ```
 LambdaExpression
-       │
-       ▼
+       |
+       v
   [ 1. Lower ]          ExpressionLowerer
-  Expression tree → flat IR instruction stream (IROp)
-       │
-       ▼
+  Expression tree -> flat IR instruction stream (IROp)
+       |
+       v
   [ 2. Transform ]      Optimization passes
-  StackSpillPass        — eliminate unnecessary locals at branch merge-points
-  PeepholePass          — constant folding, branch simplification, load/store elimination
-  DeadCodePass          — remove unreachable instructions
-  IRValidator           — structural correctness checks (debug builds)
-       │
-       ▼
+  StackSpillPass        -- eliminate unnecessary locals at branch merge-points
+  PeepholePass          -- constant folding, branch simplification, load/store elimination
+  DeadCodePass          -- remove unreachable instructions
+  IRValidator           -- structural correctness checks (debug builds)
+       |
+       v
   [ 3. Map ]            Constants array construction
   Collect non-embeddable constants (object refs, delegates, nested lambdas)
   into a captured array; replace operands with indices
-       │
-       ▼
+       |
+       v
   [ 4. Emit ]           ILEmissionPass
-  IR → CIL → DynamicMethod delegate
+  IR -> CIL -> DynamicMethod delegate
 ```
 
 ---
@@ -67,7 +67,7 @@ itself as the ambient `ICoroutineDelegateBuilder` via `CoroutineBuilderContext`.
 `AsyncBlockExpression` reduces (generating its `MoveNext` lambda), the ambient builder is picked
 up automatically, and HEC compiles the `MoveNext` body rather than the System compiler.
 
-This is transparent to callers — no special options are needed:
+This is transparent to callers -- no special options are needed:
 
 ```csharp
 // HEC compiles both the outer lambda AND the inner MoveNext state machine
@@ -99,8 +99,8 @@ Patterns not supported by FastExpressionCompiler that HEC handles include:
 
 ## Notes
 
-- Compilation is thread-safe — `HyperbeeCompiler` has no instance state.
-- The IR is not cached — each `Compile()` call traverses and emits from scratch.
+- Compilation is thread-safe -- `HyperbeeCompiler` has no instance state.
+- The IR is not cached -- each `Compile()` call traverses and emits from scratch.
 - For heavy compilation workloads, consider compiling once and caching the delegate.
 - See [API Reference](api.md) for all public methods.
 - See [Performance](performance.md) for benchmark results.

@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: While
 parent: Expressions
@@ -133,7 +133,7 @@ var asyncBlock = BlockAsync(
 
 ## Notes
 
-- Pass `Constant( true )` as `test` to create an infinite loop — use `Break` in the body to exit.
+- Pass `Constant( true )` as `test` to create an infinite loop -- use `Break` in the body to exit.
 - The `LoopBody` delegate overloads are the idiomatic way to use `Break` and `Continue` without
   manually creating labels.
 - See [For](for.md) and [ForEach](foreach.md) for other loop expressions.

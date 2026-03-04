@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Using
 parent: Expressions
@@ -26,7 +26,7 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 | Overload | Description |
 |----------|-------------|
 | `Using( ParameterExpression variable, Expression disposable, Expression body )` | Named variable, disposable expression, and body |
-| `Using( Expression disposable, Expression body )` | Anonymous disposable — no variable binding |
+| `Using( Expression disposable, Expression body )` | Anonymous disposable -- no variable binding |
 
 ---
 
@@ -99,7 +99,7 @@ var asyncBlock = BlockAsync(
 ## Notes
 
 - Disposal is guaranteed even if the body throws an exception (wrapped in `try/finally`).
-- If `disposable` evaluates to `null`, no exception is thrown — null is checked before calling `Dispose()`.
+- If `disposable` evaluates to `null`, no exception is thrown -- null is checked before calling `Dispose()`.
 - The `variable` parameter (when provided) is bound to the value of `disposable` and is accessible
   inside `body`. It must match the type of `disposable`.
 - Both `IDisposable` and `IAsyncDisposable` are supported.

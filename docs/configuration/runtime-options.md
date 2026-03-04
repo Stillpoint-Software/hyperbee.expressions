@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Runtime Options
 parent: Configuration
@@ -37,7 +37,7 @@ public class ExpressionRuntimeOptions
 ### Default (No Options)
 
 ```csharp
-// Options are optional — defaults are suitable for production use
+// Options are optional -- defaults are suitable for production use
 var asyncBlock = BlockAsync(
     Await( someTask )
 );
@@ -95,7 +95,7 @@ See [Module Providers](module-providers.md) for details.
 
 ## Notes
 
-- `ExpressionRuntimeOptions` uses `init` properties — create a new instance per-block; do not share
+- `ExpressionRuntimeOptions` uses `init` properties -- create a new instance per-block; do not share
   mutable state across blocks.
 - The `ExpressionCapture` callback fires once per `Reduce()` call, which occurs at compile time.
 - Optimization is a state graph pass (`StateOptimizer`) that runs after lowering, not an IR pass.

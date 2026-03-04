@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: String Format
 parent: Expressions
@@ -75,7 +75,7 @@ var formatExpr = StringFormat(
     Constant( "{0:C}" ),
     [price]
 );
-// produces "£9.99"
+// produces "GBP9.99"
 ```
 
 ---

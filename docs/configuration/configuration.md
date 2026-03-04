@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Configuration
 has_children: true
@@ -16,6 +16,6 @@ compiled and executed.
 
 | Topic | Description |
 |-------|-------------|
-| [Runtime Options](runtime-options.md) | `ExpressionRuntimeOptions` — module providers, optimization, diagnostics |
-| [Module Providers](module-providers.md) | `IModuleBuilderProvider` — how dynamic types are generated |
+| [Runtime Options](runtime-options.md) | `ExpressionRuntimeOptions` -- module providers, optimization, diagnostics |
+| [Module Providers](module-providers.md) | `IModuleBuilderProvider` -- how dynamic types are generated |
 | [Dependency Injection](dependency-injection.md) | Compiling expression trees with `IServiceProvider` |

@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Module Providers
 parent: Configuration
@@ -71,7 +71,7 @@ public sealed class CollectibleModuleBuilderProvider : IModuleBuilderProvider
 ### Default (Implicit)
 
 ```csharp
-// DefaultModuleBuilderProvider is used automatically — no configuration needed
+// DefaultModuleBuilderProvider is used automatically -- no configuration needed
 var asyncBlock = BlockAsync( Await( someTask ) );
 ```
 

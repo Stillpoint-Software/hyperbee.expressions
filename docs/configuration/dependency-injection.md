@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Dependency Injection
 parent: Configuration
@@ -9,10 +9,10 @@ nav_order: 3
 
 `Hyperbee.Expressions` supports dependency injection through two mechanisms:
 
-1. **Expression-level injection** — `InjectExpression` and `ConfigurationExpression` resolve services
+1. **Expression-level injection** -- `InjectExpression` and `ConfigurationExpression` resolve services
    at compile time by walking the expression tree and setting an `IServiceProvider`.
 
-2. **Compiler-level injection** — `IExpressionCompiler` is a DI-friendly interface for injectable
+2. **Compiler-level injection** -- `IExpressionCompiler` is a DI-friendly interface for injectable
    compilation, with built-in implementations for the System compiler and HEC.
 
 ---
@@ -135,7 +135,7 @@ same resolution pattern.
 
 - Service resolution happens at compile time (when `Compile(serviceProvider)` is called), not at
   runtime when the delegate is invoked. The resolved services are captured as closures.
-- `SystemExpressionCompiler.Instance` and `HyperbeeExpressionCompiler.Instance` are singletons —
+- `SystemExpressionCompiler.Instance` and `HyperbeeExpressionCompiler.Instance` are singletons --
   safe to register as `Singleton` in the container.
 - See [Inject](../expressions/inject.md) for `InjectExpression` factory methods.
 - See [Configuration Value](../expressions/configuration-value.md) for `ConfigurationExpression`.

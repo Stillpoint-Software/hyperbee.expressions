@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Await
 parent: Expressions
@@ -10,7 +10,7 @@ nav_order: 3
 `AwaitExpression` represents an `await` operation inside an `AsyncBlockExpression`. It suspends
 execution until the awaitable completes, then resumes with the result.
 
-Any awaitable type is supported — `Task`, `Task<T>`, `ValueTask`, `ValueTask<T>`, or any type
+Any awaitable type is supported -- `Task`, `Task<T>`, `ValueTask`, `ValueTask<T>`, or any type
 that provides a `GetAwaiter()` method returning an `INotifyCompletion` implementation.
 
 ---
@@ -77,9 +77,9 @@ var asyncBlock = BlockAsync(
 ## Type
 
 The `Type` property returns the result type of the awaitable:
-- `Task` → `void`
-- `Task<T>` → `T`
-- `ValueTask<T>` → `T`
+- `Task` -> `void`
+- `Task<T>` -> `T`
+- `ValueTask<T>` -> `T`
 
 ---
 

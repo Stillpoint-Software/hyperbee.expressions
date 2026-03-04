@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Diagnostics
 parent: Compiler
@@ -91,7 +91,7 @@ For instructions with operands, the operand is shown with context:
 
 | Instruction | Operand Format |
 |-------------|----------------|
-| `LoadConst` | `[idx] value` — method, ctor, field, type, or constant value |
+| `LoadConst` | `[idx] value` -- method, ctor, field, type, or constant value |
 | `Call` / `CallVirt` | `[idx] Type.Method()` |
 | `LoadLocal` / `StoreLocal` | `[idx] name (Type)` |
 | `Branch` / `Label` | `L{label:D4} -> {target:D4}` |
@@ -138,7 +138,7 @@ For an if/else:
 ## Notes
 
 - `IRCapture` fires once per `Compile()` call, after all optimization passes but before IL emission.
-- The IR shown reflects the optimized form — `PeepholePass`, `DeadCodePass`, and `StackSpillPass`
+- The IR shown reflects the optimized form -- `PeepholePass`, `DeadCodePass`, and `StackSpillPass`
   have already run.
 - To capture the unoptimized IR for comparison, you would need to run the lowerer manually, which
   is not part of the public API.

@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Fetch
 parent: Lab
@@ -38,7 +38,7 @@ FetchExpression Fetch(
 |-----------|------|-------------|
 | `clientName` | `Expression` (string) | Named HTTP client (from `IHttpClientFactory`) |
 | `url` | `Expression` (string) | Request URL |
-| `method` | `Expression?` (string) | HTTP method — `"GET"`, `"POST"`, etc. Default: `"GET"` |
+| `method` | `Expression?` (string) | HTTP method -- `"GET"`, `"POST"`, etc. Default: `"GET"` |
 | `headers` | `Expression?` (`IDictionary<string,string>`) | Additional request headers |
 | `content` | `Expression?` (`HttpContent`) | Request body content |
 
@@ -125,4 +125,4 @@ var fetch = Fetch(
 - `FetchExpression` implements `IDependencyInjectionExpression`. `IHttpClientFactory` is resolved
   from the service provider when `Compile(serviceProvider)` is called.
 - If no named client is specified, the default `HttpClient` is used.
-- `FetchExpression.Type` is `typeof(Task<HttpResponseMessage>)` — wrap in `Await` inside an async block.
+- `FetchExpression.Type` is `typeof(Task<HttpResponseMessage>)` -- wrap in `Await` inside an async block.

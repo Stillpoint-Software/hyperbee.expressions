@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: JSON
 parent: Lab
@@ -9,8 +9,8 @@ nav_order: 2
 
 `Hyperbee.Expressions.Lab` provides two JSON-related expression types:
 
-- **`JsonExpression`** — deserializes a JSON string or stream to a typed object using `System.Text.Json`.
-- **`JsonPathExpression`** — queries a `JsonElement` or `JsonNode` using a JSONPath expression.
+- **`JsonExpression`** -- deserializes a JSON string or stream to a typed object using `System.Text.Json`.
+- **`JsonPathExpression`** -- queries a `JsonElement` or `JsonNode` using a JSONPath expression.
 
 ---
 

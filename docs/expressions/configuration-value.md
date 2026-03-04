@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Configuration Value
 parent: Expressions
@@ -24,9 +24,9 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 
 | Overload | Description |
 |----------|-------------|
-| `ConfigurationValue( Type type, string key )` | Typed read — provider supplied at compile time |
+| `ConfigurationValue( Type type, string key )` | Typed read -- provider supplied at compile time |
 | `ConfigurationValue( Type type, IConfiguration config, string key )` | Typed read with explicit configuration |
-| `ConfigurationValue<T>( string key )` | Generic read — provider supplied at compile time |
+| `ConfigurationValue<T>( string key )` | Generic read -- provider supplied at compile time |
 | `ConfigurationValue<T>( IConfiguration config, string key )` | Generic read with explicit configuration |
 
 ---

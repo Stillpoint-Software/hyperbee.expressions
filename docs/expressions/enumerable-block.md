@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Enumerable Block
 parent: Expressions
@@ -100,7 +100,7 @@ The `Type` property returns `IEnumerable<T>` where `T` is the type of the values
 ## Notes
 
 - `YieldReturn` and `YieldBreak` must appear directly inside an `EnumerableBlockExpression`.
-- Enumeration is lazy — the body executes only as the caller iterates.
+- Enumeration is lazy -- the body executes only as the caller iterates.
 - Variables declared in the block are hoisted to state machine fields to survive yield points.
 - See [ExpressionRuntimeOptions](../configuration/runtime-options.md) for configuration options.
 - See [Yield](yield.md) for `YieldReturn` and `YieldBreak`.

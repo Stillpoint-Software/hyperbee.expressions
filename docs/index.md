@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Hyperbee Expressions
 nav_order: 1
@@ -11,7 +11,7 @@ nav_order: 1
 structured loops, resource disposal, string formatting, and dependency injection.
 
 All custom expression types reduce to standard expression trees, so they work with any compiler that
-accepts `LambdaExpression` — including the System compiler, [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler),
+accepts `LambdaExpression` -- including the System compiler, [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler),
 and the included [Hyperbee Expression Compiler](compiler/compiler.md).
 
 ---
@@ -120,7 +120,7 @@ using Hyperbee.Expressions.Compiler;
 var fn = HyperbeeCompiler.Compile( lambda );
 ```
 
-**Compilation speed:** 9–34× faster than the System compiler. See [Compiler](compiler/compiler.md) for details.
+**Compilation speed:** 9-34x faster than the System compiler. See [Compiler](compiler/compiler.md) for details.
 
 ---
 
@@ -141,7 +141,7 @@ See [Lab](lab/lab.md) for details.
 
 Special thanks to:
 
-- Sergey Tepliakov — [Dissecting the async methods in C#](https://devblogs.microsoft.com/premier-developer/dissecting-the-async-methods-in-c/)
+- Sergey Tepliakov -- [Dissecting the async methods in C#](https://devblogs.microsoft.com/premier-developer/dissecting-the-async-methods-in-c/)
 - [Fast Expression Compiler](https://github.com/dadhi/FastExpressionCompiler) for improved performance
 - [Just The Docs](https://github.com/just-the-docs/just-the-docs) for the documentation theme
 

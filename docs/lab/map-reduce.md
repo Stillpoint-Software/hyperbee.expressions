@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Map / Reduce
 parent: Lab
@@ -8,7 +8,7 @@ nav_order: 3
 # Map / Reduce
 
 `Hyperbee.Expressions.Lab` provides `MapExpression` and `ReduceExpression` for functional collection
-operations within expression trees — the expression-tree equivalents of LINQ `Select` and
+operations within expression trees -- the expression-tree equivalents of LINQ `Select` and
 `Aggregate`.
 
 ---
@@ -80,7 +80,7 @@ var mapExpr = Map(
 ## ReduceExpression
 
 `ReduceExpression` aggregates a collection to a single value, passing an accumulator and each
-element through a body expression — equivalent to `Enumerable.Aggregate`.
+element through a body expression -- equivalent to `Enumerable.Aggregate`.
 
 ### Factory Methods
 
@@ -135,7 +135,7 @@ var reduceExpr = Reduce(
 ## Combining Map and Reduce
 
 ```csharp
-// Sum the squares: [1,2,3,4,5] → [1,4,9,16,25] → 55
+// Sum the squares: [1,2,3,4,5] -> [1,4,9,16,25] -> 55
 var numbers = Constant( new[] { 1, 2, 3, 4, 5 } );
 
 var squares = Map( numbers, item => Multiply( item, item ) );
@@ -157,6 +157,6 @@ Console.WriteLine( lambda.Compile()() );  // 55
 - `Map` always produces a `List<TResult>`. The `resultType` parameter controls `TResult`; when
   omitted, it is inferred from the body expression's `Type`.
 - `Reduce` returns the same type as the `seed` expression.
-- Both expressions are eager — the entire collection is processed when the delegate is invoked.
+- Both expressions are eager -- the entire collection is processed when the delegate is invoked.
 - For lazy evaluation over large collections, prefer `ForEach` with side effects or compose with
   LINQ after compilation.

@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: API Reference
 parent: Compiler
@@ -11,7 +11,7 @@ nav_order: 2
 
 ## HyperbeeCompiler
 
-`HyperbeeCompiler` is a static class — the primary entry point for all compilation operations.
+`HyperbeeCompiler` is a static class -- the primary entry point for all compilation operations.
 
 ```csharp
 using Hyperbee.Expressions.Compiler;
@@ -93,7 +93,7 @@ static bool TryCompileToMethod( LambdaExpression lambda, MethodBuilder method )
 Emits the expression tree directly into a `MethodBuilder`. The method must be `static` and its
 parameter signature must match the lambda.
 
-Non-embeddable constants (object references, delegates, nested lambdas) are not permitted —
+Non-embeddable constants (object references, delegates, nested lambdas) are not permitted --
 all constants must be embeddable IL values (primitives, `Type` tokens, `null`).
 
 ```csharp
@@ -187,7 +187,7 @@ var fn = lambda.CompileHyperbee();
 
 ## Notes
 
-- All `HyperbeeCompiler` methods are thread-safe — there is no shared mutable state.
+- All `HyperbeeCompiler` methods are thread-safe -- there is no shared mutable state.
 - `CompileToMethod` and `CompileToInstanceMethod` do not support closures. Use `Compile()` for
   expressions with captured variables or non-embeddable constants.
 - See [Diagnostics](diagnostics.md) for `CompilerDiagnostics` and IR capture.

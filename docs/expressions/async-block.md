@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Async Block
 parent: Expressions
@@ -95,6 +95,6 @@ the last expression produces a value of type `T`.
 - `AwaitExpression` nodes must appear directly inside an `AsyncBlockExpression`. Awaiting outside an
   async block is not supported.
 - Variables declared in the block are hoisted to state machine fields to survive suspension points.
-- Nested `AsyncBlockExpression` blocks are supported — each generates its own state machine.
+- Nested `AsyncBlockExpression` blocks are supported -- each generates its own state machine.
 - See [ExpressionRuntimeOptions](../configuration/runtime-options.md) for configuration options.
 - See [Await](await.md) for the `Await` factory method.

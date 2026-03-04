@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Debug
 parent: Expressions
@@ -22,10 +22,10 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 
 | Overload | Description |
 |----------|-------------|
-| `Debug( Delegate debugDelegate, Expression argument )` | Unconditional — single argument |
-| `Debug( Delegate debugDelegate, Expression[] arguments )` | Unconditional — multiple arguments |
-| `Debug( Delegate debugDelegate, Expression condition, Expression argument )` | Conditional — single argument |
-| `Debug( Delegate debugDelegate, Expression condition, Expression[] arguments )` | Conditional — multiple arguments |
+| `Debug( Delegate debugDelegate, Expression argument )` | Unconditional -- single argument |
+| `Debug( Delegate debugDelegate, Expression[] arguments )` | Unconditional -- multiple arguments |
+| `Debug( Delegate debugDelegate, Expression condition, Expression argument )` | Conditional -- single argument |
+| `Debug( Delegate debugDelegate, Expression condition, Expression[] arguments )` | Conditional -- multiple arguments |
 
 ---
 
@@ -91,7 +91,7 @@ var expr = Block(
 
 ## Notes
 
-- `DebugExpression` reduces to `void` — it does not change the stack value of the surrounding block.
+- `DebugExpression` reduces to `void` -- it does not change the stack value of the surrounding block.
 - The debug delegate is embedded as a constant in the expression tree and is not serializable.
 - Conditional debug points evaluate the condition at runtime; the delegate is only called when `true`.
-- In production builds, simply remove `Debug(...)` calls — they have no effect on surrounding logic.
+- In production builds, simply remove `Debug(...)` calls -- they have no effect on surrounding logic.

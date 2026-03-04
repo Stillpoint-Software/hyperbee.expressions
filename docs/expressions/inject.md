@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: Inject
 parent: Expressions
@@ -25,9 +25,9 @@ using static Hyperbee.Expressions.ExpressionExtensions;
 | Overload | Description |
 |----------|-------------|
 | `Inject( Type type, IServiceProvider sp, string key = null, Expression defaultValue = null )` | Resolve by type with provider |
-| `Inject( Type type, string key = null, Expression defaultValue = null )` | Resolve by type — provider supplied at compile time |
+| `Inject( Type type, string key = null, Expression defaultValue = null )` | Resolve by type -- provider supplied at compile time |
 | `Inject<T>( IServiceProvider sp, string key = null, Expression defaultValue = null )` | Generic resolve with provider |
-| `Inject<T>( string key = null, Expression defaultValue = null )` | Generic resolve — provider supplied at compile time |
+| `Inject<T>( string key = null, Expression defaultValue = null )` | Generic resolve -- provider supplied at compile time |
 
 ---
 
@@ -51,7 +51,7 @@ var expr = Block(
 
 var lambda = Lambda<Action>( expr );
 
-// Compile with the service provider — Inject nodes are resolved here
+// Compile with the service provider -- Inject nodes are resolved here
 var fn = lambda.Compile( serviceProvider );
 fn();
 ```

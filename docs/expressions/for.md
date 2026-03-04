@@ -1,4 +1,4 @@
----
+﻿---
 layout: default
 title: For
 parent: Expressions
@@ -90,7 +90,7 @@ var forExpr = For(
 ```csharp
 var i = Variable( typeof(int), "i" );
 
-// The variable 'i' is scoped to the loop — equivalent to for (int i = 0; ...)
+// The variable 'i' is scoped to the loop -- equivalent to for (int i = 0; ...)
 var forExpr = For(
     variables: [i],
     initialization: Assign( i, Constant( 0 ) ),
@@ -117,7 +117,7 @@ var asyncBlock = BlockAsync(
 
 ## Notes
 
-- All four parameters — `initialization`, `test`, `iteration`, `body` — are required.
+- All four parameters -- `initialization`, `test`, `iteration`, `body` -- are required.
 - Pass `null` for `test` to create an infinite loop (equivalent to `for(;;)`).
 - The `LoopBody` delegate overloads are the idiomatic way to use `Break` and `Continue` without
   manually creating labels.
