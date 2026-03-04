@@ -2047,9 +2047,6 @@ public class ExpressionLowerer
         var switchValueLocal = _ir.DeclareLocal( node.SwitchValue.Type, "$switchValue" );
         _ir.Emit( IROp.StoreLocal, switchValueLocal );
 
-        // For non-void switches, use a result local so stack is empty at labels
-        var resultLocal = !isVoid ? _ir.DeclareLocal( node.Type, "$switchResult" ) : -1;
-
         var endLabel = _ir.DefineLabel();
         var caseLabels = new int[node.Cases.Count];
         for ( var i = 0; i < node.Cases.Count; i++ )
@@ -2059,34 +2056,43 @@ public class ExpressionLowerer
 
         var defaultLabel = node.DefaultBody != null ? _ir.DefineLabel() : endLabel;
 
-        // Emit test conditions
-        for ( var i = 0; i < node.Cases.Count; i++ )
+        // Try to emit a CIL switch jump table for dense integer cases
+        if ( TryEmitSwitchJumpTable( node, switchValueLocal, caseLabels, defaultLabel ) )
         {
-            var switchCase = node.Cases[i];
-
-            foreach ( var testValue in switchCase.TestValues )
+            // Jump table emitted successfully; fall through to case bodies below
+        }
+        else
+        {
+            // Emit sequential test conditions (fallback)
+            for ( var i = 0; i < node.Cases.Count; i++ )
             {
-                _ir.Emit( IROp.LoadLocal, switchValueLocal );
-                LowerExpression( testValue );
+                var switchCase = node.Cases[i];
 
-                if ( node.Comparison != null )
+                foreach ( var testValue in switchCase.TestValues )
                 {
-                    // Use custom comparison method
-                    _ir.Emit( IROp.Call, _ir.AddOperand( node.Comparison ) );
-                }
-                else
-                {
-                    _ir.Emit( IROp.Ceq );
-                }
+                    _ir.Emit( IROp.LoadLocal, switchValueLocal );
+                    LowerExpression( testValue );
 
-                _ir.Emit( IROp.BranchTrue, caseLabels[i] );
+                    if ( node.Comparison != null )
+                    {
+                        // Use custom comparison method
+                        _ir.Emit( IROp.Call, _ir.AddOperand( node.Comparison ) );
+                    }
+                    else
+                    {
+                        _ir.Emit( IROp.Ceq );
+                    }
+
+                    _ir.Emit( IROp.BranchTrue, caseLabels[i] );
+                }
             }
+
+            // Branch to default or end
+            _ir.Emit( IROp.Branch, defaultLabel );
         }
 
-        // Branch to default or end
-        _ir.Emit( IROp.Branch, defaultLabel );
-
-        // Emit case bodies
+        // Emit case bodies — non-void arms leave their result on the stack
+        // at endLabel (same pattern as LowerConditional).
         for ( var i = 0; i < node.Cases.Count; i++ )
         {
             _ir.MarkLabel( caseLabels[i] );
@@ -2099,11 +2105,6 @@ public class ExpressionLowerer
             else if ( !isVoid && node.Cases[i].Body.Type == typeof( void ) )
             {
                 LowerDefault( Expression.Default( node.Type ) );
-                _ir.Emit( IROp.StoreLocal, resultLocal );
-            }
-            else if ( !isVoid )
-            {
-                _ir.Emit( IROp.StoreLocal, resultLocal );
             }
 
             _ir.Emit( IROp.Branch, endLabel );
@@ -2119,20 +2120,97 @@ public class ExpressionLowerer
             {
                 _ir.Emit( IROp.Pop );
             }
-            else if ( !isVoid )
-            {
-                _ir.Emit( IROp.StoreLocal, resultLocal );
-            }
 
             _ir.Emit( IROp.Branch, endLabel );
         }
 
         _ir.MarkLabel( endLabel );
+        // Non-void: result is on the stack from whichever arm was taken.
+    }
 
-        if ( !isVoid )
+    /// <summary>
+    /// Try to emit a CIL switch jump table for dense integer case values.
+    /// Returns false if the switch is not eligible (custom comparison, non-int values, sparse range).
+    /// </summary>
+    private bool TryEmitSwitchJumpTable(
+        SwitchExpression node,
+        int switchValueLocal,
+        int[] caseLabels,
+        int defaultLabel )
+    {
+        // Jump tables require default equality (no custom comparison)
+        if ( node.Comparison != null )
+            return false;
+
+        // Switch value must be an integer type
+        var switchType = node.SwitchValue.Type;
+        if ( switchType != typeof( int ) && switchType != typeof( byte ) && switchType != typeof( short )
+            && switchType != typeof( sbyte ) && switchType != typeof( ushort ) && !switchType.IsEnum )
+            return false;
+
+        // Collect all test values as integers and map to case labels
+        var valueToCase = new Dictionary<int, int>(); // value -> caseLabels index
+
+        for ( var i = 0; i < node.Cases.Count; i++ )
         {
-            _ir.Emit( IROp.LoadLocal, resultLocal );
+            foreach ( var testValue in node.Cases[i].TestValues )
+            {
+                if ( testValue is not ConstantExpression constExpr )
+                    return false;
+
+                int intValue;
+                try
+                {
+                    intValue = Convert.ToInt32( constExpr.Value );
+                }
+                catch
+                {
+                    return false;
+                }
+
+                valueToCase[intValue] = i;
+            }
         }
+
+        if ( valueToCase.Count < 2 )
+            return false; // not worth a jump table for 0-1 cases
+
+        var min = int.MaxValue;
+        var max = int.MinValue;
+        foreach ( var key in valueToCase.Keys )
+        {
+            if ( key < min ) min = key;
+            if ( key > max ) max = key;
+        }
+
+        var tableSize = (long) max - min + 1;
+
+        // Density check: table must be at most 2x the number of cases, and not too large
+        if ( tableSize > valueToCase.Count * 2 || tableSize > 256 )
+            return false;
+
+        // Build the jump table: for each slot, map to case label or default
+        var jumpTable = new int[(int) tableSize];
+        for ( var j = 0; j < jumpTable.Length; j++ )
+        {
+            jumpTable[j] = valueToCase.TryGetValue( min + j, out var caseIdx )
+                ? caseLabels[caseIdx]
+                : defaultLabel;
+        }
+
+        // Emit: load switch value, subtract min offset, switch, branch to default
+        _ir.Emit( IROp.LoadLocal, switchValueLocal );
+
+        if ( min != 0 )
+        {
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( min ) );
+            _ir.Emit( IROp.Sub );
+        }
+
+        _ir.Emit( IROp.Switch, _ir.AddOperand( jumpTable ) );
+        _ir.Emit( IROp.Branch, defaultLabel );
+
+        return true;
     }
 
     // --- Array operations ---
