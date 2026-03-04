@@ -90,8 +90,55 @@ public static class PeepholePass
                 modified = true;
                 continue;
             }
+
+            // Pattern 8: Dup; StoreLocal X; Pop -> StoreLocal X
+            // When an assignment's value is duplicated for "returns a value" semantics
+            // but the caller immediately discards it (e.g. block in void context).
+            if ( a.Op == IROp.Dup && b.Op == IROp.StoreLocal
+                && i + 2 < ir.Instructions.Count
+                && ir.Instructions[i + 2].Op == IROp.Pop )
+            {
+                ir.RemoveAt( i + 2 ); // remove Pop
+                ir.RemoveAt( i );     // remove Dup (StoreLocal shifts to i)
+                i--;
+                modified = true;
+                continue;
+            }
+
+            // Pattern 9: Comparison + BranchTrue/BranchFalse -> fused branch opcode
+            // Maps 2-instruction compare-then-branch into a single CIL fused branch.
+            var fused = TryFuseComparisonBranch( a.Op, b.Op );
+            if ( fused != IROp.Nop )
+            {
+                ir.ReplaceAt( i, new IRInstruction( fused, b.Operand ) );
+                ir.RemoveAt( i + 1 );
+                modified = true;
+                continue;
+            }
         }
 
         return modified;
+    }
+
+    /// <summary>
+    /// Returns the fused IROp for a comparison followed by a conditional branch,
+    /// or IROp.Nop if no fusion is possible.
+    /// </summary>
+    private static IROp TryFuseComparisonBranch( IROp compare, IROp branch )
+    {
+        return (compare, branch) switch
+        {
+            (IROp.Ceq, IROp.BranchTrue)    => IROp.BranchEqual,
+            (IROp.Ceq, IROp.BranchFalse)   => IROp.BranchNotEqual,
+            (IROp.Clt, IROp.BranchTrue)    => IROp.BranchLessThan,
+            (IROp.CltUn, IROp.BranchTrue)  => IROp.BranchLessThanUn,
+            (IROp.Cgt, IROp.BranchTrue)    => IROp.BranchGreaterThan,
+            (IROp.CgtUn, IROp.BranchTrue)  => IROp.BranchGreaterThanUn,
+            (IROp.Clt, IROp.BranchFalse)   => IROp.BranchGreaterEqual,
+            (IROp.CltUn, IROp.BranchFalse) => IROp.BranchGreaterEqualUn,
+            (IROp.Cgt, IROp.BranchFalse)   => IROp.BranchLessEqual,
+            (IROp.CgtUn, IROp.BranchFalse) => IROp.BranchLessEqualUn,
+            _ => IROp.Nop
+        };
     }
 }
