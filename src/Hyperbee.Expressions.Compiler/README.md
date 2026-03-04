@@ -16,7 +16,7 @@ Hyperbee takes a middle ground: a **multi-pass IR pipeline** that lowers express
 
 HEC is consistently **9-34x faster than the System Compiler** and within **1.16-1.54x of FEC** across all tiers — while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
 
-The Complex tier standout (~34x vs System) is where the multi-pass IR architecture pays off against the System compiler's heavyweight compilation pipeline. The Switch tier at 1.54x is the widest gap vs FEC, the result of enhanced switch pattern handling.
+The Complex tier standout (~34x vs System) is where the multi-pass IR architecture pays off against the System compiler's heavyweight compilation pipeline. The Switch tier at 1.54x is the widest gap vs FEC.
 
 ### Compilation Benchmarks
 
@@ -66,26 +66,26 @@ expressions (Simple, Switch), sub-nanosecond differences reflect JIT inlining de
 > **Note:** FEC returns `N/A` for the Loop tier due to a known compilation issue with
 > loop/break expressions. HEC compiles and runs it correctly.
 
-| Tier         | Compiler     |      Mean | vs System |
-| ------------ | ------------ | --------: | --------: |
-| **Simple**   | System       | 1.098 ns  |        — |
-|              | FEC          | 1.363 ns  |   1.24x  |
-|              | **Hyperbee** | 1.769 ns  |   1.61x  |
-| **Closure**  | System       | 0.387 ns  |        — |
-|              | FEC          | 0.996 ns  |   2.58x  |
-|              | **Hyperbee** | 1.520 ns  |   3.93x  |
-| **TryCatch** | System       | 0.447 ns  |        — |
-|              | FEC          | 1.074 ns  |   2.40x  |
-|              | **Hyperbee** | 1.731 ns  |   3.87x  |
-| **Complex**  | System       | 25.42 ns  |        — |
-|              | FEC          | 25.22 ns  |   **~1x** |
-|              | **Hyperbee** | 24.81 ns  |   **~1x** |
-| **Loop**     | System       | 30.62 ns  |        — |
-|              | FEC          | N/A       |      N/A |
-|              | **Hyperbee** | 31.76 ns  |   **~1x** |
-| **Switch**   | System       |  1.57 ns  |        — |
-|              | FEC          |  1.87 ns  |   1.20x  |
-|              | **Hyperbee** |  2.23 ns  |   1.42x  |
+| Tier         | Compiler     |     Mean | vs System |
+| ------------ | ------------ | -------: | --------: |
+| **Simple**   | System       | 1.098 ns |         — |
+|              | FEC          | 1.363 ns |     1.24x |
+|              | **Hyperbee** | 1.769 ns |     1.61x |
+| **Closure**  | System       | 0.387 ns |         — |
+|              | FEC          | 0.996 ns |     2.58x |
+|              | **Hyperbee** | 1.520 ns |     3.93x |
+| **TryCatch** | System       | 0.447 ns |         — |
+|              | FEC          | 1.074 ns |     2.40x |
+|              | **Hyperbee** | 1.731 ns |     3.87x |
+| **Complex**  | System       | 25.42 ns |         — |
+|              | FEC          | 25.22 ns |   **~1x** |
+|              | **Hyperbee** | 24.81 ns |   **~1x** |
+| **Loop**     | System       | 30.62 ns |         — |
+|              | FEC          |      N/A |       N/A |
+|              | **Hyperbee** | 31.76 ns |   **~1x** |
+| **Switch**   | System       |  1.57 ns |         — |
+|              | FEC          |  1.87 ns |     1.20x |
+|              | **Hyperbee** |  2.23 ns |     1.42x |
 
 The sub-nanosecond Simple/Closure/TryCatch numbers (< 2 ns absolute) are at the boundary of
 `ShortRun` precision (3 iterations). The 1–4x ratios represent 1–3 extra clock cycles and should
