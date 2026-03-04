@@ -137,7 +137,8 @@ public static class IRValidator
 
                 // --- Array operations ---
                 case IROp.LoadElement:
-                    // pop array + index, push element => net -1
+                case IROp.LoadElementAddress:
+                    // pop array + index, push element/pointer => net -1
                     stackDepth--;
                     break;
                 case IROp.StoreElement:

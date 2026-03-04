@@ -111,6 +111,7 @@ public static class IRFormatter
             case IROp.InitObj:
             case IROp.NewArray:
             case IROp.LoadToken:
+            case IROp.LoadElementAddress:
             {
                 var obj = operands[instr.Operand];
                 return obj is Type t2

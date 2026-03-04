@@ -87,7 +87,21 @@ public class ExpressionLowerer
             }
         }
 
+        var isVoidLambda = lambda.ReturnType == typeof( void );
+        var bodyIsAssign = lambda.Body.NodeType == ExpressionType.Assign;
+
+        // For void lambdas with a direct Assign body, suppress the result so the
+        // Assign doesn't Dup+leave a value on the stack before Ret.
+        if ( isVoidLambda && bodyIsAssign )
+            _discardResult = true;
+
         LowerExpression( lambda.Body );
+        _discardResult = false;
+
+        // If a void lambda's non-Assign body produced a value, discard it.
+        if ( isVoidLambda && lambda.Body.Type != typeof( void ) && !bodyIsAssign )
+            _ir.Emit( IROp.Pop );
+
         _ir.Emit( IROp.Ret );
     }
 
@@ -807,21 +821,18 @@ public class ExpressionLowerer
             return;
         }
 
-        // Short-circuit: if left is false, skip right and use left result.
-        // Use a result local so stack is empty at labels.
-        var resultLocal = _ir.DeclareLocal( typeof( bool ), "$andAlso" );
+        // Short-circuit: if left is false, leave it on the stack and skip right.
+        // Dup the left value so BranchFalse can consume one copy while the other remains.
         var endLabel = _ir.DefineLabel();
 
         LowerExpression( node.Left );
-        _ir.Emit( IROp.StoreLocal, resultLocal );
-        _ir.Emit( IROp.LoadLocal, resultLocal );
-        _ir.Emit( IROp.BranchFalse, endLabel ); // left is false → short-circuit
-
-        LowerExpression( node.Right );
-        _ir.Emit( IROp.StoreLocal, resultLocal );
+        _ir.Emit( IROp.Dup );                    // [left, left]
+        _ir.Emit( IROp.BranchFalse, endLabel );  // false → [left] on stack, jump to end
+        _ir.Emit( IROp.Pop );                    // left was true → discard it
+        LowerExpression( node.Right );           // result is right
 
         _ir.MarkLabel( endLabel );
-        _ir.Emit( IROp.LoadLocal, resultLocal );
+        // Result (left=false or right) is on the stack.
     }
 
     private void LowerOrElse( BinaryExpression node )
@@ -835,21 +846,18 @@ public class ExpressionLowerer
             return;
         }
 
-        // Short-circuit: if left is true, skip right and use left result.
-        // Use a result local so stack is empty at labels.
-        var resultLocal = _ir.DeclareLocal( typeof( bool ), "$orElse" );
+        // Short-circuit: if left is true, leave it on the stack and skip right.
+        // Dup the left value so BranchTrue can consume one copy while the other remains.
         var endLabel = _ir.DefineLabel();
 
         LowerExpression( node.Left );
-        _ir.Emit( IROp.StoreLocal, resultLocal );
-        _ir.Emit( IROp.LoadLocal, resultLocal );
-        _ir.Emit( IROp.BranchTrue, endLabel ); // left is true → short-circuit
-
-        LowerExpression( node.Right );
-        _ir.Emit( IROp.StoreLocal, resultLocal );
+        _ir.Emit( IROp.Dup );                   // [left, left]
+        _ir.Emit( IROp.BranchTrue, endLabel );  // true → [left] on stack, jump to end
+        _ir.Emit( IROp.Pop );                   // left was false → discard it
+        LowerExpression( node.Right );          // result is right
 
         _ir.MarkLabel( endLabel );
-        _ir.Emit( IROp.LoadLocal, resultLocal );
+        // Result (left=true or right) is on the stack.
     }
 
     private void LowerUnary( UnaryExpression node )
@@ -1265,17 +1273,15 @@ public class ExpressionLowerer
 
             if ( !isVoidConditional )
             {
-                // Store result so stack is empty at labels
-                var resultLocal = _ir.DeclareLocal( node.Type, "$cond" );
-                _ir.Emit( IROp.StoreLocal, resultLocal );
+                // Both branches leave their result on the stack at endLabel.
+                // CIL allows a consistent non-zero stack depth at merge points.
                 _ir.Emit( IROp.Branch, endLabel );
 
                 _ir.MarkLabel( falseLabel );
                 LowerExpression( node.IfFalse );
-                _ir.Emit( IROp.StoreLocal, resultLocal );
 
                 _ir.MarkLabel( endLabel );
-                _ir.Emit( IROp.LoadLocal, resultLocal );
+                // Result is on the stack from whichever branch was taken.
             }
             else
             {
@@ -1318,6 +1324,14 @@ public class ExpressionLowerer
                 // Push instance pointer then ldflda to get managed pointer to the field.
                 EmitInstancePointer( memberExpr.Expression! );
                 _ir.Emit( IROp.LoadFieldAddress, _ir.AddOperand( fieldInfo ) );
+                return;
+
+            case BinaryExpression { NodeType: ExpressionType.ArrayIndex } ai when ai.Type.IsValueType:
+                // Struct array element: emit ldelema (managed pointer) instead of ldelem (value copy).
+                // Necessary for both instance method calls and field assignments on the element.
+                LowerExpression( ai.Left );
+                LowerExpression( ai.Right );
+                _ir.Emit( IROp.LoadElementAddress, _ir.AddOperand( ai.Type ) );
                 return;
 
             default:
@@ -1474,10 +1488,16 @@ public class ExpressionLowerer
             var isLast = i == node.Expressions.Count - 1;
             var expr = node.Expressions[i];
 
-            if ( !isLast && expr.NodeType == ExpressionType.Assign )
+            // Suppress the result value for:
+            //   - any non-last Assign (result is immediately discarded)
+            //   - the last Assign in a void block (result is not the block's return value)
+            // This avoids the Dup that LowerAssign emits when needsResult=true, saving
+            // the otherwise-redundant Dup + Pop pair.
+            var suppressAssign = expr.NodeType == ExpressionType.Assign &&
+                ( !isLast || node.Type == typeof( void ) );
+
+            if ( suppressAssign )
             {
-                // Statement-position assignment: skip the Dup since the result
-                // is immediately discarded. Saves 2 instructions (Dup + Pop).
                 _discardResult = true;
                 LowerExpression( expr );
                 _discardResult = false;
@@ -1494,10 +1514,12 @@ public class ExpressionLowerer
             }
         }
 
-        // If the block has an explicit void type but the last expression produces a value,
-        // discard that value so the stack stays balanced (e.g., Expression.Block(typeof(void), ..., assign)).
+        // If the block has an explicit void type but the last non-Assign expression produces a value,
+        // discard it so the stack stays balanced. (Assigns in void blocks are suppressed above.)
         var lastExpr = node.Expressions.Count > 0 ? node.Expressions[^1] : null;
-        if ( node.Type == typeof( void ) && lastExpr != null && lastExpr.Type != typeof( void ) )
+        if ( node.Type == typeof( void ) && lastExpr != null
+            && lastExpr.Type != typeof( void )
+            && lastExpr.NodeType != ExpressionType.Assign )
         {
             _ir.Emit( IROp.Pop );
         }
@@ -1557,7 +1579,9 @@ public class ExpressionLowerer
                 }
                 else
                 {
-                    LowerExpression( member.Expression! );
+                    // For struct (value-type) array elements, we need a managed pointer
+                    // (ldelema) rather than a value (ldelem) so that stfld can write back.
+                    EmitInstanceForFieldAssign( member.Expression! );
                     LowerExpression( node.Right );
 
                     if ( needsResult )
@@ -1590,7 +1614,7 @@ public class ExpressionLowerer
                 }
                 else
                 {
-                    LowerExpression( member.Expression! );
+                    EmitInstanceForFieldAssign( member.Expression! );
                     LowerExpression( node.Right );
 
                     if ( needsResult )
@@ -1701,6 +1725,26 @@ public class ExpressionLowerer
         else
         {
             throw new NotSupportedException( $"Cannot assign to {node.Left.NodeType}." );
+        }
+    }
+
+    /// <summary>
+    /// Emits the instance for a field or property assignment onto the stack.
+    /// For value types, emits a managed pointer (byref) so that stfld/setter writes back
+    /// through the pointer. For struct array elements this uses ldelema rather than ldelem.
+    /// For reference types, loads the object reference normally.
+    /// </summary>
+    private void EmitInstanceForFieldAssign( Expression instance )
+    {
+        if ( instance.Type.IsValueType )
+        {
+            // Value types need a managed pointer — use EmitLoadAddress which handles
+            // ArrayIndex (ldelema), locals (ldloca), args (ldarga), and the general case.
+            EmitLoadAddress( instance );
+        }
+        else
+        {
+            LowerExpression( instance );
         }
     }
 
@@ -2365,7 +2409,6 @@ public class ExpressionLowerer
             return;
         }
 
-        var resultLocal = _ir.DeclareLocal( node.Type, "$coalesce" );
         var endLabel = _ir.DefineLabel();
         var useRightLabel = _ir.DefineLabel();
 
@@ -2373,7 +2416,8 @@ public class ExpressionLowerer
 
         if ( leftType.IsValueType && Nullable.GetUnderlyingType( leftType ) != null )
         {
-            // Nullable value type: check HasValue
+            // Nullable value type: check HasValue. Must store to a local to call address-based HasValue/Value.
+            var resultLocal = _ir.DeclareLocal( node.Type, "$coalesce" );
             var leftLocal = _ir.DeclareLocal( leftType, "$coalesceLeft" );
 
             LowerExpression( node.Left );
@@ -2417,20 +2461,26 @@ public class ExpressionLowerer
         }
         else
         {
-            // Reference type: null check via BranchFalse
-            var leftLocal = _ir.DeclareLocal( node.Left.Type, "$coalesceLeft" );
-
+            // Reference type: Dup + branch to avoid temp locals.
+            // Both paths leave their result on the stack at endLabel.
             LowerExpression( node.Left );
-            _ir.Emit( IROp.StoreLocal, leftLocal );
-            _ir.Emit( IROp.LoadLocal, leftLocal );
-            _ir.Emit( IROp.BranchFalse, useRightLabel );
+            _ir.Emit( IROp.Dup );                           // [left, left]
 
-            // Left is non-null
-            _ir.Emit( IROp.LoadLocal, leftLocal );
-
-            // Apply conversion if present
-            if ( node.Conversion != null )
+            if ( node.Conversion == null )
             {
+                // No conversion: BranchTrue leaves left on stack when non-null.
+                _ir.Emit( IROp.BranchTrue, endLabel );      // non-null → [left], jump to end
+                _ir.Emit( IROp.Pop );                       // null → discard [left_null]
+                LowerExpression( node.Right );
+                _ir.MarkLabel( endLabel );
+            }
+            else
+            {
+                // With conversion: BranchFalse to right path; BranchFalse pops one copy,
+                // leaving the original on stack for the non-null conversion path.
+                _ir.Emit( IROp.BranchFalse, useRightLabel ); // null → [left_null] on stack, jump
+
+                // Non-null path: [left] is on the stack; apply conversion.
                 var convDelegate = node.Conversion.Compile();
                 var delLocal = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
                 var valLocal = _ir.DeclareLocal( node.Left.Type, "$coalesceVal" );
@@ -2441,17 +2491,15 @@ public class ExpressionLowerer
                 _ir.Emit( IROp.LoadLocal, valLocal );
                 var invokeMethod = convDelegate.GetType().GetMethod( "Invoke" )!;
                 _ir.Emit( IROp.CallVirt, _ir.AddOperand( invokeMethod ) );
+                _ir.Emit( IROp.Branch, endLabel );
+
+                // Right path: pop the null left, then load right.
+                _ir.MarkLabel( useRightLabel );
+                _ir.Emit( IROp.Pop );                       // discard [left_null]
+                LowerExpression( node.Right );
+                _ir.MarkLabel( endLabel );
+                // Result on stack from both paths.
             }
-
-            _ir.Emit( IROp.StoreLocal, resultLocal );
-            _ir.Emit( IROp.Branch, endLabel );
-
-            _ir.MarkLabel( useRightLabel );
-            LowerExpression( node.Right );
-            _ir.Emit( IROp.StoreLocal, resultLocal );
-
-            _ir.MarkLabel( endLabel );
-            _ir.Emit( IROp.LoadLocal, resultLocal );
         }
     }
 

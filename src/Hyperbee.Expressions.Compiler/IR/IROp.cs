@@ -22,7 +22,8 @@ public enum IROp : byte
     LoadFieldAddress,       // Push managed pointer to instance field (ldflda)
 
     // Array operations
-    LoadElement,            // Push array element
+    LoadElement,            // Push array element (ldelem)
+    LoadElementAddress,     // Push managed pointer to array element (ldelema) — for struct field assignment
     StoreElement,           // Store to array element
     LoadArrayLength,        // Push array length
     NewArray,               // Create new array

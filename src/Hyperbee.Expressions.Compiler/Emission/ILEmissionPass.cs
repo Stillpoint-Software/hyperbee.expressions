@@ -350,6 +350,10 @@ public static class ILEmissionPass
                     EmitLoadElement( ilg, (Type) ir.Operands[inst.Operand] );
                     break;
 
+                case IROp.LoadElementAddress:
+                    ilg.Emit( OpCodes.Ldelema, (Type) ir.Operands[inst.Operand] );
+                    break;
+
                 case IROp.StoreElement:
                     EmitStoreElement( ilg, (Type) ir.Operands[inst.Operand] );
                     break;
