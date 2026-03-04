@@ -278,6 +278,21 @@ public class FecKnownIssues
     //
     // Main test: LoopTests.Loop_MultipleBreakPoints_EarlyExitOnNegative — Fast DataRow suppressed.
 
+    // --- Pattern 28: Return(label, Assign(...)) inside async-lowered TryCatch generates invalid IL ---
+    //
+    // FEC's error 1007 detection covers simple Return(label, value) inside TryCatch but misses the
+    // compound form Return(label, Assign(resultVar, value)) that async lowering generates. Instead of
+    // returning null (which would allow fallback to the System compiler), FEC emits invalid IL that
+    // causes InvalidProgramException at runtime.
+    //
+    // No runnable FEC test: FEC generates invalid IL rather than returning null, so invocation
+    // crashes the runtime. Confirmed by running with/without the Fast DataRow.
+    //
+    // Main test: BlockAsyncTryCatchTests.AsyncBlock_ShouldReturnCorrectValue_WithReturnLabelInsideTryCatch
+    //   — Fast DataRows suppressed via Assert.Inconclusive.
+    //
+    // Related: FEC issue https://github.com/dadhi/FastExpressionCompiler/issues/495
+
     // --- Pattern 27: ConvertChecked uint→int emits conv.ovf.i4 instead of conv.ovf.i4.un ---
     //
     // FEC emits `conv.ovf.i4` (signed source) for ConvertChecked(uint→int).
