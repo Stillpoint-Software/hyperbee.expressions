@@ -38,7 +38,7 @@ public static class IRFormatter
             for ( var i = 0; i < locals.Count; i++ )
             {
                 var local = locals[i];
-                sb.AppendLine( $"  [{i}] {local.Type.Name} {local.Name ?? $"local_{i}"} (scope {local.ScopeDepth})" );
+                sb.AppendLine( $"  [{i}] {local.Type.Name} {local.Name ?? $"local_{i}"}" );
             }
         }
 
@@ -147,18 +147,6 @@ public static class IRFormatter
                 var targetInstr = labelIdx < labels.Count ? labels[labelIdx].InstructionIndex : -1;
                 return $"L{labelIdx:D4} -> {(targetInstr >= 0 ? targetInstr.ToString( "D4" ) : "?")}";
             }
-
-            case IROp.Switch:
-            {
-                var obj = operands[instr.Operand];
-                return obj is int[] cases
-                    ? $"[{instr.Operand}] cases:[{string.Join( ", ", cases.Select( c => $"L{c:D4}" ) )}]"
-                    : $"[{instr.Operand}] {obj}";
-            }
-
-            case IROp.BeginScope:
-            case IROp.EndScope:
-                return $"scope:{instr.Operand}";
 
             case IROp.Nop:
             case IROp.Ret:

@@ -9,7 +9,6 @@ public class IRBuilder
     private readonly List<object> _operands = new( 4 );
     private readonly List<LocalInfo> _locals = new( 2 );
     private readonly List<LabelInfo> _labels = new( 2 );
-    private int _currentScope;
 
     // --- Public read-only accessors ---
 
@@ -51,7 +50,7 @@ public class IRBuilder
     public int DeclareLocal( Type type, string? name = null )
     {
         var index = _locals.Count;
-        _locals.Add( new LocalInfo( type, name, _currentScope ) );
+        _locals.Add( new LocalInfo( type, name ) );
         return index;
     }
 
@@ -73,22 +72,6 @@ public class IRBuilder
             InstructionIndex = _instructions.Count
         };
         Emit( IROp.Label, labelIndex );
-    }
-
-    // --- Scope tracking ---
-
-    /// <summary>Enter a new scope.</summary>
-    public void EnterScope()
-    {
-        _currentScope++;
-        Emit( IROp.BeginScope );
-    }
-
-    /// <summary>Exit the current scope.</summary>
-    public void ExitScope()
-    {
-        Emit( IROp.EndScope );
-        _currentScope--;
     }
 
     // --- Instruction list manipulation (for passes) ---

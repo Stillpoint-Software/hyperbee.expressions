@@ -96,14 +96,9 @@ public enum IROp : byte
     Pop,                    // Discard top of stack
     Ret,                    // Return
 
-    // Scope markers (for variable lifetime tracking)
-    BeginScope,             // Enter a new variable scope
-    EndScope,               // Exit variable scope
-
     // Special
     InitObj,                // Initialize value type
     LoadAddress,            // Load address of local variable
     LoadArgAddress,         // Load address of argument
     LoadToken,              // Load runtime type/method/field token
-    Switch,                 // Switch table branch
 }

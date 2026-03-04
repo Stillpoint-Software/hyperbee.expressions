@@ -23,6 +23,7 @@ public class BenchmarkConfig
             AddExporter( MarkdownExporter.GitHub );
             AddValidator( JitOptimizationsValidator.DontFailOnError );
             AddLogger( ConsoleLogger.Default );
+
             AddColumnProvider(
                 DefaultColumnProviders.Job,
                 DefaultColumnProviders.Params,
@@ -33,9 +34,15 @@ public class BenchmarkConfig
 
             AddDiagnoser( MemoryDiagnoser.Default );
 
+            // Delta columns — time and allocation ratios vs each compiler baseline
+            AddColumn( new RatioToColumn( "_System" ) );
+            AddColumn( new RatioToColumn( "_Fec" ) );
+            AddColumn( new RatioToColumn( "_System", isAlloc: true ) );
+            AddColumn( new RatioToColumn( "_Fec", isAlloc: true ) );
+
             AddLogicalGroupRules( BenchmarkLogicalGroupRule.ByCategory );
 
-            Orderer = new DefaultOrderer( SummaryOrderPolicy.FastestToSlowest );
+            Orderer = new DefaultOrderer( SummaryOrderPolicy.Declared );
             ArtifactsPath = "benchmark";
         }
     }

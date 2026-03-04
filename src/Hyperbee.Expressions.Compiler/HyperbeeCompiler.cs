@@ -25,9 +25,19 @@ public static class HyperbeeCompiler
     /// <summary>Compiles the expression. Throws on unsupported patterns.</summary>
     public static Delegate Compile( LambdaExpression lambda, CompilerDiagnostics? diagnostics = null )
     {
-        // Set the per-compilation ambient so that any AsyncBlockExpression.Reduce() calls
-        // encountered during compilation use HEC to compile the MoveNext lambda.
-        var previous = CoroutineBuilderContext.Exchange( HyperbeeCoroutineDelegateBuilder.Instance );
+        // Pre-scan once up front. This result is reused in two ways:
+        //   1. Gates the AsyncLocal Exchange — only needed when extension nodes (AsyncBlockExpression)
+        //      may call Reduce() during compilation. ScanForNonEmbeddableConstants returns true for
+        //      ExpressionType.Extension, so false guarantees no async blocks are present.
+        //      AsyncLocal writes are expensive (~1µs each); skipping them for simple expressions
+        //      is the primary performance win.
+        //   2. Passed into LowerToIR to avoid a redundant second tree traversal.
+        var needsConstantsOrAmbient = ScanForNonEmbeddableConstants( lambda.Body );
+
+        ICoroutineDelegateBuilder? previous = null;
+        if ( needsConstantsOrAmbient )
+            previous = CoroutineBuilderContext.Exchange( HyperbeeCoroutineDelegateBuilder.Instance );
+
         try
         {
             // Fast-path: skip capture scanning when no nested lambdas or RuntimeVariables exist (common case)
@@ -35,7 +45,7 @@ public static class HyperbeeCompiler
                 ? CaptureScanner.FindCapturedVariables( lambda )
                 : null;
 
-            var ir = LowerToIR( lambda, capturedVariables, out var needsConstantsArray );
+            var ir = LowerToIR( lambda, capturedVariables, needsConstantsOrAmbient, out var needsConstantsArray );
 
             TransformIR( ir, lambda.ReturnType == typeof( void ) );
 
@@ -45,7 +55,8 @@ public static class HyperbeeCompiler
         }
         finally
         {
-            CoroutineBuilderContext.Exchange( previous );
+            if ( needsConstantsOrAmbient )
+                CoroutineBuilderContext.Exchange( previous );
         }
     }
 
@@ -213,9 +224,10 @@ public static class HyperbeeCompiler
     private static IRBuilder LowerToIR(
         LambdaExpression lambda,
         HashSet<ParameterExpression>? capturedVariables,
+        bool hasNonEmbeddableOrExtension,
         out bool needsConstantsArray )
     {
-        needsConstantsArray = ScanForNonEmbeddableConstants( lambda.Body )
+        needsConstantsArray = hasNonEmbeddableOrExtension
             || ( capturedVariables != null && capturedVariables.Count > 0 );
 
         var ir = new IRBuilder();

@@ -294,11 +294,6 @@ public static class ILEmissionPass
                     break;
                 }
 
-                // Scope markers -- no IL emission
-                case IROp.BeginScope:
-                case IROp.EndScope:
-                    break;
-
                 // Exception handling
                 case IROp.BeginTry:
                     ilg.BeginExceptionBlock();

@@ -23,15 +23,6 @@ public static class IRValidator
         ValidateCore( ir, isVoidReturn );
     }
 
-    /// <summary>
-    /// Validate the IR instruction stream regardless of build configuration.
-    /// Use for opt-in production diagnostics.
-    /// </summary>
-    public static void ValidateAlways( IRBuilder ir, bool isVoidReturn = false )
-    {
-        ValidateCore( ir, isVoidReturn );
-    }
-
     private static void ValidateCore( IRBuilder ir, bool isVoidReturn )
     {
         var instructions = ir.Instructions;
@@ -257,15 +248,7 @@ public static class IRValidator
                     break;
                 }
 
-                // --- Scope markers ---
-                case IROp.BeginScope:
-                case IROp.EndScope:
                 case IROp.Nop:
-                    break;
-
-                // --- Switch ---
-                case IROp.Switch:
-                    stackDepth--; // pops the switch value
                     break;
 
             }

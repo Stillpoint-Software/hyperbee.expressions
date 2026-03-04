@@ -1,22 +1,22 @@
 # Hyperbee Expression Compiler
 
 A high-performance, IR-based expression compiler for .NET. Drop-in replacement for `Expression.Compile()`
-that is **9-34x faster and allocates 40-50% less than the System compiler** and supports **all expression tree patterns** — including
+that is **9-34x faster and allocates up to 50% less than the System compiler** and supports **all expression tree patterns** — including
 those that [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler) doesn't.
 
 ## Why Another Expression Compiler?
 
-We :heart: [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler). FEC is faster than Hyperbee Expressions Compiler, and allocates less memory — and for many workloads it's the right choice. If FEC compiles your expressions correctly, use it.
+We :heart: [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler). FEC is faster than Hyperbee Expression Compiler, and allocates less memory — and for many workloads it's the right choice. If FEC compiles your expressions correctly, use it.
 
 FEC's single-pass, low allocation, IL emission approach supports most, but not **all**, expression patterns. See [FEC issues](https://github.com/dadhi/FastExpressionCompiler/issues); patterns like compound assignments inside `TryCatch`, complex closure captures, and certain value-type operations aren't supported.
 
-Hyperbee takes a middle ground: a **multi-pass IR pipeline** that lowers expression trees to an intermediate representation, runs optimization passes, validates structural correctness, and then emits IL. This architecture trades a small amount of speed and allocation overhead for **correct IL across all expression tree patterns** while significantly outperforming System Compiler.
+Hyperbee takes a middle ground: a **multi-pass IR pipeline** that lowers expression trees to an intermediate representation, runs optimization passes, validates structural correctness, and then emits IL. This architecture trades a small amount of speed and allocation overhead for **correct IL across all expression tree patterns** while significantly outperforming the System Compiler.
 
 ## Performance
 
-The Hyperbee compiler is consistently 9-34x faster than System Compiler and within 1.11-1.47x of FEC across all tiers — while producing correct IL for the sub-set of patterns that FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, etc.).
+HEC is consistently **9-34x faster than the System Compiler** and within **1.16-1.54x of FEC** across all tiers — while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
 
-The Switch tier at 1.47x is the widest gap vs FEC, the result of enhanced switch pattern handling. The Complex tier at ~34x faster than System Compiler is the standout — that's where the multi-pass IR architecture pays off vs the System compiler's heavyweight compilation pipeline.
+The Complex tier standout (~34x vs System) is where the multi-pass IR architecture pays off against the System compiler's heavyweight compilation pipeline. The Switch tier at 1.54x is the widest gap vs FEC, the result of enhanced switch pattern handling.
 
 ### Compilation Benchmarks
 
@@ -28,50 +28,75 @@ Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
 
 | Tier         | Compiler     |        Mean |   Allocated | vs System (speed) | vs FEC (speed) |
 | ------------ | ------------ | ----------: | ----------: | ----------------: | -------------: |
-| **Simple**   | System       |    28.44 us |     4,335 B |                 — |              — |
-|              | FEC          |     2.57 us |       904 B |      11.1x faster |              — |
-|              | **Hyperbee** | **2.86 us** | **2,168 B** |   **9.9x faster** |      **1.11x** |
-| **Closure**  | System       |    27.37 us |     4,279 B |                 — |              — |
-|              | FEC          |     2.53 us |       895 B |      10.8x faster |              — |
-|              | **Hyperbee** | **2.84 us** | **2,152 B** |   **9.6x faster** |      **1.12x** |
-| **TryCatch** | System       |    47.34 us |     5,901 B |                 — |              — |
-|              | FEC          |     3.43 us |     1,520 B |      13.8x faster |              — |
-|              | **Hyperbee** | **4.63 us** | **4,015 B** |  **10.2x faster** |      **1.35x** |
-| **Complex**  | System       |   128.95 us |     4,749 B |                 — |              — |
-|              | FEC          |     3.18 us |     1,392 B |      40.6x faster |              — |
-|              | **Hyperbee** | **3.81 us** | **2,576 B** |  **33.8x faster** |      **1.20x** |
-| **Loop**     | System       |    63.99 us |     6,718 B |                 — |              — |
-|              | FEC          |     3.94 us |     1,110 B |      16.2x faster |              — |
-|              | **Hyperbee** | **5.61 us** | **4,840 B** |  **11.4x faster** |      **1.42x** |
-| **Switch**   | System       |    60.80 us |     6,272 B |                 — |              — |
-|              | FEC          |     3.03 us |     1,352 B |      20.1x faster |              — |
-|              | **Hyperbee** | **4.47 us** | **3,968 B** |  **13.6x faster** |      **1.47x** |
+| **Simple**   | System       |    30.65 us |     4,335 B |                 — |              — |
+|              | FEC          |     2.96 us |       904 B |      10.3x faster |              — |
+|              | **Hyperbee** | **3.50 us** | **2,176 B** |   **8.8x faster** |      **1.18x** |
+| **Closure**  | System       |    28.55 us |     4,279 B |                 — |              — |
+|              | FEC          |     2.79 us |       895 B |      10.2x faster |              — |
+|              | **Hyperbee** | **3.24 us** | **2,160 B** |   **8.8x faster** |      **1.16x** |
+| **TryCatch** | System       |    49.59 us |     5,893 B |                 — |              — |
+|              | FEC          |     3.78 us |     1,518 B |      13.1x faster |              — |
+|              | **Hyperbee** | **5.54 us** | **4,023 B** |   **9.0x faster** |      **1.47x** |
+| **Complex**  | System       |   150.71 us |     4,741 B |                 — |              — |
+|              | FEC          |     3.51 us |     1,392 B |      42.9x faster |              — |
+|              | **Hyperbee** | **4.47 us** | **2,536 B** |  **33.7x faster** |      **1.27x** |
+| **Loop**     | System       |    65.29 us |     6,710 B |                 — |              — |
+|              | FEC          |     4.21 us |     1,110 B |      15.5x faster |              — |
+|              | **Hyperbee** | **5.77 us** | **4,855 B** |  **11.3x faster** |      **1.37x** |
+| **Switch**   | System       |    61.83 us |     6,264 B |                 — |              — |
+|              | FEC          |     3.61 us |     1,352 B |      17.1x faster |              — |
+|              | **Hyperbee** | **5.55 us** | **4,152 B** |  **11.2x faster** |      **1.54x** |
 
 ### Allocation Profile
 
-The multi-pass IR pipeline allocates roughly **2–4× more than FEC** per compilation call but
-**40–50% less than System Compiler**. The overhead is per-compilation, not per-execution —
-compiled delegates run identically. For hot paths that compile once and cache, the allocation
-difference is negligible. For workloads that re-compile frequently (dynamic LINQ providers,
-interpreted rule engines), prefer FEC when its patterns cover your use case.
+The multi-pass IR pipeline allocates roughly **1.8–4.4× more than FEC** per compilation call but
+**up to 50% less than the System Compiler**. The overhead is per-compilation, not per-execution —
+compiled delegates run at equivalent speed regardless of which compiler produced them. For hot paths
+that compile once and cache, the allocation difference is negligible. For workloads that re-compile
+frequently (dynamic LINQ providers, interpreted rule engines), prefer FEC when its patterns cover your
+use case.
 
 ### Execution Benchmarks
 
-All three compilers produce delegates with equivalent runtime performance. Differences are sub-nanosecond
-and reflect JIT characteristics of `DynamicMethod` vs static methods, not meaningful execution overhead.
+All three compilers produce delegates with equivalent runtime performance. For non-trivial expressions
+(Complex, Loop), the difference is zero — the compiled IL is structurally identical. For trivial
+expressions (Simple, Switch), sub-nanosecond differences reflect JIT inlining decisions around
+`DynamicMethod` boundaries, not meaningful execution overhead.
 
-| Method              |     Mean |
-| ------------------- | -------: |
-| Execute \| System   | 0.706 ns |
-| Execute \| FEC      | 1.295 ns |
-| Execute \| Hyperbee | 1.701 ns |
+> **Note:** FEC returns `N/A` for the Loop tier due to a known compilation issue with
+> loop/break expressions. HEC compiles and runs it correctly.
+
+| Tier         | Compiler     |      Mean | vs System |
+| ------------ | ------------ | --------: | --------: |
+| **Simple**   | System       | 1.098 ns  |        — |
+|              | FEC          | 1.363 ns  |   1.24x  |
+|              | **Hyperbee** | 1.769 ns  |   1.61x  |
+| **Closure**  | System       | 0.387 ns  |        — |
+|              | FEC          | 0.996 ns  |   2.58x  |
+|              | **Hyperbee** | 1.520 ns  |   3.93x  |
+| **TryCatch** | System       | 0.447 ns  |        — |
+|              | FEC          | 1.074 ns  |   2.40x  |
+|              | **Hyperbee** | 1.731 ns  |   3.87x  |
+| **Complex**  | System       | 25.42 ns  |        — |
+|              | FEC          | 25.22 ns  |   **~1x** |
+|              | **Hyperbee** | 24.81 ns  |   **~1x** |
+| **Loop**     | System       | 30.62 ns  |        — |
+|              | FEC          | N/A       |      N/A |
+|              | **Hyperbee** | 31.76 ns  |   **~1x** |
+| **Switch**   | System       |  1.57 ns  |        — |
+|              | FEC          |  1.87 ns  |   1.20x  |
+|              | **Hyperbee** |  2.23 ns  |   1.42x  |
+
+The sub-nanosecond Simple/Closure/TryCatch numbers (< 2 ns absolute) are at the boundary of
+`ShortRun` precision (3 iterations). The 1–4x ratios represent 1–3 extra clock cycles and should
+be interpreted as "roughly equivalent" rather than a meaningful performance gap.
 
 ### Compiler Comparison
 
 |                        | System (`Expression.Compile`)            | FEC (`CompileFast`)                                       | Hyperbee (`HyperbeeCompiler.Compile`)    |
 | ---------------------- | ---------------------------------------- | --------------------------------------------------------- | ---------------------------------------- |
-| **Speed**              | Baseline (slowest)                       | Fastest (10-40x vs System)                                | Fast (9-34x vs System)                   |
-| **Allocations**        | Highest                                  | Lowest                                                    | Middle                                   |
+| **Speed**              | Baseline (slowest)                       | Fastest (10-43x vs System)                                | Fast (9-34x vs System)                   |
+| **Allocations**        | Highest                                  | Lowest                                                    | Middle (up to 50% less than System)      |
 | **Correctness**        | Reference (always correct)               | Most patterns correct; some edge cases produce invalid IL | All patterns correct                     |
 | **Architecture**       | Heavyweight runtime compilation pipeline | Single-pass IL emission                                   | Multi-pass IR pipeline with optimization |
 | **Exception handling** | Full support                             | Supported, some edge cases                                | Full support                             |

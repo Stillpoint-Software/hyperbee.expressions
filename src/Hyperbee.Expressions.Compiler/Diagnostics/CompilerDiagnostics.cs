@@ -11,9 +11,4 @@ public class CompilerDiagnostics
     /// Called after IR lowering and transformation with a human-readable IR listing.
     /// </summary>
     public Action<string>? IRCapture { get; init; }
-
-    /// <summary>
-    /// Called after IL emission with a human-readable IL disassembly.
-    /// </summary>
-    public Action<string>? ILCapture { get; init; }
 }

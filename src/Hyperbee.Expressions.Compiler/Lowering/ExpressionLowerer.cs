@@ -1457,8 +1457,6 @@ public class ExpressionLowerer
 
     private void LowerBlock( BlockExpression node )
     {
-        _ir.EnterScope();
-
         // Declare block variables
         foreach ( var variable in node.Variables )
         {
@@ -1524,7 +1522,6 @@ public class ExpressionLowerer
             _ir.Emit( IROp.Pop );
         }
 
-        _ir.ExitScope();
     }
 
     private void LowerAssign( BinaryExpression node )
