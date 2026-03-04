@@ -41,8 +41,25 @@ public static class ILEmissionPass
         }
 
         // Emit instructions
-        foreach ( var inst in ir.Instructions )
+        var instructions = ir.Instructions;
+
+        // Pre-scan: identify labels that are exception-block end labels
+        // (labels placed immediately after EndTryCatch). ILGenerator auto-emits
+        // `leave` to these targets at exception boundaries, so our explicit
+        // Leave to these labels can be suppressed when followed by a boundary.
+        var exceptionEndLabels = new HashSet<int>();
+        for ( var i = 1; i < instructions.Count; i++ )
         {
+            if ( instructions[i].Op == IROp.Label && instructions[i - 1].Op == IROp.EndTryCatch )
+            {
+                exceptionEndLabels.Add( instructions[i].Operand );
+            }
+        }
+
+        for ( var idx = 0; idx < instructions.Count; idx++ )
+        {
+            var inst = instructions[idx];
+
             switch ( inst.Op )
             {
                 case IROp.Nop:
@@ -384,6 +401,16 @@ public static class ILEmissionPass
                     break;
 
                 case IROp.Leave:
+                    // ILGenerator auto-emits `leave` when transitioning between
+                    // exception blocks (BeginCatchBlock, BeginFinallyBlock, etc.)
+                    // and at EndExceptionBlock. Suppress our explicit Leave when
+                    // the next instruction is an exception boundary AND the Leave
+                    // targets the exception block's own end label. Leaves targeting
+                    // external labels (e.g., Return from inside try) must be kept.
+                    if ( idx + 1 < instructions.Count
+                        && IsExceptionBoundary( instructions[idx + 1].Op )
+                        && exceptionEndLabels.Contains( inst.Operand ) )
+                        break;
                     ilg.Emit( OpCodes.Leave, ilLabels[inst.Operand] );
                     break;
 
@@ -782,5 +809,11 @@ public static class ILEmissionPass
             ilg.Emit( OpCodes.Conv_Ovf_U_Un );
         else
             throw new NotSupportedException( $"Unsupported unsigned checked conversion target type: {targetType.Name}" );
+    }
+
+    private static bool IsExceptionBoundary( IROp op )
+    {
+        return op is IROp.BeginCatch or IROp.BeginFilter or IROp.BeginFilteredCatch
+            or IROp.BeginFinally or IROp.BeginFault or IROp.EndTryCatch;
     }
 }
