@@ -72,6 +72,37 @@ public static class IRValidator
                     break;
                 }
 
+                // Fused comparison-branch: pop 2 operands, branch (net -2)
+                case IROp.BranchEqual:
+                case IROp.BranchNotEqual:
+                case IROp.BranchLessThan:
+                case IROp.BranchLessThanUn:
+                case IROp.BranchGreaterThan:
+                case IROp.BranchGreaterThanUn:
+                case IROp.BranchGreaterEqual:
+                case IROp.BranchGreaterEqualUn:
+                case IROp.BranchLessEqual:
+                case IROp.BranchLessEqualUn:
+                {
+                    stackDepth -= 2;
+                    referencedLabels.Add( inst.Operand );
+                    labelDepths[inst.Operand] = stackDepth;
+                    break;
+                }
+
+                // Switch: pops 1 (index), branches to one of N targets
+                case IROp.Switch:
+                {
+                    stackDepth--;
+                    var labelIndices = (int[]) ir.Operands[inst.Operand];
+                    foreach ( var labelIdx in labelIndices )
+                    {
+                        referencedLabels.Add( labelIdx );
+                        labelDepths[labelIdx] = stackDepth;
+                    }
+                    break;
+                }
+
                 // --- Stack neutral (pop+push) ---
                 case IROp.Negate:
                 case IROp.NegateChecked:
@@ -266,7 +297,12 @@ public static class IRValidator
             }
 
             // Validate branch label references
-            if ( inst.Op is IROp.BranchTrue or IROp.BranchFalse )
+            if ( inst.Op is IROp.BranchTrue or IROp.BranchFalse
+                or IROp.BranchEqual or IROp.BranchNotEqual
+                or IROp.BranchLessThan or IROp.BranchLessThanUn
+                or IROp.BranchGreaterThan or IROp.BranchGreaterThanUn
+                or IROp.BranchGreaterEqual or IROp.BranchGreaterEqualUn
+                or IROp.BranchLessEqual or IROp.BranchLessEqualUn )
             {
                 ValidateLabel( inst.Operand, labelCount, i, inst.Op.ToString() );
                 referencedLabels.Add( inst.Operand );

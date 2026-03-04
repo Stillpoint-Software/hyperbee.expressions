@@ -140,12 +140,35 @@ public static class IRFormatter
             case IROp.Branch:
             case IROp.BranchTrue:
             case IROp.BranchFalse:
+            case IROp.BranchEqual:
+            case IROp.BranchNotEqual:
+            case IROp.BranchLessThan:
+            case IROp.BranchLessThanUn:
+            case IROp.BranchGreaterThan:
+            case IROp.BranchGreaterThanUn:
+            case IROp.BranchGreaterEqual:
+            case IROp.BranchGreaterEqualUn:
+            case IROp.BranchLessEqual:
+            case IROp.BranchLessEqualUn:
             case IROp.Leave:
             case IROp.Label:
             {
                 var labelIdx = instr.Operand;
                 var targetInstr = labelIdx < labels.Count ? labels[labelIdx].InstructionIndex : -1;
                 return $"L{labelIdx:D4} -> {(targetInstr >= 0 ? targetInstr.ToString( "D4" ) : "?")}";
+            }
+
+            case IROp.Switch:
+            {
+                var labelIndices = (int[]) operands[instr.Operand];
+                var parts = new string[labelIndices.Length];
+                for ( var j = 0; j < labelIndices.Length; j++ )
+                {
+                    var li = labelIndices[j];
+                    var target = li < labels.Count ? labels[li].InstructionIndex : -1;
+                    parts[j] = $"L{li:D4}->{(target >= 0 ? target.ToString( "D4" ) : "?")}";
+                }
+                return $"({string.Join( ", ", parts )})";
             }
 
             case IROp.Nop:
