@@ -7,15 +7,10 @@
     <PackageId>Hyperbee.Expressions</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>expression-tree;expressions;async;await;expression-extension</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
-    <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <IsPackable>true</IsPackable>
     <Copyright>Stillpoint Software, Inc.</Copyright>
     <Title>Hyperbee Expressions</Title>
     <Description>Async and Await for .NET Expression Trees.</Description>
-    <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -36,9 +31,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\assets\icon.png" Pack="true" Visible="false" PackagePath="/" />
-    <None Include="..\..\README.md" Pack="true" Visible="true" PackagePath="/" Link="README.md" />
-    <None Include="..\..\LICENSE" Pack="true" Visible="false" PackagePath="/" />
     <PackageReference Include="Hyperbee.Collections" />
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />

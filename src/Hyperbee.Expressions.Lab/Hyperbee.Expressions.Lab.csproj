@@ -7,20 +7,19 @@
     <PackageId>Hyperbee.Expressions.Lab</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>expression-tree;expressions;lab;samples</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Stillpoint Software, Inc.</Copyright>
     <Title>Hyperbee Expressions (lab)</Title>
     <Description>Sample Extentions for .NET Expression Trees.</Description>
-    <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup>
     <DefineConstants>$(DefineConstants);FAST_COMPILER</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Developer\Stillpoint\hyperbee.expressions\assets\icon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Update="$(MSBuildProjectName).csproj.DotSettings" Visible="false" />
@@ -36,9 +35,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\assets\icon.png" Pack="true" Visible="false" PackagePath="/" />
-    <None Include="..\..\README.md" Pack="true" Visible="true" PackagePath="/" Link="README.md" />
-    <None Include="..\..\LICENSE" Pack="true" Visible="false" PackagePath="/" />
     <PackageReference Include="Hyperbee.Collections" />
     <PackageReference Include="Hyperbee.Json" />
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />

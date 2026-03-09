@@ -24,18 +24,18 @@
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
-    <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Stillpoint-Software/hyperbee.expressions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Stillpoint-Software/hyperbee.expressions</PackageProjectUrl>
   </PropertyGroup>
 
-  <!-- Pull README & LICENSE into the package root -->
-  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+  <ItemGroup Condition="'$(IsPackable)' == 'true' AND '$(MSBuildProjectName)' != 'Hyperbee.Expressions.Compiler'">
     <None Include="$(MSBuildThisFileDirectory)README.md"
           Pack="true"
           PackagePath=""
           Link="README.md" />
-
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)LICENSE"
           Pack="true"
           PackagePath=""
@@ -46,6 +46,7 @@
           PackagePath=""
           Link="icon.png" />
   </ItemGroup>
+  
   <!-- Global project properties - .NET 10 LTS First Strategy -->
   <PropertyGroup>
     <ImplicitUsings>enable</ImplicitUsings>
