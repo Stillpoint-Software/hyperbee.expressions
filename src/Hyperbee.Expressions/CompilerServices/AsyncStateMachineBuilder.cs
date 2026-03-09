@@ -402,10 +402,10 @@ public static class AsyncStateMachineBuilder
         var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName, options );
         var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
 
-        if ( options.ExpressionCapture != null )
+        if ( options.SourceHandler != null )
         {
             var debugView = GetDebugView( stateMachineExpression );
-            options.ExpressionCapture( debugView );
+            options.SourceHandler( debugView );
         }
 
         return stateMachineExpression; // the-best expression breakpoint ever

@@ -185,13 +185,13 @@ public class AsyncBlockExpressionRuntimeOptionsTests
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
-    public async Task BlockAsync_ExpressionCapture_ShouldCaptureStateMachineSource( CompilerType compiler )
+    public async Task BlockAsync_SourceHandler_ShouldCaptureStateMachineSource( CompilerType compiler )
     {
         // Arrange
         string capturedSource = null;
         var options = new ExpressionRuntimeOptions
         {
-            ExpressionCapture = source => capturedSource = source
+            SourceHandler = source => capturedSource = source
         };
 
         var block = BlockAsync(
@@ -213,7 +213,7 @@ public class AsyncBlockExpressionRuntimeOptionsTests
 
         // Assert
         Assert.AreEqual( 42, result );
-        Assert.IsNotNull( capturedSource, "ExpressionCapture should have been called" );
+        Assert.IsNotNull( capturedSource, "SourceHandler should have been called" );
         Assert.IsTrue( capturedSource.Length > 0, "Captured source should not be empty" );
         Assert.IsTrue( capturedSource.Contains( "__state<>" ),
             "Captured source should contain state machine state field" );
@@ -222,9 +222,9 @@ public class AsyncBlockExpressionRuntimeOptionsTests
     }
 
     [TestMethod]
-    public async Task BlockAsync_ExpressionCapture_ShouldNotBeCalled_WhenNotProvided()
+    public async Task BlockAsync_SourceHandler_ShouldNotBeCalled_WhenNotProvided()
     {
-        // Arrange - no ExpressionCapture set
+        // Arrange - no SourceHandler set
         var block = BlockAsync(
             Await( AsyncHelper.Completer(
                 Constant( CompleterType.Immediate ),
