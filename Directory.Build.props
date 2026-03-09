@@ -41,6 +41,9 @@
           PackagePath="\"
     Link="LICENSE" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\icon.png" Pack="true" PackagePath="assets" />
+  </ItemGroup>
   <!-- Global project properties - .NET 10 LTS First Strategy -->
   <PropertyGroup>
     <ImplicitUsings>enable</ImplicitUsings>
