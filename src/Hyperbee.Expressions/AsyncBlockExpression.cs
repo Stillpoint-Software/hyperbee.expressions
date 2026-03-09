@@ -51,6 +51,8 @@ public class AsyncBlockExpression : Expression
 
     public override Expression Reduce()
     {
+        // Compiler choice flows through CoroutineBuilderContext.Current (ambient or global default),
+        // not through RuntimeOptions. RuntimeOptions carries behavioral options only.
         return _stateMachine ??= AsyncStateMachineBuilder.Create( Result.Type, LoweringTransformer, RuntimeOptions );
     }
 

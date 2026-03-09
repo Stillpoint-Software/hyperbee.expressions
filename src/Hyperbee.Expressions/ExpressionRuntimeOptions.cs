@@ -1,3 +1,5 @@
+using Hyperbee.Expressions.CompilerServices;
+
 namespace Hyperbee.Expressions;
 
 /// <summary>

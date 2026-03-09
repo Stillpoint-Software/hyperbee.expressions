@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Hyperbee.Expressions.Compiler.Benchmarks.CompilationBenchmarks-20260303-213710</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.7922/25H2/2025Update/HudsonValley2)
+Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
+.NET SDK 10.0.103
+  [Host] : .NET 9.0.12 (9.0.12, 9.0.1225.60609), X64 RyuJIT x86-64-v3
+  .NET 9 : .NET 9.0.12 (9.0.12, 9.0.1225.60609), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 9  Runtime=.NET 9.0  IterationCount=3  
+LaunchCount=1  WarmupCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method         </th><th>Mean</th><th>Error</th><th>StdDev</th><th>vs System</th><th>vs Fec</th><th>Alloc vs System</th><th>Alloc vs Fec</th><th>Gen0</th><th>Gen1</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>&#39;Simple | System&#39;</td><td>28.689 &mu;s</td><td>8.1285 &mu;s</td><td>0.4455 &mu;s</td><td>1.00x</td><td>9.37x</td><td>1.00x</td><td>4.80x</td><td>0.4883</td><td>0.4272</td><td>4335 B</td>
+</tr><tr><td>&#39;Simple | FEC&#39;</td><td>3.063 &mu;s</td><td>0.7102 &mu;s</td><td>0.0389 &mu;s</td><td>0.11x</td><td>1.00x</td><td>0.21x</td><td>1.00x</td><td>0.1068</td><td>0.1030</td><td>904 B</td>
+</tr><tr><td>&#39;Simple | Hyperbee&#39;</td><td>3.552 &mu;s</td><td>0.7658 &mu;s</td><td>0.0420 &mu;s</td><td>0.12x</td><td>1.16x</td><td>0.50x</td><td>2.38x</td><td>0.2556</td><td>0.2518</td><td>2152 B</td>
+</tr><tr><td>&#39;Closure | System&#39;</td><td>27.395 &mu;s</td><td>1.1969 &mu;s</td><td>0.0656 &mu;s</td><td>1.00x</td><td>9.57x</td><td>1.00x</td><td>4.78x</td><td>0.4883</td><td>0.4272</td><td>4279 B</td>
+</tr><tr><td>&#39;Closure | FEC&#39;</td><td>2.864 &mu;s</td><td>2.8800 &mu;s</td><td>0.1579 &mu;s</td><td>0.10x</td><td>1.00x</td><td>0.21x</td><td>1.00x</td><td>0.1068</td><td>0.0992</td><td>895 B</td>
+</tr><tr><td>&#39;Closure | Hyperbee&#39;</td><td>3.364 &mu;s</td><td>0.8645 &mu;s</td><td>0.0474 &mu;s</td><td>0.12x</td><td>1.17x</td><td>0.50x</td><td>2.39x</td><td>0.2518</td><td>0.2480</td><td>2136 B</td>
+</tr><tr><td>&#39;TryCatch | System&#39;</td><td>50.374 &mu;s</td><td>3.5722 &mu;s</td><td>0.1958 &mu;s</td><td>1.00x</td><td>12.83x</td><td>1.00x</td><td>3.88x</td><td>0.6104</td><td>0.4883</td><td>5893 B</td>
+</tr><tr><td>&#39;TryCatch | FEC&#39;</td><td>3.926 &mu;s</td><td>4.3818 &mu;s</td><td>0.2402 &mu;s</td><td>0.08x</td><td>1.00x</td><td>0.26x</td><td>1.00x</td><td>0.1755</td><td>0.1678</td><td>1519 B</td>
+</tr><tr><td>&#39;TryCatch | Hyperbee&#39;</td><td>5.142 &mu;s</td><td>0.8426 &mu;s</td><td>0.0462 &mu;s</td><td>0.10x</td><td>1.31x</td><td>0.68x</td><td>2.63x</td><td>0.4578</td><td>0.4272</td><td>3999 B</td>
+</tr><tr><td>&#39;Complex | System&#39;</td><td>136.673 &mu;s</td><td>128.4181 &mu;s</td><td>7.0390 &mu;s</td><td>1.00x</td><td>39.84x</td><td>1.00x</td><td>3.41x</td><td>0.4883</td><td>0.2441</td><td>4741 B</td>
+</tr><tr><td>&#39;Complex | FEC&#39;</td><td>3.431 &mu;s</td><td>4.3266 &mu;s</td><td>0.2372 &mu;s</td><td>0.03x</td><td>1.00x</td><td>0.29x</td><td>1.00x</td><td>0.1526</td><td>0.1373</td><td>1390 B</td>
+</tr><tr><td>&#39;Complex | Hyperbee&#39;</td><td>4.441 &mu;s</td><td>4.0634 &mu;s</td><td>0.2227 &mu;s</td><td>0.03x</td><td>1.29x</td><td>0.53x</td><td>1.81x</td><td>0.2975</td><td>0.2899</td><td>2512 B</td>
+</tr><tr><td>&#39;Loop | System&#39;</td><td>67.908 &mu;s</td><td>13.3831 &mu;s</td><td>0.7336 &mu;s</td><td>1.00x</td><td>16.11x</td><td>1.00x</td><td>6.05x</td><td>0.7324</td><td>0.6104</td><td>6710 B</td>
+</tr><tr><td>&#39;Loop | FEC&#39;</td><td>4.215 &mu;s</td><td>3.6993 &mu;s</td><td>0.2028 &mu;s</td><td>0.06x</td><td>1.00x</td><td>0.17x</td><td>1.00x</td><td>0.1221</td><td>0.0916</td><td>1110 B</td>
+</tr><tr><td>&#39;Loop | Hyperbee&#39;</td><td>6.361 &mu;s</td><td>2.1305 &mu;s</td><td>0.1168 &mu;s</td><td>0.09x</td><td>1.51x</td><td>0.64x</td><td>3.84x</td><td>0.5035</td><td>0.4959</td><td>4264 B</td>
+</tr><tr><td>&#39;Switch | System&#39;</td><td>60.352 &mu;s</td><td>9.4484 &mu;s</td><td>0.5179 &mu;s</td><td>1.00x</td><td>17.78x</td><td>1.00x</td><td>4.63x</td><td>0.7324</td><td>0.6104</td><td>6264 B</td>
+</tr><tr><td>&#39;Switch | FEC&#39;</td><td>3.395 &mu;s</td><td>3.9785 &mu;s</td><td>0.2181 &mu;s</td><td>0.06x</td><td>1.00x</td><td>0.22x</td><td>1.00x</td><td>0.1602</td><td>0.1526</td><td>1352 B</td>
+</tr><tr><td>&#39;Switch | Hyperbee&#39;</td><td>5.179 &mu;s</td><td>6.4447 &mu;s</td><td>0.3533 &mu;s</td><td>0.09x</td><td>1.53x</td><td>0.66x</td><td>3.05x</td><td>0.4883</td><td>0.4807</td><td>4128 B</td>
+</tr></tbody></table>
+</body>
+</html>
