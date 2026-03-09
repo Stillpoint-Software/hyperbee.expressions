@@ -9,28 +9,22 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>expression-tree;expressions;compiler;il;emit</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
+    <IsPackable>true</IsPackable>
     <PackageProjectUrl>https://stillpoint-software.github.io/hyperbee.expressions/</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Stillpoint Software, Inc.</Copyright>
     <Title>Hyperbee Expressions Compiler</Title>
     <Description>High-performance IR-based expression compiler for .NET.</Description>
-    <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Stillpoint-Software/hyperbee.expressions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
   </PropertyGroup>
 
-
   <ItemGroup>
-    <None Include="..\..\assets\icon.png" Pack="true" Visible="false" PackagePath="/" />
-    <None Include="..\..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-    <None Include="README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <None Include="README.md"
+          Pack="true"
+          PackagePath=""
+          Link="README.md" />
   </ItemGroup>
   
   <ItemGroup>
