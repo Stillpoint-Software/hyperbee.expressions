@@ -22,7 +22,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <PackageIcon>assets/icon.png</PackageIcon>
+    <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/Stillpoint-Software/Hyperbee.Expressions/releases/latest</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/Stillpoint-Software/Hyperbee.Expressions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -33,16 +33,18 @@
   <ItemGroup Condition="'$(IsPackable)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)README.md"
           Pack="true"
-          PackagePath="\"
-    Link="README.md" />
+          PackagePath=""
+          Link="README.md" />
 
     <None Include="$(MSBuildThisFileDirectory)LICENSE"
           Pack="true"
-          PackagePath="\"
-    Link="LICENSE" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="assets\icon.png" Pack="true" PackagePath="assets" />
+          PackagePath=""
+          Link="LICENSE" />
+
+    <None Include="$(MSBuildThisFileDirectory)assets\icon.png"
+          Pack="true"
+          PackagePath=""
+          Link="icon.png" />
   </ItemGroup>
   <!-- Global project properties - .NET 10 LTS First Strategy -->
   <PropertyGroup>
