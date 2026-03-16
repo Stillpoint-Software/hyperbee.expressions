@@ -195,7 +195,7 @@ Expression Tree
 | **StackSpillPass** | Ensures stack is empty at exception handling boundaries (CLR requirement)            |
 | **PeepholePass**   | Removes redundant load/store pairs, dead loads, identity box/unbox roundtrips        |
 | **DeadCodePass**   | Eliminates unreachable instructions after unconditional control transfers            |
-| **IRValidator**    | Structural validation — stack depth, label references, exception blocks (DEBUG only) |
+| **IRValidator**    | Structural validation - stack depth, label references, exception blocks (DEBUG only) |
 
 ## Supported Frameworks
 
