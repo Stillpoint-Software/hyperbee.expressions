@@ -205,10 +205,10 @@ Expression Tree
 
 ## Credits
 
-- [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler) by Maksim Volkau —
+- [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler) by Maksim Volkau -
   the inspiration and benchmark target. FEC pioneered high-performance expression compilation
   and remains the fastest option available. :heart:
-- [System.Linq.Expressions](https://learn.microsoft.com/en-us/dotnet/api/system.linq.expressions) —
+- [System.Linq.Expressions](https://learn.microsoft.com/en-us/dotnet/api/system.linq.expressions) -
   the reference implementation and correctness baseline.
 
 ## License
