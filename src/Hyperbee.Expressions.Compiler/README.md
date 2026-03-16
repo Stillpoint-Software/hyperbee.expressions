@@ -49,7 +49,7 @@ Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
 ### Allocation Profile
 
 The multi-pass IR pipeline allocates roughly **1.8–4.4× more than FEC** per compilation call but
-**up to 50% less than the System Compiler**. The overhead is per-compilation, not per-execution —
+**up to 50% less than the System Compiler**. The overhead is per-compilation, not per-execution -
 compiled delegates run at equivalent speed regardless of which compiler produced them. For hot paths
 that compile once and cache, the allocation difference is negligible. For workloads that re-compile
 frequently (dynamic LINQ providers, interpreted rule engines), prefer FEC when its patterns cover your
@@ -58,7 +58,7 @@ use case.
 ### Execution Benchmarks
 
 All three compilers produce delegates with equivalent runtime performance. For non-trivial expressions
-(Complex, Loop), the difference is zero — the compiled IL is structurally identical. For trivial
+(Complex, Loop), the difference is zero - the compiled IL is structurally identical. For trivial
 expressions (Simple, Switch), sub-nanosecond differences reflect JIT inlining decisions around
 `DynamicMethod` boundaries, not meaningful execution overhead.
 
