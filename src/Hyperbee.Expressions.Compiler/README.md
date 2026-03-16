@@ -1,12 +1,11 @@
 # Hyperbee Expression Compiler
 
 A high-performance, IR-based expression compiler for .NET. Drop-in replacement for `Expression.Compile()`
-that is **9-34x faster and allocates up to 50% less than the System compiler** and supports **all expression tree patterns** — including
-those that [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler) doesn't.
+that is **9-34x faster and allocates up to 50% less than the System compiler** and supports **all expression tree patterns**.
 
 ## Why Another Expression Compiler?
 
-We :heart: [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler). FEC is faster than Hyperbee Expression Compiler, and allocates less memory — and for many workloads it's the right choice. If FEC compiles your expressions correctly, use it.
+We :heart: [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler). FEC is faster than Hyperbee Expression Compiler, and allocates less memory - and for many workloads it's the right choice. If FEC compiles your expressions correctly, use it.
 
 FEC's single-pass, low allocation, IL emission approach supports most, but not **all**, expression patterns. See [FEC issues](https://github.com/dadhi/FastExpressionCompiler/issues); patterns like compound assignments inside `TryCatch`, complex closure captures, and certain value-type operations aren't supported.
 
@@ -14,7 +13,7 @@ Hyperbee takes a middle ground: a **multi-pass IR pipeline** that lowers express
 
 ## Performance
 
-HEC is consistently **9-34x faster than the System Compiler** and within **1.16-1.54x of FEC** across all tiers — while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
+HEC is consistently **9-34x faster than the System Compiler** and within **1.16-1.54x of FEC** across all tiers - while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
 
 The Complex tier standout (~34x vs System) is where the multi-pass IR architecture pays off against the System compiler's heavyweight compilation pipeline. The Switch tier at 1.54x is the widest gap vs FEC.
 
