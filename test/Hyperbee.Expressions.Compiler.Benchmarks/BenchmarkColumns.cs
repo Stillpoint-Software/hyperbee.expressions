@@ -1,4 +1,4 @@
-using BenchmarkDotNet.Columns;
+﻿using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 
@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Compiler.Benchmarks;
 /// Custom BenchmarkDotNet column that shows the ratio of this benchmark's time or
 /// per-operation allocation versus a named compiler baseline, matched by method name suffix.
 ///
-/// Example: for baselineSuffix "_System", "Loop_Hyperbee" is compared to "Loop_System"
+/// Example: For baselineSuffix "_System", "Loop_Hyperbee" is compared to "Loop_System"
 /// within the same benchmark class, giving a clean "vs System" ratio per tier.
 /// </summary>
 public sealed class RatioToColumn : IColumn
