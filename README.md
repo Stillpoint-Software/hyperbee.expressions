@@ -1,9 +1,20 @@
-﻿# Welcome to Hyperbee Expressions
+# Welcome to Hyperbee Expressions
 
-`Hyperbee.Expressions` is a library for creating c# expression trees that extend the capabilities of standard expression 
-trees to handle asynchronous workflows and other language constructs.
+This repository contains libraries for extending and compiling C# expression trees.
 
-## Features
+## Packages
+
+| Package | Description |
+| ------- | ----------- |
+| **Hyperbee.Expressions** | Extended expression tree nodes for async workflows, iterators, resource management, and looping constructs. |
+| **Hyperbee.Expressions.Compiler** | A high-performance, IR-based expression compiler that is 9-34x faster than the System compiler with correct IL across all expression tree patterns. |
+
+## Hyperbee.Expressions
+
+`Hyperbee.Expressions` extends the capabilities of standard expression trees to handle asynchronous workflows and other 
+language constructs.
+
+### Features
 
 * **Async Expressions**
     * `AwaitExpression`: An expression that represents an await operation.
@@ -35,9 +46,9 @@ trees to handle asynchronous workflows and other language constructs.
     var interpetedLambda = lambda.Compile(preferInterpretation: true);
     ```
 
-## Examples
+### Examples
 
-### Asynchronous Expressions
+#### Asynchronous Expressions
 
 The following example demonstrates how to create an asynchronous expression tree.
 
@@ -87,7 +98,7 @@ public class Example
 }
 ```
 
-### Yield Expressions
+#### Yield Expressions
 
 The following example demonstrates how to create a yield expression tree.
 
@@ -122,7 +133,7 @@ public class Example
 }
 ```
 
-### Using Expression
+#### Using Expression
 
 The following example demonstrates how to create a Using expression.
 
@@ -156,6 +167,34 @@ public class Example
 }
 ```
 
+## Hyperbee.Expressions.Compiler
+
+A high-performance, IR-based expression compiler for .NET. Drop-in replacement for `Expression.Compile()` 
+that is **9-34x faster and allocates up to 50% less than the System compiler** and supports **all expression 
+tree patterns** -- including those that [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler) doesn't.
+
+### Quick Start
+
+```
+dotnet add package Hyperbee.Expressions.Compiler
+```
+
+```csharp
+using Hyperbee.Expressions.Compiler;
+
+// Direct compilation -- drop-in replacement for Expression.Compile()
+var lambda = Expression.Lambda<Func<int, int, int>>(
+    Expression.Add( a, b ), a, b );
+
+var fn = HyperbeeCompiler.Compile( lambda );
+var result = fn( 1, 2 ); // 3
+
+// Or use the extension method
+var fn = lambda.CompileHyperbee();
+```
+
+For benchmarks, architecture details, and advanced usage, see the full [Hyperbee.Expressions.Compiler README](src/Hyperbee.Expressions.Compiler/README.md).
+
 ## Credits
 
 Special thanks to:
@@ -168,4 +207,3 @@ Special thanks to:
 
 We welcome contributions! Please see our [Contributing Guide](https://github.com/Stillpoint-Software/.github/blob/main/.github/CONTRIBUTING.md) 
 for more details
-
