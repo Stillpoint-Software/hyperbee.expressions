@@ -171,7 +171,7 @@ public class Example
 
 A high-performance, IR-based expression compiler for .NET. Drop-in replacement for `Expression.Compile()` 
 that is **9-34x faster and allocates up to 50% less than the System compiler** and supports **all expression 
-tree patterns** -- including those that [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler) doesn't.
+tree patterns**.
 
 ### Quick Start
 
