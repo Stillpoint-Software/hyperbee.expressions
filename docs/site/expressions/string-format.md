@@ -1,4 +1,4 @@
-﻿---
+---
 layout: default
 title: String Format
 parent: Expressions

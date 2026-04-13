@@ -1,4 +1,4 @@
-﻿---
+---
 layout: default
 title: Hyperbee Expressions
 nav_order: 1

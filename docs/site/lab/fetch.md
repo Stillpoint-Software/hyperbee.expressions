@@ -1,4 +1,4 @@
-﻿---
+---
 layout: default
 title: Fetch
 parent: Lab
