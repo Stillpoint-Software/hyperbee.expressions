@@ -1,4 +1,4 @@
-﻿---
+---
 layout: default
 title: Enumerable Block
 parent: Expressions

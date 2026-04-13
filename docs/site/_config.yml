@@ -1,5 +1,5 @@
 title: Hyperbee Expressions
-description: Documentation for Hyperbee Expressions — async, yield, loop, and compiler extensions for .NET expression trees.
+description: Documentation for Hyperbee Expressions -- async, yield, loop, and compiler extensions for .NET expression trees.
 remote_theme: pmarsceill/just-the-docs
 baseurl: "/hyperbee.expressions/"
 url: "https://stillpoint-software.github.io"

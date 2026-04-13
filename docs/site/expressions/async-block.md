@@ -1,4 +1,4 @@
-﻿---
+---
 layout: default
 title: Async Block
 parent: Expressions

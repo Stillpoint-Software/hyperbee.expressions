@@ -1,4 +1,4 @@
-﻿---
+---
 layout: default
 title: Module Providers
 parent: Configuration
