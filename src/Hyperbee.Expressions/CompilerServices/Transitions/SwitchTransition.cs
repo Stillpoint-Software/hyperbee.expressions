@@ -25,10 +25,17 @@ internal class SwitchTransition : Transition
                 .Select( switchCase => switchCase.Reduce( stateOrder ) )
                 .ToArray();
 
-            return Switch(
-                SwitchValue,
-                cases
-             );
+            // Route the no-match path explicitly to the fall-through (DefaultNode). Without an
+            // explicit default, a no-match would fall through to whatever state is physically
+            // next, which can be one of the case bodies (they use fall-through optimization).
+            // When the fall-through target is already the next state, GotoOrFallThrough returns
+            // null and we omit the default, preserving the optimal fall-through codegen.
+
+            var defaultBody = GotoOrFallThrough( stateOrder, DefaultNode, allowNull: true );
+
+            return defaultBody == null
+                ? Switch( SwitchValue, cases )
+                : Switch( SwitchValue, defaultBody, cases );
         }
     }
 

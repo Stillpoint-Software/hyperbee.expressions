@@ -746,4 +746,63 @@ public class BlockAsyncBasicTests
         // Assert
         Assert.AreEqual( 3, result );
     }
+
+    private static int _voidMethodCallCount;
+
+    public static void VoidMethod() => _voidMethodCallCount++;
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public async Task BlockAsync_ShouldHandleVoidExpression_BeforeAwait( CompilerType compiler )
+    {
+        // Arrange: a void-returning expression preceding an await.
+        // Reproduces: https://github.com/Stillpoint-Software/hyperbee.expressions/issues/155
+        _voidMethodCallCount = 0;
+
+        var block = BlockAsync(
+            Call( typeof( BlockAsyncBasicTests ).GetMethod( nameof( VoidMethod ) )! ),
+            Await( Constant( Task.FromResult<object>( "ok" ) ) )
+        );
+
+        var lambda = Lambda<Func<Task<object>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( "ok", result );
+        Assert.AreEqual( 1, _voidMethodCallCount );
+    }
+
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task BlockAsync_ShouldHandleVoidExpression_BetweenAwaits( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange: a void expression sitting between two awaits (related to issue #155).
+        _voidMethodCallCount = 0;
+
+        var block = BlockAsync(
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 1 ) ) ),
+            Call( typeof( BlockAsyncBasicTests ).GetMethod( nameof( VoidMethod ) )! ),
+            Await( AsyncHelper.Completer( Constant( completer ), Constant( 2 ) ) )
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( 2, result );
+        Assert.AreEqual( 1, _voidMethodCallCount );
+    }
 }

@@ -28,7 +28,12 @@ internal abstract class Transition
         {
             var lastExpression = expressions[^1];
 
-            if ( variable.Type.IsAssignableFrom( lastExpression.Type ) )
+            // A void expression yields no value to capture (e.g. a void method call before
+            // an await). Note typeof(object).IsAssignableFrom(typeof(void)) is true, so the
+            // check below would otherwise try to Convert void -> object and throw. Leave the
+            // result variable untouched; a later state assigns the real result.
+
+            if ( lastExpression.Type != typeof( void ) && variable.Type.IsAssignableFrom( lastExpression.Type ) )
             {
                 expressions[^1] = Assign( variable, EnsureConvert( lastExpression, variable.Type ) );
             }
