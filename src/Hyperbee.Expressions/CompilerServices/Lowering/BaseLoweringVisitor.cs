@@ -248,10 +248,14 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 
         var switchTransition = new SwitchTransition { SwitchValue = updatedSwitchValue };
 
-        if ( node.DefaultBody != null )
-        {
-            switchTransition.DefaultNode = VisitBranch( node.DefaultBody, joinState, resultVariable );
-        }
+        // A switch without a default body still needs a fall-through target so the
+        // transition graph (FallThroughNode / Optimize) has a node to point at. When no
+        // default is supplied, fall through to the join state (the continuation after the
+        // switch), matching the runtime behavior of a Switch expression with no default.
+
+        switchTransition.DefaultNode = node.DefaultBody != null
+            ? VisitBranch( node.DefaultBody, joinState, resultVariable )
+            : joinState;
 
         foreach ( var switchCase in node.Cases )
         {

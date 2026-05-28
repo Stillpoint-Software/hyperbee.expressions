@@ -309,4 +309,86 @@ public class BlockAsyncSwitchTests
         Assert.AreEqual( 15, result ); // The last awaited value should be 15
     }
 
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task AsyncBlock_ShouldAwaitSuccessfully_WithSwitchCaseAndNoDefaultBody( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange: switch with an awaiting case but NO default body.
+        // Reproduces: https://github.com/Stillpoint-Software/hyperbee.expressions/issues/156
+        var item = Parameter( typeof( object ), "item" );
+
+        var block = BlockAsync(
+            [item],
+            Switch(
+                Constant( 0 ),
+                SwitchCase(
+                    Block(
+                        Assign( item, Await( AsyncHelper.Completer(
+                            Constant( completer ),
+                            Constant( (object) "hit" )
+                        ) ) ),
+                        Empty()
+                    ),
+                    Constant( 0 )
+                )
+            ),
+            item
+        );
+
+        var lambda = Lambda<Func<Task<object>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( "hit", result );
+    }
+
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task AsyncBlock_ShouldFallThrough_WithNoDefaultBodyAndNoMatchingCase( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange: switch with no default body where NO case matches the value.
+        // Exercises the fall-through-to-join path enabled by the fix for issue #156.
+        var item = Parameter( typeof( int ), "item" );
+
+        var block = BlockAsync(
+            [item],
+            Assign( item, Constant( -1 ) ),
+            Switch(
+                Constant( 99 ), // matches no case
+                SwitchCase(
+                    Block(
+                        Assign( item, Await( AsyncHelper.Completer(
+                            Constant( completer ),
+                            Constant( 42 )
+                        ) ) ),
+                        Empty()
+                    ),
+                    Constant( 0 )
+                )
+            ),
+            item
+        );
+
+        var lambda = Lambda<Func<Task<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert: no case matched, so the awaited assignment never ran
+        Assert.AreEqual( -1, result );
+    }
 }
