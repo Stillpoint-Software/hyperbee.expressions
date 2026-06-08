@@ -35,12 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Hyperbee.Collections" />
     <PackageReference Include="Hyperbee.Json" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Common" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <ProjectReference Include="..\Hyperbee.Expressions\Hyperbee.Expressions.csproj" />
