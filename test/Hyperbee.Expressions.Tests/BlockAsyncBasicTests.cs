@@ -805,4 +805,89 @@ public class BlockAsyncBasicTests
         Assert.AreEqual( 2, result );
         Assert.AreEqual( 1, _voidMethodCallCount );
     }
+
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task BlockAsync_ShouldPreserveOuterParameter_WhenLocalVariableHasSameName( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange
+        // Reproduces: https://github.com/Stillpoint-Software/hyperbee.expressions/issues/159
+        var input = Parameter( typeof( int ), "value" );
+        var local = Variable( typeof( int ), "value" );
+        var result = Variable( typeof( int ), "result" );
+
+        var nestedBlock = Block(
+            [local],
+            Assign( local, Add( input, Constant( 5 ) ) ),
+            Assign( result, Await( AsyncHelper.Completer( Constant( completer ), Add( local, Constant( 1 ) ) ) ) )
+        );
+
+        var asyncBlock = BlockAsync(
+            [result],
+            nestedBlock,
+            result
+        );
+
+        var lambda = Lambda<Func<int, Task<int>>>( asyncBlock, input );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var res = await compiledLambda( 10 );
+
+        // Assert
+        // Expected: (10 + 5) + 1 = 16. If local was hoisted using name "value", input would be overwritten with local's default (0), yielding (0 + 5) + 1 = 6.
+        Assert.AreEqual( 16, res );
+    }
+
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task BlockAsync_ShouldHandleMultipleLocalVariablesWithSameName_AcrossBlocks( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange
+        var input = Parameter( typeof( int ), "value" );
+        var local1 = Variable( typeof( int ), "value" );
+        var local2 = Variable( typeof( int ), "value" );
+        var result = Variable( typeof( int ), "result" );
+
+        var block1 = Block(
+            [local1],
+            Assign( local1, Add( input, Constant( 5 ) ) ),
+            Await( AsyncHelper.Completer( Constant( completer ) ) ),
+            Assign( result, local1 )
+        );
+
+        var block2 = Block(
+            [local2],
+            Assign( local2, Add( result, Constant( 10 ) ) ),
+            Await( AsyncHelper.Completer( Constant( completer ) ) ),
+            Assign( result, local2 )
+        );
+
+        var asyncBlock = BlockAsync(
+            [result],
+            block1,
+            block2,
+            result
+        );
+
+        var lambda = Lambda<Func<int, Task<int>>>( asyncBlock, input );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var res = await compiledLambda( 10 );
+
+        // Assert
+        // Expected: 10 + 5 = 15 -> 15 + 10 = 25
+        Assert.AreEqual( 25, res );
+    }
 }
