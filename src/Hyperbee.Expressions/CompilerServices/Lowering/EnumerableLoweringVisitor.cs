@@ -28,7 +28,7 @@ internal class EnumerableLoweringVisitor : BaseLoweringVisitor<EnumerableLowerin
         return new EnumerableLoweringInfo
         {
             Scopes = States.Scopes,
-            ScopedVariables = scopedVariables,
+            ScopedVariables = VariableResolver.ScopedVariables,
             Variables = localVariables
         };
 

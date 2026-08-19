@@ -118,20 +118,36 @@ internal class TryCatchTransition : Transition
                     Block(
                         typeof( void ),
                         Assign( tryStateVariable, Constant( CatchState ) )
-                    ) );
+                    ),
+                    Handler.Filter );
             }
 
+            var catchVar = Parameter( Handler.Test, $"__catch_ex_{CatchState}" );
+
+            var filter = Handler.Filter == null
+                ? null
+                : new ParameterReplacer( Handler.Variable, catchVar ).Visit( Handler.Filter );
+
             return Catch(
-                Handler.Test,
+                catchVar,
                 Block(
                     typeof( void ),
-                    Assign( exceptionVariable, Constant( Handler.Variable ) ),
+                    Assign( exceptionVariable, catchVar ),
                     Assign( tryStateVariable, Constant( CatchState ) )
-                ) );
+                ),
+                filter );
         }
 
         public CatchBlock Handler { get; init; } = handler;
         public StateNode UpdateBody { get; internal set; } = updateBody;
         public int CatchState { get; init; } = catchState;
+
+        private sealed class ParameterReplacer( ParameterExpression source, Expression target ) : ExpressionVisitor
+        {
+            protected override Expression VisitParameter( ParameterExpression node )
+            {
+                return node == source ? target : base.VisitParameter( node );
+            }
+        }
     }
 }

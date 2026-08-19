@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices.Transitions;
 using Hyperbee.Expressions.Visitors;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices.Lowering;
 
@@ -315,10 +316,31 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 
             var catchState = index + 1;
             var catchBlock = node.Handlers[index];
+            ParameterExpression catchVariable = null;
+
+            if ( catchBlock.Variable != null )
+            {
+                VariableResolver.AddLocalVariables( [catchBlock.Variable] );
+                catchVariable = (ParameterExpression) VariableResolver.Resolve( catchBlock.Variable );
+            }
 
             tryCatchTransition.AddCatchBlock(
                 catchBlock,
-                VisitBranch( catchBlock.Body, joinState ),
+                VisitBranch(
+                    catchBlock.Body,
+                    joinState,
+                    init: branchState =>
+                    {
+                        if ( catchVariable != null )
+                        {
+                            branchState.Expressions.Add(
+                                Assign(
+                                    catchVariable,
+                                    Convert( exceptionVariable, catchVariable.Type )
+                                )
+                            );
+                        }
+                    } ),
                 catchState );
         }
 

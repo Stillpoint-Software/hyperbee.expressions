@@ -69,6 +69,40 @@ public class BlockYieldTryCatchTests
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldCatchExceptionAndAccessCatchVariable_WithYieldInCatchBlock( CompilerType compiler )
+    {
+        // Arrange
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+
+        var block = BlockEnumerable(
+            TryCatch(
+                Block(
+                    YieldReturn( Constant( "YieldedBeforeThrow" ) ),
+                    Throw( Constant( new InvalidOperationException( "YieldBoom" ) ) ),
+                    Constant( string.Empty )
+                ),
+                Catch(
+                    exceptionParam,
+                    YieldReturn( Property( exceptionParam, nameof( Exception.Message ) ) )
+                )
+            )
+        );
+        var lambda = Lambda<Func<IEnumerable<string>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = compiledLambda().ToArray();
+
+        // Assert
+        Assert.HasCount( 2, result );
+        Assert.AreEqual( "YieldedBeforeThrow", result[0] );
+        Assert.AreEqual( "YieldBoom", result[1] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldHandleExceptionSuccessfully_WithTryCatchFinally( CompilerType compiler )
     {
         // Arrange: yield in both catch and finally blocks
@@ -282,5 +316,41 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 50, result[5] );
         Assert.AreEqual( 60, result[6] );
         Assert.AreEqual( 70, result[7] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldPreserveOuterParameter_WhenCatchVariableHasSameName( CompilerType compiler )
+    {
+        // Arrange
+        var exParam = Parameter( typeof( string ), "ex" );
+        var catchEx = Parameter( typeof( Exception ), "ex" );
+
+        var block = BlockEnumerable(
+            TryCatch(
+                Block(
+                    YieldReturn( Constant( "First" ) ),
+                    Throw( Constant( new InvalidOperationException( "Error" ) ) ),
+                    Constant( string.Empty )
+                ),
+                Catch(
+                    catchEx,
+                    YieldReturn( Add( exParam, Constant( ":Caught" ), typeof( string ).GetMethod( "Concat", [typeof( string ), typeof( string )] )! ) )
+                )
+            )
+        );
+
+        var lambda = Lambda<Func<string, IEnumerable<string>>>( block, exParam );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = compiledLambda( "OuterValue" ).ToArray();
+
+        // Assert
+        Assert.HasCount( 2, result );
+        Assert.AreEqual( "First", result[0] );
+        Assert.AreEqual( "OuterValue:Caught", result[1] );
     }
 }

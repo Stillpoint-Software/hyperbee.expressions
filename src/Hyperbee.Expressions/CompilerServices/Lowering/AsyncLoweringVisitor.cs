@@ -39,7 +39,7 @@ internal class AsyncLoweringVisitor : BaseLoweringVisitor<AsyncLoweringInfo>
             Scopes = States.Scopes,
             HasFinalResultVariable = _hasFinalResultVariable,
             AwaitCount = _awaitCount,
-            ScopedVariables = scopedVariables
+            ScopedVariables = VariableResolver.ScopedVariables
         };
 
         // helpers

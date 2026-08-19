@@ -40,6 +40,8 @@ internal sealed class VariableResolver : ExpressionVisitor
     private readonly Dictionary<LabelTarget, Expression> _labels = [];
     private readonly LinkedDictionary<ParameterExpression, ParameterExpression> _scopedVariables;
 
+    public LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables => _scopedVariables;
+
     public VariableResolver(
         ParameterExpression[] variables,
         LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables,
@@ -61,7 +63,10 @@ internal sealed class VariableResolver : ExpressionVisitor
     {
         foreach ( var variable in variables )
         {
-            _scopedVariables.Add( variable, variable );
+            if ( !_scopedVariables.ContainsKey( variable ) )
+            {
+                _scopedVariables.Add( variable, CreateParameter( variable ) );
+            }
         }
     }
 
