@@ -316,10 +316,12 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 
             var catchState = index + 1;
             var catchBlock = node.Handlers[index];
+            ParameterExpression catchVariable = null;
 
             if ( catchBlock.Variable != null )
             {
                 VariableResolver.AddLocalVariables( [catchBlock.Variable] );
+                catchVariable = (ParameterExpression) VariableResolver.Resolve( catchBlock.Variable );
             }
 
             tryCatchTransition.AddCatchBlock(
@@ -329,12 +331,12 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
                     joinState,
                     init: branchState =>
                     {
-                        if ( catchBlock.Variable != null )
+                        if ( catchVariable != null )
                         {
                             branchState.Expressions.Add(
                                 Assign(
-                                    catchBlock.Variable,
-                                    Convert( exceptionVariable, catchBlock.Variable.Type )
+                                    catchVariable,
+                                    Convert( exceptionVariable, catchVariable.Type )
                                 )
                             );
                         }

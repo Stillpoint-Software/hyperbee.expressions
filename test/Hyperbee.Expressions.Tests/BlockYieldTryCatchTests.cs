@@ -317,4 +317,40 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 60, result[6] );
         Assert.AreEqual( 70, result[7] );
     }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldPreserveOuterParameter_WhenCatchVariableHasSameName( CompilerType compiler )
+    {
+        // Arrange
+        var exParam = Parameter( typeof( string ), "ex" );
+        var catchEx = Parameter( typeof( Exception ), "ex" );
+
+        var block = BlockEnumerable(
+            TryCatch(
+                Block(
+                    YieldReturn( Constant( "First" ) ),
+                    Throw( Constant( new InvalidOperationException( "Error" ) ) ),
+                    Constant( string.Empty )
+                ),
+                Catch(
+                    catchEx,
+                    YieldReturn( Add( exParam, Constant( ":Caught" ), typeof( string ).GetMethod( "Concat", [typeof( string ), typeof( string )] )! ) )
+                )
+            )
+        );
+
+        var lambda = Lambda<Func<string, IEnumerable<string>>>( block, exParam );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = compiledLambda( "OuterValue" ).ToArray();
+
+        // Assert
+        Assert.HasCount( 2, result );
+        Assert.AreEqual( "First", result[0] );
+        Assert.AreEqual( "OuterValue:Caught", result[1] );
+    }
 }

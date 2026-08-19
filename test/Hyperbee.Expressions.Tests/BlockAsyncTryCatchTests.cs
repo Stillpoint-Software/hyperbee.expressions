@@ -651,4 +651,44 @@ public class BlockAsyncTryCatchTests
         // Assert - should return 'expected', not null
         Assert.AreSame( expected, result );
     }
+
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task AsyncBlock_ShouldPreserveOuterParameter_WhenCatchVariableHasSameName( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange
+        var exParam = Parameter( typeof( string ), "ex" );
+        var catchEx = Parameter( typeof( Exception ), "ex" );
+        var result = Variable( typeof( string ), "result" );
+
+        var block = BlockAsync(
+            [result],
+            TryCatch(
+                Block(
+                    Await( AsyncHelper.Completer( Constant( completer ), Constant( 10 ) ) ),
+                    Throw( Constant( new InvalidOperationException( "Error" ) ) ),
+                    Constant( string.Empty )
+                ),
+                Catch(
+                    catchEx,
+                    Assign( result, Add( exParam, Constant( ":" ), typeof( string ).GetMethod( "Concat", [typeof( string ), typeof( string )] )! ) )
+                )
+            ),
+            result
+        );
+
+        var lambda = Lambda<Func<string, Task<string>>>( block, exParam );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var res = await compiledLambda( "OuterValue" );
+
+        // Assert
+        Assert.AreEqual( "OuterValue:", res );
+    }
 }
