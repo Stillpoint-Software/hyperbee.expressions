@@ -69,6 +69,40 @@ public class BlockYieldTryCatchTests
     [DataRow( CompilerType.Fast )]
     [DataRow( CompilerType.System )]
     [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldCatchExceptionAndAccessCatchVariable_WithYieldInCatchBlock( CompilerType compiler )
+    {
+        // Arrange
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+
+        var block = BlockEnumerable(
+            TryCatch(
+                Block(
+                    YieldReturn( Constant( "YieldedBeforeThrow" ) ),
+                    Throw( Constant( new InvalidOperationException( "YieldBoom" ) ) ),
+                    Constant( string.Empty )
+                ),
+                Catch(
+                    exceptionParam,
+                    YieldReturn( Property( exceptionParam, nameof( Exception.Message ) ) )
+                )
+            )
+        );
+        var lambda = Lambda<Func<IEnumerable<string>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = compiledLambda().ToArray();
+
+        // Assert
+        Assert.HasCount( 2, result );
+        Assert.AreEqual( "YieldedBeforeThrow", result[0] );
+        Assert.AreEqual( "YieldBoom", result[1] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
     public void YieldBlock_ShouldHandleExceptionSuccessfully_WithTryCatchFinally( CompilerType compiler )
     {
         // Arrange: yield in both catch and finally blocks

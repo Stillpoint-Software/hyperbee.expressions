@@ -44,6 +44,143 @@ public class BlockAsyncTryCatchTests
     [DataRow( CompleterType.Deferred, CompilerType.Fast )]
     [DataRow( CompleterType.Deferred, CompilerType.System )]
     [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task AsyncBlock_ShouldCatchExceptionAndAccessCatchVariable_WithAwaitInTryBlock( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+        var resultValue = Parameter( typeof( string ) );
+
+        var block = BlockAsync(
+            [resultValue],
+            TryCatch(
+                Block(
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
+                        Constant( 10 )
+                    ) ),
+                    Throw( Constant( new InvalidOperationException( "Boom" ) ) ),
+                    Constant( string.Empty )
+                ),
+                Catch(
+                    exceptionParam,
+                    Assign( resultValue, Property( exceptionParam, nameof( Exception.Message ) ) )
+                )
+            ),
+            resultValue
+        );
+
+        var lambda = Lambda<Func<Task<string>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( "Boom", result );
+    }
+
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task AsyncBlock_ShouldThrowNewExceptionWrappingCaughtException_WithAwaitInTryBlock( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange: Exact issue #158 pattern
+        var exception = Parameter( typeof( Exception ), "ex" );
+        var exceptionCtor = typeof( Exception ).GetConstructor( [typeof( string ), typeof( Exception )] )!;
+
+        var expression = Lambda<Func<Task<object>>>(
+            BlockAsync(
+                TryCatch(
+                    Block(
+                        Await( AsyncHelper.Completer(
+                            Constant( completer ),
+                            Constant( 10 )
+                        ) ),
+                        Throw( Constant( new InvalidOperationException( "OriginalError" ) ) ),
+                        Constant( (object) null )
+                    ),
+                    Catch(
+                        exception,
+                        Throw(
+                            New(
+                                exceptionCtor,
+                                Property( exception, nameof( Exception.Message ) ),
+                                exception
+                            ),
+                            typeof( object )
+                        )
+                    )
+                )
+            )
+        );
+
+        var compiled = expression.Compile( compiler );
+
+        // Act & Assert
+        var thrown = await Assert.ThrowsExactlyAsync<Exception>( async () => await compiled() );
+        Assert.AreEqual( "OriginalError", thrown.Message );
+        Assert.IsInstanceOfType<InvalidOperationException>( thrown.InnerException );
+        Assert.AreEqual( "OriginalError", thrown.InnerException.Message );
+    }
+
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
+    public async Task AsyncBlock_ShouldCatchSpecificExceptionType_WithAwaitInTryBlock( CompleterType completer, CompilerType compiler )
+    {
+        // Arrange: Multiple catch blocks
+        var invalidOpParam = Parameter( typeof( InvalidOperationException ), "invalidOpEx" );
+        var genericParam = Parameter( typeof( Exception ), "genericEx" );
+        var resultValue = Parameter( typeof( string ) );
+
+        var block = BlockAsync(
+            [resultValue],
+            TryCatch(
+                Block(
+                    Await( AsyncHelper.Completer(
+                        Constant( completer ),
+                        Constant( 10 )
+                    ) ),
+                    Throw( Constant( new InvalidOperationException( "SpecificMessage" ) ) ),
+                    Constant( string.Empty )
+                ),
+                Catch(
+                    invalidOpParam,
+                    Assign( resultValue, Property( invalidOpParam, nameof( Exception.Message ) ) )
+                ),
+                Catch(
+                    genericParam,
+                    Assign( resultValue, Constant( "Generic" ) )
+                )
+            ),
+            resultValue
+        );
+
+        var lambda = Lambda<Func<Task<string>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = await compiledLambda();
+
+        // Assert
+        Assert.AreEqual( "SpecificMessage", result );
+    }
+
+    [TestMethod]
+    [DataRow( CompleterType.Immediate, CompilerType.Fast )]
+    [DataRow( CompleterType.Immediate, CompilerType.System )]
+    [DataRow( CompleterType.Immediate, CompilerType.Interpret )]
+    [DataRow( CompleterType.Deferred, CompilerType.Fast )]
+    [DataRow( CompleterType.Deferred, CompilerType.System )]
+    [DataRow( CompleterType.Deferred, CompilerType.Interpret )]
     public async Task AsyncBlock_ShouldCatchExceptionSuccessfully_WithAwaitInCatchBlock( CompleterType completer, CompilerType compiler )
     {
         // Arrange: Await in the catch block
