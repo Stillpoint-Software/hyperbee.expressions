@@ -388,6 +388,14 @@ internal class EnumerableStateMachineBuilder<TResult>
 
             return node;
         }
+
+        protected override CatchBlock VisitCatchBlock( CatchBlock node )
+        {
+            var filter = Visit( node.Filter );
+            var body = Visit( node.Body );
+
+            return MakeCatchBlock( node.Test, node.Variable, body, filter );
+        }
     }
 }
 

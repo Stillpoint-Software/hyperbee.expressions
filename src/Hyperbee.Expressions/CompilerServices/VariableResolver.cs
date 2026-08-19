@@ -61,6 +61,9 @@ internal sealed class VariableResolver : ExpressionVisitor
     {
         foreach ( var variable in variables )
         {
+            if ( _scopedVariables.TryGetValue( variable, out _ ) )
+                continue;
+
             _scopedVariables.Add( variable, variable );
         }
     }
