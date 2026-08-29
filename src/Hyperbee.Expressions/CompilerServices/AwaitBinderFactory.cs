@@ -156,7 +156,10 @@ internal static class AwaitBinderFactory
         //  IL-generated delegates
 
         var awaiterType = getAwaiterImplMethod.ReturnType;
-        var configureAwaitImplMethod = getAwaiterImplMethod.ReturnType.GetMethod( ConfigureAwaitName, bindingAttr, [typeof( bool )] );
+        // ConfigureAwait belongs to the awaitable, as Task.ConfigureAwait does -- not to the
+        // awaiter, which is where this used to look and so never found one.
+
+        var configureAwaitImplMethod = awaitableType.GetMethod( ConfigureAwaitName, bindingAttr, [typeof( bool )] );
 
         var getAwaiterImplDelegate = CreateGetAwaiterImplDelegate( awaitableType, getAwaiterImplMethod, configureAwaitImplMethod );
         var getResultImplDelegate = CreateGetResultImplDelegate( awaiterType, getResultImplMethod );
@@ -167,10 +170,14 @@ internal static class AwaitBinderFactory
         MethodInfo getAwaiterMethod;
         MethodInfo getResultMethod;
 
-        if ( awaiterType.IsGenericType )
-        {
-            var awaiterResultType = awaiterType.GetGenericArguments()[0];
+        // The awaited type is what GetResult returns. It was read from the awaiter's first
+        // generic argument, which agrees for an awaiter like MyAwaiter<int> but calls every
+        // non-generic awaiter void -- including one whose GetResult returns a value.
 
+        var awaiterResultType = getResultImplMethod.ReturnType;
+
+        if ( awaiterResultType != typeof( void ) )
+        {
             waitMethod = WaitResultMethod.MakeGenericMethod( awaitableType, awaiterType, awaiterResultType );
             getAwaiterMethod = GetAwaiterCustomMethod.MakeGenericMethod( awaitableType, awaiterType );
             getResultMethod = GetResultCustomResultMethod.MakeGenericMethod( awaiterType, awaiterResultType );
@@ -217,45 +224,55 @@ internal static class AwaitBinderFactory
 
         var il = dynamicMethod.GetILGenerator();
 
-        // Call ConfigureAwait
+        // ConfigureAwait( false ), when the awaitable offers it and the awaitable it returns
+        // yields the same awaiter type. The awaiter type is fixed by this delegate's
+        // signature, so an awaitable whose configured form has a different awaiter cannot be
+        // expressed here, and configureAwait is ignored for it.
 
-        if ( configureAwaitImplMethod != null )
+        var configuredGetAwaiterMethod = FindConfiguredGetAwaiter( configureAwaitImplMethod, typeof( TAwaiter ) );
+
+        if ( configuredGetAwaiterMethod != null )
         {
-            var lblSkipConfigureAwait = il.DefineLabel();
+            var lblDefault = il.DefineLabel();
 
             il.Emit( OpCodes.Ldarg_1 );
-            il.Emit( OpCodes.Brtrue_S, lblSkipConfigureAwait );
+            il.Emit( OpCodes.Brtrue_S, lblDefault );
 
-            if ( !configureAwaitImplMethod.IsStatic )
+            EmitLoadTarget( il, typeof( TAwaitable ), configureAwaitImplMethod );
+            il.Emit( OpCodes.Ldc_I4_0 );
+            EmitCall( il, typeof( TAwaitable ), configureAwaitImplMethod );
+
+            var configuredType = configureAwaitImplMethod.ReturnType;
+
+            if ( configuredType.IsValueType )
             {
-                il.Emit( OpCodes.Ldarg_0 );
-                il.Emit( OpCodes.Castclass, configureAwaitImplMethod.DeclaringType! );
+                // An instance method on a struct needs an address, and the configured
+                // awaitable is on the stack by value.
+
+                il.DeclareLocal( configuredType );
+                il.Emit( OpCodes.Stloc_0 );
+                il.Emit( OpCodes.Ldloca_S, (byte) 0 );
+                il.Emit( OpCodes.Call, configuredGetAwaiterMethod );
+            }
+            else
+            {
+                il.Emit( OpCodes.Callvirt, configuredGetAwaiterMethod );
             }
 
-            il.Emit( OpCodes.Ldc_I4_0 ); // Load constant false
+            il.Emit( OpCodes.Ret );
 
-            if ( configureAwaitImplMethod.IsStatic )
-                il.Emit( OpCodes.Call, configureAwaitImplMethod );
-            else
-                il.Emit( OpCodes.Callvirt, configureAwaitImplMethod );
+            // Each path returns, so the two never merge at different stack depths.
 
-            il.MarkLabel( lblSkipConfigureAwait );
+            il.MarkLabel( lblDefault );
         }
 
         // Call GetAwaiter()
+        //
+        // Arg 0 is a managed pointer to the awaitable. An instance method on a struct is
+        // called on that pointer directly; a reference has to be loaded out of it first.
 
-        il.Emit( OpCodes.Ldarg_0 );
-        il.Emit( OpCodes.Ldind_Ref );
-
-        if ( getAwaiterImplMethod.IsStatic )
-        {
-            il.Emit( OpCodes.Call, getAwaiterImplMethod );
-        }
-        else
-        {
-            il.Emit( OpCodes.Castclass, getAwaiterImplMethod.DeclaringType! );
-            il.Emit( OpCodes.Callvirt, getAwaiterImplMethod );
-        }
+        EmitLoadTarget( il, typeof( TAwaitable ), getAwaiterImplMethod );
+        EmitCall( il, typeof( TAwaitable ), getAwaiterImplMethod );
 
         il.Emit( OpCodes.Ret );
 
@@ -287,10 +304,11 @@ internal static class AwaitBinderFactory
 
         var il = dynamicMethod.GetILGenerator();
 
-        il.Emit( OpCodes.Ldarg_0 );
-        il.Emit( OpCodes.Ldind_Ref );
+        // Arg 0 is a managed pointer to the awaiter, which is a struct far more often than
+        // not -- TaskAwaiter and YieldAwaitable's awaiter both are.
 
-        il.Emit( OpCodes.Callvirt, getResultImplMethod );
+        EmitLoadTarget( il, typeof( TAwaiter ), getResultImplMethod );
+        EmitCall( il, typeof( TAwaiter ), getResultImplMethod );
 
         if ( typeof( TResult ) == typeof( IVoidResult ) )
         {
@@ -306,6 +324,56 @@ internal static class AwaitBinderFactory
         il.Emit( OpCodes.Ret );
 
         return dynamicMethod.CreateDelegate( typeof( AwaitBinderGetResultDelegate<TAwaiter, TResult> ) );
+    }
+
+    // The GetAwaiter of whatever ConfigureAwait returns, when it produces the awaiter type
+    // this thunk is committed to. Null means configureAwait cannot be honored.
+
+    private static MethodInfo FindConfiguredGetAwaiter( MethodInfo configureAwaitImplMethod, Type awaiterType )
+    {
+        const BindingFlags bindingAttr = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        var getAwaiterMethod = configureAwaitImplMethod?.ReturnType.GetMethod( GetAwaiterName, bindingAttr, [] );
+
+        return getAwaiterMethod?.ReturnType == awaiterType ? getAwaiterMethod : null;
+    }
+
+    // Loads the target of an instance or extension call from arg 0, which is always a
+    // managed pointer to the awaitable or awaiter.
+
+    private static void EmitLoadTarget( ILGenerator il, Type targetType, MethodInfo method )
+    {
+        il.Emit( OpCodes.Ldarg_0 );
+
+        if ( targetType.IsValueType )
+        {
+            // A struct instance method takes the pointer as-is. An extension method takes
+            // the struct by value, so copy it out.
+
+            if ( method.IsStatic )
+                il.Emit( OpCodes.Ldobj, targetType );
+
+            return;
+        }
+
+        // A reference lives behind the pointer, so read it out.
+
+        il.Emit( OpCodes.Ldind_Ref );
+
+        // An instance call has to prove the reference's type. An extension method declares
+        // the parameter it accepts, and its declaring type is the static class holding it,
+        // which the reference is not.
+
+        if ( !method.IsStatic )
+            il.Emit( OpCodes.Castclass, method.DeclaringType! );
+    }
+
+    private static void EmitCall( ILGenerator il, Type targetType, MethodInfo method )
+    {
+        // Callvirt on a value type is not valid, and there is nothing to dispatch on: the
+        // exact type is known here.
+
+        il.Emit( method.IsStatic || targetType.IsValueType ? OpCodes.Call : OpCodes.Callvirt, method );
     }
 
     private static void CacheReflectionMembers()

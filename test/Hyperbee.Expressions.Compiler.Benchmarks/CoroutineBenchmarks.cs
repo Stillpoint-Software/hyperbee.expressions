@@ -8,18 +8,20 @@ namespace Hyperbee.Expressions.Compiler.Benchmarks;
 /// Measures time and allocations to compile coroutine expression trees.
 /// </summary>
 /// <remarks>
-/// Each compiler gets its own expression instance, built once in GlobalSetup. A coroutine
-/// block caches its reduction, so a shared instance would let the first compiler's state
-/// machine be reused by the second. Building the tree per iteration would instead measure
-/// tree construction, so the instance is reused within a compiler and the first iteration
-/// absorbs the reduction.
+/// Every invocation gets a tree that has never been reduced. A coroutine block caches its
+/// reduction, so compiling the same instance twice measures a compile once and a cache hit
+/// after -- and the two compilers would not even agree on which, because HEC rewrites
+/// captured coroutine bodies and hands its own pass a fresh tree. Rebuilding in
+/// [IterationSetup] keeps both sides cold and comparable; tree construction is setup and is
+/// not part of the measurement.
 /// </remarks>
-[Config( typeof( BenchmarkConfig.Config ) )]
+[Config( typeof( BenchmarkConfig.ColdConfig ) )]
 [MemoryDiagnoser]
 public class CoroutineCompilationBenchmarks
 {
     private Expression<Func<int, Task<int>>> _asyncNoCapture_System = null!;
     private Expression<Func<int, Task<int>>> _asyncNoCapture_Hyperbee = null!;
+    private Expression<Func<int, Task<int>>> _asyncNoCaptureDelegate_Hyperbee = null!;
 
     private Expression<Func<int, Task<int>>> _asyncCapture_System = null!;
     private Expression<Func<int, Task<int>>> _asyncCapture_Hyperbee = null!;
@@ -33,11 +35,12 @@ public class CoroutineCompilationBenchmarks
     private Expression<Func<int, int>> _nestedClosure_System = null!;
     private Expression<Func<int, int>> _nestedClosure_Hyperbee = null!;
 
-    [GlobalSetup]
-    public void Setup()
+    [IterationSetup]
+    public void IterationSetup()
     {
         _asyncNoCapture_System = CoroutineExpressions.AsyncNoCapture();
         _asyncNoCapture_Hyperbee = CoroutineExpressions.AsyncNoCapture();
+        _asyncNoCaptureDelegate_Hyperbee = CoroutineExpressions.AsyncNoCaptureDelegateMoveNext();
 
         _asyncCapture_System = CoroutineExpressions.AsyncCapture();
         _asyncCapture_Hyperbee = CoroutineExpressions.AsyncCapture();
@@ -57,6 +60,9 @@ public class CoroutineCompilationBenchmarks
 
     [Benchmark( Description = "AsyncNoCapture | Hyperbee" )]
     public Delegate AsyncNoCapture_Hyperbee() => HyperbeeCompiler.Compile( _asyncNoCapture_Hyperbee );
+
+    [Benchmark( Description = "AsyncNoCapture (delegate MoveNext) | Hyperbee" )]
+    public Delegate AsyncNoCaptureDelegate_Hyperbee() => HyperbeeCompiler.Compile( _asyncNoCaptureDelegate_Hyperbee );
 
     [Benchmark( Description = "AsyncCapture | System" )]
     public Delegate AsyncCapture_System() => _asyncCapture_System.Compile();
@@ -93,6 +99,7 @@ public class CoroutineExecutionBenchmarks
 {
     private Func<int, Task<int>> _asyncNoCapture_System = null!;
     private Func<int, Task<int>> _asyncNoCapture_Hyperbee = null!;
+    private Func<int, Task<int>> _asyncNoCaptureDelegate_Hyperbee = null!;
 
     private Func<int, Task<int>> _asyncCapture_System = null!;
     private Func<int, Task<int>> _asyncCapture_Hyperbee = null!;
@@ -106,11 +113,15 @@ public class CoroutineExecutionBenchmarks
     private Func<int, int> _nestedClosure_System = null!;
     private Func<int, int> _nestedClosure_Hyperbee = null!;
 
+    private Func<int, Task<int>> _suspendingEmitted_Hyperbee = null!;
+    private Func<int, Task<int>> _suspendingDelegate_Hyperbee = null!;
+
     [GlobalSetup]
     public void Setup()
     {
         _asyncNoCapture_System = CoroutineExpressions.AsyncNoCapture().Compile();
         _asyncNoCapture_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncNoCapture() );
+        _asyncNoCaptureDelegate_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncNoCaptureDelegateMoveNext() );
 
         _asyncCapture_System = CoroutineExpressions.AsyncCapture().Compile();
         _asyncCapture_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncCapture() );
@@ -123,13 +134,25 @@ public class CoroutineExecutionBenchmarks
 
         _nestedClosure_System = CoroutineExpressions.NestedClosure().Compile();
         _nestedClosure_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.NestedClosure() );
+
+        _suspendingEmitted_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncSuspending( true ) );
+        _suspendingDelegate_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncSuspending( false ) );
     }
+
+    [Benchmark( Description = "AsyncSuspending x16 | Hyperbee" )]
+    public int AsyncSuspending_Hyperbee() => _suspendingEmitted_Hyperbee( 3 ).GetAwaiter().GetResult();
+
+    [Benchmark( Description = "AsyncSuspending x16 (delegate MoveNext) | Hyperbee" )]
+    public int AsyncSuspendingDelegate_Hyperbee() => _suspendingDelegate_Hyperbee( 3 ).GetAwaiter().GetResult();
 
     [Benchmark( Description = "AsyncNoCapture | System" )]
     public int AsyncNoCapture_System() => _asyncNoCapture_System( 3 ).GetAwaiter().GetResult();
 
     [Benchmark( Description = "AsyncNoCapture | Hyperbee" )]
     public int AsyncNoCapture_Hyperbee() => _asyncNoCapture_Hyperbee( 3 ).GetAwaiter().GetResult();
+
+    [Benchmark( Description = "AsyncNoCapture (delegate MoveNext) | Hyperbee" )]
+    public int AsyncNoCaptureDelegate_Hyperbee() => _asyncNoCaptureDelegate_Hyperbee( 3 ).GetAwaiter().GetResult();
 
     [Benchmark( Description = "AsyncCapture | System" )]
     public int AsyncCapture_System() => _asyncCapture_System( 3 ).GetAwaiter().GetResult();

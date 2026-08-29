@@ -57,6 +57,29 @@ internal static class CoroutineExpressions
             input );
     }
 
+    // As AsyncNoCapture, but MoveNext stays a delegate the machine invokes on each resume.
+    // Same body, so the pair isolates what emitting into the machine's own method is worth.
+    public static Expression<Func<int, Task<int>>> AsyncNoCaptureDelegateMoveNext()
+    {
+        var options = new ExpressionRuntimeOptions { EmitMoveNextIntoType = false };
+
+        var input = Parameter( typeof( int ), "input" );
+        var local = Variable( typeof( int ), "local" );
+
+        return Lambda<Func<int, Task<int>>>(
+            BlockAsync(
+                [local],
+                [
+                    Assign( local, Constant( 7 ) ),
+                    Assign( local, Await( Call( EchoMethod, local ) ) ),
+                    Assign( local, Add( local, Await( Call( EchoMethod, local ) ) ) ),
+                    local
+                ],
+                options
+            ),
+            input );
+    }
+
     // Enumerable block with no enclosing-scope references
     public static Expression<Func<int, IEnumerable<int>>> EnumerableNoCapture()
     {
@@ -83,6 +106,34 @@ internal static class CoroutineExpressions
                 YieldReturn( input ),
                 YieldReturn( Add( input, Constant( 1 ) ) )
             ),
+            input );
+    }
+
+    // Task.Yield always suspends, so each await is a separate MoveNext invocation.
+    private static MethodInfo YieldMethod => typeof( Task )
+        .GetMethod( nameof( Task.Yield ), Type.EmptyTypes )!;
+
+    // Sixteen real suspensions -- sixteen MoveNext invocations, where reaching MoveNext
+    // through a delegate field would cost sixteen indirections instead of none.
+    public static Expression<Func<int, Task<int>>> AsyncSuspending( bool emitMoveNextIntoType )
+    {
+        var options = new ExpressionRuntimeOptions { EmitMoveNextIntoType = emitMoveNextIntoType };
+
+        var input = Parameter( typeof( int ), "input" );
+        var local = Variable( typeof( int ), "local" );
+
+        var body = new List<Expression> { Assign( local, Constant( 0 ) ) };
+
+        for ( var index = 0; index < 16; index++ )
+        {
+            body.Add( Await( Call( YieldMethod ) ) );
+            body.Add( Assign( local, Add( local, Constant( 1 ) ) ) );
+        }
+
+        body.Add( local );
+
+        return Lambda<Func<int, Task<int>>>(
+            BlockAsync( new[] { local }, body.ToArray(), options ),
             input );
     }
 
