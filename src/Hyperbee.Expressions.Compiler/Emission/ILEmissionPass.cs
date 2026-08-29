@@ -71,7 +71,7 @@ public static class ILEmissionPass
                     break;
 
                 case IROp.LoadConst:
-                    EmitLoadConstant( ilg, ir.Operands[inst.Operand], inst.Operand, hasConstantsArray, constantIndices, constantsField );
+                    EmitLoadConstant( ilg, ir.Operands[inst.Operand], inst.Operand, hasConstantsArray, constantIndices, constantsField, ir.GetOperandType( inst.Operand ) );
                     break;
 
                 case IROp.LoadNull:
@@ -530,7 +530,8 @@ public static class ILEmissionPass
         int operandIndex,
         bool hasConstantsArray,
         Dictionary<int, int>? constantIndices,
-        FieldInfo? constantsField )
+        FieldInfo? constantsField,
+        Type? declaredType )
     {
         switch ( value )
         {
@@ -588,14 +589,14 @@ public static class ILEmissionPass
 
             case decimal:
                 // Decimal is a value type that needs to be loaded from the constants array
-                EmitLoadFromConstantsArray( ilg, operandIndex, value.GetType(), constantIndices!, constantsField );
+                EmitLoadFromConstantsArray( ilg, operandIndex, declaredType ?? value.GetType(), constantIndices!, constantsField );
                 break;
 
             default:
                 // Non-embeddable constant -- load from constants array
                 if ( hasConstantsArray && constantIndices != null && constantIndices.ContainsKey( operandIndex ) )
                 {
-                    EmitLoadFromConstantsArray( ilg, operandIndex, value.GetType(), constantIndices, constantsField );
+                    EmitLoadFromConstantsArray( ilg, operandIndex, declaredType ?? value.GetType(), constantIndices, constantsField );
                 }
                 else
                 {

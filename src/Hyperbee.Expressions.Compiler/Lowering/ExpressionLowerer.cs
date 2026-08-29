@@ -446,13 +446,13 @@ public class ExpressionLowerer
         var underlyingType = Nullable.GetUnderlyingType( node.Type );
         if ( underlyingType != null )
         {
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Value ) );
+            _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Value, underlyingType ) );
             var ctor = node.Type.GetConstructor( [underlyingType] )!;
             _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
             return;
         }
 
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Value ) );
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Value, node.Type ) );
     }
 
     private void LowerParameter( ParameterExpression node )
@@ -2711,7 +2711,7 @@ public class ExpressionLowerer
     {
         // Quote wraps an expression tree as data.
         // Store the inner expression as a non-embeddable constant.
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Operand ) );
+        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Operand, node.Type ) );
     }
 
     // --- Power ---
