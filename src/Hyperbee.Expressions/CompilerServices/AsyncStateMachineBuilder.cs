@@ -37,12 +37,17 @@ internal class AsyncStateMachineBuilder<TResult>
         _options = options;
     }
 
-    public Expression CreateStateMachine( AsyncLoweringTransformer loweringTransformer, int id, ExternVariables externVariables = null )
+    public Expression CreateStateMachine( AsyncLoweringTransformer loweringTransformer, int id, ExternVariables externVariables = null, bool canEmitIntoType = false )
     {
         ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
 
         var loweringInfo = loweringTransformer();
-        var context = new StateMachineContext { LoweringInfo = loweringInfo, ExternVariables = externVariables };
+        var context = new StateMachineContext
+        {
+            LoweringInfo = loweringInfo,
+            ExternVariables = externVariables,
+            CanEmitIntoType = canEmitIntoType
+        };
 
         return BuildStateMachineExpression( id, context );
     }
@@ -53,7 +58,7 @@ internal class AsyncStateMachineBuilder<TResult>
         // method. Otherwise the body becomes a delegate the machine holds in a field, which
         // is the only option for a compiler that cannot emit into a type under construction.
 
-        return CoroutineBuilderContext.Current is ICoroutineMethodBuilder methodBuilder
+        return context.CanEmitIntoType && CoroutineBuilderContext.Current is ICoroutineMethodBuilder methodBuilder
             ? BuildWithEmittedMoveNext( id, context, methodBuilder )
             : BuildWithDelegateMoveNext( id, context );
     }
@@ -508,7 +513,7 @@ public static class AsyncStateMachineBuilder
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
     }
 
-    internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null )
+    internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null, bool canEmitIntoType = false )
     {
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
@@ -517,7 +522,7 @@ public static class AsyncStateMachineBuilder
 
         try
         {
-            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options, externVariables] );
+            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options, externVariables, canEmitIntoType] );
         }
         catch ( TargetInvocationException ex ) when ( ex.InnerException != null )
         {
@@ -527,7 +532,7 @@ public static class AsyncStateMachineBuilder
         }
     }
 
-    internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null )
+    internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null, bool canEmitIntoType = false )
     {
         options ??= new ExpressionRuntimeOptions();
 
@@ -538,7 +543,7 @@ public static class AsyncStateMachineBuilder
         var moduleBuilder = options.ModuleBuilderProvider.GetModuleBuilder( ModuleKind.Async );
 
         var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName, options );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id, externVariables );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id, externVariables, canEmitIntoType );
 
         if ( options.SourceHandler != null )
         {

@@ -19,7 +19,7 @@ namespace Hyperbee.Expressions.Compiler;
 /// var block = BlockAsync( ..., options );
 /// </code>
 /// </example>
-public sealed class HyperbeeCoroutineDelegateBuilder : ICoroutineDelegateBuilder
+public sealed class HyperbeeCoroutineDelegateBuilder : ICoroutineDelegateBuilder, ICoroutineMethodBuilder
 {
     /// <summary>
     /// Singleton instance.
@@ -31,11 +31,7 @@ public sealed class HyperbeeCoroutineDelegateBuilder : ICoroutineDelegateBuilder
     /// <inheritdoc/>
     public Delegate Create( LambdaExpression lambda ) => HyperbeeCompiler.Compile( lambda );
 
-    /// <summary>
-    /// Emits a coroutine body into the state machine's own method. Matches
-    /// <see cref="ICoroutineMethodBuilder"/>, but this builder does not advertise the
-    /// capability yet -- see the remarks on that interface for what is outstanding.
-    /// </summary>
+    /// <inheritdoc/>
     public object[] Emit(
         IReadOnlyList<ParameterExpression> parameters,
         Expression body,

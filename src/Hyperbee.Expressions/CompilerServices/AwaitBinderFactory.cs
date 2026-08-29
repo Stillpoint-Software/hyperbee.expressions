@@ -318,7 +318,7 @@ internal static class AwaitBinderFactory
 
         ReflectionHelper.GetMethods(
             typeof( AwaitBinder ),
-            BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic,
+            BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
             ( name, method, matches ) =>
             {
                 switch ( name )
@@ -395,7 +395,7 @@ internal static class AwaitBinderFactory
 
         ReflectionHelper.GetMethods(
             typeof( AwaitBinderFactory ),
-            BindingFlags.Static | BindingFlags.NonPublic,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
             ( name, method, matches ) =>
             {
                 switch ( name )

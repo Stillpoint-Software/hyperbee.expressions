@@ -18,6 +18,11 @@ internal sealed class StateMachineContext
     // Variables the body reads from the enclosing scope, carried by field so the body stays closed.
 
     public ExternVariables ExternVariables { get; set; }
+
+    // Whether the body may be emitted into the machine's own method. False when it reaches
+    // a non-public member, which only a DynamicMethod is allowed to do.
+
+    public bool CanEmitIntoType { get; set; }
 }
 
 internal record StateMachineInfo(

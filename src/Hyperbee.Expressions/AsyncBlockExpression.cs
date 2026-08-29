@@ -57,7 +57,8 @@ public class AsyncBlockExpression : Expression
             Result.Type,
             LoweringTransformer,
             RuntimeOptions,
-            ExternVariables.Create( Variables, Expressions ) );
+            ExternVariables.Create( Variables, Expressions ),
+            !VisibilityScanner.HasNonPublicReferences( Expressions ) );
     }
 
     private AsyncLoweringInfo LoweringTransformer()
