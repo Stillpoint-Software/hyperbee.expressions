@@ -63,11 +63,21 @@ public class ExpressionLowerer
     /// </summary>
     public void Lower( LambdaExpression lambda, int argOffset )
     {
+        Lower( lambda.Parameters, lambda.Body, lambda.ReturnType, argOffset );
+    }
+
+    /// <summary>
+    /// Lower a method body into the IR builder. Takes the shape of a lambda rather than a
+    /// <see cref="LambdaExpression"/>, because a body emitted into a type still under
+    /// construction cannot form a delegate type over that type.
+    /// </summary>
+    public void Lower( IReadOnlyList<ParameterExpression> parameters, Expression body, Type returnType, int argOffset )
+    {
         _argOffset = argOffset;
 
-        for ( var i = 0; i < lambda.Parameters.Count; i++ )
+        for ( var i = 0; i < parameters.Count; i++ )
         {
-            var param = lambda.Parameters[i];
+            var param = parameters[i];
             _parameterMap[param] = i + _argOffset;
 
             // If this parameter is captured (e.g. by RuntimeVariables or a nested lambda),
@@ -87,19 +97,19 @@ public class ExpressionLowerer
             }
         }
 
-        var isVoidLambda = lambda.ReturnType == typeof( void );
-        var bodyIsAssign = lambda.Body.NodeType == ExpressionType.Assign;
+        var isVoidLambda = returnType == typeof( void );
+        var bodyIsAssign = body.NodeType == ExpressionType.Assign;
 
         // For void lambdas with a direct Assign body, suppress the result so the
         // Assign doesn't Dup+leave a value on the stack before Ret.
         if ( isVoidLambda && bodyIsAssign )
             _discardResult = true;
 
-        LowerExpression( lambda.Body );
+        LowerExpression( body );
         _discardResult = false;
 
         // If a void lambda's non-Assign body produced a value, discard it.
-        if ( isVoidLambda && lambda.Body.Type != typeof( void ) && !bodyIsAssign )
+        if ( isVoidLambda && body.Type != typeof( void ) && !bodyIsAssign )
             _ir.Emit( IROp.Pop );
 
         _ir.Emit( IROp.Ret );

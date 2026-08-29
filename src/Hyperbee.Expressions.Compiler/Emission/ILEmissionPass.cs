@@ -20,11 +20,16 @@ public static class ILEmissionPass
     /// Maps operand-table index to constants-array index for non-embeddable constants.
     /// Only used when <paramref name="hasConstantsArray"/> is true.
     /// </param>
+    /// <param name="constantsField">
+    /// When emitting into an instance method, the field holding the constants array. Arg 0
+    /// is <c>this</c> there, so the array is reached through the field rather than directly.
+    /// </param>
     public static void Run(
         IRBuilder ir,
         ILGenerator ilg,
         bool hasConstantsArray,
-        Dictionary<int, int>? constantIndices )
+        Dictionary<int, int>? constantIndices,
+        FieldInfo? constantsField = null )
     {
         // Pre-declare all IL locals
         var ilLocals = new LocalBuilder[ir.Locals.Count];
@@ -66,7 +71,7 @@ public static class ILEmissionPass
                     break;
 
                 case IROp.LoadConst:
-                    EmitLoadConstant( ilg, ir.Operands[inst.Operand], inst.Operand, hasConstantsArray, constantIndices );
+                    EmitLoadConstant( ilg, ir.Operands[inst.Operand], inst.Operand, hasConstantsArray, constantIndices, constantsField );
                     break;
 
                 case IROp.LoadNull:
@@ -524,7 +529,8 @@ public static class ILEmissionPass
         object value,
         int operandIndex,
         bool hasConstantsArray,
-        Dictionary<int, int>? constantIndices )
+        Dictionary<int, int>? constantIndices,
+        FieldInfo? constantsField )
     {
         switch ( value )
         {
@@ -582,14 +588,14 @@ public static class ILEmissionPass
 
             case decimal:
                 // Decimal is a value type that needs to be loaded from the constants array
-                EmitLoadFromConstantsArray( ilg, operandIndex, value.GetType(), constantIndices! );
+                EmitLoadFromConstantsArray( ilg, operandIndex, value.GetType(), constantIndices!, constantsField );
                 break;
 
             default:
                 // Non-embeddable constant -- load from constants array
                 if ( hasConstantsArray && constantIndices != null && constantIndices.ContainsKey( operandIndex ) )
                 {
-                    EmitLoadFromConstantsArray( ilg, operandIndex, value.GetType(), constantIndices );
+                    EmitLoadFromConstantsArray( ilg, operandIndex, value.GetType(), constantIndices, constantsField );
                 }
                 else
                 {
@@ -628,12 +634,17 @@ public static class ILEmissionPass
         ILGenerator ilg,
         int operandIndex,
         Type targetType,
-        Dictionary<int, int> constantIndices )
+        Dictionary<int, int> constantIndices,
+        FieldInfo? constantsField = null )
     {
         var arrayIndex = constantIndices[operandIndex];
 
-        // Load constants array (arg 0)
+        // Load the constants array. Arg 0 holds it directly in a static method; in an
+        // instance method arg 0 is `this` and the array lives in a field.
         ilg.Emit( OpCodes.Ldarg_0 );
+
+        if ( constantsField != null )
+            ilg.Emit( OpCodes.Ldfld, constantsField );
         // Load array index
         EmitLoadInt( ilg, arrayIndex );
         // Load element reference

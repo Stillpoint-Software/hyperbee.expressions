@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Reflection.Emit;
 using Hyperbee.Expressions.Compiler.Diagnostics;
 using Hyperbee.Expressions.Compiler.Emission;
@@ -155,6 +156,47 @@ public static class HyperbeeCompiler
         TransformIR( ir, lambda.ReturnType == typeof( void ) );
 
         ILEmissionPass.Run( ir, method.GetILGenerator(), hasConstantsArray: false, constantIndices: null );
+    }
+
+    /// <summary>
+    /// Emits the lambda into an instance method whose declaring type carries the lambda's
+    /// non-embeddable constants in a field. Returns the constants array to store in that
+    /// field before the method runs.
+    /// </summary>
+    /// <remarks>
+    /// This is what lets a coroutine body be the state machine's own <c>MoveNext</c> rather
+    /// than a delegate held in a field. A static method has nowhere to keep object
+    /// constants, which is why <see cref="CompileToMethod"/> rejects them; an instance
+    /// method has <c>this</c>, so they can live on the type.
+    ///
+    /// The lambda's first parameter maps to IL arg 0, the instance.
+    /// </remarks>
+    public static object[] CompileToInstanceMethod(
+        IReadOnlyList<ParameterExpression> parameters,
+        Expression body,
+        Type returnType,
+        MethodBuilder method,
+        FieldInfo constantsField )
+    {
+        ArgumentNullException.ThrowIfNull( parameters );
+        ArgumentNullException.ThrowIfNull( body );
+        ArgumentNullException.ThrowIfNull( returnType );
+        ArgumentNullException.ThrowIfNull( method );
+        ArgumentNullException.ThrowIfNull( constantsField );
+
+        var ir = new IRBuilder();
+        var lowerer = new ExpressionLowerer( ir, capturedVariables: null, lambda => Compile( lambda ) );
+
+        // Arg 0 is the instance, so parameters are not offset by a constants argument.
+        lowerer.Lower( parameters, body, returnType, argOffset: 0 );
+
+        TransformIR( ir, returnType == typeof( void ) );
+
+        BuildConstantsMapping( ir, needsConstantsArray: true, out var constantIndices, out var constantsArray );
+
+        ILEmissionPass.Run( ir, method.GetILGenerator(), hasConstantsArray: true, constantIndices, constantsField );
+
+        return constantsArray ?? [];
     }
 
     /// <summary>
