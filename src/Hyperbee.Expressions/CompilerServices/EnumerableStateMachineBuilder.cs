@@ -34,7 +34,7 @@ internal class EnumerableStateMachineBuilder<TResult>
         _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( YieldLoweringTransformer loweringTransformer, int id )
+    public Expression CreateStateMachine( YieldLoweringTransformer loweringTransformer, int id, ExternVariables externVariables = null )
     {
         var loweringInfo = loweringTransformer();
 
@@ -42,7 +42,8 @@ internal class EnumerableStateMachineBuilder<TResult>
         //
         var context = new StateMachineContext
         {
-            LoweringInfo = loweringInfo
+            LoweringInfo = loweringInfo,
+            ExternVariables = externVariables
         };
 
         // Create the state-machine
@@ -70,6 +71,12 @@ internal class EnumerableStateMachineBuilder<TResult>
             Assign( Field( stateMachineVariable, FieldName.MoveNextDelegate ), moveNextLambda ),
             stateMachineVariable
         };
+
+        if ( externVariables != null )
+        {
+            // copy the enclosing cells into their fields before the machine is handed out
+            bodyExpressions.InsertRange( 2, externVariables.AssignFields( stateMachineVariable, stateMachineType ) );
+        }
 
         return Block( [.. loweringInfo.Variables, stateMachineVariable], bodyExpressions );
     }
@@ -100,9 +107,7 @@ internal class EnumerableStateMachineBuilder<TResult>
             success
         );
 
-        return Lambda(
-            typeof( YieldMoveNextDelegate<> ).MakeGenericType( stateMachineType ),
-            Block(
+        var body = Block(
                 [success],
                 // This should be a try fault, but fails with preferInterpretation (see: https://github.com/dotnet/runtime/issues/114081)
                 TryFinally(
@@ -122,7 +127,15 @@ internal class EnumerableStateMachineBuilder<TResult>
                     )
                 ),
                 Label( exitLabel, defaultValue: Constant( false ) )
-            ),
+            );
+
+        // Close the body: an enclosing variable becomes a read of the field that carries it.
+
+        var closedBody = context.ExternVariables?.Close( body, stateMachine, stateMachineType ) ?? body;
+
+        return Lambda(
+            typeof( YieldMoveNextDelegate<> ).MakeGenericType( stateMachineType ),
+            closedBody,
             stateMachine
         );
     }
@@ -221,6 +234,11 @@ internal class EnumerableStateMachineBuilder<TResult>
             FieldName.State,
             FieldName.Current
         );
+
+        // variables the body reads from the enclosing scope travel by field, so the body
+        // itself stays closed and needs no closure
+
+        context.ExternVariables?.DefineFields( typeBuilder );
 
         // Define: methods
 
@@ -390,7 +408,7 @@ public static class YieldStateMachineBuilder
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
     }
 
-    internal static Expression Create( Type resultType, YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
+    internal static Expression Create( Type resultType, YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null )
     {
         if ( resultType == typeof( void ) )
             throw new ArgumentException( "IEnumerable must have a valid result type", nameof( resultType ) );
@@ -399,7 +417,7 @@ public static class YieldStateMachineBuilder
 
         try
         {
-            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options] );
+            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options, externVariables] );
         }
         catch ( TargetInvocationException ex ) when ( ex.InnerException != null )
         {
@@ -409,7 +427,7 @@ public static class YieldStateMachineBuilder
         }
     }
 
-    internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
+    internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null )
     {
         options ??= new ExpressionRuntimeOptions();
 
@@ -420,7 +438,7 @@ public static class YieldStateMachineBuilder
         var moduleBuilder = options.ModuleBuilderProvider.GetModuleBuilder( ModuleKind.Enumerable );
 
         var stateMachineBuilder = new EnumerableStateMachineBuilder<TResult>( moduleBuilder, typeName );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id, externVariables );
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }

@@ -35,7 +35,11 @@ public class EnumerableBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        return YieldStateMachineBuilder.Create( EnumerableType, LoweringTransformer, RuntimeOptions );
+        return YieldStateMachineBuilder.Create(
+            EnumerableType,
+            LoweringTransformer,
+            RuntimeOptions,
+            ExternVariables.Create( Variables, Expressions ) );
     }
 
     private EnumerableLoweringInfo LoweringTransformer()

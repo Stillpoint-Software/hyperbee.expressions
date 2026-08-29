@@ -251,4 +251,105 @@ public class CoroutineSharingTests
 
         Assert.AreSame( lambda, CoroutineClosureRewriter.Rewrite( lambda ) );
     }
+
+    // Enumerable blocks suspend at every yield, so the enclosing scope can interleave
+    // between MoveNext calls without any gate.
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void EnclosingWriteBetweenYields_IsVisibleToTheSequence( CompilerType compiler )
+    {
+        // Arrange
+        var value = Variable( typeof( int ), "value" );
+        var sequence = Variable( typeof( IEnumerable<int> ), "sequence" );
+        var incoming = Parameter( typeof( int ), "incoming" );
+
+        var lambda = Lambda<Func<ValueTuple<IEnumerable<int>, Action<int>>>>(
+            Block(
+                new[] { value, sequence },
+                Assign( value, Constant( 1 ) ),
+                Assign( sequence, BlockEnumerable( YieldReturn( value ), YieldReturn( value ) ) ),
+                New(
+                    typeof( ValueTuple<IEnumerable<int>, Action<int>> )
+                        .GetConstructor( [typeof( IEnumerable<int> ), typeof( Action<int> )] )!,
+                    sequence,
+                    Lambda<Action<int>>( Assign( value, incoming ), incoming ) ) ) );
+
+        var (source, set) = lambda.Compile( compiler )();
+
+        // Act
+        using var enumerator = source.GetEnumerator();
+
+        Assert.IsTrue( enumerator.MoveNext() );
+        var first = enumerator.Current;
+
+        set( 2 );
+
+        Assert.IsTrue( enumerator.MoveNext() );
+        var second = enumerator.Current;
+
+        // Assert
+        Assert.AreEqual( 1, first );
+        Assert.AreEqual( 2, second );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void SequenceWriteBetweenYields_IsVisibleToTheEnclosingScope( CompilerType compiler )
+    {
+        // Arrange: the sequence writes the shared variable; the enclosing scope reads it
+        // through a lambda over the same variable.
+        var value = Variable( typeof( int ), "value" );
+        var sequence = Variable( typeof( IEnumerable<int> ), "sequence" );
+
+        var lambda = Lambda<Func<ValueTuple<IEnumerable<int>, Func<int>>>>(
+            Block(
+                new[] { value, sequence },
+                Assign( value, Constant( 1 ) ),
+                Assign( sequence, BlockEnumerable(
+                    YieldReturn( Constant( 0 ) ),
+                    Assign( value, Constant( 99 ) ),
+                    YieldReturn( Constant( 0 ) ) ) ),
+                New(
+                    typeof( ValueTuple<IEnumerable<int>, Func<int>> )
+                        .GetConstructor( [typeof( IEnumerable<int> ), typeof( Func<int> )] )!,
+                    sequence,
+                    Lambda<Func<int>>( value ) ) ) );
+
+        var (source, read) = lambda.Compile( compiler )();
+
+        // Act
+        using var enumerator = source.GetEnumerator();
+
+        Assert.IsTrue( enumerator.MoveNext() );
+        var before = read();
+
+        Assert.IsTrue( enumerator.MoveNext() );
+        var after = read();
+
+        // Assert
+        Assert.AreEqual( 1, before );
+        Assert.AreEqual( 99, after );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void SharedLambdaParameter_IsVisibleToTheSequence( CompilerType compiler )
+    {
+        // Arrange
+        var input = Parameter( typeof( int ), "input" );
+
+        var lambda = Lambda<Func<int, IEnumerable<int>>>(
+            BlockEnumerable( YieldReturn( input ), YieldReturn( Add( input, Constant( 1 ) ) ) ),
+            input );
+
+        // Act
+        var result = lambda.Compile( compiler )( 41 ).ToArray();
+
+        // Assert
+        CollectionAssert.AreEqual( new[] { 41, 42 }, result );
+    }
 }
