@@ -16,27 +16,25 @@ internal static class HoistedVariables
 {
     // Define one field per hoisted variable, returning the generated field names.
 
-    public static Dictionary<ParameterExpression, string> DefineFields(
+    public static Dictionary<ParameterExpression, FieldBuilder> DefineFields(
         TypeBuilder typeBuilder,
         LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables,
         params string[] reservedNames )
     {
-        var fieldNames = new Dictionary<ParameterExpression, string>();
+        var fields = new Dictionary<ParameterExpression, FieldBuilder>();
         var usedNames = new HashSet<string>( reservedNames, StringComparer.Ordinal );
 
         foreach ( var (_, variable) in scopedVariables.EnumerateItems( LinkedNode.Current ) )
         {
-            if ( fieldNames.ContainsKey( variable ) )
+            if ( fields.ContainsKey( variable ) )
                 continue;
 
             var fieldName = UniqueName( variable, usedNames );
 
-            fieldNames[variable] = fieldName;
-
-            typeBuilder.DefineField( fieldName, variable.Type, FieldAttributes.Public );
+            fields[variable] = typeBuilder.DefineField( fieldName, variable.Type, FieldAttributes.Public );
         }
 
-        return fieldNames;
+        return fields;
 
         static string UniqueName( ParameterExpression variable, HashSet<string> usedNames )
         {
@@ -58,15 +56,31 @@ internal static class HoistedVariables
     // Bind the generated field names to the fields of the created type.
 
     public static Dictionary<ParameterExpression, FieldInfo> MapFields(
-        Dictionary<ParameterExpression, string> fieldNames,
+        Dictionary<ParameterExpression, FieldBuilder> defined,
         FieldInfo[] fields )
     {
         var fieldsByName = fields.ToDictionary( field => field.Name, StringComparer.Ordinal );
-        var variableFields = new Dictionary<ParameterExpression, FieldInfo>( fieldNames.Count );
+        var variableFields = new Dictionary<ParameterExpression, FieldInfo>( defined.Count );
 
-        foreach ( var (variable, fieldName) in fieldNames )
+        foreach ( var (variable, field) in defined )
         {
-            variableFields[variable] = fieldsByName[fieldName];
+            variableFields[variable] = fieldsByName[field.Name];
+        }
+
+        return variableFields;
+    }
+
+    /// <summary>
+    /// The defined fields as-is, for a body emitted into the type while it is still open.
+    /// </summary>
+    public static Dictionary<ParameterExpression, FieldInfo> AsFields(
+        Dictionary<ParameterExpression, FieldBuilder> defined )
+    {
+        var variableFields = new Dictionary<ParameterExpression, FieldInfo>( defined.Count );
+
+        foreach ( var (variable, field) in defined )
+        {
+            variableFields[variable] = field;
         }
 
         return variableFields;

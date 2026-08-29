@@ -24,6 +24,7 @@ internal class AsyncStateMachineBuilder<TResult>
         // special names to prevent collisions with user identifiers
 
         public const string Builder = "__builder<>";
+        public const string Constants = "__constants<>";
         public const string FinalResult = "__final<>";
         public const string MoveNextDelegate = "__moveNextDelegate<>";
         public const string State = "__state<>";
@@ -47,6 +48,122 @@ internal class AsyncStateMachineBuilder<TResult>
     }
 
     private Expression BuildStateMachineExpression( int id, StateMachineContext context )
+    {
+        // A builder that can emit into a MethodBuilder makes MoveNext the machine's own
+        // method. Otherwise the body becomes a delegate the machine holds in a field, which
+        // is the only option for a compiler that cannot emit into a type under construction.
+
+        return CoroutineBuilderContext.Current is ICoroutineMethodBuilder methodBuilder
+            ? BuildWithEmittedMoveNext( id, context, methodBuilder )
+            : BuildWithDelegateMoveNext( id, context );
+    }
+
+    private Expression BuildWithEmittedMoveNext( int id, StateMachineContext context, ICoroutineMethodBuilder methodBuilder )
+    {
+        // Conceptually:
+        //
+        // class StateMachine : IAsyncStateMachine
+        // {
+        //     public object[] __constants<>;
+        //     void IAsyncStateMachine.MoveNext() { ... }
+        // }
+        //
+        // The body is emitted before CreateType(), so it is written against the open type
+        // and reaches its own fields through the builders.
+
+        var typeBuilder = _moduleBuilder.DefineType(
+            _typeName,
+            TypeAttributes.Public | TypeAttributes.Class,
+            typeof( object ),
+            [typeof( IAsyncStateMachine )] );
+
+        typeBuilder.AddInterfaceImplementation( typeof( IAsyncStateMachine ) );
+
+        var stateFieldBuilder = typeBuilder.DefineField( FieldName.State, typeof( int ), FieldAttributes.Public );
+
+        var builderFieldBuilder = typeBuilder.DefineField(
+            FieldName.Builder,
+            typeof( AsyncTaskMethodBuilderBox<> ).MakeGenericType( typeof( TResult ) ),
+            FieldAttributes.Public );
+
+        var constantsFieldBuilder = typeBuilder.DefineField( FieldName.Constants, typeof( object[] ), FieldAttributes.Public );
+
+        var hoisted = HoistedVariables.DefineFields(
+            typeBuilder,
+            context.LoweringInfo.ScopedVariables,
+            FieldName.State,
+            FieldName.Builder,
+            FieldName.Constants
+        );
+
+        context.ExternVariables?.DefineFields( typeBuilder );
+        context.VariableFields = HoistedVariables.AsFields( hoisted );
+
+        var finalResultFieldBuilder = hoisted.Values.FirstOrDefault( field => field.Name == FieldName.FinalResult );
+
+        var moveNextMethod = typeBuilder.DefineMethod(
+            "IAsyncStateMachine.MoveNext",
+            MethodAttributes.Private | MethodAttributes.Final | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.HideBySig,
+            typeof( void ),
+            Type.EmptyTypes );
+
+        ImplementSetStateMachine( typeBuilder, builderFieldBuilder );
+
+        // The body's first parameter is the instance, so it maps to IL arg 0.
+
+        var stateMachine = Parameter( typeBuilder, $"sm<{id}>" );
+
+        var body = CreateMoveNextBodyExpression(
+            context,
+            typeBuilder,
+            stateMachine,
+            Field( stateMachine, stateFieldBuilder ),
+            Field( stateMachine, builderFieldBuilder ),
+            Field( stateMachine, finalResultFieldBuilder! ) );
+
+        var constants = methodBuilder.Emit( [stateMachine], body, typeof( void ), moveNextMethod, constantsFieldBuilder );
+
+        typeBuilder.DefineMethodOverride( moveNextMethod, typeof( IAsyncStateMachine ).GetMethod( "MoveNext" )! );
+
+        var stateMachineType = typeBuilder.CreateType();
+        var builderField = stateMachineType.GetField( FieldName.Builder )!;
+
+        var stateMachineVariable = Variable( stateMachineType, $"stateMachine<{id}>" );
+
+        var bodyExpression = new List<Expression>
+        {
+            Assign( stateMachineVariable, New( stateMachineType ) ),
+            Assign(
+                Field( stateMachineVariable, builderField ),
+                New( builderField.FieldType.GetConstructor( Type.EmptyTypes )! ) ),
+            Assign(
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.State )! ),
+                Constant( -1 ) )
+        };
+
+        if ( constants.Length > 0 )
+        {
+            bodyExpression.Add( Assign(
+                Field( stateMachineVariable, stateMachineType.GetField( FieldName.Constants )! ),
+                Constant( constants ) ) );
+        }
+
+        if ( context.ExternVariables != null )
+            bodyExpression.AddRange( context.ExternVariables.AssignFields( stateMachineVariable, stateMachineType ) );
+
+        bodyExpression.Add( Call(
+            Field( stateMachineVariable, builderField ),
+            builderField.FieldType.GetMethod( "Start" )!.MakeGenericMethod( stateMachineType ),
+            stateMachineVariable ) );
+
+        bodyExpression.Add( Property(
+            Field( stateMachineVariable, builderField ),
+            builderField.FieldType.GetProperty( "Task" )! ) );
+
+        return Block( [stateMachineVariable], bodyExpression );
+    }
+
+    private Expression BuildWithDelegateMoveNext( int id, StateMachineContext context )
     {
         // Conceptually:
         //
@@ -263,6 +380,21 @@ internal class AsyncStateMachineBuilder<TResult>
         var builderField = Field( stateMachine, Array.Find( fields, f => f.Name == FieldName.Builder )! );
         var finalResultField = Field( stateMachine, Array.Find( fields, f => f.Name == FieldName.FinalResult )! );
 
+        var body = CreateMoveNextBodyExpression( context, stateMachineType, stateMachine, stateField, builderField, finalResultField );
+
+        return lambdaType != null
+            ? Lambda( lambdaType, body, stateMachine )
+            : Lambda( body, stateMachine );
+    }
+
+    private static Expression CreateMoveNextBodyExpression(
+        StateMachineContext context,
+        Type stateMachineType,
+        ParameterExpression stateMachine,
+        MemberExpression stateField,
+        MemberExpression builderField,
+        MemberExpression finalResultField )
+    {
         var exitLabel = Label( "ST_EXIT" );
 
         context.StateMachineInfo = new AsyncStateMachineInfo(
@@ -273,8 +405,6 @@ internal class AsyncStateMachineBuilder<TResult>
             finalResultField
         );
 
-        // Create final lambda with try-catch block
-
         var exceptionParam = Parameter( typeof( Exception ), "ex" );
 
         var body = Block(
@@ -282,7 +412,6 @@ internal class AsyncStateMachineBuilder<TResult>
                 Block(
                     typeof( void ),
                     CreateBody(
-                        fields,
                         context,
                         Assign( stateField, Constant( -2 ) ),
                         Call(
@@ -311,14 +440,10 @@ internal class AsyncStateMachineBuilder<TResult>
 
         // Close the body: an enclosing variable becomes a read of the field that carries it.
 
-        var closedBody = context.ExternVariables?.Close( body, stateMachine, stateMachineType ) ?? body;
-
-        return lambdaType != null
-            ? Lambda( lambdaType, closedBody, stateMachine )
-            : Lambda( closedBody, stateMachine );
+        return context.ExternVariables?.Close( body, stateMachine, stateMachineType ) ?? body;
     }
 
-    private static IEnumerable<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context, params Expression[] antecedents )
+    private static IEnumerable<Expression> CreateBody( StateMachineContext context, params Expression[] antecedents )
     {
         var stateMachineInfo = context.StateMachineInfo;
         var loweringInfo = context.LoweringInfo;

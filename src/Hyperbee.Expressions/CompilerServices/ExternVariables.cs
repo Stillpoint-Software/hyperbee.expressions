@@ -27,6 +27,7 @@ internal sealed class ExternVariables
 
     private readonly ParameterExpression[] _variables;
     private readonly string[] _fieldNames;
+    private FieldBuilder[] _fields;
 
     private ExternVariables( ParameterExpression[] variables, string[] fieldNames )
     {
@@ -76,9 +77,11 @@ internal sealed class ExternVariables
 
     public void DefineFields( TypeBuilder typeBuilder )
     {
+        _fields = new FieldBuilder[_variables.Length];
+
         for ( var index = 0; index < _variables.Length; index++ )
         {
-            typeBuilder.DefineField( _fieldNames[index], _variables[index].Type, FieldAttributes.Public );
+            _fields[index] = typeBuilder.DefineField( _fieldNames[index], _variables[index].Type, FieldAttributes.Public );
         }
     }
 
@@ -107,7 +110,13 @@ internal sealed class ExternVariables
 
         for ( var index = 0; index < _variables.Length; index++ )
         {
-            fields[_variables[index]] = Field( stateMachine, stateMachineType.GetField( _fieldNames[index] )! );
+            // A body emitted into a type that is still open resolves through the builders;
+            // one built after CreateType() resolves by name on the finished type.
+            var field = stateMachineType is TypeBuilder
+                ? _fields[index]
+                : (FieldInfo) stateMachineType.GetField( _fieldNames[index] )!;
+
+            fields[_variables[index]] = Field( stateMachine, field );
         }
 
         return new ExternRewriter( fields ).Visit( body );

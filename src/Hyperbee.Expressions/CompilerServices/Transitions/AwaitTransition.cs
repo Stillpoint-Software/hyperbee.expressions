@@ -48,11 +48,22 @@ internal class AwaitTransition : Transition
                 ? Call( getAwaiterMethod, target, Constant( ConfigureAwait ) )
                 : Call( Constant( AwaitBinder ), getAwaiterMethod, target, Constant( ConfigureAwait ) );
 
-            // Get AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>( ref awaiter, ref state-machine )
+            // Get AwaitUnsafeOnCompleted( ref awaiter, ref state-machine ).
+            //
+            // A body emitted into the machine's own method is written while that type is
+            // still under construction, and a generic method cannot be bound over an open
+            // type. That case takes the overload where the machine is the interface.
+
+            var openStateMachineType = source.StateMachine.Type is System.Reflection.Emit.TypeBuilder;
+
             var awaitUnsafeOnCompleted = source.BuilderField.Type
                 .GetMethods()
-                .Single( methodInfo => methodInfo.Name == "AwaitUnsafeOnCompleted" && methodInfo.IsGenericMethodDefinition )
-                .MakeGenericMethod( AwaiterVariable.Type, source.StateMachine.Type );
+                .Single( methodInfo => methodInfo.Name == "AwaitUnsafeOnCompleted"
+                    && methodInfo.IsGenericMethodDefinition
+                    && methodInfo.GetGenericArguments().Length == ( openStateMachineType ? 1 : 2 ) )
+                .MakeGenericMethod( openStateMachineType
+                    ? [AwaiterVariable.Type]
+                    : [AwaiterVariable.Type, source.StateMachine.Type] );
 
             var body = new List<Expression>
             {
