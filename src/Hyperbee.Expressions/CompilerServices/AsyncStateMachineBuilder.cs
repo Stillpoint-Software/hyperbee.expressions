@@ -36,12 +36,12 @@ internal class AsyncStateMachineBuilder<TResult>
         _options = options;
     }
 
-    public Expression CreateStateMachine( AsyncLoweringTransformer loweringTransformer, int id )
+    public Expression CreateStateMachine( AsyncLoweringTransformer loweringTransformer, int id, ExternVariables externVariables = null )
     {
         ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
 
         var loweringInfo = loweringTransformer();
-        var context = new StateMachineContext { LoweringInfo = loweringInfo };
+        var context = new StateMachineContext { LoweringInfo = loweringInfo, ExternVariables = externVariables };
 
         return BuildStateMachineExpression( id, context );
     }
@@ -110,6 +110,12 @@ internal class AsyncStateMachineBuilder<TResult>
             )
         };
 
+        if ( context.ExternVariables != null )
+        {
+            // copy the enclosing variables into their fields before the machine starts
+            bodyExpression.InsertRange( 4, context.ExternVariables.AssignFields( stateMachineVariable, stateMachineType ) );
+        }
+
         return Block( [stateMachineVariable], bodyExpression );
     }
 
@@ -153,6 +159,11 @@ internal class AsyncStateMachineBuilder<TResult>
             FieldName.State,
             FieldName.Builder
         );
+
+        // variables the body reads from the enclosing scope travel by field, so the body
+        // itself stays closed and can be compiled once
+
+        context.ExternVariables?.DefineFields( typeBuilder );
 
         // Define: methods
 
@@ -298,9 +309,13 @@ internal class AsyncStateMachineBuilder<TResult>
             Label( exitLabel )
         );
 
+        // Close the body: an enclosing variable becomes a read of the field that carries it.
+
+        var closedBody = context.ExternVariables?.Close( body, stateMachine, stateMachineType ) ?? body;
+
         return lambdaType != null
-            ? Lambda( lambdaType, body, stateMachine )
-            : Lambda( body, stateMachine );
+            ? Lambda( lambdaType, closedBody, stateMachine )
+            : Lambda( closedBody, stateMachine );
     }
 
     private static IEnumerable<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context, params Expression[] antecedents )
@@ -368,7 +383,7 @@ public static class AsyncStateMachineBuilder
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
     }
 
-    internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
+    internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null )
     {
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
@@ -377,7 +392,7 @@ public static class AsyncStateMachineBuilder
 
         try
         {
-            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options] );
+            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options, externVariables] );
         }
         catch ( TargetInvocationException ex ) when ( ex.InnerException != null )
         {
@@ -387,7 +402,7 @@ public static class AsyncStateMachineBuilder
         }
     }
 
-    internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
+    internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null )
     {
         options ??= new ExpressionRuntimeOptions();
 
@@ -398,7 +413,7 @@ public static class AsyncStateMachineBuilder
         var moduleBuilder = options.ModuleBuilderProvider.GetModuleBuilder( ModuleKind.Async );
 
         var stateMachineBuilder = new AsyncStateMachineBuilder<TResult>( moduleBuilder, typeName, options );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id, externVariables );
 
         if ( options.SourceHandler != null )
         {

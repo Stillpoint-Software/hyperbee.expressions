@@ -14,6 +14,10 @@ internal sealed class StateMachineContext
     // instance: distinct instances may share a name, so names cannot identify a variable.
 
     public IReadOnlyDictionary<ParameterExpression, FieldInfo> VariableFields { get; set; }
+
+    // Variables the body reads from the enclosing scope, carried by field so the body stays closed.
+
+    public ExternVariables ExternVariables { get; set; }
 }
 
 internal record StateMachineInfo(

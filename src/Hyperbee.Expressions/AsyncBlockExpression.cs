@@ -53,7 +53,11 @@ public class AsyncBlockExpression : Expression
     {
         // Compiler choice flows through CoroutineBuilderContext.Current (ambient or global default),
         // not through RuntimeOptions. RuntimeOptions carries behavioral options only.
-        return _stateMachine ??= AsyncStateMachineBuilder.Create( Result.Type, LoweringTransformer, RuntimeOptions );
+        return _stateMachine ??= AsyncStateMachineBuilder.Create(
+            Result.Type,
+            LoweringTransformer,
+            RuntimeOptions,
+            ExternVariables.Create( Variables, Expressions ) );
     }
 
     private AsyncLoweringInfo LoweringTransformer()

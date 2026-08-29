@@ -36,7 +36,13 @@ public static class HyperbeeCompiler
 
         ICoroutineDelegateBuilder? previous = null;
         if ( needsConstantsOrAmbient )
+        {
             previous = CoroutineBuilderContext.Exchange( HyperbeeCoroutineDelegateBuilder.Instance );
+
+            // Share enclosing variables with coroutine bodies through cells, so the bodies
+            // stay closed and can be compiled once instead of materialized per call.
+            lambda = CoroutineClosureRewriter.Rewrite( lambda );
+        }
 
         try
         {
