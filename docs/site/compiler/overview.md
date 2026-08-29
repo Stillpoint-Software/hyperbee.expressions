@@ -74,6 +74,19 @@ This is transparent to callers -- no special options are needed:
 var fn = HyperbeeCompiler.Compile( outerLambdaContainingBlockAsync );
 ```
 
+### Captured variables
+
+A coroutine block that reads a variable owned by an enclosing scope is a closure boundary.
+Its `MoveNext` body cannot be compiled in isolation -- on its own it would lose the
+variable -- so it is emitted inline and shared with the enclosing compilation, which binds
+the variable through a `StrongBox`. Blocks that capture nothing keep the standalone
+pre-compiled body.
+
+The consequence is a trade: a capturing coroutine gives up the execution advantage of a
+standalone body, landing at roughly System-compiler speed, in exchange for correct
+variable sharing. When the block reads and writes only its own variables, nothing changes.
+See [Coroutine bodies](performance.md#coroutine-bodies) for the measured difference.
+
 For `AsyncBlockExpression` reductions that occur outside an explicit `HyperbeeCompiler.Compile()`
 call (e.g., in outer expressions compiled by the System compiler), call `UseAsDefault()` at
 application startup:
@@ -82,6 +95,14 @@ application startup:
 // Register HEC as the default builder for all AsyncBlockExpression reductions
 HyperbeeCompiler.UseAsDefault();
 ```
+
+---
+
+## Invoked Lambdas
+
+`Expression.Invoke( lambda, args )` is inlined at the call site during lowering: the body runs in
+the calling frame with its parameters bound as block variables. No delegate is compiled for the
+lambda, and an enclosing variable it reads stays an ordinary local rather than becoming a capture.
 
 ---
 

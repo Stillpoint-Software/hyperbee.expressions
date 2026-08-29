@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
 using Hyperbee.Collections;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -8,6 +9,11 @@ internal sealed class StateMachineContext
     public StateNode StateNode { get; set; }
     public StateMachineInfo StateMachineInfo { get; set; }
     public LoweringInfo LoweringInfo { get; set; }
+
+    // Maps a hoisted variable to its state-machine field. Keyed by ParameterExpression
+    // instance: distinct instances may share a name, so names cannot identify a variable.
+
+    public IReadOnlyDictionary<ParameterExpression, FieldInfo> VariableFields { get; set; }
 }
 
 internal record StateMachineInfo(

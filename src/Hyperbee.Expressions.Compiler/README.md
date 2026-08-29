@@ -13,7 +13,9 @@ Hyperbee takes a middle ground: a **multi-pass IR pipeline** that lowers express
 
 ## Performance
 
-HEC is consistently **9-34x faster than the System Compiler** and within **1.16-1.54x of FEC** across all tiers - while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
+HEC is consistently **7-32x faster than the System Compiler** and within **1.19-1.54x of FEC** across all tiers - while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
+
+A lambda invoked in place (`Expression.Invoke( lambda, args )`) is inlined at the call site, so it needs no second compilation and captures nothing. See [Invoked lambdas](../../docs/site/compiler/performance.md#invoked-lambdas).
 
 The Complex tier standout (~34x vs System) is where the multi-pass IR architecture pays off against the System compiler's heavyweight compilation pipeline. The Switch tier at 1.54x is the widest gap vs FEC.
 
@@ -30,9 +32,9 @@ Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
 | **Simple**   | System       |    30.65 us |     4,335 B |                 - |              - |
 |              | FEC          |     2.96 us |       904 B |      10.3x faster |              - |
 |              | **Hyperbee** | **3.50 us** | **2,176 B** |   **8.8x faster** |      **1.18x** |
-| **Closure**  | System       |    28.55 us |     4,279 B |                 - |              - |
-|              | FEC          |     2.79 us |       895 B |      10.2x faster |              - |
-|              | **Hyperbee** | **3.24 us** | **2,160 B** |   **8.8x faster** |      **1.16x** |
+| **Closure**  | System       |    40.32 us |     5,680 B |                 - |              - |
+|              | FEC          |     3.82 us |       895 B |      10.5x faster |              - |
+|              | **Hyperbee** | **5.90 us** | **3,111 B** |   **6.8x faster** |      **1.54x** |
 | **TryCatch** | System       |    49.59 us |     5,893 B |                 - |              - |
 |              | FEC          |     3.78 us |     1,518 B |      13.1x faster |              - |
 |              | **Hyperbee** | **5.54 us** | **4,023 B** |   **9.0x faster** |      **1.47x** |
@@ -48,8 +50,8 @@ Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
 
 ### Allocation Profile
 
-The multi-pass IR pipeline allocates roughly **1.8–4.4× more than FEC** per compilation call but
-**up to 50% less than the System Compiler**. The overhead is per-compilation, not per-execution -
+The multi-pass IR pipeline allocates roughly **1.8–3.9× more than FEC** per compilation call but
+**30–50% less than the System Compiler**. The overhead is per-compilation, not per-execution -
 compiled delegates run at equivalent speed regardless of which compiler produced them. For hot paths
 that compile once and cache, the allocation difference is negligible. For workloads that re-compile
 frequently (dynamic LINQ providers, interpreted rule engines), prefer FEC when its patterns cover your
@@ -57,10 +59,10 @@ use case.
 
 ### Execution Benchmarks
 
-All three compilers produce delegates with equivalent runtime performance. For non-trivial expressions
-(Complex, Loop), the difference is zero - the compiled IL is structurally identical. For trivial
-expressions (Simple, Switch), sub-nanosecond differences reflect JIT inlining decisions around
-`DynamicMethod` boundaries, not meaningful execution overhead.
+All three compilers produce delegates with equivalent runtime performance and no per-call
+allocation. For non-trivial expressions (Complex, Loop) the difference is zero - the compiled IL is
+structurally identical. For trivial expressions (Simple, Switch), sub-nanosecond differences reflect
+JIT inlining decisions around `DynamicMethod` boundaries, not meaningful execution overhead.
 
 > **Note:** FEC returns `N/A` for the Loop tier due to a known compilation issue with
 > loop/break expressions. HEC compiles and runs it correctly.
@@ -70,9 +72,9 @@ expressions (Simple, Switch), sub-nanosecond differences reflect JIT inlining de
 | **Simple**   | System       | 1.098 ns |         - |
 |              | FEC          | 1.363 ns |     1.24x |
 |              | **Hyperbee** | 1.769 ns |     1.61x |
-| **Closure**  | System       | 0.387 ns |         - |
-|              | FEC          | 0.996 ns |     2.58x |
-|              | **Hyperbee** | 1.520 ns |     3.93x |
+| **Closure**  | System       | 0.770 ns |         - |
+|              | FEC          | 1.123 ns |     1.46x |
+|              | **Hyperbee** | 1.581 ns |     2.05x |
 | **TryCatch** | System       | 0.447 ns |         - |
 |              | FEC          | 1.074 ns |     2.40x |
 |              | **Hyperbee** | 1.731 ns |     3.87x |
@@ -87,8 +89,8 @@ expressions (Simple, Switch), sub-nanosecond differences reflect JIT inlining de
 |              | **Hyperbee** |  2.23 ns |     1.42x |
 
 The sub-nanosecond Simple/Closure/TryCatch numbers (< 2 ns absolute) are at the boundary of
-`ShortRun` precision (3 iterations). The 1–4x ratios represent 1–3 extra clock cycles and should
-be interpreted as "roughly equivalent" rather than a meaningful performance gap.
+`ShortRun` precision (3 iterations). Those ratios represent 1–3 extra clock cycles and should be
+interpreted as "roughly equivalent" rather than a meaningful performance gap.
 
 ### Compiler Comparison
 

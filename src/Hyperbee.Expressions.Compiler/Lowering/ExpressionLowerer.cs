@@ -110,6 +110,70 @@ public class ExpressionLowerer
         return _capturedVariables != null && _capturedVariables.Contains( variable );
     }
 
+    // Variable bindings are kept in flat maps, so a declaration in a nested scope would
+    // otherwise replace an outer binding of the same ParameterExpression instead of
+    // shadowing it -- and stay replaced after the scope ends. Declaring scopes save the
+    // outer binding and restore it on exit.
+
+    // One stack for the whole compilation rather than an array per scope, so a block that
+    // declares variables costs no allocation of its own.
+
+    private List<(ParameterExpression Variable, int? Local, int? Box)>? _scopeStack;
+
+    private int PushScope( IReadOnlyList<ParameterExpression> variables )
+    {
+        var mark = _scopeStack?.Count ?? 0;
+
+        // Only a declaration that hides something needs recording: an existing binding to
+        // restore, or an argument slot the declaration shadows and must stop shadowing on
+        // exit. A block declaring fresh variables records nothing and allocates nothing.
+
+        for ( var index = 0; index < variables.Count; index++ )
+        {
+            var variable = variables[index];
+
+            var local = 0;
+            var box = 0;
+
+            var hasLocal = _localMap != null && _localMap.TryGetValue( variable, out local );
+            var hasBox = _strongBoxLocalMap != null && _strongBoxLocalMap.TryGetValue( variable, out box );
+
+            if ( !hasLocal && !hasBox && !_parameterMap.ContainsKey( variable ) )
+                continue;
+
+            ( _scopeStack ??= new( 4 ) ).Add( (
+                variable,
+                hasLocal ? local : null,
+                hasBox ? box : null
+            ) );
+        }
+
+        return mark;
+    }
+
+    private void PopScope( int mark )
+    {
+        if ( _scopeStack == null )
+            return;
+
+        for ( var index = _scopeStack.Count - 1; index >= mark; index-- )
+        {
+            var (variable, local, box) = _scopeStack[index];
+
+            if ( local is { } localIndex )
+                _localMap![variable] = localIndex;
+            else
+                _localMap?.Remove( variable );
+
+            if ( box is { } boxIndex )
+                _strongBoxLocalMap![variable] = boxIndex;
+            else
+                _strongBoxLocalMap?.Remove( variable );
+        }
+
+        _scopeStack.RemoveRange( mark, _scopeStack.Count - mark );
+    }
+
     private void LowerExpression( Expression? node )
     {
         if ( node == null )
@@ -390,13 +454,17 @@ public class ExpressionLowerer
             return;
         }
 
-        if ( _parameterMap.TryGetValue( node, out var argIndex ) )
-        {
-            _ir.Emit( IROp.LoadArg, argIndex );
-        }
-        else if ( _localMap != null && _localMap.TryGetValue( node, out var localIndex ) )
+        // Innermost scope wins: a block declaration shadows a parameter of the same
+        // instance. Stores resolve in the same order (see LowerAssign), so reads and
+        // writes have to agree on which one that is.
+
+        if ( _localMap != null && _localMap.TryGetValue( node, out var localIndex ) )
         {
             _ir.Emit( IROp.LoadLocal, localIndex );
+        }
+        else if ( _parameterMap.TryGetValue( node, out var argIndex ) )
+        {
+            _ir.Emit( IROp.LoadArg, argIndex );
         }
         else
         {
@@ -1457,6 +1525,20 @@ public class ExpressionLowerer
 
     private void LowerBlock( BlockExpression node )
     {
+        var mark = PushScope( node.Variables );
+
+        try
+        {
+            LowerBlockScope( node );
+        }
+        finally
+        {
+            PopScope( mark );
+        }
+    }
+
+    private void LowerBlockScope( BlockExpression node )
+    {
         // Declare block variables
         foreach ( var variable in node.Variables )
         {
@@ -1801,6 +1883,12 @@ public class ExpressionLowerer
         // Lower catch handlers
         foreach ( var handler in node.Handlers )
         {
+            // The handler variable is scoped to the handler, so an outer binding of the
+            // same instance is restored once the handler ends.
+            var handlerMark = handler.Variable != null
+                ? PushScope( [handler.Variable] )
+                : -1;
+
             if ( handler.Filter != null )
             {
                 // Exception filter: emit BeginFilter, filter expression, then BeginFilteredCatch
@@ -1857,6 +1945,9 @@ public class ExpressionLowerer
 
             // Leave the catch block
             _ir.Emit( IROp.Leave, endLabel );
+
+            if ( handlerMark >= 0 )
+                PopScope( handlerMark );
         }
 
         // Lower finally block
@@ -2837,6 +2928,13 @@ public class ExpressionLowerer
     /// </summary>
     private void LowerInvoke( InvocationExpression node )
     {
+        // A lambda invoked in place is inlined: no delegate, no closure, no allocation.
+        if ( InvocationInliner.CanInline( node, out var inlinable ) )
+        {
+            LowerExpression( InvocationInliner.Inline( inlinable!, node.Arguments ) );
+            return;
+        }
+
         // Check if this invocation targets a nested lambda that may have closures
         if ( node.Expression is LambdaExpression lambdaExpr )
         {
@@ -2906,12 +3004,18 @@ public class ExpressionLowerer
             return existing;
         }
 
-        // Find which captured variables this nested lambda references
-        var innerCaptures = new List<ParameterExpression>( _capturedVariables!.Count );
+        if ( _capturedVariables == null || _capturedVariables.Count == 0 )
+            return null;
+
+        // Find which captured variables this nested lambda references. The referenced set
+        // is collected in one traversal so that adding a capture does not add a pass.
+        var referenced = ReferencedVariables( lambda.Body );
+
+        var innerCaptures = new List<ParameterExpression>( _capturedVariables.Count );
         foreach ( var capturedVar in _capturedVariables )
         {
             if ( _strongBoxLocalMap?.ContainsKey( capturedVar ) == true
-                && ReferencesVariable( lambda.Body, capturedVar ) )
+                && referenced.Contains( capturedVar ) )
             {
                 innerCaptures.Add( capturedVar );
             }
@@ -2989,106 +3093,30 @@ public class ExpressionLowerer
     /// <summary>
     /// Check if an expression tree references a specific parameter variable.
     /// </summary>
-    private static bool ReferencesVariable( Expression? node, ParameterExpression variable )
+    /// <summary>
+    /// Collect every <see cref="ParameterExpression"/> referenced anywhere in an
+    /// expression. Visitor-based so that no node type is silently skipped: a walk that
+    /// misses one under-reports references, and the capture is then compiled as an
+    /// unshared local.
+    /// </summary>
+    private static HashSet<ParameterExpression> ReferencedVariables( Expression? node )
     {
-        if ( node == null )
-            return false;
+        var scanner = new ReferenceCollector();
 
-        if ( node is ParameterExpression param && param == variable )
-            return true;
+        if ( node != null )
+            scanner.Visit( node );
 
-        switch ( node )
+        return scanner.Referenced;
+    }
+
+    private sealed class ReferenceCollector : ExpressionVisitor
+    {
+        public HashSet<ParameterExpression> Referenced { get; } = [];
+
+        protected override Expression VisitParameter( ParameterExpression node )
         {
-            case BinaryExpression binary:
-                return ReferencesVariable( binary.Left, variable )
-                    || ReferencesVariable( binary.Right, variable );
-
-            case UnaryExpression unary:
-                return ReferencesVariable( unary.Operand, variable );
-
-            case ConditionalExpression conditional:
-                return ReferencesVariable( conditional.Test, variable )
-                    || ReferencesVariable( conditional.IfTrue, variable )
-                    || ReferencesVariable( conditional.IfFalse, variable );
-
-            case MethodCallExpression methodCall:
-            {
-                if ( methodCall.Object != null && ReferencesVariable( methodCall.Object, variable ) )
-                    return true;
-                foreach ( var arg in methodCall.Arguments )
-                {
-                    if ( ReferencesVariable( arg, variable ) )
-                        return true;
-                }
-                return false;
-            }
-
-            case BlockExpression block:
-            {
-                foreach ( var expr in block.Expressions )
-                {
-                    if ( ReferencesVariable( expr, variable ) )
-                        return true;
-                }
-                return false;
-            }
-
-            case MemberExpression member:
-                return ReferencesVariable( member.Expression, variable );
-
-            case InvocationExpression invocation:
-            {
-                if ( ReferencesVariable( invocation.Expression, variable ) )
-                    return true;
-                foreach ( var arg in invocation.Arguments )
-                {
-                    if ( ReferencesVariable( arg, variable ) )
-                        return true;
-                }
-                return false;
-            }
-
-            case LambdaExpression lambda:
-                return ReferencesVariable( lambda.Body, variable );
-
-            case NewExpression newExpr:
-            {
-                foreach ( var arg in newExpr.Arguments )
-                {
-                    if ( ReferencesVariable( arg, variable ) )
-                        return true;
-                }
-                return false;
-            }
-
-            case TryExpression tryExpr:
-            {
-                if ( ReferencesVariable( tryExpr.Body, variable ) )
-                    return true;
-                foreach ( var handler in tryExpr.Handlers )
-                {
-                    if ( ReferencesVariable( handler.Filter, variable )
-                        || ReferencesVariable( handler.Body, variable ) )
-                        return true;
-                }
-                if ( ReferencesVariable( tryExpr.Finally, variable ) )
-                    return true;
-                if ( ReferencesVariable( tryExpr.Fault, variable ) )
-                    return true;
-                return false;
-            }
-
-            case GotoExpression gotoExpr:
-                return ReferencesVariable( gotoExpr.Value, variable );
-
-            case LabelExpression labelExpr:
-                return ReferencesVariable( labelExpr.DefaultValue, variable );
-
-            case TypeBinaryExpression typeBinary:
-                return ReferencesVariable( typeBinary.Expression, variable );
-
-            default:
-                return false;
+            Referenced.Add( node );
+            return node;
         }
     }
 

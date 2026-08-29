@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 
 namespace Hyperbee.Expressions.CompilerServices;
 
@@ -7,6 +8,15 @@ public delegate bool MethodMatchDelegate( Type[] parameterTypes, int? argCount =
 
 internal static class ReflectionHelper
 {
+    // ExceptionDispatchInfo is used to re-throw an exception that crossed a lowered
+    // state boundary without losing the original stack trace.
+
+    internal static readonly MethodInfo ExceptionDispatchInfoCapture =
+        typeof( ExceptionDispatchInfo ).GetMethod( nameof( ExceptionDispatchInfo.Capture ), [typeof( Exception )] )!;
+
+    internal static readonly MethodInfo ExceptionDispatchInfoThrow =
+        typeof( ExceptionDispatchInfo ).GetMethod( nameof( ExceptionDispatchInfo.Throw ), Type.EmptyTypes )!;
+
     internal static bool OpenGenericIsOrInherits( Type baseType, Type checkType )
     {
         if ( !baseType.IsGenericTypeDefinition || !checkType.IsGenericTypeDefinition )

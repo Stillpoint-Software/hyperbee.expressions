@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using Hyperbee.Expressions.CompilerServices.Transitions;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -9,17 +10,22 @@ internal static class JumpTableBuilder
     {
         var jumpCases = current.JumpCases;
 
-        if ( jumpCases.Count == 0 )
-            return Empty();
-
         var jumpTable = new List<SwitchCase>( jumpCases.Count );
 
         foreach ( var (label, stateId, _) in jumpCases )
         {
-            // Go to the result of awaiter
+            // Go to the result of awaiter.
+            //
+            // Return to the running state before resuming. The state field is a
+            // state-machine field, and a jump table inside a loop (the one a try region
+            // emits) is re-evaluated on every iteration; a stale id would dispatch back
+            // to a resume point that has already run.
 
             var resultJumpExpression = SwitchCase(
-                Goto( label ),
+                Block(
+                    Assign( stateField, Constant( Transition.RunningState ) ),
+                    Goto( label )
+                ),
                 Constant( stateId )
             );
 
@@ -42,6 +48,12 @@ internal static class JumpTableBuilder
 
             jumpTable.Add( nestedJumpExpression );
         }
+
+        // A scope may own no jump cases and still need a table: an await nested in a
+        // child scope (e.g. a try region) resumes through the parent scope.
+
+        if ( jumpTable.Count == 0 )
+            return Empty();
 
         return Switch(
             stateField,

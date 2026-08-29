@@ -15,8 +15,6 @@ public class EnumerableBlockExpression : Expression
 
     internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
 
-    private static YieldTypeVisitor TypeVisitor = new();
-
     public EnumerableBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
         ReadOnlyCollection<Expression> expressions,
@@ -61,21 +59,27 @@ public class EnumerableBlockExpression : Expression
 
     private Type GetYieldType()
     {
-        return TypeVisitor.Find( [.. Expressions] );
+        return YieldTypeVisitor.Find( Expressions );
     }
-
 
     private sealed class YieldTypeVisitor : ExpressionVisitor
     {
+        // The visitor carries the type it found, so an instance is used per search. A
+        // shared instance would leak the type it resolved into the next block, and a
+        // block whose first expression holds no yield would take that stale type.
+
         private Type _type;
 
-        public Type Find( Expression[] expressions )
+        public static Type Find( IReadOnlyList<Expression> expressions )
         {
-            foreach ( var expression in expressions )
+            var visitor = new YieldTypeVisitor();
+
+            for ( var index = 0; index < expressions.Count; index++ )
             {
-                Visit( expression );
-                if ( _type != null )
-                    return _type;
+                visitor.Visit( expressions[index] );
+
+                if ( visitor._type != null )
+                    return visitor._type;
             }
 
             return typeof( void );
@@ -83,11 +87,21 @@ public class EnumerableBlockExpression : Expression
 
         protected override Expression VisitExtension( Expression node )
         {
-            if ( node is not YieldExpression { IsReturn: true } yieldExpression )
-                return base.VisitExtension( node );
+            switch ( node )
+            {
+                case YieldExpression { IsReturn: true } yieldExpression:
+                    _type = yieldExpression.Type;
+                    return node;
 
-            _type = yieldExpression.Type;
-            return node;
+                // A nested coroutine block yields into its own sequence.
+
+                case EnumerableBlockExpression:
+                case AsyncBlockExpression:
+                    return node;
+
+                default:
+                    return base.VisitExtension( node );
+            }
         }
     }
 

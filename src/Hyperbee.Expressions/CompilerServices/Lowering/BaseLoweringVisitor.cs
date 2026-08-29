@@ -278,6 +278,9 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
         if ( !RequiresLowering( node ) )
             return VariableResolver.Resolve( node );
 
+        if ( node.Fault != null )
+            throw new LoweringException( "Fault handlers are not supported when lowering a try expression." );
+
         var joinState = States.EnterGroup( out var sourceState );
 
         var resultVariable = VariableResolver.GetResultVariable( node, sourceState.StateId );
@@ -291,10 +294,22 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
         if ( node.Finally != null )
         {
             finalExpression = VisitBranch( node.Finally, joinState );
+
+            // Lowering turns the try into a `catch-all` that records the exception and
+            // dispatches to the finally state. Nothing else re-throws, so an exception
+            // that no catch block handled must be re-thrown once the finally completes.
+
+            States.TailState.Expressions.Add(
+                Expression.IfThen(
+                    Expression.NotEqual( exceptionVariable, Expression.Constant( null, exceptionVariable.Type ) ),
+                    Expression.Call( exceptionVariable, ReflectionHelper.ExceptionDispatchInfoThrow )
+                )
+            );
+
             joinState = finalExpression;
         }
 
-        var nodeScope = States.EnterTryScope( sourceState );
+        var nodeScope = States.EnterTryScope();
 
         var tryCatchTransition = new TryCatchTransition
         {
@@ -316,9 +331,26 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
             var catchState = index + 1;
             var catchBlock = node.Handlers[index];
 
+            // The handler body runs in its own state, outside of the try, so the catch
+            // variable must be hoisted to stay in scope. Resolve the filter after the
+            // variable is registered so that it binds to the same hoisted variable.
+
+            var catchVariable = catchBlock.Variable != null
+                ? VariableResolver.AddLocalVariable( catchBlock.Variable )
+                : null;
+
+            if ( catchBlock.Filter != null && RequiresLowering( catchBlock.Filter ) )
+                throw new LoweringException( "Await is not supported in an exception filter." );
+
+            var catchFilter = catchBlock.Filter != null
+                ? VariableResolver.Resolve( catchBlock.Filter )
+                : null;
+
             tryCatchTransition.AddCatchBlock(
                 catchBlock,
-                VisitBranch( catchBlock.Body, joinState ),
+                catchVariable,
+                catchFilter,
+                VisitBranch( catchBlock.Body, joinState, resultVariable ),
                 catchState );
         }
 

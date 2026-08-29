@@ -3,6 +3,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.ExceptionServices;
 using Hyperbee.Collections;
 
 using static System.Linq.Expressions.Expression;
@@ -148,7 +149,7 @@ internal class EnumerableStateMachineBuilder<TResult>
         var bodyExpressions = HoistVariables(
             jumpTable,
             firstScope.GetExpressions( context ),
-            fields,
+            context.VariableFields,
             stateMachineInfo.StateMachine
         );
 
@@ -157,13 +158,13 @@ internal class EnumerableStateMachineBuilder<TResult>
         return bodyExpressions.Concat( antecedents );
     }
 
-    private static IEnumerable<Expression> HoistVariables( Expression jumpTable, IReadOnlyList<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
+    private static IEnumerable<Expression> HoistVariables(
+        Expression jumpTable,
+        IReadOnlyList<Expression> expressions,
+        IReadOnlyDictionary<ParameterExpression, FieldInfo> variableFields,
+        ParameterExpression stateMachine )
     {
-        var fieldMembers = fields
-            .Select( field => Field( stateMachine, field ) )
-            .ToDictionary( x => x.Member.Name );
-
-        var hoistingVisitor = new HoistingVisitor( fieldMembers );
+        var hoistingVisitor = new HoistingVisitor( stateMachine, variableFields );
 
         return HoistingSource().Select( hoistingVisitor.Visit );
 
@@ -213,19 +214,13 @@ internal class EnumerableStateMachineBuilder<TResult>
 
         // local variables in the current scope for this state-machine
 
-        var localVariables = context.LoweringInfo
-            .ScopedVariables
-            .EnumerateItems( LinkedNode.Current )
-            .Select( x => x.Value );
-
-        foreach ( var parameterExpression in localVariables )
-        {
-            typeBuilder.DefineField(
-                parameterExpression.Name ?? parameterExpression.ToString(),
-                parameterExpression.Type,
-                FieldAttributes.Public
-            );
-        }
+        var fieldNames = HoistedVariables.DefineFields(
+            typeBuilder,
+            context.LoweringInfo.ScopedVariables,
+            FieldName.MoveNextDelegate,
+            FieldName.State,
+            FieldName.Current
+        );
 
         // Define: methods
 
@@ -239,6 +234,8 @@ internal class EnumerableStateMachineBuilder<TResult>
         var stateMachineType = typeBuilder.CreateType();
 
         fields = [.. stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public )];
+
+        context.VariableFields = HoistedVariables.MapFields( fieldNames, fields );
 
         return stateMachineType;
     }
@@ -377,18 +374,6 @@ internal class EnumerableStateMachineBuilder<TResult>
         typeBuilder.DefineMethodOverride( disposeMethod, typeof( IDisposable ).GetMethod( "Dispose" )! );
     }
 
-    private sealed class HoistingVisitor( IReadOnlyDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor
-    {
-        protected override Expression VisitParameter( ParameterExpression node )
-        {
-            var name = node.Name ?? node.ToString();
-
-            if ( memberExpressions.TryGetValue( name, out var fieldAccess ) )
-                return fieldAccess;
-
-            return node;
-        }
-    }
 }
 
 public static class YieldStateMachineBuilder
@@ -412,7 +397,16 @@ public static class YieldStateMachineBuilder
 
         var buildStateMachine = BuildYieldStateMachineMethod.MakeGenericMethod( resultType );
 
-        return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options] );
+        try
+        {
+            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options] );
+        }
+        catch ( TargetInvocationException ex ) when ( ex.InnerException != null )
+        {
+            // surface lowering failures to the caller, not the reflection wrapper
+            ExceptionDispatchInfo.Capture( ex.InnerException ).Throw();
+            throw;
+        }
     }
 
     internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )

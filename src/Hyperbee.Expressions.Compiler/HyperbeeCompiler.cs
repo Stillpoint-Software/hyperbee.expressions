@@ -367,8 +367,17 @@ public static class HyperbeeCompiler
             case TypeBinaryExpression t:
                 return NeedsCaptureScanning( t.Expression );
 
+            case ConstantExpression:
+            case ParameterExpression:
+            case DefaultExpression:
+                return false; // leaves
+
             default:
-                return false;
+                // Anything not recognized above may hold a lambda in a position this walk
+                // does not know about, and an extension node introduces one when it
+                // reduces. Under-reporting here silently skips capture analysis, so the
+                // unknown case has to be the conservative one.
+                return true;
         }
     }
 

@@ -283,4 +283,161 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 60, result[6] );
         Assert.AreEqual( 70, result[7] );
     }
+
+    // Catch variables
+    //
+    // Lowering moves a catch handler body into its own state, outside of the generated
+    // try. The catch variable must be hoisted so the handler can still reference it.
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldBindCatchVariable_WithYieldInTryBlock( CompilerType compiler )
+    {
+        // Arrange
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+        var message = Variable( typeof( string ), "message" );
+
+        var block = BlockEnumerable(
+            [message],
+            TryCatch(
+                Block(
+                    typeof( void ),
+                    YieldReturn( Constant( "start" ) ),
+                    Throw( Constant( new InvalidOperationException( "Boom" ) ) )
+                ),
+                Catch( exceptionParam,
+                    Block( typeof( void ),
+                        Assign( message, Property( exceptionParam, nameof( Exception.Message ) ) ) ) )
+            ),
+            YieldReturn( message )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<string>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = compiledLambda().ToArray();
+
+        // Assert
+        Assert.HasCount( 2, result );
+        Assert.AreEqual( "start", result[0] );
+        Assert.AreEqual( "Boom", result[1] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldNotCatchException_WhenCatchFilterDoesNotMatch( CompilerType compiler )
+    {
+        // Arrange
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+
+        var block = BlockEnumerable(
+            TryCatch(
+                Block(
+                    typeof( void ),
+                    YieldReturn( Constant( 1 ) ),
+                    Throw( Constant( new InvalidOperationException( "Boom" ) ) )
+                ),
+                MakeCatchBlock(
+                    typeof( Exception ),
+                    exceptionParam,
+                    Empty(),
+                    Equal( Property( exceptionParam, nameof( Exception.Message ) ), Constant( "Other" ) )
+                )
+            ),
+            YieldReturn( Constant( 2 ) )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act & Assert
+        Assert.ThrowsExactly<InvalidOperationException>( () => compiledLambda().ToArray() );
+    }
+
+    // Resumption
+    //
+    // A yield inside a try suspends into a nested state scope. The state machine must
+    // resume into that scope, and must not re-run expressions that precede the try.
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldNotReExecutePrologue_WithYieldOnlyInsideTry( CompilerType compiler )
+    {
+        // Arrange
+        var count = Variable( typeof( int ), "count" );
+
+        var block = BlockEnumerable(
+            [count],
+            Assign( count, Add( count, Constant( 1 ) ) ),
+            TryCatch(
+                Block(
+                    typeof( void ),
+                    YieldReturn( count ),
+                    YieldReturn( count )
+                ),
+                Catch( typeof( Exception ), Empty() )
+            )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = compiledLambda().ToArray();
+
+        // Assert
+        Assert.HasCount( 2, result );
+        Assert.AreEqual( 1, result[0] );
+        Assert.AreEqual( 1, result[1] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldIterate_WithTryCatchInsideLoop( CompilerType compiler )
+    {
+        // Arrange
+        var index = Variable( typeof( int ), "i" );
+        var breakLabel = Label( "breakLabel" );
+
+        var block = BlockEnumerable(
+            [index],
+            Assign( index, Constant( 0 ) ),
+            Loop(
+                Block(
+                    IfThen( GreaterThanOrEqual( index, Constant( 3 ) ), Break( breakLabel ) ),
+                    TryCatch(
+                        Block(
+                            typeof( void ),
+                            Assign( index, Add( index, Constant( 1 ) ) ),
+                            YieldReturn( index )
+                        ),
+                        Catch( typeof( Exception ), Empty() )
+                    )
+                ),
+                breakLabel,
+                null
+            )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = compiledLambda().ToArray();
+
+        // Assert
+        Assert.HasCount( 3, result );
+        Assert.AreEqual( 1, result[0] );
+        Assert.AreEqual( 2, result[1] );
+        Assert.AreEqual( 3, result[2] );
+    }
 }
