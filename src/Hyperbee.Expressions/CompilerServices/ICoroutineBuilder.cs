@@ -4,8 +4,9 @@ namespace Hyperbee.Expressions.CompilerServices;
 
 /// <summary>
 /// Internal plumbing interface — builds the coroutine execution expression for a given
-/// async body. Reserved for Milestone 3 (CompileToMethod / Strategy B). Currently unused;
-/// the default implementation is <see cref="AsyncStateMachineBuilder"/>.
+/// async body. Currently unused; the default implementation is
+/// <see cref="AsyncStateMachineBuilder"/>. Emitting the body into the machine's own method
+/// is handled by <see cref="ICoroutineMethodBuilder"/>, not here.
 /// Kept internal because the <see cref="AsyncLoweringTransformer"/> delegate type
 /// is an internal implementation detail. The user-facing customization point is
 /// <see cref="ICoroutineDelegateBuilder"/>.
@@ -50,12 +51,10 @@ public interface ICoroutineDelegateBuilder
 /// Non-embeddable constants are returned for the caller to store in
 /// <paramref name="constantsField"/> before the machine runs.
 ///
-/// No builder advertises this yet. A DynamicMethod is created with visibility checks
-/// skipped; a MethodBuilder on a TypeBuilder is not, so an emitted body still fails on two
-/// counts: it calls AwaitBinder members that are internal, and a constant is cast to its
-/// runtime type, which for a constant such as a continuation Task is a type internal to the
-/// BCL. Making the binder members visible covers the first; the second needs the constant's
-/// declared type carried through the IR so the cast targets that instead.
+/// A DynamicMethod is created with visibility checks skipped; a MethodBuilder on a
+/// TypeBuilder is not. So a body that reaches a non-public member keeps the delegate form --
+/// see <see cref="VisibilityScanner"/>. Emitting into the type is an optimization and must
+/// never narrow what compiles.
 /// </remarks>
 public interface ICoroutineMethodBuilder
 {

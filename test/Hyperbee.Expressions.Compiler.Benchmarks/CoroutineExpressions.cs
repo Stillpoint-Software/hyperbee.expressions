@@ -18,7 +18,7 @@ namespace Hyperbee.Expressions.Compiler.Benchmarks;
 /// reduction, so handing the same instance to two compilers would let the first compiler's
 /// state machine be reused by the second and make the comparison meaningless.
 /// </remarks>
-internal static class CoroutineExpressions
+public static class CoroutineExpressions
 {
     // Completes synchronously so the benchmarks measure the state machine, not the scheduler.
     public static Task<int> EchoAsync( int value ) => Task.FromResult( value );
@@ -27,21 +27,33 @@ internal static class CoroutineExpressions
         .GetMethod( nameof( EchoAsync ) )!;
 
     // Async block with no enclosing-scope references — the common case
-    public static Expression<Func<int, Task<int>>> AsyncNoCapture()
+    public static Expression<Func<int, Task<int>>> AsyncNoCapture( ExpressionRuntimeOptions options = null )
     {
         var input = Parameter( typeof( int ), "input" );
         var local = Variable( typeof( int ), "local" );
 
         return Lambda<Func<int, Task<int>>>(
             BlockAsync(
-                [local],
-                Assign( local, Constant( 7 ) ),
-                Assign( local, Await( Call( EchoMethod, local ) ) ),
-                Assign( local, Add( local, Await( Call( EchoMethod, local ) ) ) ),
-                local
+                new[] { local },
+                new Expression[]
+                {
+                    Assign( local, Constant( 7 ) ),
+                    Assign( local, Await( Call( EchoMethod, local ) ) ),
+                    Assign( local, Add( local, Await( Call( EchoMethod, local ) ) ) ),
+                    local
+                },
+                options
             ),
             input );
     }
+
+    // Options that force MoveNext to stay a delegate the machine invokes on each resume.
+    public static ExpressionRuntimeOptions DelegateMoveNext( Action<string> sourceHandler = null ) =>
+        new() { EmitMoveNextIntoType = false, SourceHandler = sourceHandler };
+
+    // Options that leave MoveNext to be emitted into the machine's own method.
+    public static ExpressionRuntimeOptions EmittedMoveNext( Action<string> sourceHandler = null ) =>
+        new() { SourceHandler = sourceHandler };
 
     // Async block that reads and writes an enclosing lambda parameter
     public static Expression<Func<int, Task<int>>> AsyncCapture()
@@ -53,29 +65,6 @@ internal static class CoroutineExpressions
                 Assign( input, Await( Call( EchoMethod, input ) ) ),
                 Assign( input, Add( input, Await( Call( EchoMethod, input ) ) ) ),
                 input
-            ),
-            input );
-    }
-
-    // As AsyncNoCapture, but MoveNext stays a delegate the machine invokes on each resume.
-    // Same body, so the pair isolates what emitting into the machine's own method is worth.
-    public static Expression<Func<int, Task<int>>> AsyncNoCaptureDelegateMoveNext()
-    {
-        var options = new ExpressionRuntimeOptions { EmitMoveNextIntoType = false };
-
-        var input = Parameter( typeof( int ), "input" );
-        var local = Variable( typeof( int ), "local" );
-
-        return Lambda<Func<int, Task<int>>>(
-            BlockAsync(
-                [local],
-                [
-                    Assign( local, Constant( 7 ) ),
-                    Assign( local, Await( Call( EchoMethod, local ) ) ),
-                    Assign( local, Add( local, Await( Call( EchoMethod, local ) ) ) ),
-                    local
-                ],
-                options
             ),
             input );
     }
@@ -115,10 +104,8 @@ internal static class CoroutineExpressions
 
     // Sixteen real suspensions -- sixteen MoveNext invocations, where reaching MoveNext
     // through a delegate field would cost sixteen indirections instead of none.
-    public static Expression<Func<int, Task<int>>> AsyncSuspending( bool emitMoveNextIntoType )
+    public static Expression<Func<int, Task<int>>> AsyncSuspending( ExpressionRuntimeOptions options = null )
     {
-        var options = new ExpressionRuntimeOptions { EmitMoveNextIntoType = emitMoveNextIntoType };
-
         var input = Parameter( typeof( int ), "input" );
         var local = Variable( typeof( int ), "local" );
 

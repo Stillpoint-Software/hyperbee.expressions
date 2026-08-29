@@ -97,7 +97,7 @@ has to be materialized per evaluation, in any compiler. Measured on the same har
 | Hot compilation path (many lambdas compiled at runtime) | HEC -- 7-32x faster than SEC |
 | Memory-constrained environment | HEC -- 30-50% fewer allocations than SEC |
 | All expression patterns including those FEC doesn't support | HEC |
-| Async state machines (`BlockAsync`) | HEC -- compiles MoveNext bodies directly |
+| Async state machines (`BlockAsync`) | HEC -- emits MoveNext into the machine's own type |
 | Static method IL emission (`CompileToMethod`) | HEC only |
 | Maximum compatibility, no extra dependency | SEC (`lambda.Compile()`) |
 
@@ -105,18 +105,59 @@ has to be materialized per evaluation, in any compiler. Measured on the same har
 
 ## Coroutine bodies
 
+Execution, per call. 20 iterations, 8 warmup.
+
 | Expression | System | **HEC** |
 |------------|-------:|--------:|
-| `BlockAsync`, no captures | 705 ns / 232 B | **53 ns / 168 B** |
-| `BlockEnumerable`, no captures | 647 ns / 112 B | **25 ns / 48 B** |
-| `BlockAsync`, captures an enclosing variable | 680 ns / 240 B | 729 ns / 264 B |
-| `BlockEnumerable`, captures an enclosing variable | 688 ns / 192 B | 731 ns / 216 B |
+| `BlockAsync`, no captures | 859 ns / 232 B | **54 ns / 168 B** |
+| `BlockEnumerable`, no captures | 816 ns / 112 B | **36 ns / 48 B** |
+| `BlockAsync`, captures an enclosing variable | 899 ns / 240 B | **56 ns / 120 B** |
+| `BlockEnumerable`, captures an enclosing variable | 919 ns / 192 B | **45 ns / 72 B** |
 
-A coroutine body that captures nothing is compiled once and embedded as a constant delegate, which
-is where the 13-26x advantage comes from. A body that captures an enclosing variable is a
-lambda-as-value: it has to be materialized per call, which puts it at parity with SEC. Threading
-the captured box through a state-machine field would let such a body stay a constant delegate --
-that optimization has not been done.
+A coroutine body is compiled once and embedded as a constant delegate. A body that captures an
+enclosing variable used to be a lambda-as-value that had to be materialized on every call, which
+put it at parity with SEC; the captured variables are now hoisted into cells that the state
+machine carries by field, so such a body is compiled once as well.
+
+### Where MoveNext lives
+
+`CompileToMethod` was never ported past .NET Framework, so SEC cannot emit a body into a
+`MethodBuilder`. Its state machine holds MoveNext as a delegate in a field and invokes it on every
+resume. HEC can emit into one, so the body becomes the machine's own method:
+
+| `BlockAsync`, no captures | Execution | Cold compile |
+|---------------------------|----------:|-------------:|
+| MoveNext emitted into the type | **54 ns** | **1,300 us** |
+| MoveNext as a delegate field | 64 ns | 1,518 us |
+
+Allocation is identical either way -- the delegate is built once, not per call. The gain is the
+field and the indirection, worth about 16% of a call whose awaits complete synchronously.
+
+Two things bound this. MoveNext is entered once per *suspension*, not per await, so a body whose
+awaits complete synchronously enters it exactly once no matter how many awaits it has -- and a body
+that does suspend pays scheduling costs that dwarf an indirection. And a `DynamicMethod` is created
+with visibility checks skipped while a `MethodBuilder` is not, so a body reaching a non-public
+member keeps the delegate form. `ExpressionRuntimeOptions.EmitMoveNextIntoType` forces it off.
+
+### Coroutine compilation
+
+Cold compile, one invocation per iteration -- a coroutine block caches its reduction, so a second
+compile of the same instance is not a compile.
+
+| Expression | System | **HEC** |
+|------------|-------:|--------:|
+| `BlockAsync`, no captures | 1,955 us / 67.1 KB | **1,300 us / 65.7 KB** |
+| `BlockAsync`, captures | 1,979 us / 67.9 KB | **1,381 us / 74.5 KB** |
+| `BlockEnumerable`, no captures | 1,986 us / 60.6 KB | 3,598 us / 127.8 KB |
+| `BlockEnumerable`, captures | 2,108 us / 61.8 KB | 3,800 us / 135.2 KB |
+
+Both compilers are dominated here by `TypeBuilder.CreateType()`, which is why these are milliseconds
+against microseconds everywhere else in this document.
+
+The enumerable tiers are the outlier: HEC compiles them **1.8x slower** than SEC and allocates
+**2.1x** as much. Only the async builder emits MoveNext into the type; the enumerable builder still
+takes the delegate path, and its compile cost has not had the same attention. This is the clearest
+remaining target.
 
 ---
 

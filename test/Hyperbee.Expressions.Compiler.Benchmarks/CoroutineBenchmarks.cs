@@ -40,7 +40,7 @@ public class CoroutineCompilationBenchmarks
     {
         _asyncNoCapture_System = CoroutineExpressions.AsyncNoCapture();
         _asyncNoCapture_Hyperbee = CoroutineExpressions.AsyncNoCapture();
-        _asyncNoCaptureDelegate_Hyperbee = CoroutineExpressions.AsyncNoCaptureDelegateMoveNext();
+        _asyncNoCaptureDelegate_Hyperbee = CoroutineExpressions.AsyncNoCapture( CoroutineExpressions.DelegateMoveNext() );
 
         _asyncCapture_System = CoroutineExpressions.AsyncCapture();
         _asyncCapture_Hyperbee = CoroutineExpressions.AsyncCapture();
@@ -93,7 +93,7 @@ public class CoroutineCompilationBenchmarks
 /// Measures execution speed and allocations of compiled coroutine delegates.
 /// All delegates are pre-compiled in GlobalSetup — only invocation cost is measured.
 /// </summary>
-[Config( typeof( BenchmarkConfig.Config ) )]
+[Config( typeof( BenchmarkConfig.StableConfig ) )]
 [MemoryDiagnoser]
 public class CoroutineExecutionBenchmarks
 {
@@ -120,8 +120,8 @@ public class CoroutineExecutionBenchmarks
     public void Setup()
     {
         _asyncNoCapture_System = CoroutineExpressions.AsyncNoCapture().Compile();
-        _asyncNoCapture_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncNoCapture() );
-        _asyncNoCaptureDelegate_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncNoCaptureDelegateMoveNext() );
+        _asyncNoCapture_Hyperbee = Compile( CoroutineExpressions.AsyncNoCapture, emittedIntoType: true );
+        _asyncNoCaptureDelegate_Hyperbee = Compile( CoroutineExpressions.AsyncNoCapture, emittedIntoType: false );
 
         _asyncCapture_System = CoroutineExpressions.AsyncCapture().Compile();
         _asyncCapture_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncCapture() );
@@ -135,8 +135,8 @@ public class CoroutineExecutionBenchmarks
         _nestedClosure_System = CoroutineExpressions.NestedClosure().Compile();
         _nestedClosure_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.NestedClosure() );
 
-        _suspendingEmitted_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncSuspending( true ) );
-        _suspendingDelegate_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncSuspending( false ) );
+        _suspendingEmitted_Hyperbee = Compile( CoroutineExpressions.AsyncSuspending, emittedIntoType: true );
+        _suspendingDelegate_Hyperbee = Compile( CoroutineExpressions.AsyncSuspending, emittedIntoType: false );
     }
 
     [Benchmark( Description = "AsyncSuspending x16 | Hyperbee" )]
@@ -177,6 +177,35 @@ public class CoroutineExecutionBenchmarks
 
     [Benchmark( Description = "NestedClosure | Hyperbee" )]
     public int NestedClosure_Hyperbee() => _nestedClosure_Hyperbee( 3 );
+
+    // Compiles under HEC and proves which MoveNext form was produced.
+    //
+    // The state machine falls back to the delegate form for a body that reaches a non-public
+    // member, and a type being internal is enough to trigger it. That would quietly turn the
+    // pair of tiers below into the same measurement, so it is checked rather than assumed.
+
+    private static Func<int, Task<int>> Compile(
+        Func<ExpressionRuntimeOptions, Expression<Func<int, Task<int>>>> factory,
+        bool emittedIntoType )
+    {
+        const string delegateField = "__moveNextDelegate<>";
+
+        var source = "";
+
+        var options = emittedIntoType
+            ? CoroutineExpressions.EmittedMoveNext( text => source = text )
+            : CoroutineExpressions.DelegateMoveNext( text => source = text );
+
+        var compiled = HyperbeeCompiler.Compile( factory( options ) );
+
+        if ( source.Contains( delegateField ) == emittedIntoType )
+        {
+            throw new InvalidOperationException(
+                $"expected MoveNext {( emittedIntoType ? "emitted into the type" : "as a delegate" )}, got the other form." );
+        }
+
+        return compiled;
+    }
 
     private static int Sum( IEnumerable<int> source )
     {
