@@ -33,14 +33,18 @@ runs.
 
 | Expression | System | FEC | **HEC** | vs System | vs FEC |
 |------------|-------:|----:|--------:|----------:|-------:|
-| Simple | 71.5 us | 5.9 us | **7.0 us** | 10.2x faster | 1.20x |
-| Closure | 57.8 us | 5.6 us | **8.4 us** | 6.9x faster | 1.50x |
-| TryCatch | 110.0 us | 8.2 us | **13.1 us** | 8.4x faster | 1.59x |
-| Complex | 263.6 us | 7.1 us | **9.3 us** | 28.3x faster | 1.31x |
-| Loop | 147.2 us | 10.2 us | **16.3 us** | 9.1x faster | 1.59x |
-| Switch | 132.4 us | 7.3 us | **12.1 us** | 10.9x faster | 1.66x |
+| Simple | 75.7 us | 8.1 us | **7.8 us** | 9.7x faster | 0.96x |
+| Closure | 63.8 us | 6.2 us | **8.3 us** | 7.7x faster | 1.34x |
+| TryCatch | 103.3 us | 8.0 us | **12.0 us** | 8.6x faster | 1.50x |
+| Complex | 271.4 us | 7.3 us | **9.8 us** | 27.7x faster | 1.35x |
+| Loop | 129.6 us | 8.9 us | **13.5 us** | 9.6x faster | 1.53x |
+| Switch | 121.5 us | 7.4 us | **10.8 us** | 11.2x faster | 1.46x |
 
-HEC compiles **7-28x faster** than the System compiler and within **1.20-1.66x** of FEC.
+HEC compiles **8-28x faster** than the System compiler and within **0.96-1.50x** of FEC.
+
+`Simple` is the one tier where HEC compiles faster than FEC, and the reason is on FEC's side rather
+than ours: FEC 5.4.1 takes 8.1 us there where 5.3.0 took 5.9. Treat that as one tier moving in one
+release, not as a general result.
 
 The spread against FEC is not fixed overhead -- `Simple` is the closest tier, not the furthest.
 FEC walks the expression tree and emits IL. HEC lowers to an IR, runs three passes over it, and
@@ -59,7 +63,7 @@ and `TryCatch` are the tiers where it does the most.
 | TryCatch | 5,897 B | 1,516 B | **4,085 B** | 31% fewer | 2.7x |
 | Complex | 4,741 B | 1,390 B | **2,479 B** | 48% fewer | 1.8x |
 | Loop | 6,718 B | 1,110 B | **4,255 B** | 37% fewer | 3.8x |
-| Switch | 6,272 B | 1,352 B | **3,840 B** | 39% fewer | 2.8x |
+| Switch | 6,272 B | 1,304 B | **3,840 B** | 39% fewer | 2.9x |
 
 HEC allocates **31-52% less** memory than the System compiler, and **1.8-3.9x** more than FEC.
 
@@ -78,13 +82,13 @@ Measured over a thousand calls per operation, in nanoseconds per call:
 
 | Expression | System | FEC | **HEC** | HEC - SEC |
 |------------|-------:|----:|--------:|----------:|
-| Simple | 2.20 ns | 2.99 ns | **3.13 ns** | +0.93 ns |
-| TryCatch | 2.64 ns | 3.57 ns | **3.49 ns** | +0.85 ns |
-| Switch | 4.66 ns | 5.37 ns | **5.27 ns** | +0.61 ns |
-| Complex | 53.14 ns | 54.34 ns | **54.15 ns** | +1.01 ns |
-| Loop | 83.09 ns | N/A(*) | **84.76 ns** | +1.67 ns |
+| Simple | 2.36 ns | 2.98 ns | **3.03 ns** | +0.67 ns |
+| TryCatch | 2.76 ns | 3.73 ns | **3.60 ns** | +0.84 ns |
+| Switch | 4.66 ns | 5.04 ns | **5.06 ns** | +0.40 ns |
+| Complex | 63.01 ns | 55.08 ns | **54.79 ns** | -8.22 ns |
+| Loop | 84.47 ns | 90.40 ns | **84.15 ns** | -0.32 ns |
 
-(*) FEC does not support all loop patterns; `Loop | FEC` fails.
+FEC used to fail the `Loop` tier outright. It compiles and runs it as of 5.4.1.
 
 The last column is the figure to read. A ratio taken here is sensitive to how much harness overhead
 sits in the denominator -- the loop and the delegate dispatch are in all three numbers equally --
@@ -139,7 +143,7 @@ has to be materialized per evaluation, in any compiler. Measured on the same har
 | Scenario | Recommendation |
 |----------|---------------|
 | `BlockAsync` or `BlockEnumerable` | HEC -- 15-19x faster to run, half the allocation |
-| Hot compilation path (many lambdas compiled at runtime) | HEC -- 7-28x faster than SEC |
+| Hot compilation path (many lambdas compiled at runtime) | HEC -- 8-28x faster than SEC |
 | Memory-constrained environment | HEC -- 31-52% fewer allocations than SEC |
 | All expression patterns including those FEC doesn't support | HEC |
 | Static method IL emission (`CompileToMethod`) | HEC only |
