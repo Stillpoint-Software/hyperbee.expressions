@@ -28,6 +28,7 @@ internal class EnumerableStateMachineBuilder<TResult> : CoroutineStateMachineBui
         // declared by EnumerableStateMachineBase<TResult>
         public const string State = nameof( EnumerableStateMachineBase<TResult>.__state );
         public const string Current = nameof( EnumerableStateMachineBase<TResult>.__current );
+        public const string Disposing = nameof( EnumerableStateMachineBase<TResult>.__disposing );
     }
 
     private static readonly Type BaseType = typeof( EnumerableStateMachineBase<> ).MakeGenericType( typeof( TResult ) );
@@ -207,6 +208,7 @@ internal class EnumerableStateMachineBuilder<TResult> : CoroutineStateMachineBui
 
         var stateField = Field( stateMachine, baseType.GetField( FieldName.State )! );
         var currentField = Field( stateMachine, baseType.GetField( FieldName.Current )! );
+        var disposingField = Field( stateMachine, baseType.GetField( FieldName.Disposing )! );
 
         var disposeMethod = baseType.GetMethod( nameof( EnumerableStateMachineBase<TResult>.Dispose ) )!;
 
@@ -217,7 +219,8 @@ internal class EnumerableStateMachineBuilder<TResult> : CoroutineStateMachineBui
             exitLabel,
             stateField,
             currentField,
-            success
+            success,
+            disposingField
         );
 
         var body = Block(

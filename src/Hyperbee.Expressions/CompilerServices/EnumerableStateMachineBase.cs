@@ -24,14 +24,32 @@ namespace Hyperbee.Expressions.CompilerServices;
 public abstract class EnumerableStateMachineBase<TResult> : IEnumerable<TResult>, IEnumerator<TResult>
 {
     /// <summary>
-    /// The lowered state index: -1 before enumeration begins, -2 once it has finished.
+    /// The lowered state index. Negative values are not states: -1 before an enumerator has
+    /// been taken, <see cref="ReadyState"/> once one has but before the body has run, and -2
+    /// once enumeration has finished.
     /// </summary>
     public int __state = -1;
+
+    /// <summary>
+    /// Taken an enumerator, not yet advanced. No state id is negative, so the jump table
+    /// matches nothing and the body starts from the top.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from state 0 because disposing here must not run a finally: nothing has been
+    /// entered yet. It was 0, which is a real state, and disposing ran the finally of a try
+    /// the body had not reached.
+    /// </remarks>
+    private const int ReadyState = -3;
 
     /// <summary>
     /// The value most recently yielded.
     /// </summary>
     public TResult __current;
+
+    /// <summary>
+    /// Set while <see cref="Dispose"/> is driving the machine to its pending finally blocks.
+    /// </summary>
+    public bool __disposing;
 
     private readonly int _initialThreadId = Environment.CurrentManagedThreadId;
 
@@ -64,13 +82,13 @@ public abstract class EnumerableStateMachineBase<TResult> : IEnumerable<TResult>
     {
         if ( __state == -1 && _initialThreadId == Environment.CurrentManagedThreadId )
         {
-            __state = 0;
+            __state = ReadyState;
             return this;
         }
 
         var clone = Clone();
 
-        clone.__state = 0;
+        clone.__state = ReadyState;
 
         return clone;
     }
@@ -79,8 +97,36 @@ public abstract class EnumerableStateMachineBase<TResult> : IEnumerable<TResult>
 
     public void Reset() => throw new NotSupportedException();
 
+    /// <summary>
+    /// Ends enumeration, running whatever finally blocks are pending.
+    /// </summary>
+    /// <remarks>
+    /// Abandoning a sequence -- breaking out of a foreach, or taking the first few elements
+    /// -- disposes the enumerator, and the finally blocks the body is suspended inside have
+    /// to run. Re-entering MoveNext with <see cref="__disposing"/> set routes the machine to
+    /// those finally blocks instead of resuming the body, and out.
+    ///
+    /// Only a machine suspended mid-enumeration has any pending: one that never started
+    /// never entered a try, and one that ran to completion left through them already.
+    /// </remarks>
     public void Dispose()
     {
-        __state = -2;
+        if ( __state < 0 )
+        {
+            __state = -2;
+            return;
+        }
+
+        __disposing = true;
+
+        try
+        {
+            MoveNext();
+        }
+        finally
+        {
+            __disposing = false;
+            __state = -2;
+        }
     }
 }

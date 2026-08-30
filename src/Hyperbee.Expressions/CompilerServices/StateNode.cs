@@ -21,6 +21,16 @@ internal sealed class StateNode
 
     public Transition Transition { get; set; }
 
+    /// <summary>
+    /// An expression emitted after this state's body and before its transition, built when
+    /// the state machine is, so it can reach members the lowering does not have yet.
+    /// </summary>
+    /// <remarks>
+    /// A finally state uses this to leave the machine when it is running to dispose rather
+    /// than falling through to the code after the try.
+    /// </remarks>
+    public Func<StateMachineContext, Expression> Guard { get; set; }
+
     public StateNode( int stateId, int scopeId, int groupId )
     {
         StateId = stateId;
@@ -38,6 +48,9 @@ internal sealed class StateNode
 
         var prevState = context.StateNode;
         context.StateNode = this;
+
+        if ( Guard != null )
+            expressions.Add( Guard( context ) );
 
         Transition.AddExpressions( expressions, context );
 

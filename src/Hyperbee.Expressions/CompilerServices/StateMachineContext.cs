@@ -44,7 +44,8 @@ internal record EnumerableStateMachineInfo(
     LabelTarget ExitLabel,
     MemberExpression StateField,
     MemberExpression CurrentField,
-    ParameterExpression Success
+    ParameterExpression Success,
+    MemberExpression DisposingField
 ) : StateMachineInfo( StateMachine, ExitLabel, StateField );
 
 internal record LoweringInfo

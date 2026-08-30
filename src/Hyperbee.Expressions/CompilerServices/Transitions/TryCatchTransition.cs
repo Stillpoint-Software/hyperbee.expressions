@@ -9,6 +9,11 @@ internal class TryCatchTransition : Transition
     public StateNode TryNode { get; set; }
     public StateNode FinallyNode { get; set; }
 
+    // Where a resume that lands in this region while disposing should go: this try's
+    // finally, or the nearest enclosing one when this try has none.
+
+    public StateNode DisposeNode { get; set; }
+
     public Expression TryStateVariable { get; set; }
     public Expression ExceptionVariable { get; set; }
 
@@ -44,10 +49,19 @@ internal class TryCatchTransition : Transition
             // The scope label marks the region entry point. Resuming into the region
             // targets it, so that expressions preceding the try are not re-run.
 
+            // Resuming here while disposing means the caller abandoned the sequence somewhere
+            // in this region. Run the pending finally rather than the body -- but only for a
+            // state this region owns. A resume bound for a nested region arrives here first,
+            // because the outer table routes a whole subtree to its entry, and that region's
+            // finally has to run before this one's.
+
+            var disposeCheck = BuildDisposeCheck( context );
+
             return [
                 Label( StateScope.InitialLabel ),
                 Assign( TryStateVariable, Constant( 0 ) ),
                 Assign( ExceptionVariable, Constant( null, ExceptionVariable.Type ) ),
+                disposeCheck,
                 TryCatch(
                     body.Count == 1
                         ? body[0]
@@ -60,6 +74,28 @@ internal class TryCatchTransition : Transition
                 )
             ];
         }
+    }
+
+    private Expression BuildDisposeCheck( StateMachineContext context )
+    {
+        if ( DisposeNode == null || context.StateMachineInfo is not EnumerableStateMachineInfo enumerableInfo )
+            return Empty();
+
+        var jumpCases = StateScope.JumpCases;
+
+        if ( jumpCases.Count == 0 )
+            return Empty();
+
+        var cases = new SwitchCase[jumpCases.Count];
+
+        for ( var index = 0; index < jumpCases.Count; index++ )
+        {
+            cases[index] = SwitchCase( Goto( DisposeNode.NodeLabel ), Constant( jumpCases[index].StateId ) );
+        }
+
+        return IfThen(
+            enumerableInfo.DisposingField,
+            Switch( enumerableInfo.StateField, cases ) );
     }
 
     internal override void Optimize( HashSet<LabelTarget> references )

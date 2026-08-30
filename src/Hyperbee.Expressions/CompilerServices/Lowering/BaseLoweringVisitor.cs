@@ -11,6 +11,31 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 {
     protected readonly StateContext States = new( 4 );
     protected ExpressionMatcher ExpressionMatcher;
+
+    // The finally blocks a disposing resume still owes, innermost last.
+    private readonly Stack<StateNode> _enclosingFinally = new();
+
+    /// <summary>
+    /// What a finally state does once it has run while the machine is being disposed: hand
+    /// off to the next finally out, or leave the machine.
+    /// </summary>
+    /// <remarks>
+    /// Only an enumerable is disposed part way through. An async state machine runs to
+    /// completion or faults, so there is nothing to guard and this is not emitted.
+    /// </remarks>
+    private static Expression DisposeGuard( StateMachineContext context, StateNode enclosingFinally )
+    {
+        if ( context.StateMachineInfo is not EnumerableStateMachineInfo info )
+            return Expression.Empty();
+
+        return Expression.IfThen(
+            info.DisposingField,
+            enclosingFinally != null
+                ? Expression.Goto( enclosingFinally.NodeLabel )
+                : Expression.Block(
+                    Expression.Assign( info.Success, Expression.Constant( true ) ),
+                    Expression.Return( info.ExitLabel, Expression.Constant( false ), typeof( bool ) ) ) );
+    }
     protected VariableResolver VariableResolver;
 
     public abstract TInfo Transform(
@@ -291,9 +316,19 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 
         StateNode finalExpression = null;
 
+        // The finally a disposing resume should run before leaving, if this try is nested
+        // inside one that has a finally of its own.
+
+        var enclosingFinally = _enclosingFinally.Count > 0 ? _enclosingFinally.Peek() : null;
+
         if ( node.Finally != null )
         {
             finalExpression = VisitBranch( node.Finally, joinState );
+
+            // Reached only while disposing, where falling through to the code after the try
+            // would run body the caller abandoned. Leave, or hand off to the next finally out.
+
+            finalExpression.Guard = context => DisposeGuard( context, enclosingFinally );
 
             // Lowering turns the try into a `catch-all` that records the exception and
             // dispatches to the finally state. Nothing else re-throws, so an exception
@@ -311,15 +346,23 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 
         var nodeScope = States.EnterTryScope();
 
+        // A resume that lands in this region while disposing goes to this try's finally, or
+        // past it to the next one out when this try has none of its own.
+
+        _enclosingFinally.Push( finalExpression ?? enclosingFinally );
+
         var tryCatchTransition = new TryCatchTransition
         {
             TryStateVariable = tryStateVariable,
             ExceptionVariable = exceptionVariable,
             TryNode = VisitBranch( node.Body, joinState, resultVariable ),
             FinallyNode = finalExpression,
+            DisposeNode = finalExpression ?? enclosingFinally,
             StateScope = nodeScope,
             Scopes = States.Scopes
         };
+
+        _enclosingFinally.Pop();
 
         States.ExitTryScope();
 
