@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Concurrent;
 //using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -31,7 +32,7 @@ internal class EnumerableStateMachineBuilder<TResult>
         public const string Current = nameof( EnumerableStateMachineBase<TResult>.__current );
     }
 
-    private static Type BaseType => typeof( EnumerableStateMachineBase<> ).MakeGenericType( typeof( TResult ) );
+    private static readonly Type BaseType = typeof( EnumerableStateMachineBase<> ).MakeGenericType( typeof( TResult ) );
 
     public EnumerableStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
     {
@@ -438,23 +439,27 @@ public static class YieldStateMachineBuilder
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
     }
 
+    // Bound once per result type. See the matching comment in AsyncStateMachineBuilder.
+
+    private delegate Expression CreateStateMachineDelegate(
+        YieldLoweringTransformer loweringTransformer,
+        ExpressionRuntimeOptions options,
+        ExternVariables externVariables,
+        bool canEmitIntoType );
+
+    private static readonly ConcurrentDictionary<Type, CreateStateMachineDelegate> CreateByResultType = new();
+
     internal static Expression Create( Type resultType, YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null, bool canEmitIntoType = false )
     {
         if ( resultType == typeof( void ) )
             throw new ArgumentException( "IEnumerable must have a valid result type", nameof( resultType ) );
 
-        var buildStateMachine = BuildYieldStateMachineMethod.MakeGenericMethod( resultType );
+        var create = CreateByResultType.GetOrAdd( resultType, static type =>
+            BuildYieldStateMachineMethod
+                .MakeGenericMethod( type )
+                .CreateDelegate<CreateStateMachineDelegate>() );
 
-        try
-        {
-            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options, externVariables, canEmitIntoType] );
-        }
-        catch ( TargetInvocationException ex ) when ( ex.InnerException != null )
-        {
-            // surface lowering failures to the caller, not the reflection wrapper
-            ExceptionDispatchInfo.Capture( ex.InnerException ).Throw();
-            throw;
-        }
+        return create( loweringTransformer, options, externVariables, canEmitIntoType );
     }
 
     internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null, bool canEmitIntoType = false )

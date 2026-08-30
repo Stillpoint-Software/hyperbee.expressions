@@ -34,7 +34,7 @@ public class StateMachineReuseTests
 
     public static Task<int> Echo( int value ) => Task.FromResult( value );
 
-    private static EnumerableBlockExpression EnumerableBlock( ExpressionRuntimeOptions options )
+    private static EnumerableBlockExpression EnumerableBlock( ExpressionRuntimeOptions? options )
     {
         var local = Variable( typeof( int ), "local" );
 
@@ -49,7 +49,7 @@ public class StateMachineReuseTests
             options );
     }
 
-    private static AsyncBlockExpression AsyncBlock( ExpressionRuntimeOptions options )
+    private static AsyncBlockExpression AsyncBlock( ExpressionRuntimeOptions? options )
     {
         var local = Variable( typeof( int ), "local" );
 

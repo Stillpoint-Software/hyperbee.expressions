@@ -153,7 +153,7 @@ public class EmittedMoveNextTests
         // Arrange: the same body, once each way
         var value = Variable( typeof( int ), "value" );
 
-        Expression Body( ExpressionRuntimeOptions options ) => BlockAsync(
+        Expression Body( ExpressionRuntimeOptions? options ) => BlockAsync(
             new[] { value },
             new Expression[]
             {

@@ -101,6 +101,9 @@ internal static class HoistedVariables
 internal sealed class HoistingVisitor : ExpressionVisitor
 {
     private readonly Dictionary<ParameterExpression, MemberExpression> _fieldMembers;
+    // A variable shadowed more than once is unshadowed in the same order, so the depth is a
+    // count rather than a flag. A list scanned per parameter node was the alternative.
+    private readonly Dictionary<ParameterExpression, int> _shadowDepth = [];
     private readonly List<ParameterExpression> _shadowed = [];
 
     public HoistingVisitor(
@@ -124,7 +127,7 @@ internal sealed class HoistingVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter( ParameterExpression node )
     {
-        if ( _shadowed.Contains( node ) )
+        if ( _shadowDepth.ContainsKey( node ) )
             return node;
 
         return _fieldMembers.TryGetValue( node, out var fieldAccess )
@@ -210,6 +213,7 @@ internal sealed class HoistingVisitor : ExpressionVisitor
                 continue;
 
             _shadowed.Add( variable );
+            _shadowDepth[variable] = _shadowDepth.TryGetValue( variable, out var depth ) ? depth + 1 : 1;
             count++;
         }
 
@@ -219,6 +223,16 @@ internal sealed class HoistingVisitor : ExpressionVisitor
     private void Unshadow( int count )
     {
         if ( count > 0 )
+            for ( var index = _shadowed.Count - count; index < _shadowed.Count; index++ )
+            {
+                var variable = _shadowed[index];
+
+                if ( _shadowDepth[variable] == 1 )
+                    _shadowDepth.Remove( variable );
+                else
+                    _shadowDepth[variable] -= 1;
+            }
+
             _shadowed.RemoveRange( _shadowed.Count - count, count );
     }
 }

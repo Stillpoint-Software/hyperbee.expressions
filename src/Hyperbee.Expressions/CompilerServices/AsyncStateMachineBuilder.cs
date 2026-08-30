@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.Concurrent;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -501,23 +502,29 @@ public static class AsyncStateMachineBuilder
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
     }
 
+    // Bound once per result type. Invoking the generic method reflectively instead cost an
+    // object[] and a boxed bool on every compile, and wrapped every lowering failure in a
+    // TargetInvocationException that had to be unwrapped again.
+
+    private delegate Expression CreateStateMachineDelegate(
+        AsyncLoweringTransformer loweringTransformer,
+        ExpressionRuntimeOptions options,
+        ExternVariables externVariables,
+        bool canEmitIntoType );
+
+    private static readonly ConcurrentDictionary<Type, CreateStateMachineDelegate> CreateByResultType = new();
+
     internal static Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null, bool canEmitIntoType = false )
     {
         if ( resultType == typeof( void ) )
             resultType = typeof( IVoidResult );
 
-        var buildStateMachine = BuildStateMachineMethod.MakeGenericMethod( resultType );
+        var create = CreateByResultType.GetOrAdd( resultType, static type =>
+            BuildStateMachineMethod
+                .MakeGenericMethod( type )
+                .CreateDelegate<CreateStateMachineDelegate>() );
 
-        try
-        {
-            return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options, externVariables, canEmitIntoType] );
-        }
-        catch ( TargetInvocationException ex ) when ( ex.InnerException != null )
-        {
-            // surface lowering failures to the caller, not the reflection wrapper
-            ExceptionDispatchInfo.Capture( ex.InnerException ).Throw();
-            throw;
-        }
+        return create( loweringTransformer, options, externVariables, canEmitIntoType );
     }
 
     internal static Expression Create<TResult>( AsyncLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null, bool canEmitIntoType = false )

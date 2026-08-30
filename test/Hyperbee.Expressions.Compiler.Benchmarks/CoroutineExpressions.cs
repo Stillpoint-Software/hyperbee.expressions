@@ -27,7 +27,7 @@ public static class CoroutineExpressions
         .GetMethod( nameof( EchoAsync ) )!;
 
     // Async block with no enclosing-scope references — the common case
-    public static Expression<Func<int, Task<int>>> AsyncNoCapture( ExpressionRuntimeOptions options = null )
+    public static Expression<Func<int, Task<int>>> AsyncNoCapture( ExpressionRuntimeOptions? options = null )
     {
         var input = Parameter( typeof( int ), "input" );
         var local = Variable( typeof( int ), "local" );
@@ -48,11 +48,11 @@ public static class CoroutineExpressions
     }
 
     // Options that force MoveNext to stay a delegate the machine invokes on each resume.
-    public static ExpressionRuntimeOptions DelegateMoveNext( Action<string> sourceHandler = null ) =>
+    public static ExpressionRuntimeOptions DelegateMoveNext( Action<string>? sourceHandler = null ) =>
         new() { EmitMoveNextIntoType = false, SourceHandler = sourceHandler };
 
     // Options that leave MoveNext to be emitted into the machine's own method.
-    public static ExpressionRuntimeOptions EmittedMoveNext( Action<string> sourceHandler = null ) =>
+    public static ExpressionRuntimeOptions EmittedMoveNext( Action<string>? sourceHandler = null ) =>
         new() { SourceHandler = sourceHandler };
 
     // Async block that reads and writes an enclosing lambda parameter
@@ -70,7 +70,7 @@ public static class CoroutineExpressions
     }
 
     // Enumerable block with no enclosing-scope references
-    public static Expression<Func<int, IEnumerable<int>>> EnumerableNoCapture( ExpressionRuntimeOptions options = null )
+    public static Expression<Func<int, IEnumerable<int>>> EnumerableNoCapture( ExpressionRuntimeOptions? options = null )
     {
         var input = Parameter( typeof( int ), "input" );
         var local = Variable( typeof( int ), "local" );
@@ -108,7 +108,7 @@ public static class CoroutineExpressions
 
     // Sixteen real suspensions -- sixteen MoveNext invocations, where reaching MoveNext
     // through a delegate field would cost sixteen indirections instead of none.
-    public static Expression<Func<int, Task<int>>> AsyncSuspending( ExpressionRuntimeOptions options = null )
+    public static Expression<Func<int, Task<int>>> AsyncSuspending( ExpressionRuntimeOptions? options = null )
     {
         var input = Parameter( typeof( int ), "input" );
         var local = Variable( typeof( int ), "local" );

@@ -54,12 +54,17 @@ public class EnumerableBlockExpression : Expression
         // compiled its own MoveNext, and discarded all but the last -- three times over for
         // a single compile, which was most of what BlockEnumerable cost to compile.
 
-        return _stateMachine ??= YieldStateMachineBuilder.Create(
+        if ( _stateMachine != null )
+            return _stateMachine;
+
+        var stateMachine = YieldStateMachineBuilder.Create(
             EnumerableType,
             LoweringTransformer,
             RuntimeOptions,
             ExternVariables.Create( Variables, Expressions ),
             CanEmitIntoType() );
+
+        return Interlocked.CompareExchange( ref _stateMachine, stateMachine, null ) ?? stateMachine;
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )

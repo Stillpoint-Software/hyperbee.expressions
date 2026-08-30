@@ -3,20 +3,6 @@
 namespace Hyperbee.Expressions.CompilerServices;
 
 /// <summary>
-/// Internal plumbing interface — builds the coroutine execution expression for a given
-/// async body. Currently unused; the default implementation is
-/// <see cref="AsyncStateMachineBuilder"/>. Emitting the body into the machine's own method
-/// is handled by <see cref="ICoroutineMethodBuilder"/>, not here.
-/// Kept internal because the <see cref="AsyncLoweringTransformer"/> delegate type
-/// is an internal implementation detail. The user-facing customization point is
-/// <see cref="ICoroutineDelegateBuilder"/>.
-/// </summary>
-internal interface ICoroutineImplementationBuilder
-{
-    Expression Create( Type resultType, AsyncLoweringTransformer loweringTransformer, int id, ExpressionRuntimeOptions options );
-}
-
-/// <summary>
 /// Creates the coroutine body delegate from a <see cref="LambdaExpression"/>.
 /// The produced delegate is stored in the coroutine's entry-point field and invoked
 /// each time the coroutine is resumed (e.g. the async state machine's MoveNext).
