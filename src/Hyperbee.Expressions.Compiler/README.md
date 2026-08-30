@@ -81,37 +81,44 @@ patterns cover your use case -- unless you need coroutines, which FEC does not c
 ### Execution Benchmarks
 
 All three compilers produce delegates with equivalent runtime performance and no per-call
-allocation. For non-trivial expressions (Complex, Loop) the difference is zero - the compiled IL is
-structurally identical. For trivial expressions (Simple, Switch), sub-nanosecond differences reflect
-JIT inlining decisions around `DynamicMethod` boundaries, not meaningful execution overhead.
+allocation. HEC costs about a nanosecond more per call than the System compiler, flat across body
+sizes -- a property of reaching the delegate rather than of the code inside it -- and sits inside
+FEC's own margin.
+
+Measured over a thousand calls per operation, in nanoseconds per call. Measuring one call at a time
+does not work here: a body like `a + b` runs in less time than the harness spends reaching it.
 
 > **Note:** FEC currently returns `N/A` for the Loop tier due to a known compilation issue with
 > loop/break expressions.
 
 | Tier         | Compiler     |     Mean | vs System |
 | ------------ | ------------ | -------: | --------: |
-| **Simple**   | System       | 1.098 ns |         - |
-|              | FEC          | 1.363 ns |     1.24x |
-|              | **Hyperbee** | 1.769 ns |     1.61x |
-| **Closure**  | System       | 0.770 ns |         - |
-|              | FEC          | 1.123 ns |     1.46x |
-|              | **Hyperbee** | 1.581 ns |     2.05x |
-| **TryCatch** | System       | 0.447 ns |         - |
-|              | FEC          | 1.074 ns |     2.40x |
-|              | **Hyperbee** | 1.731 ns |     3.87x |
-| **Complex**  | System       | 25.42 ns |         - |
-|              | FEC          | 25.22 ns |   **~1x** |
-|              | **Hyperbee** | 24.81 ns |   **~1x** |
-| **Loop**     | System       | 30.62 ns |         - |
+| **Simple**   | System       |  2.20 ns |         - |
+|              | FEC          |  2.99 ns |  +0.79 ns |
+|              | **Hyperbee** |  3.13 ns |  +0.93 ns |
+| **TryCatch** | System       |  2.64 ns |         - |
+|              | FEC          |  3.57 ns |  +0.93 ns |
+|              | **Hyperbee** |  3.49 ns |  +0.85 ns |
+| **Switch**   | System       |  4.66 ns |         - |
+|              | FEC          |  5.37 ns |  +0.71 ns |
+|              | **Hyperbee** |  5.27 ns |  +0.61 ns |
+| **Complex**  | System       | 53.14 ns |         - |
+|              | FEC          | 54.34 ns |  +1.20 ns |
+|              | **Hyperbee** | 54.15 ns |  +1.01 ns |
+| **Loop**     | System       | 83.09 ns |         - |
 |              | FEC          |      N/A |       N/A |
-|              | **Hyperbee** | 31.76 ns |   **~1x** |
-| **Switch**   | System       |  1.57 ns |         - |
-|              | FEC          |  1.87 ns |     1.20x |
-|              | **Hyperbee** |  2.23 ns |     1.42x |
+|              | **Hyperbee** | 84.76 ns |  +1.67 ns |
 
-The sub-nanosecond Simple/Closure/TryCatch numbers (< 2 ns absolute) are at the boundary of
-`ShortRun` precision (3 iterations). Those ratios represent 1–3 extra clock cycles and should be
-interpreted as "roughly equivalent" rather than a meaningful performance gap.
+The difference is the column to read rather than a ratio. A ratio taken here is sensitive to how
+much loop and dispatch overhead sits in the denominator -- it is in all three numbers equally --
+which inflates it on exactly the tiers where the absolute difference is smallest.
+
+This section previously attributed the difference to JIT inlining decisions around `DynamicMethod`
+boundaries. It was not that. Delegates over a static method with nothing bound have no target for
+the slot `Delegate.Invoke` passes one in, so the runtime inserts a thunk that shifts every argument
+down one on the way through. Every compiled delegate is now closed over its constants array, empty
+when there is nothing to read, which is the shape the System compiler uses. See
+[Execution Speed](../../docs/site/compiler/performance.md#execution-speed).
 
 ### Compiler Comparison
 
