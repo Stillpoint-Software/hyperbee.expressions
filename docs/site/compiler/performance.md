@@ -23,7 +23,7 @@ runs.
 >
 > Execution was measured one call at a time, at three iterations. A body like `a + b` runs in less
 > time than the harness spends reaching it, so those tiers reported a couple of nanoseconds with
-> error bars several times their means, and this page read a story into them that was not there --
+> error bars several times their means, and this page drew a conclusion they could not support --
 > see [Execution Speed](#execution-speed). Execution is now measured over a thousand calls per
 > operation, which lifts the body above that floor.
 
@@ -67,27 +67,40 @@ HEC allocates **31-52% less** memory than the System compiler, and **1.8-3.9x** 
 
 ## Execution Speed
 
-Delegates compiled by HEC run at FEC's speed, and a little behind the System compiler's on small
-bodies. Nothing allocates per call.
+Delegates compiled by HEC, SEC and FEC execute at equivalent speed. Nothing allocates per call.
+
+The difference is a fixed cost of about a nanosecond per call -- a few clock cycles -- and it does
+not grow with the body, so it is a property of reaching the delegate rather than of the code inside
+it. On a two-instruction body that shows up as a ratio worth naming; on anything doing real work it
+is around two percent. HEC sits inside FEC's own margin.
 
 Measured over a thousand calls per operation, in nanoseconds per call:
 
-| Expression | System | FEC | **HEC** | vs System | vs FEC |
-|------------|-------:|----:|--------:|----------:|-------:|
-| Simple | 2.20 ns | 2.99 ns | **3.13 ns** | 1.42x | 1.05x |
-| TryCatch | 2.64 ns | 3.57 ns | **3.49 ns** | 1.32x | 0.98x |
-| Switch | 4.66 ns | 5.37 ns | **5.27 ns** | 1.13x | 0.98x |
+| Expression | System | FEC | **HEC** | HEC - SEC |
+|------------|-------:|----:|--------:|----------:|
+| Simple | 2.20 ns | 2.99 ns | **3.13 ns** | +0.93 ns |
+| TryCatch | 2.64 ns | 3.57 ns | **3.49 ns** | +0.85 ns |
+| Switch | 4.66 ns | 5.37 ns | **5.27 ns** | +0.61 ns |
+| Complex | 53.14 ns | 54.34 ns | **54.15 ns** | +1.01 ns |
+| Loop | 83.09 ns | N/A(*) | **84.76 ns** | +1.67 ns |
 
-Larger bodies converge, because the body rather than the call dominates. `Complex` is 53.1 ns for
-SEC, 54.3 for FEC and 54.1 for HEC. `Loop` is 83.1 for SEC and 84.8 for HEC; FEC does not support
-that loop pattern.
+(*) FEC does not support all loop patterns; `Loop | FEC` fails.
 
-### What this page used to say
+The last column is the figure to read. A ratio taken here is sensitive to how much harness overhead
+sits in the denominator -- the loop and the delegate dispatch are in all three numbers equally --
+which compresses it on the slow tiers and inflates it on the fast ones. The difference itself does
+not move.
 
-It said the three compilers executed at the same speed, and read the per-call tiers -- all under
-two nanoseconds, with error bars several times their means -- as "roughly equivalent". They were
-not equivalent. They were unreadable, and the difference they hid was real: HEC was **1.75-1.92x**
-the System compiler per call on small bodies.
+### This was not always true
+
+The page said the same thing before, but the thing it described was twice as bad. It read the
+per-call tiers -- all under two nanoseconds, with error bars several times their means -- as
+"roughly equivalent", and what those tiers were hiding was a **two nanosecond** gap, not a one
+nanosecond one: HEC was **1.75-1.92x** the System compiler per call on small bodies.
+
+The conclusion was close to right for the wrong reason, drawn from measurements that could not
+support it either way. It is kept here because the difference between a claim that holds and a
+claim that happens to land is the measurement behind it.
 
 The cause was the shape of the delegate rather than the code in it. HEC bound nothing to the
 delegate unless the body needed a constants array, so most compiled delegates were open static

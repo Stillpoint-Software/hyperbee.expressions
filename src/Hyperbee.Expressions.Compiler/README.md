@@ -69,9 +69,9 @@ The multi-pass IR pipeline allocates roughly **1.8–3.9× more than FEC** per c
 **31–52% less than the System Compiler**. The overhead is per-compilation, not per-execution: no
 compiler allocates per call.
 
-Compiled delegates do not all run at the same speed, though the difference is small. On a body of a
-few instructions HEC runs at FEC's speed and **1.13–1.42x** the System compiler's; larger bodies
-converge, because the body rather than the call dominates. See
+Compiled delegates execute at equivalent speed whichever compiler produced them. HEC costs about a
+nanosecond more per call than the System compiler, flat across body sizes -- a property of reaching
+the delegate, not of the code inside it -- and sits inside FEC's own margin. See
 [Execution Speed](../../docs/site/compiler/performance.md#execution-speed).
 
 For hot paths that compile once and cache, the allocation difference is negligible. For workloads
