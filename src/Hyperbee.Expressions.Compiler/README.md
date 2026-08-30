@@ -7,7 +7,7 @@ that is **7-28x faster and allocates 31-52% less than the System compiler** and 
 
 We :heart: [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler). FEC is faster than Hyperbee Expression Compiler, and allocates less memory - and for many workloads it's the right choice. If FEC compiles your expressions correctly, use it.
 
-FEC's single-pass, low allocation, IL emission approach supports most, but not **all**, expression patterns. See [FEC issues](https://github.com/dadhi/FastExpressionCompiler/issues); patterns like compound assignments inside `TryCatch`, complex closure captures, and certain value-type operations aren't supported.
+FEC's single-pass, low allocation, IL emission approach supports most, but not **all**, expression patterns. See [FEC issues](https://github.com/dadhi/FastExpressionCompiler/issues); patterns like compound assignments inside `TryCatch`, complex closure captures, and certain value-type operations aren't currently supported.
 
 Hyperbee takes a middle ground: a **multi-pass IR pipeline** that lowers expression trees to an intermediate representation, runs optimization passes, validates structural correctness, and then emits IL. This architecture trades a small amount of speed and allocation overhead for **correct IL across all expression tree patterns** while significantly outperforming the System Compiler.
 
@@ -15,7 +15,7 @@ Hyperbee takes a middle ground: a **multi-pass IR pipeline** that lowers express
 
 HEC is consistently **7-28x faster than the System Compiler** and within **1.20-1.66x of FEC** across all tiers - while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
 
-For `BlockAsync` and `BlockEnumerable`, which FEC does not support at all, HEC compiles about **twice as fast as the System compiler** and the compiled coroutines run **15-19x faster**.
+For `BlockAsync` and `BlockEnumerable`, which FEC does not currently support, HEC compiles about **twice as fast as the System compiler** and the compiled coroutines run **15-19x faster**.
 
 A lambda invoked in place (`Expression.Invoke( lambda, args )`) is inlined at the call site, so it needs no second compilation and captures nothing. See [Invoked lambdas](../../docs/site/compiler/performance.md#invoked-lambdas).
 
@@ -56,12 +56,12 @@ Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
 
 FEC does not support `BlockAsync` or `BlockEnumerable`. Against the System compiler:
 
-| Tier                          | Compile              | Execute                |
-| ----------------------------- | -------------------- | ---------------------- |
-| `BlockAsync`                  | **0.68x** (faster)   | **15.3x faster**       |
-| `BlockAsync`, captures        | **0.66x**            | **15.5x faster**       |
-| `BlockEnumerable`             | **0.51x**            | **18.7x faster**       |
-| `BlockEnumerable`, captures   | **0.54x**            | **19.3x faster**       |
+| Tier                        | Compile            | Execute          |
+| --------------------------- | ------------------ | ---------------- |
+| `BlockAsync`                | **0.68x** (faster) | **15.3x faster** |
+| `BlockAsync`, captures      | **0.66x**          | **15.5x faster** |
+| `BlockEnumerable`           | **0.51x**          | **18.7x faster** |
+| `BlockEnumerable`, captures | **0.54x**          | **19.3x faster** |
 
 ### Allocation Profile
 
@@ -85,8 +85,8 @@ allocation. For non-trivial expressions (Complex, Loop) the difference is zero -
 structurally identical. For trivial expressions (Simple, Switch), sub-nanosecond differences reflect
 JIT inlining decisions around `DynamicMethod` boundaries, not meaningful execution overhead.
 
-> **Note:** FEC returns `N/A` for the Loop tier due to a known compilation issue with
-> loop/break expressions. HEC compiles and runs it correctly.
+> **Note:** FEC currently returns `N/A` for the Loop tier due to a known compilation issue with
+> loop/break expressions.
 
 | Tier         | Compiler     |     Mean | vs System |
 | ------------ | ------------ | -------: | --------: |
