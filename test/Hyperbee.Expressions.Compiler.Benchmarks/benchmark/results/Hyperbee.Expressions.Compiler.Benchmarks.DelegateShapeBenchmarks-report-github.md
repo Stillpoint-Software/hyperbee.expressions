@@ -10,7 +10,7 @@ Job=.NET 9  Runtime=.NET 9.0  IterationCount=3
 LaunchCount=1  WarmupCount=3  
 
 ```
-| Method                                | Mean     | Error     | StdDev    | vs System | vs Fec | Alloc vs System | Alloc vs Fec | Allocated |
-|-------------------------------------- |---------:|----------:|----------:|----------:|-------:|----------------:|-------------:|----------:|
-| &#39;a+b x1000 | open static delegate&#39;    | 4.300 μs | 0.7434 μs | 0.0407 μs |       N/A |    N/A |             N/A |          N/A |         - |
-| &#39;a+b x1000 | closed over leading arg&#39; | 3.054 μs | 0.2356 μs | 0.0129 μs |       N/A |    N/A |             N/A |          N/A |         - |
+| Method                                | Mean     | Error    | StdDev    | vs System | vs Fec | Alloc vs System | Alloc vs Fec | Allocated |
+|-------------------------------------- |---------:|---------:|----------:|----------:|-------:|----------------:|-------------:|----------:|
+| &#39;a+b x1000 | open static delegate&#39;    | 3.978 μs | 1.026 μs | 0.0563 μs |       N/A |    N/A |             N/A |          N/A |         - |
+| &#39;a+b x1000 | closed over leading arg&#39; | 3.047 μs | 1.047 μs | 0.0574 μs |       N/A |    N/A |             N/A |          N/A |         - |

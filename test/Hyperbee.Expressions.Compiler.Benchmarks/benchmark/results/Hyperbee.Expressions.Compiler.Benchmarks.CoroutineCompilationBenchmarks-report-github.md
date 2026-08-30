@@ -13,15 +13,15 @@ WarmupCount=5
 ```
 | Method                                               | Mean        | Error      | StdDev     | vs System | vs Fec | Alloc vs System | Alloc vs Fec | Allocated |
 |----------------------------------------------------- |------------:|-----------:|-----------:|----------:|-------:|----------------:|-------------:|----------:|
-| &#39;AsyncNoCapture | System&#39;                            | 2,456.59 μs | 246.114 μs | 320.017 μs |     1.00x |    N/A |           1.00x |          N/A |  65.34 KB |
-| &#39;AsyncNoCapture | Hyperbee&#39;                          | 1,501.94 μs | 134.845 μs | 175.337 μs |     0.61x |    N/A |           0.98x |          N/A |  63.93 KB |
-| &#39;AsyncNoCapture (delegate MoveNext) | Hyperbee&#39;      | 1,650.05 μs | 130.293 μs | 173.938 μs |       N/A |    N/A |             N/A |          N/A |  61.65 KB |
-| &#39;AsyncCapture | System&#39;                              | 2,258.22 μs | 119.904 μs | 138.081 μs |     1.00x |    N/A |           1.00x |          N/A |  66.01 KB |
-| &#39;AsyncCapture | Hyperbee&#39;                            | 1,474.40 μs |  91.141 μs | 108.497 μs |     0.65x |    N/A |           1.08x |          N/A |  71.12 KB |
-| &#39;EnumerableNoCapture | System&#39;                       | 1,709.00 μs | 197.148 μs | 263.187 μs |     1.00x |    N/A |           1.00x |          N/A |   43.7 KB |
-| &#39;EnumerableNoCapture | Hyperbee&#39;                     |   819.57 μs |  87.407 μs | 113.654 μs |     0.48x |    N/A |           0.83x |          N/A |  36.37 KB |
-| &#39;EnumerableNoCapture (delegate MoveNext) | Hyperbee&#39; | 1,084.78 μs |  83.624 μs |  99.549 μs |       N/A |    N/A |             N/A |          N/A |  41.78 KB |
-| &#39;EnumerableCapture | System&#39;                         | 1,667.54 μs | 135.874 μs | 181.388 μs |     1.00x |    N/A |           1.00x |          N/A |  44.85 KB |
-| &#39;EnumerableCapture | Hyperbee&#39;                       |   848.17 μs |  77.129 μs | 100.289 μs |     0.51x |    N/A |           0.96x |          N/A |  42.95 KB |
-| &#39;NestedClosure | System&#39;                             |   196.87 μs |  11.597 μs |  14.666 μs |     1.00x |    N/A |           1.00x |          N/A |   7.27 KB |
-| &#39;NestedClosure | Hyperbee&#39;                           |    53.36 μs |   4.301 μs |   5.593 μs |     0.27x |    N/A |           0.48x |          N/A |   3.52 KB |
+| &#39;AsyncNoCapture | System&#39;                            | 2,036.51 μs | 184.192 μs | 239.502 μs |     1.00x |    N/A |           1.00x |          N/A |  65.57 KB |
+| &#39;AsyncNoCapture | Hyperbee&#39;                          | 1,173.68 μs |  79.299 μs | 105.862 μs |     0.58x |    N/A |           0.98x |          N/A |  64.09 KB |
+| &#39;AsyncNoCapture (delegate MoveNext) | Hyperbee&#39;      | 1,652.58 μs | 190.329 μs | 254.083 μs |       N/A |    N/A |             N/A |          N/A |   61.9 KB |
+| &#39;AsyncCapture | System&#39;                              | 2,389.17 μs | 229.995 μs | 307.036 μs |     1.00x |    N/A |           1.00x |          N/A |  66.24 KB |
+| &#39;AsyncCapture | Hyperbee&#39;                            | 1,509.13 μs | 135.401 μs | 171.239 μs |     0.63x |    N/A |           1.12x |          N/A |  74.27 KB |
+| &#39;EnumerableNoCapture | System&#39;                       | 1,641.53 μs | 187.562 μs | 230.343 μs |     1.00x |    N/A |           1.00x |          N/A |  44.02 KB |
+| &#39;EnumerableNoCapture | Hyperbee&#39;                     |   690.56 μs |  38.332 μs |  45.631 μs |     0.42x |    N/A |           0.83x |          N/A |  36.55 KB |
+| &#39;EnumerableNoCapture (delegate MoveNext) | Hyperbee&#39; | 1,032.49 μs |  94.358 μs | 115.880 μs |       N/A |    N/A |             N/A |          N/A |  42.12 KB |
+| &#39;EnumerableCapture | System&#39;                         | 1,510.63 μs |  53.969 μs |  62.151 μs |     1.00x |    N/A |           1.00x |          N/A |  45.17 KB |
+| &#39;EnumerableCapture | Hyperbee&#39;                       |   805.02 μs |  56.804 μs |  73.861 μs |     0.53x |    N/A |           0.96x |          N/A |  43.14 KB |
+| &#39;NestedClosure | System&#39;                             |   216.63 μs |  25.171 μs |  33.603 μs |     1.00x |    N/A |           1.00x |          N/A |   7.27 KB |
+| &#39;NestedClosure | Hyperbee&#39;                           |    53.48 μs |   6.083 μs |   7.909 μs |     0.25x |    N/A |           0.48x |          N/A |   3.52 KB |
