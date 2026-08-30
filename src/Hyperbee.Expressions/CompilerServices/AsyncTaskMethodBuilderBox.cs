@@ -80,4 +80,22 @@ public sealed class AsyncTaskMethodBuilderBox<TResult>
     {
         Builder.AwaitUnsafeOnCompleted( ref awaiter, ref stateMachine );
     }
+
+    /// <summary>
+    /// As <see cref="AwaitUnsafeOnCompleted{TAwaiter,TStateMachine}"/>, but taking the state
+    /// machine as the interface so its type is not a generic argument.
+    /// </summary>
+    /// <remarks>
+    /// A body emitted into the state machine's own method is written while that type is
+    /// still under construction, and a generic method cannot be bound over an open type.
+    /// The machine is a class, so passing it as the interface costs a reference, not a box.
+    /// </remarks>
+    [MethodImpl( MethodImplOptions.AggressiveInlining )]
+    public void AwaitUnsafeOnCompleted<TAwaiter>(
+        ref TAwaiter awaiter,
+        IAsyncStateMachine stateMachine
+    ) where TAwaiter : ICriticalNotifyCompletion
+    {
+        Builder.AwaitUnsafeOnCompleted( ref awaiter, ref stateMachine );
+    }
 }

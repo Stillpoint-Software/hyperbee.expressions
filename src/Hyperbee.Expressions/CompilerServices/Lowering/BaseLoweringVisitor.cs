@@ -11,6 +11,31 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 {
     protected readonly StateContext States = new( 4 );
     protected ExpressionMatcher ExpressionMatcher;
+
+    // The finally blocks a disposing resume still owes, innermost last.
+    private readonly Stack<StateNode> _enclosingFinally = new();
+
+    /// <summary>
+    /// What a finally state does once it has run while the machine is being disposed: hand
+    /// off to the next finally out, or leave the machine.
+    /// </summary>
+    /// <remarks>
+    /// Only an enumerable is disposed part way through. An async state machine runs to
+    /// completion or faults, so there is nothing to guard and this is not emitted.
+    /// </remarks>
+    private static Expression DisposeGuard( StateMachineContext context, StateNode enclosingFinally )
+    {
+        if ( context.StateMachineInfo is not EnumerableStateMachineInfo info )
+            return Expression.Empty();
+
+        return Expression.IfThen(
+            info.DisposingField,
+            enclosingFinally != null
+                ? Expression.Goto( enclosingFinally.NodeLabel )
+                : Expression.Block(
+                    Expression.Assign( info.Success, Expression.Constant( true ) ),
+                    Expression.Return( info.ExitLabel, Expression.Constant( false ), typeof( bool ) ) ) );
+    }
     protected VariableResolver VariableResolver;
 
     public abstract TInfo Transform(
@@ -278,6 +303,9 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
         if ( !RequiresLowering( node ) )
             return VariableResolver.Resolve( node );
 
+        if ( node.Fault != null )
+            throw new LoweringException( "Fault handlers are not supported when lowering a try expression." );
+
         var joinState = States.EnterGroup( out var sourceState );
 
         var resultVariable = VariableResolver.GetResultVariable( node, sourceState.StateId );
@@ -288,13 +316,40 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 
         StateNode finalExpression = null;
 
+        // The finally a disposing resume should run before leaving, if this try is nested
+        // inside one that has a finally of its own.
+
+        var enclosingFinally = _enclosingFinally.Count > 0 ? _enclosingFinally.Peek() : null;
+
         if ( node.Finally != null )
         {
             finalExpression = VisitBranch( node.Finally, joinState );
+
+            // Reached only while disposing, where falling through to the code after the try
+            // would run body the caller abandoned. Leave, or hand off to the next finally out.
+
+            finalExpression.Guard = context => DisposeGuard( context, enclosingFinally );
+
+            // Lowering turns the try into a `catch-all` that records the exception and
+            // dispatches to the finally state. Nothing else re-throws, so an exception
+            // that no catch block handled must be re-thrown once the finally completes.
+
+            States.TailState.Expressions.Add(
+                Expression.IfThen(
+                    Expression.NotEqual( exceptionVariable, Expression.Constant( null, exceptionVariable.Type ) ),
+                    Expression.Call( exceptionVariable, ReflectionHelper.ExceptionDispatchInfoThrow )
+                )
+            );
+
             joinState = finalExpression;
         }
 
-        var nodeScope = States.EnterTryScope( sourceState );
+        var nodeScope = States.EnterTryScope();
+
+        // A resume that lands in this region while disposing goes to this try's finally, or
+        // past it to the next one out when this try has none of its own.
+
+        _enclosingFinally.Push( finalExpression ?? enclosingFinally );
 
         var tryCatchTransition = new TryCatchTransition
         {
@@ -302,9 +357,12 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
             ExceptionVariable = exceptionVariable,
             TryNode = VisitBranch( node.Body, joinState, resultVariable ),
             FinallyNode = finalExpression,
+            DisposeNode = finalExpression ?? enclosingFinally,
             StateScope = nodeScope,
             Scopes = States.Scopes
         };
+
+        _enclosingFinally.Pop();
 
         States.ExitTryScope();
 
@@ -316,9 +374,26 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
             var catchState = index + 1;
             var catchBlock = node.Handlers[index];
 
+            // The handler body runs in its own state, outside of the try, so the catch
+            // variable must be hoisted to stay in scope. Resolve the filter after the
+            // variable is registered so that it binds to the same hoisted variable.
+
+            var catchVariable = catchBlock.Variable != null
+                ? VariableResolver.AddLocalVariable( catchBlock.Variable )
+                : null;
+
+            if ( catchBlock.Filter != null && RequiresLowering( catchBlock.Filter ) )
+                throw new LoweringException( "Await is not supported in an exception filter." );
+
+            var catchFilter = catchBlock.Filter != null
+                ? VariableResolver.Resolve( catchBlock.Filter )
+                : null;
+
             tryCatchTransition.AddCatchBlock(
                 catchBlock,
-                VisitBranch( catchBlock.Body, joinState ),
+                catchVariable,
+                catchFilter,
+                VisitBranch( catchBlock.Body, joinState, resultVariable ),
                 catchState );
         }
 

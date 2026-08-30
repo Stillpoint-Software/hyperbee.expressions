@@ -7,7 +7,7 @@ This repository contains libraries for extending and compiling C# expression tre
 | Package | Description |
 | ------- | ----------- |
 | **Hyperbee.Expressions** | Extended expression tree nodes for async workflows, iterators, resource management, and looping constructs. |
-| **Hyperbee.Expressions.Compiler** | A high-performance, IR-based expression compiler that is 9-34x faster than the System compiler with correct IL across all expression tree patterns. |
+| **Hyperbee.Expressions.Compiler** | A high-performance, IR-based expression compiler that is 7-28x faster than the System compiler with correct IL across all expression tree patterns. |
 
 ## Hyperbee.Expressions
 
@@ -170,7 +170,7 @@ public class Example
 ## Hyperbee.Expressions.Compiler
 
 A high-performance, IR-based expression compiler for .NET. Drop-in replacement for `Expression.Compile()` 
-that is **9-34x faster and allocates up to 50% less than the System compiler** and supports **all expression 
+that is **7-28x faster and allocates 31-52% less than the System compiler** and supports **all expression 
 tree patterns**.
 
 ### Quick Start

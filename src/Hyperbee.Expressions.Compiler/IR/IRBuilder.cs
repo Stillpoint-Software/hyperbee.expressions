@@ -7,6 +7,7 @@ public class IRBuilder
 {
     private readonly List<IRInstruction> _instructions = new( 16 );
     private readonly List<object> _operands = new( 4 );
+    private Dictionary<int, Type>? _operandTypes;
     private readonly List<LocalInfo> _locals = new( 2 );
     private readonly List<LabelInfo> _labels = new( 2 );
 
@@ -37,11 +38,27 @@ public class IRBuilder
     // --- Operand table ---
 
     /// <summary>Add a value to the operand table and return its index.</summary>
-    public int AddOperand( object value )
+    /// <param name="declaredType">
+    /// The type the expression gave the value, when that differs from its runtime type. A
+    /// constant is reached through the constants array as <c>object</c> and cast back, and
+    /// the cast has to name the declared type: the runtime type is over-specific and may be
+    /// one the emitting context cannot see, such as the concrete type behind a Task.
+    /// </param>
+    public int AddOperand( object value, Type? declaredType = null )
     {
         var index = _operands.Count;
         _operands.Add( value );
+
+        if ( declaredType != null && declaredType != value?.GetType() )
+            ( _operandTypes ??= new( 2 ) )[index] = declaredType;
+
         return index;
+    }
+
+    /// <summary>The declared type of an operand, or null to use its runtime type.</summary>
+    public Type? GetOperandType( int index )
+    {
+        return _operandTypes != null && _operandTypes.TryGetValue( index, out var type ) ? type : null;
     }
 
     // --- Local variables ---

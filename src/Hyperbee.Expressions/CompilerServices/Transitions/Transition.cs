@@ -8,6 +8,11 @@ namespace Hyperbee.Expressions.CompilerServices.Transitions;
 
 internal abstract class Transition
 {
+    // The state field value that means "not suspended". State ids are non-negative, so a
+    // jump table never matches it.
+
+    internal const int RunningState = -1;
+
     internal abstract StateNode FallThroughNode { get; }
 
     public virtual void AddExpressions( List<Expression> expressions, StateMachineContext context )

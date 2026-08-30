@@ -12,7 +12,7 @@ internal static class BenchmarkExpressions
     // Tier 1: Simple — binary op, no closures
     public static readonly Expression<Func<int, int, int>> Simple = ( a, b ) => a + b;
 
-    // Tier 2: Closure — captures an outer variable
+    // Tier 2: Closure — a nested lambda that captures an enclosing parameter
     public static readonly Expression<Func<int, int>> Closure;
 
     // Tier 3: TryCatch — exception handling
@@ -30,9 +30,14 @@ internal static class BenchmarkExpressions
     static BenchmarkExpressions()
     {
         // Closure
+        //
+        // A nested lambda referencing the enclosing parameter. The earlier version of this
+        // tier used Expression.Constant( _captured ), which the compilers fold into the
+        // instruction stream — it measured a constant add, not a closure, so the closure
+        // path went unmeasured.
         var p = Expression.Parameter( typeof( int ), "x" );
-        var c = Expression.Constant( _captured );
-        Closure = Expression.Lambda<Func<int, int>>( Expression.Add( p, c ), p );
+        var captured = Expression.Lambda<Func<int>>( Expression.Add( p, Expression.Constant( _captured ) ) );
+        Closure = Expression.Lambda<Func<int, int>>( Expression.Invoke( captured ), p );
 
         // TryCatch
         var result = Expression.Variable( typeof( int ), "result" );

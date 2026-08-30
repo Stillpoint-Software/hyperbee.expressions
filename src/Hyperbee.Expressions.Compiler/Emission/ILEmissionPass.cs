@@ -20,21 +20,26 @@ public static class ILEmissionPass
     /// Maps operand-table index to constants-array index for non-embeddable constants.
     /// Only used when <paramref name="hasConstantsArray"/> is true.
     /// </param>
+    /// <param name="constantsField">
+    /// When emitting into an instance method, the field holding the constants array. Arg 0
+    /// is <c>this</c> there, so the array is reached through the field rather than directly.
+    /// </param>
     public static void Run(
         IRBuilder ir,
         ILGenerator ilg,
         bool hasConstantsArray,
-        Dictionary<int, int>? constantIndices )
+        Dictionary<int, int>? constantIndices,
+        FieldInfo? constantsField = null )
     {
         // Pre-declare all IL locals
-        var ilLocals = new LocalBuilder[ir.Locals.Count];
+        var ilLocals = ir.Locals.Count == 0 ? [] : new LocalBuilder[ir.Locals.Count];
         for ( var i = 0; i < ir.Locals.Count; i++ )
         {
             ilLocals[i] = ilg.DeclareLocal( ir.Locals[i].Type );
         }
 
         // Pre-declare all IL labels
-        var ilLabels = new Label[ir.Labels.Count];
+        var ilLabels = ir.Labels.Count == 0 ? [] : new Label[ir.Labels.Count];
         for ( var i = 0; i < ir.Labels.Count; i++ )
         {
             ilLabels[i] = ilg.DefineLabel();
@@ -47,13 +52,19 @@ public static class ILEmissionPass
         // (labels placed immediately after EndTryCatch). ILGenerator auto-emits
         // `leave` to these targets at exception boundaries, so our explicit
         // Leave to these labels can be suppressed when followed by a boundary.
-        var exceptionEndLabels = new HashSet<int>();
+        //
+        // Built only when there is an exception block to find one in. Most bodies have
+        // none, and this ran -- and allocated the set -- on every compile regardless.
+
+        HashSet<int>? exceptionEndLabels = null;
+
         for ( var i = 1; i < instructions.Count; i++ )
         {
-            if ( instructions[i].Op == IROp.Label && instructions[i - 1].Op == IROp.EndTryCatch )
-            {
-                exceptionEndLabels.Add( instructions[i].Operand );
-            }
+            if ( instructions[i].Op != IROp.Label || instructions[i - 1].Op != IROp.EndTryCatch )
+                continue;
+
+            exceptionEndLabels ??= [];
+            exceptionEndLabels.Add( instructions[i].Operand );
         }
 
         for ( var idx = 0; idx < instructions.Count; idx++ )
@@ -66,7 +77,7 @@ public static class ILEmissionPass
                     break;
 
                 case IROp.LoadConst:
-                    EmitLoadConstant( ilg, ir.Operands[inst.Operand], inst.Operand, hasConstantsArray, constantIndices );
+                    EmitLoadConstant( ilg, ir.Operands[inst.Operand], inst.Operand, hasConstantsArray, constantIndices, constantsField, ir.GetOperandType( inst.Operand ) );
                     break;
 
                 case IROp.LoadNull:
@@ -409,6 +420,7 @@ public static class ILEmissionPass
                     // external labels (e.g., Return from inside try) must be kept.
                     if ( idx + 1 < instructions.Count
                         && IsExceptionBoundary( instructions[idx + 1].Op )
+                        && exceptionEndLabels != null
                         && exceptionEndLabels.Contains( inst.Operand ) )
                         break;
                     ilg.Emit( OpCodes.Leave, ilLabels[inst.Operand] );
@@ -524,7 +536,9 @@ public static class ILEmissionPass
         object value,
         int operandIndex,
         bool hasConstantsArray,
-        Dictionary<int, int>? constantIndices )
+        Dictionary<int, int>? constantIndices,
+        FieldInfo? constantsField,
+        Type? declaredType )
     {
         switch ( value )
         {
@@ -582,14 +596,14 @@ public static class ILEmissionPass
 
             case decimal:
                 // Decimal is a value type that needs to be loaded from the constants array
-                EmitLoadFromConstantsArray( ilg, operandIndex, value.GetType(), constantIndices! );
+                EmitLoadFromConstantsArray( ilg, operandIndex, declaredType ?? value.GetType(), constantIndices!, constantsField );
                 break;
 
             default:
                 // Non-embeddable constant -- load from constants array
                 if ( hasConstantsArray && constantIndices != null && constantIndices.ContainsKey( operandIndex ) )
                 {
-                    EmitLoadFromConstantsArray( ilg, operandIndex, value.GetType(), constantIndices );
+                    EmitLoadFromConstantsArray( ilg, operandIndex, declaredType ?? value.GetType(), constantIndices, constantsField );
                 }
                 else
                 {
@@ -628,12 +642,17 @@ public static class ILEmissionPass
         ILGenerator ilg,
         int operandIndex,
         Type targetType,
-        Dictionary<int, int> constantIndices )
+        Dictionary<int, int> constantIndices,
+        FieldInfo? constantsField = null )
     {
         var arrayIndex = constantIndices[operandIndex];
 
-        // Load constants array (arg 0)
+        // Load the constants array. Arg 0 holds it directly in a static method; in an
+        // instance method arg 0 is `this` and the array lives in a field.
         ilg.Emit( OpCodes.Ldarg_0 );
+
+        if ( constantsField != null )
+            ilg.Emit( OpCodes.Ldfld, constantsField );
         // Load array index
         EmitLoadInt( ilg, arrayIndex );
         // Load element reference

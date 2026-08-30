@@ -1,4 +1,6 @@
 using System.Linq.Expressions;
+using System.Reflection;
+using System.Reflection.Emit;
 using Hyperbee.Expressions.CompilerServices;
 
 namespace Hyperbee.Expressions.Compiler;
@@ -17,7 +19,7 @@ namespace Hyperbee.Expressions.Compiler;
 /// var block = BlockAsync( ..., options );
 /// </code>
 /// </example>
-public sealed class HyperbeeCoroutineDelegateBuilder : ICoroutineDelegateBuilder
+public sealed class HyperbeeCoroutineDelegateBuilder : ICoroutineDelegateBuilder, ICoroutineMethodBuilder
 {
     /// <summary>
     /// Singleton instance.
@@ -28,4 +30,15 @@ public sealed class HyperbeeCoroutineDelegateBuilder : ICoroutineDelegateBuilder
 
     /// <inheritdoc/>
     public Delegate Create( LambdaExpression lambda ) => HyperbeeCompiler.Compile( lambda );
+
+    /// <inheritdoc/>
+    public object[] Emit(
+        IReadOnlyList<ParameterExpression> parameters,
+        Expression body,
+        Type returnType,
+        MethodBuilder method,
+        FieldInfo constantsField )
+    {
+        return HyperbeeCompiler.CompileToInstanceMethod( parameters, body, returnType, method, constantsField );
+    }
 }

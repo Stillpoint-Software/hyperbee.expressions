@@ -1,8 +1,11 @@
 ﻿using System.Collections;
+using System.Collections.Concurrent;
 //using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using Hyperbee.Collections;
 
 using static System.Linq.Expressions.Expression;
@@ -13,81 +16,201 @@ public delegate bool YieldMoveNextDelegate<in T>( T stateMachine );
 
 internal delegate EnumerableLoweringInfo YieldLoweringTransformer();
 
-internal class EnumerableStateMachineBuilder<TResult>
+internal class EnumerableStateMachineBuilder<TResult> : CoroutineStateMachineBuilder<TResult>
 {
-    private readonly ModuleBuilder _moduleBuilder;
-    private readonly string _typeName;
-
 
     protected static class FieldName
     {
         // special names to prevent collisions with user identifiers
         public const string MoveNextDelegate = "__moveNextDelegate<>";
-        public const string State = "__state<>";
-        public const string Current = "__current<>";
+        public const string Constants = "__constants<>";
+
+        // declared by EnumerableStateMachineBase<TResult>
+        public const string State = nameof( EnumerableStateMachineBase<TResult>.__state );
+        public const string Current = nameof( EnumerableStateMachineBase<TResult>.__current );
+        public const string Disposing = nameof( EnumerableStateMachineBase<TResult>.__disposing );
     }
+
+    private static readonly Type BaseType = typeof( EnumerableStateMachineBase<> ).MakeGenericType( typeof( TResult ) );
 
     public EnumerableStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
+        : base( moduleBuilder, typeName )
     {
-        _moduleBuilder = moduleBuilder;
-        _typeName = typeName;
     }
 
-    public Expression CreateStateMachine( YieldLoweringTransformer loweringTransformer, int id )
+    public Expression CreateStateMachine(
+        YieldLoweringTransformer loweringTransformer,
+        int id,
+        ExternVariables externVariables = null,
+        bool canEmitIntoType = false )
     {
-        var loweringInfo = loweringTransformer();
+        return BuildStateMachine( () => loweringTransformer(), id, externVariables, canEmitIntoType );
+    }
 
-        // Create the state-machine builder context
-        //
-        var context = new StateMachineContext
-        {
-            LoweringInfo = loweringInfo
-        };
-
-        // Create the state-machine
-        //
+    protected override Expression BuildStartExpression(
+        int id,
+        StateMachineContext context,
+        Type stateMachineType,
+        List<FieldAssignment> assignments )
+    {
         // Conceptually:
         //
         // var stateMachine = new YieldStateMachine();
-        // 
-        // stateMachine.__state<> = -1;
-        // stateMachine.<extern_fields> = <extern_fields>;
         //
-        // stateMachine.__moveNextDelegate<> = (ref YieldStateMachine stateMachine) => { ... }
+        // stateMachine.__state = -1;
+        // stateMachine.<extern_fields> = <extern_fields>;
         //
         // return (IEnumerable<TResult>) stateMachine;
 
-        var stateMachineType = CreateStateMachineType( context, out var fields );
-        var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
+        var loweringInfo = (EnumerableLoweringInfo) context.LoweringInfo;
 
         var stateMachineVariable = Variable( stateMachineType, "stateMachine" );
 
         var bodyExpressions = new List<Expression>
         {
             Assign( stateMachineVariable, New( stateMachineType ) ),
-            Assign( Field( stateMachineVariable, FieldName.State ), Constant( -1 ) ),
-            Assign( Field( stateMachineVariable, FieldName.MoveNextDelegate ), moveNextLambda ),
-            stateMachineVariable
+            Assign( Field( stateMachineVariable, FieldName.State ), Constant( -1 ) )
         };
+
+        for ( var index = 0; index < assignments.Count; index++ )
+            bodyExpressions.Add( assignments[index]( stateMachineVariable, stateMachineType ) );
+
+        if ( context.ExternVariables != null )
+        {
+            // copy the enclosing cells into their fields before the machine is handed out
+            bodyExpressions.AddRange( context.ExternVariables.AssignFields( stateMachineVariable, stateMachineType ) );
+        }
+
+        bodyExpressions.Add( stateMachineVariable );
 
         return Block( [.. loweringInfo.Variables, stateMachineVariable], bodyExpressions );
     }
 
-
-    private static LambdaExpression CreateMoveNextBody(
+    protected override Type BuildWithEmittedMoveNext(
         int id,
         StateMachineContext context,
-        Type stateMachineType,
-        FieldInfo[] fields
-    )
+        ICoroutineMethodBuilder methodBuilder,
+        out List<FieldAssignment> assignments )
     {
-        // Set context state-machine-info
+        // Conceptually:
+        //
+        // class YieldStateMachine : EnumerableStateMachineBase<TResult>
+        // {
+        //     public object[] __constants<>;
+        //     public override bool MoveNext() { ... }
+        // }
+        //
+        // The body is emitted before CreateType(), so it is written against the open type
+        // and reaches its own fields through the builders.
 
+        var baseType = BaseType;
+
+        var typeBuilder = ModuleBuilder.DefineType( TypeName, TypeAttributes.Public, baseType );
+
+        var constantsFieldBuilder = typeBuilder.DefineField( FieldName.Constants, typeof( object[] ), FieldAttributes.Public );
+
+        var hoisted = HoistedVariables.DefineFields(
+            typeBuilder,
+            context.LoweringInfo.ScopedVariables,
+            FieldName.Constants,
+            FieldName.State,
+            FieldName.Current
+        );
+
+        context.ExternVariables?.DefineFields( typeBuilder );
+        context.VariableFields = HoistedVariables.AsFields( hoisted );
+
+        var moveNextMethod = typeBuilder.DefineMethod(
+            "MoveNext",
+            MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig,
+            typeof( bool ),
+            Type.EmptyTypes );
+
+        // The body first parameter is the instance, so it maps to IL arg 0.
+
+        var stateMachine = Parameter( typeBuilder, $"sm<{id}>" );
+
+        var body = CreateMoveNextBodyExpression( context, stateMachine, typeBuilder );
+
+        var constants = methodBuilder.Emit( [stateMachine], body, typeof( bool ), moveNextMethod, constantsFieldBuilder );
+
+        typeBuilder.DefineMethodOverride( moveNextMethod, baseType.GetMethod( nameof( EnumerableStateMachineBase<TResult>.MoveNext ) )! );
+
+        ImplementClone( typeBuilder, baseType, context, constantsFieldBuilder );
+
+        assignments = [];
+
+        if ( constants.Length > 0 )
+        {
+            assignments.Add( ( stateMachineVariable, stateMachineType ) =>
+                Assign( Field( stateMachineVariable, stateMachineType.GetField( FieldName.Constants )! ), Constant( constants ) ) );
+        }
+
+        return typeBuilder.CreateType();
+    }
+
+    protected override Type BuildWithDelegateMoveNext( int id, StateMachineContext context, out List<FieldAssignment> assignments )
+    {
+        // Conceptually:
+        //
+        // stateMachine.__moveNextDelegate<> = (YieldStateMachine sm) => { ... }
+
+        var stateMachineType = CreateStateMachineType( context );
+        var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType );
+
+        // Compiler choice flows through the ambient context (CoroutineBuilderContext.Current),
+        // never through ExpressionRuntimeOptions. Null ambient = the System compiler handles
+        // MoveNext in the outer compilation context. Non-null ambient = compile the lambda
+        // once here and embed the delegate as a constant, so the outer compilation sees a
+        // constant rather than a nested lambda it has to compile itself.
+        //
+        // A body that reads a variable from the enclosing expression cannot be pre-compiled:
+        // compiled on its own it would lose the variable. Emit it inline instead, so the
+        // enclosing compiler shares the variable through its own closure mechanism.
+
+        var coroutineBuilder = CoroutineBuilderContext.Current;
+
+        Expression moveNextDelegate = coroutineBuilder == null || FreeVariableScanner.HasFreeVariables( moveNextLambda )
+            ? moveNextLambda
+            : Constant( coroutineBuilder.Create( moveNextLambda ), moveNextLambda.Type );
+
+        assignments =
+        [
+            ( stateMachineVariable, _ ) =>
+                Assign( Field( stateMachineVariable, FieldName.MoveNextDelegate ), moveNextDelegate )
+        ];
+
+        return stateMachineType;
+    }
+
+    private static LambdaExpression CreateMoveNextBody( int id, StateMachineContext context, Type stateMachineType )
+    {
         var stateMachine = Parameter( stateMachineType, $"sm<{id}>" );
+
+        return Lambda(
+            typeof( YieldMoveNextDelegate<> ).MakeGenericType( stateMachineType ),
+            CreateMoveNextBodyExpression( context, stateMachine, stateMachineType ),
+            stateMachine
+        );
+    }
+
+    private static Expression CreateMoveNextBodyExpression(
+        StateMachineContext context,
+        ParameterExpression stateMachine,
+        Type stateMachineType )
+    {
+        // State, current and Dispose are declared by the base type, so they are real runtime
+        // members even while the derived type is still open.
+
+        var baseType = BaseType;
+
         var success = Parameter( typeof( bool ), "success" );
 
-        var stateField = Field( stateMachine, FieldName.State );
-        var currentField = Field( stateMachine, FieldName.Current );
+        var stateField = Field( stateMachine, baseType.GetField( FieldName.State )! );
+        var currentField = Field( stateMachine, baseType.GetField( FieldName.Current )! );
+        var disposingField = Field( stateMachine, baseType.GetField( FieldName.Disposing )! );
+
+        var disposeMethod = baseType.GetMethod( nameof( EnumerableStateMachineBase<TResult>.Dispose ) )!;
 
         var exitLabel = Label( typeof( bool ), "ST_EXIT" );
 
@@ -96,18 +219,16 @@ internal class EnumerableStateMachineBuilder<TResult>
             exitLabel,
             stateField,
             currentField,
-            success
+            success,
+            disposingField
         );
 
-        return Lambda(
-            typeof( YieldMoveNextDelegate<> ).MakeGenericType( stateMachineType ),
-            Block(
+        var body = Block(
                 [success],
                 // This should be a try fault, but fails with preferInterpretation (see: https://github.com/dotnet/runtime/issues/114081)
                 TryFinally(
                     Block(
                         CreateBody(
-                            fields,
                             context,
                             Assign( stateField, Constant( -2 ) ),
                             Assign( success, Constant( true ) ),
@@ -116,79 +237,27 @@ internal class EnumerableStateMachineBuilder<TResult>
                     ),
                     Block(
                         IfThen( Not( success ),
-                            Call( stateMachine, "Dispose", Type.EmptyTypes )
+                            Call( stateMachine, disposeMethod )
                         )
                     )
                 ),
                 Label( exitLabel, defaultValue: Constant( false ) )
-            ),
-            stateMachine
-        );
+            );
+
+        // The body is already closed: the hoisting pass turned each enclosing variable into
+        // a read of the field that carries it.
+
+        return body;
     }
 
-    private static IEnumerable<Expression> CreateBody( FieldInfo[] fields, StateMachineContext context, params Expression[] antecedents )
+    private Type CreateStateMachineType( StateMachineContext context )
     {
-        var stateMachineInfo = context.StateMachineInfo;
-        var loweringInfo = context.LoweringInfo;
+        // The interfaces and their plumbing live on the base type, so only the fields and
+        // MoveNext are emitted here.
 
-        var scopes = loweringInfo.Scopes;
+        var baseType = BaseType;
 
-        // Create the body expressions
-
-        var firstScope = scopes[0];
-
-        var jumpTable = JumpTableBuilder.Build(
-            firstScope,
-            scopes,
-            stateMachineInfo.StateField
-        );
-
-        // hoist variables
-
-        var bodyExpressions = HoistVariables(
-            jumpTable,
-            firstScope.GetExpressions( context ),
-            fields,
-            stateMachineInfo.StateMachine
-        );
-
-        // return the body expressions
-
-        return bodyExpressions.Concat( antecedents );
-    }
-
-    private static IEnumerable<Expression> HoistVariables( Expression jumpTable, IReadOnlyList<Expression> expressions, FieldInfo[] fields, ParameterExpression stateMachine )
-    {
-        var fieldMembers = fields
-            .Select( field => Field( stateMachine, field ) )
-            .ToDictionary( x => x.Member.Name );
-
-        var hoistingVisitor = new HoistingVisitor( fieldMembers );
-
-        return HoistingSource().Select( hoistingVisitor.Visit );
-
-        IEnumerable<Expression> HoistingSource()
-        {
-            yield return jumpTable;
-
-            foreach ( var expression in expressions )
-                yield return expression;
-        }
-    }
-
-    private Type CreateStateMachineType( StateMachineContext context, out FieldInfo[] fields )
-    {
-        var typeBuilder = _moduleBuilder.DefineType(
-            _typeName, TypeAttributes.Public, typeof( object ),
-        [
-            typeof( IEnumerable<> ).MakeGenericType( typeof(TResult) ),
-            typeof( IEnumerator<> ).MakeGenericType( typeof(TResult) ),
-            typeof( IDisposable )
-        ] );
-
-        typeBuilder.AddInterfaceImplementation( typeof( IEnumerable<> ).MakeGenericType( typeof( TResult ) ) );
-        typeBuilder.AddInterfaceImplementation( typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ) );
-        typeBuilder.AddInterfaceImplementation( typeof( IDisposable ) );
+        var typeBuilder = ModuleBuilder.DefineType( TypeName, TypeAttributes.Public, baseType );
 
         // Define: fields
 
@@ -199,196 +268,111 @@ internal class EnumerableStateMachineBuilder<TResult>
             moveNextDelegateType,
             FieldAttributes.Public );
 
-        var stateField = typeBuilder.DefineField(
-            FieldName.State,
-            typeof( int ),
-            FieldAttributes.Public
-        );
-
-        var currentField = typeBuilder.DefineField(
-            FieldName.Current,
-            typeof( TResult ),
-            FieldAttributes.Public
-        );
-
         // local variables in the current scope for this state-machine
 
-        var localVariables = context.LoweringInfo
-            .ScopedVariables
-            .EnumerateItems( LinkedNode.Current )
-            .Select( x => x.Value );
+        var fieldNames = HoistedVariables.DefineFields(
+            typeBuilder,
+            context.LoweringInfo.ScopedVariables,
+            FieldName.MoveNextDelegate,
+            FieldName.State,
+            FieldName.Current
+        );
 
-        foreach ( var parameterExpression in localVariables )
-        {
-            typeBuilder.DefineField(
-                parameterExpression.Name ?? parameterExpression.ToString(),
-                parameterExpression.Type,
-                FieldAttributes.Public
-            );
-        }
+        // variables the body reads from the enclosing scope travel by field, so the body
+        // itself stays closed and needs no closure
+
+        context.ExternVariables?.DefineFields( typeBuilder );
 
         // Define: methods
 
-        ImplementIEnumerable( typeBuilder );
-        ImplementIEnumerableType( typeBuilder, stateField );
-        ImplementIEnumerator( typeBuilder, moveNextDelegateField, moveNextDelegateType, currentField );
-        ImplementIEnumeratorType( typeBuilder, currentField );
-        ImplementIDisposable( typeBuilder, stateField );
+        ImplementMoveNext( typeBuilder, baseType, moveNextDelegateField, moveNextDelegateType );
+        ImplementClone( typeBuilder, baseType, context, moveNextDelegateField );
 
         // Close the type builder
         var stateMachineType = typeBuilder.CreateType();
 
-        fields = [.. stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public )];
+        context.VariableFields = HoistedVariables.MapFields(
+            fieldNames,
+            stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public ) );
 
         return stateMachineType;
     }
 
-    private static void ImplementIEnumerable( TypeBuilder typeBuilder )
+    // A machine is its own enumerator, which it can be exactly once. Enumerating again needs
+    // a copy that carries the same enclosing values but starts with its own state and its own
+    // locals -- so the carried field is copied and everything else is left at its default.
+
+    private static void ImplementClone(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        StateMachineContext context,
+        FieldBuilder carried )
     {
-        var getEnumeratorMethod = typeBuilder.DefineMethod( "GetEnumerator",
-            MethodAttributes.Public | MethodAttributes.Virtual, typeof( IEnumerator ), Type.EmptyTypes );
-        var ilGen = getEnumeratorMethod.GetILGenerator();
+        var constructor = typeBuilder.DefineDefaultConstructor( MethodAttributes.Public );
 
-        // Get the GetEnumerator method from IEnumerable<TResult>
-        var genericGetEnumeratorMethod = typeof( IEnumerable<> )
-            .MakeGenericType( typeof( TResult ) )
-            .GetMethod( "GetEnumerator" )!;
+        var fields = new List<FieldBuilder> { carried };
 
-        // IEnumerator IEnumerable.GetEnumerator()
-        // {
-        //   return (IEnumerator) ((IEnumerable<TResult>)this).GetEnumerator();
-        // }
-        ilGen.Emit( OpCodes.Ldarg_0 );
-        ilGen.Emit( OpCodes.Castclass, typeof( IEnumerable<> ).MakeGenericType( typeof( TResult ) ) );
-        ilGen.Emit( OpCodes.Callvirt, genericGetEnumeratorMethod );
-        ilGen.Emit( OpCodes.Castclass, typeof( IEnumerator ) );
-        ilGen.Emit( OpCodes.Ret );
+        context.ExternVariables?.AddFields( fields );
 
-        typeBuilder.DefineMethodOverride( getEnumeratorMethod, typeof( IEnumerable ).GetMethod( "GetEnumerator" )! );
-    }
-    private static void ImplementIEnumerableType( TypeBuilder typeBuilder, FieldBuilder stateField )
-    {
-        var getEnumeratorMethod = typeBuilder
-            .DefineMethod( "GetEnumerator",
-                MethodAttributes.Public | MethodAttributes.Virtual,
-                typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ),
-                Type.EmptyTypes );
+        var cloneMethod = typeBuilder.DefineMethod(
+            "Clone",
+            MethodAttributes.Family | MethodAttributes.Virtual | MethodAttributes.HideBySig,
+            baseType,
+            Type.EmptyTypes );
 
-        var ilGen = getEnumeratorMethod.GetILGenerator();
+        var ilGen = cloneMethod.GetILGenerator();
 
-        // TODO: this needs more logic for handling threads and multiple enumerators
+        ilGen.DeclareLocal( typeBuilder );
 
-        //this.__state<> = 0;
-        ilGen.Emit( OpCodes.Ldarg_0 );
-        ilGen.Emit( OpCodes.Ldc_I4_0 );
-        ilGen.Emit( OpCodes.Stfld, stateField );
+        ilGen.Emit( OpCodes.Newobj, constructor );
+        ilGen.Emit( OpCodes.Stloc_0 );
 
-        // var enumerator = this;
-        // return (IEnumerator<TResult>) enumerator;
-        var enumeratorLocal = ilGen.DeclareLocal( typeBuilder );
-        ilGen.Emit( OpCodes.Ldarg_0 );
-        ilGen.Emit( OpCodes.Stloc, enumeratorLocal );
-        ilGen.Emit( OpCodes.Ldloc, enumeratorLocal );
-        ilGen.Emit( OpCodes.Castclass, typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ) );
+        for ( var index = 0; index < fields.Count; index++ )
+        {
+            ilGen.Emit( OpCodes.Ldloc_0 );
+            ilGen.Emit( OpCodes.Ldarg_0 );
+            ilGen.Emit( OpCodes.Ldfld, fields[index] );
+            ilGen.Emit( OpCodes.Stfld, fields[index] );
+        }
+
+        ilGen.Emit( OpCodes.Ldloc_0 );
         ilGen.Emit( OpCodes.Ret );
 
         typeBuilder.DefineMethodOverride(
-            getEnumeratorMethod,
-            typeof( IEnumerable<> ).MakeGenericType( typeof( TResult ) ).GetMethod( "GetEnumerator" )! );
+            cloneMethod,
+            baseType.GetMethod( "Clone", BindingFlags.Instance | BindingFlags.NonPublic )! );
     }
-    private static void ImplementIEnumerator( TypeBuilder typeBuilder, FieldBuilder moveNextDelegateField, Type moveNextDelegateType, FieldBuilder currentField )
+
+    private static void ImplementMoveNext(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        FieldBuilder moveNextDelegateField,
+        Type moveNextDelegateType )
     {
-        var moveNextMethod = typeBuilder.DefineMethod( "MoveNext", MethodAttributes.Public | MethodAttributes.Virtual, typeof( bool ), Type.EmptyTypes );
-        var currentMethod = typeBuilder.DefineMethod( "get_Current", MethodAttributes.Public | MethodAttributes.Virtual, typeof( object ), Type.EmptyTypes );
-        var resetMethod = typeBuilder.DefineMethod( "Reset", MethodAttributes.Public | MethodAttributes.Virtual, typeof( void ), Type.EmptyTypes );
+        var moveNextMethod = typeBuilder.DefineMethod(
+            "MoveNext",
+            MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig,
+            typeof( bool ),
+            Type.EmptyTypes );
 
-        var ilGenMoveNext = moveNextMethod.GetILGenerator();
-        var ilGenCurrent = currentMethod.GetILGenerator();
-        var ilGenReset = resetMethod.GetILGenerator();
+        var ilGen = moveNextMethod.GetILGenerator();
 
-        // MoveNext
-        //  bool IEnumerator.MoveNext()
+        //  public override bool MoveNext()
         //  {
         //    return __moveNextDelegate<>( this );
         //  }
-        ilGenMoveNext.Emit( OpCodes.Ldarg_0 );
-        ilGenMoveNext.Emit( OpCodes.Ldfld, moveNextDelegateField );
-        ilGenMoveNext.Emit( OpCodes.Ldarg_0 );
+        ilGen.Emit( OpCodes.Ldarg_0 );
+        ilGen.Emit( OpCodes.Ldfld, moveNextDelegateField );
+        ilGen.Emit( OpCodes.Ldarg_0 );
 
         var moveNextInvoke = typeof( YieldMoveNextDelegate<> ).GetMethod( "Invoke" )!;
-        var invokeMethod = TypeBuilder.GetMethod( moveNextDelegateType, moveNextInvoke );
 
-        ilGenMoveNext.Emit( OpCodes.Callvirt, invokeMethod );
-        ilGenMoveNext.Emit( OpCodes.Ret );
-
-        // Current
-        // object IEnumerator.Current
-        // {
-        //   get {
-        //     return (object) __current<>;
-        //   }
-        // }
-        ilGenCurrent.Emit( OpCodes.Ldarg_0 );
-        ilGenCurrent.Emit( OpCodes.Ldfld, currentField );
-        ilGenCurrent.Emit( OpCodes.Box, typeof( TResult ) );
-        ilGenCurrent.Emit( OpCodes.Ret );
-
-        // Reset
-        ilGenReset.Emit( OpCodes.Newobj, typeof( NotSupportedException ).GetConstructor( Type.EmptyTypes )! );
-        ilGenReset.Emit( OpCodes.Throw );
-
-        typeBuilder.DefineMethodOverride( moveNextMethod, typeof( IEnumerator ).GetMethod( "MoveNext" )! );
-        typeBuilder.DefineMethodOverride( currentMethod, typeof( IEnumerator ).GetProperty( "Current" )!.GetMethod! );
-        typeBuilder.DefineMethodOverride( resetMethod, typeof( IEnumerator ).GetMethod( "Reset" )! );
-    }
-    private static void ImplementIEnumeratorType( TypeBuilder typeBuilder, FieldBuilder currentField )
-    {
-        var currentMethod = typeBuilder.DefineMethod( "get_Current", MethodAttributes.Public | MethodAttributes.Virtual, typeof( TResult ), Type.EmptyTypes );
-
-        var ilGenCurrent = currentMethod.GetILGenerator();
-
-        // Current
-        // TResult IEnumerator<TResult>.Current
-        // {
-        //   get {
-        //     return __current<>;
-        //   }
-        // }
-        ilGenCurrent.Emit( OpCodes.Ldarg_0 );
-        ilGenCurrent.Emit( OpCodes.Ldfld, currentField );
-        ilGenCurrent.Emit( OpCodes.Ret );
-
-        typeBuilder.DefineMethodOverride( currentMethod, typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ).GetProperty( "Current" )!.GetMethod! );
-    }
-    private static void ImplementIDisposable( TypeBuilder typeBuilder, FieldBuilder stateField )
-    {
-        var disposeMethod = typeBuilder.DefineMethod( "Dispose", MethodAttributes.Public | MethodAttributes.Virtual, typeof( void ), Type.EmptyTypes );
-        var ilGen = disposeMethod.GetILGenerator();
-
-        // TODO: Dispose all disposable fields
-        // TODO: NOTE: this could include nested IEnumerable<> state machines
-
-        //this.__state<> = -2;
-        ilGen.Emit( OpCodes.Ldarg_0 );
-        ilGen.Emit( OpCodes.Ldc_I4, -2 );
-        ilGen.Emit( OpCodes.Stfld, stateField );
+        ilGen.Emit( OpCodes.Callvirt, TypeBuilder.GetMethod( moveNextDelegateType, moveNextInvoke ) );
         ilGen.Emit( OpCodes.Ret );
 
-        typeBuilder.DefineMethodOverride( disposeMethod, typeof( IDisposable ).GetMethod( "Dispose" )! );
+        typeBuilder.DefineMethodOverride( moveNextMethod, baseType.GetMethod( nameof( EnumerableStateMachineBase<TResult>.MoveNext ) )! );
     }
 
-    private sealed class HoistingVisitor( IReadOnlyDictionary<string, MemberExpression> memberExpressions ) : ExpressionVisitor
-    {
-        protected override Expression VisitParameter( ParameterExpression node )
-        {
-            var name = node.Name ?? node.ToString();
-
-            if ( memberExpressions.TryGetValue( name, out var fieldAccess ) )
-                return fieldAccess;
-
-            return node;
-        }
-    }
 }
 
 public static class YieldStateMachineBuilder
@@ -405,17 +389,30 @@ public static class YieldStateMachineBuilder
             .First( method => method.Name == nameof( Create ) && method.IsGenericMethod );
     }
 
-    internal static Expression Create( Type resultType, YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
+    // Bound once per result type. See the matching comment in AsyncStateMachineBuilder.
+
+    private delegate Expression CreateStateMachineDelegate(
+        YieldLoweringTransformer loweringTransformer,
+        ExpressionRuntimeOptions options,
+        ExternVariables externVariables,
+        bool canEmitIntoType );
+
+    private static readonly ConcurrentDictionary<Type, CreateStateMachineDelegate> CreateByResultType = new();
+
+    internal static Expression Create( Type resultType, YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null, bool canEmitIntoType = false )
     {
         if ( resultType == typeof( void ) )
             throw new ArgumentException( "IEnumerable must have a valid result type", nameof( resultType ) );
 
-        var buildStateMachine = BuildYieldStateMachineMethod.MakeGenericMethod( resultType );
+        var create = CreateByResultType.GetOrAdd( resultType, static type =>
+            BuildYieldStateMachineMethod
+                .MakeGenericMethod( type )
+                .CreateDelegate<CreateStateMachineDelegate>() );
 
-        return (Expression) buildStateMachine.Invoke( null, [loweringTransformer, options] );
+        return create( loweringTransformer, options, externVariables, canEmitIntoType );
     }
 
-    internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null )
+    internal static Expression Create<TResult>( YieldLoweringTransformer loweringTransformer, ExpressionRuntimeOptions options = null, ExternVariables externVariables = null, bool canEmitIntoType = false )
     {
         options ??= new ExpressionRuntimeOptions();
 
@@ -426,8 +423,17 @@ public static class YieldStateMachineBuilder
         var moduleBuilder = options.ModuleBuilderProvider.GetModuleBuilder( ModuleKind.Enumerable );
 
         var stateMachineBuilder = new EnumerableStateMachineBuilder<TResult>( moduleBuilder, typeName );
-        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id );
+        var stateMachineExpression = stateMachineBuilder.CreateStateMachine( loweringTransformer, __id, externVariables, canEmitIntoType );
+
+        // The async builder has always reported its state machine here. This one did not,
+        // which is why SourceHandler saw nothing for a BlockEnumerable.
+
+        if ( options.SourceHandler != null )
+            options.SourceHandler( GetDebugView( stateMachineExpression ) );
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }
+
+    [UnsafeAccessor( UnsafeAccessorKind.Method, Name = "get_DebugView" )]
+    private static extern string GetDebugView( Expression expression );
 }

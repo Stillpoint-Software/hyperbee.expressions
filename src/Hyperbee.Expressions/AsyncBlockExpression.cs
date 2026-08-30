@@ -53,8 +53,30 @@ public class AsyncBlockExpression : Expression
     {
         // Compiler choice flows through CoroutineBuilderContext.Current (ambient or global default),
         // not through RuntimeOptions. RuntimeOptions carries behavioral options only.
-        return _stateMachine ??= AsyncStateMachineBuilder.Create( Result.Type, LoweringTransformer, RuntimeOptions );
+        // Two threads reducing the same node both build a state machine type, and whichever
+        // loses publishes nothing -- but every caller has to see the same one, or a tree
+        // rewritten against one machine ends up running another.
+
+        if ( _stateMachine != null )
+            return _stateMachine;
+
+        var stateMachine = AsyncStateMachineBuilder.Create(
+            Result.Type,
+            LoweringTransformer,
+            RuntimeOptions,
+            ExternVariables.Create( Variables, Expressions ),
+            CanEmitIntoType() );
+
+        return Interlocked.CompareExchange( ref _stateMachine, stateMachine, null ) ?? stateMachine;
     }
+
+    // The body may be emitted into the machine's own method unless it reaches a non-public
+    // member -- only a DynamicMethod is created with visibility checks skipped. The scan is a
+    // full walk, so the switch is read first and short-circuits it.
+
+    private bool CanEmitIntoType() =>
+        (RuntimeOptions?.EmitMoveNextIntoType ?? true)
+        && !VisibilityScanner.HasNonPublicReferences( Expressions );
 
     private AsyncLoweringInfo LoweringTransformer()
     {

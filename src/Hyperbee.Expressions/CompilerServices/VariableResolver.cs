@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using Hyperbee.Collections;
 using static System.Linq.Expressions.Expression;
 
@@ -49,9 +50,16 @@ internal sealed class VariableResolver : ExpressionVisitor
         _states = states;
 
         // initialize the scoped variables with the local variables
-        _scopedVariables.Push(
-            variables.Select( x => new KeyValuePair<ParameterExpression, ParameterExpression>( x, CreateParameter( x ) ) )
-        );
+        var scoped = new KeyValuePair<ParameterExpression, ParameterExpression>[variables.Length];
+
+        for ( var index = 0; index < variables.Length; index++ )
+        {
+            scoped[index] = new KeyValuePair<ParameterExpression, ParameterExpression>(
+                variables[index],
+                CreateParameter( variables[index] ) );
+        }
+
+        _scopedVariables.Push( scoped );
     }
 
     // Variables
@@ -61,8 +69,25 @@ internal sealed class VariableResolver : ExpressionVisitor
     {
         foreach ( var variable in variables )
         {
-            _scopedVariables.Add( variable, variable );
+            AddLocalVariable( variable );
         }
+    }
+
+    // Map a user variable to a uniquely named scoped variable.
+    //
+    // Distinct ParameterExpression instances may share the same name, and a name may be
+    // null. Scoped variables become state-machine fields, so they must be renamed to
+    // guarantee that distinct instances stay distinct.
+
+    public ParameterExpression AddLocalVariable( ParameterExpression variable )
+    {
+        if ( _scopedVariables.TryGetValue( variable, out var existing ) )
+            return existing;
+
+        var scoped = CreateParameter( variable );
+        _scopedVariables[variable] = scoped;
+
+        return scoped;
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
@@ -95,7 +120,7 @@ internal sealed class VariableResolver : ExpressionVisitor
     [MethodImpl( MethodImplOptions.AggressiveInlining )]
     public Expression GetExceptionVariable( int stateId )
     {
-        return AddVariable( Variable( typeof( object ), VariableName.Exception( stateId ) ) );
+        return AddVariable( Variable( typeof( ExceptionDispatchInfo ), VariableName.Exception( stateId ) ) );
     }
 
     [MethodImpl( MethodImplOptions.AggressiveInlining )]

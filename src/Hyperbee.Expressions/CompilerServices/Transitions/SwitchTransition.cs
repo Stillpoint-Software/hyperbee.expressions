@@ -21,9 +21,12 @@ internal class SwitchTransition : Transition
         {
             var stateOrder = context.StateNode.StateOrder;
 
-            var cases = CaseNodes
-                .Select( switchCase => switchCase.Reduce( stateOrder ) )
-                .ToArray();
+            var cases = new SwitchCase[CaseNodes.Count];
+
+            for ( var index = 0; index < CaseNodes.Count; index++ )
+            {
+                cases[index] = CaseNodes[index].Reduce( stateOrder );
+            }
 
             // Route the no-match path explicitly to the fall-through (DefaultNode). Without an
             // explicit default, a no-match would fall through to whatever state is physically

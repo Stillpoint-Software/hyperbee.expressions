@@ -49,12 +49,17 @@ internal sealed class StateContext
         AddState();
     }
 
-    public Scope EnterTryScope( StateNode initialState )
+    public Scope EnterTryScope()
     {
         var parentScope = CurrentScope;
 
         var newScopeId = Scopes.Count;
-        var newScope = new Scope( newScopeId, parentScope, initialState?.NodeLabel, _initialCapacity );
+
+        // The scope owns its entry label rather than borrowing the label of the state
+        // that precedes it. That state may hold expressions that run before the try, and
+        // resuming into the scope must not re-run them.
+
+        var newScope = new Scope( newScopeId, parentScope, Expression.Label( $"ST_TRY_{newScopeId:0000}" ), _initialCapacity );
 
         Scopes.Add( newScope );
         _scopeIndexes.Push( newScopeId );
@@ -167,9 +172,17 @@ internal sealed class StateContext
                 var expression = node.GetExpression( context );
 
                 if ( expression is BlockExpression innerBlock )
-                    expressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
+                {
+                    for ( var inner = 0; inner < innerBlock.Expressions.Count; inner++ )
+                    {
+                        if ( !IsDefaultVoid( innerBlock.Expressions[inner] ) )
+                            expressions.Add( innerBlock.Expressions[inner] );
+                    }
+                }
                 else
+                {
                     expressions.Add( expression );
+                }
             }
 
             return expressions;

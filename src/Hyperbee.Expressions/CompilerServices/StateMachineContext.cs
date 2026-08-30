@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
 using Hyperbee.Collections;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -8,6 +9,20 @@ internal sealed class StateMachineContext
     public StateNode StateNode { get; set; }
     public StateMachineInfo StateMachineInfo { get; set; }
     public LoweringInfo LoweringInfo { get; set; }
+
+    // Maps a hoisted variable to its state-machine field. Keyed by ParameterExpression
+    // instance: distinct instances may share a name, so names cannot identify a variable.
+
+    public IReadOnlyDictionary<ParameterExpression, FieldInfo> VariableFields { get; set; }
+
+    // Variables the body reads from the enclosing scope, carried by field so the body stays closed.
+
+    public ExternVariables ExternVariables { get; set; }
+
+    // Whether the body may be emitted into the machine's own method. False when it reaches
+    // a non-public member, which only a DynamicMethod is allowed to do.
+
+    public bool CanEmitIntoType { get; set; }
 }
 
 internal record StateMachineInfo(
@@ -29,7 +44,8 @@ internal record EnumerableStateMachineInfo(
     LabelTarget ExitLabel,
     MemberExpression StateField,
     MemberExpression CurrentField,
-    ParameterExpression Success
+    ParameterExpression Success,
+    MemberExpression DisposingField
 ) : StateMachineInfo( StateMachine, ExitLabel, StateField );
 
 internal record LoweringInfo

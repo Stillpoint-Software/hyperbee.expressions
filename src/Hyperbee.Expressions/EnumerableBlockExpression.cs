@@ -9,13 +9,25 @@ namespace Hyperbee.Expressions;
 public class EnumerableBlockExpression : Expression
 {
     private Type _enumerableType;
+    private Expression _stateMachine;
     public ReadOnlyCollection<Expression> Expressions { get; }
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
     public ExpressionRuntimeOptions RuntimeOptions { get; }
 
-    internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
+    private LinkedDictionary<ParameterExpression, ParameterExpression> _scopedVariables;
 
-    private static YieldTypeVisitor TypeVisitor = new();
+    internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables
+    {
+        get => _scopedVariables;
+
+        // Reduce() caches, and this is an input to it, so a later assignment has to drop
+        // what was cached rather than leave a machine built from the old scope.
+        set
+        {
+            _scopedVariables = value;
+            _stateMachine = null;
+        }
+    }
 
     public EnumerableBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
@@ -37,8 +49,50 @@ public class EnumerableBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        return YieldStateMachineBuilder.Create( EnumerableType, LoweringTransformer, RuntimeOptions );
+        // Cached because reducing builds a state machine type, and the compilation pipeline
+        // reduces a node more than once. Without this each pass emitted its own type,
+        // compiled its own MoveNext, and discarded all but the last -- three times over for
+        // a single compile, which was most of what BlockEnumerable cost to compile.
+
+        if ( _stateMachine != null )
+            return _stateMachine;
+
+        var stateMachine = YieldStateMachineBuilder.Create(
+            EnumerableType,
+            LoweringTransformer,
+            RuntimeOptions,
+            ExternVariables.Create( Variables, Expressions ),
+            CanEmitIntoType() );
+
+        return Interlocked.CompareExchange( ref _stateMachine, stateMachine, null ) ?? stateMachine;
     }
+
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        // Without this the base implementation reduces the block and visits the state
+        // machine instead of the block's own children -- so merely walking the tree built a
+        // state machine type, and a visitor rewriting a variable rewrote lowered code rather
+        // than the block. AsyncBlockExpression has always done this.
+
+        var newVariables = visitor.VisitAndConvert( Variables, nameof( VisitChildren ) );
+        var newExpressions = visitor.Visit( Expressions );
+
+        if ( AsyncBlockExpression.Compare( newVariables, Variables ) && AsyncBlockExpression.Compare( newExpressions, Expressions ) )
+            return this;
+
+        return new EnumerableBlockExpression( newVariables, newExpressions, RuntimeOptions )
+        {
+            ScopedVariables = ScopedVariables
+        };
+    }
+
+    // The body may be emitted into the machine's own method unless it reaches a non-public
+    // member -- only a DynamicMethod is created with visibility checks skipped. The scan is a
+    // full walk, so the switch is read first and short-circuits it.
+
+    private bool CanEmitIntoType() =>
+        (RuntimeOptions?.EmitMoveNextIntoType ?? true)
+        && !VisibilityScanner.HasNonPublicReferences( Expressions );
 
     private EnumerableLoweringInfo LoweringTransformer()
     {
@@ -61,21 +115,27 @@ public class EnumerableBlockExpression : Expression
 
     private Type GetYieldType()
     {
-        return TypeVisitor.Find( [.. Expressions] );
+        return YieldTypeVisitor.Find( Expressions );
     }
-
 
     private sealed class YieldTypeVisitor : ExpressionVisitor
     {
+        // The visitor carries the type it found, so an instance is used per search. A
+        // shared instance would leak the type it resolved into the next block, and a
+        // block whose first expression holds no yield would take that stale type.
+
         private Type _type;
 
-        public Type Find( Expression[] expressions )
+        public static Type Find( IReadOnlyList<Expression> expressions )
         {
-            foreach ( var expression in expressions )
+            var visitor = new YieldTypeVisitor();
+
+            for ( var index = 0; index < expressions.Count; index++ )
             {
-                Visit( expression );
-                if ( _type != null )
-                    return _type;
+                visitor.Visit( expressions[index] );
+
+                if ( visitor._type != null )
+                    return visitor._type;
             }
 
             return typeof( void );
@@ -83,11 +143,21 @@ public class EnumerableBlockExpression : Expression
 
         protected override Expression VisitExtension( Expression node )
         {
-            if ( node is not YieldExpression { IsReturn: true } yieldExpression )
-                return base.VisitExtension( node );
+            switch ( node )
+            {
+                case YieldExpression { IsReturn: true } yieldExpression:
+                    _type = yieldExpression.Type;
+                    return node;
 
-            _type = yieldExpression.Type;
-            return node;
+                // A nested coroutine block yields into its own sequence.
+
+                case EnumerableBlockExpression:
+                case AsyncBlockExpression:
+                    return node;
+
+                default:
+                    return base.VisitExtension( node );
+            }
         }
     }
 

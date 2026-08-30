@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Reflection.Emit;
 using Hyperbee.Expressions.Compiler.Diagnostics;
 using Hyperbee.Expressions.Compiler.Emission;
@@ -36,7 +37,13 @@ public static class HyperbeeCompiler
 
         ICoroutineDelegateBuilder? previous = null;
         if ( needsConstantsOrAmbient )
+        {
             previous = CoroutineBuilderContext.Exchange( HyperbeeCoroutineDelegateBuilder.Instance );
+
+            // Share enclosing variables with coroutine bodies through cells, so the bodies
+            // stay closed and can be compiled once instead of materialized per call.
+            lambda = CoroutineClosureRewriter.Rewrite( lambda );
+        }
 
         try
         {
@@ -152,6 +159,47 @@ public static class HyperbeeCompiler
     }
 
     /// <summary>
+    /// Emits the lambda into an instance method whose declaring type carries the lambda's
+    /// non-embeddable constants in a field. Returns the constants array to store in that
+    /// field before the method runs.
+    /// </summary>
+    /// <remarks>
+    /// This is what lets a coroutine body be the state machine's own <c>MoveNext</c> rather
+    /// than a delegate held in a field. A static method has nowhere to keep object
+    /// constants, which is why <see cref="CompileToMethod"/> rejects them; an instance
+    /// method has <c>this</c>, so they can live on the type.
+    ///
+    /// The lambda's first parameter maps to IL arg 0, the instance.
+    /// </remarks>
+    public static object[] CompileToInstanceMethod(
+        IReadOnlyList<ParameterExpression> parameters,
+        Expression body,
+        Type returnType,
+        MethodBuilder method,
+        FieldInfo constantsField )
+    {
+        ArgumentNullException.ThrowIfNull( parameters );
+        ArgumentNullException.ThrowIfNull( body );
+        ArgumentNullException.ThrowIfNull( returnType );
+        ArgumentNullException.ThrowIfNull( method );
+        ArgumentNullException.ThrowIfNull( constantsField );
+
+        var ir = new IRBuilder();
+        var lowerer = new ExpressionLowerer( ir, capturedVariables: null, lambda => Compile( lambda ) );
+
+        // Arg 0 is the instance, so parameters are not offset by a constants argument.
+        lowerer.Lower( parameters, body, returnType, argOffset: 0 );
+
+        TransformIR( ir, returnType == typeof( void ) );
+
+        BuildConstantsMapping( ir, needsConstantsArray: true, out var constantIndices, out var constantsArray );
+
+        ILEmissionPass.Run( ir, method.GetILGenerator(), hasConstantsArray: true, constantIndices, constantsField );
+
+        return constantsArray ?? [];
+    }
+
+    /// <summary>
     /// Compiles the expression tree into the provided MethodBuilder.
     /// Returns false if the expression cannot be compiled (e.g. non-embeddable constants).
     /// </summary>
@@ -232,7 +280,10 @@ public static class HyperbeeCompiler
 
         var ir = new IRBuilder();
         var lowerer = new ExpressionLowerer( ir, capturedVariables, lambda => Compile( lambda ) );
-        var argOffset = needsConstantsArray ? 1 : 0;
+        // Arg 0 is always the constants array, even when the body has no constants to read
+        // from it. See EmitDelegate.
+
+        const int argOffset = 1;
 
         lowerer.Lower( lambda, argOffset );
 
@@ -251,7 +302,17 @@ public static class HyperbeeCompiler
     {
         BuildConstantsMapping( ir, needsConstantsArray, out var constantIndices, out var constantsArray );
 
-        var paramTypes = BuildParameterTypes( lambda, needsConstantsArray );
+        // The method always takes the constants array as its first parameter, and the
+        // delegate is always closed over it -- even when there are no constants.
+        //
+        // Delegate.Invoke passes a target in the first slot. A delegate over a static method
+        // with nothing bound has no target to put there, so the runtime inserts a thunk that
+        // shifts every argument down one on the way through, at about a nanosecond a call.
+        // Binding a leading parameter removes the thunk, which is why the System compiler
+        // gives every lambda a Closure parameter whether it needs one or not. An unused
+        // argument slot is cheaper than a thunk on every invocation.
+
+        var paramTypes = BuildParameterTypes( lambda, hasConstantsArray: true );
 
         var method = new DynamicMethod(
             string.Empty,
@@ -262,9 +323,7 @@ public static class HyperbeeCompiler
 
         ILEmissionPass.Run( ir, method.GetILGenerator(), needsConstantsArray, constantIndices );
 
-        return needsConstantsArray
-            ? method.CreateDelegate( lambda.Type, constantsArray )
-            : method.CreateDelegate( lambda.Type );
+        return method.CreateDelegate( lambda.Type, constantsArray ?? [] );
     }
 
     // --- Private helpers ---
@@ -367,8 +426,17 @@ public static class HyperbeeCompiler
             case TypeBinaryExpression t:
                 return NeedsCaptureScanning( t.Expression );
 
+            case ConstantExpression:
+            case ParameterExpression:
+            case DefaultExpression:
+                return false; // leaves
+
             default:
-                return false;
+                // Anything not recognized above may hold a lambda in a position this walk
+                // does not know about, and an extension node introduces one when it
+                // reduces. Under-reporting here silently skips capture analysis, so the
+                // unknown case has to be the conservative one.
+                return true;
         }
     }
 

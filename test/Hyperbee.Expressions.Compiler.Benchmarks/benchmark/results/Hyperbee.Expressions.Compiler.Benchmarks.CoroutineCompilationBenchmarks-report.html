@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Hyperbee.Expressions.Compiler.Benchmarks.CoroutineCompilationBenchmarks-20260830-100458</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.9278/25H2/2025Update/HudsonValley2)
+Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
+.NET SDK 10.0.111
+  [Host] : .NET 9.0.12 (9.0.12, 9.0.1225.60609), X64 RyuJIT x86-64-v3
+  .NET 9 : .NET 9.0.12 (9.0.12, 9.0.1225.60609), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 9  Runtime=.NET 9.0  InvocationCount=1  
+IterationCount=25  LaunchCount=1  UnrollFactor=1  
+WarmupCount=5  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                                        </th><th>Mean </th><th>Error</th><th>StdDev</th><th>vs System</th><th>vs Fec</th><th>Alloc vs System</th><th>Alloc vs Fec</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>&#39;AsyncNoCapture | System&#39;</td><td>2,433.50 &mu;s</td><td>200.856 &mu;s</td><td>268.138 &mu;s</td><td>1.00x</td><td>N/A</td><td>1.00x</td><td>N/A</td><td>65.65 KB</td>
+</tr><tr><td>&#39;AsyncNoCapture | Hyperbee&#39;</td><td>1,663.27 &mu;s</td><td>179.015 &mu;s</td><td>232.770 &mu;s</td><td>0.68x</td><td>N/A</td><td>0.98x</td><td>N/A</td><td>64.05 KB</td>
+</tr><tr><td>&#39;AsyncNoCapture (delegate MoveNext) | Hyperbee&#39;</td><td>1,306.68 &mu;s</td><td>57.042 &mu;s</td><td>67.904 &mu;s</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>63.17 KB</td>
+</tr><tr><td>&#39;AsyncCapture | System&#39;</td><td>2,142.18 &mu;s</td><td>183.817 &mu;s</td><td>239.014 &mu;s</td><td>1.00x</td><td>N/A</td><td>1.00x</td><td>N/A</td><td>66.46 KB</td>
+</tr><tr><td>&#39;AsyncCapture | Hyperbee&#39;</td><td>1,404.85 &mu;s</td><td>77.008 &mu;s</td><td>94.573 &mu;s</td><td>0.66x</td><td>N/A</td><td>1.09x</td><td>N/A</td><td>72.59 KB</td>
+</tr><tr><td>&#39;EnumerableNoCapture | System&#39;</td><td>1,505.74 &mu;s</td><td>111.918 &mu;s</td><td>145.525 &mu;s</td><td>1.00x</td><td>N/A</td><td>1.00x</td><td>N/A</td><td>44.02 KB</td>
+</tr><tr><td>&#39;EnumerableNoCapture | Hyperbee&#39;</td><td>767.70 &mu;s</td><td>66.555 &mu;s</td><td>86.540 &mu;s</td><td>0.51x</td><td>N/A</td><td>0.83x</td><td>N/A</td><td>36.47 KB</td>
+</tr><tr><td>&#39;EnumerableNoCapture (delegate MoveNext) | Hyperbee&#39;</td><td>995.38 &mu;s</td><td>44.924 &mu;s</td><td>51.734 &mu;s</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>42.03 KB</td>
+</tr><tr><td>&#39;EnumerableCapture | System&#39;</td><td>1,590.18 &mu;s</td><td>204.397 &mu;s</td><td>258.496 &mu;s</td><td>1.00x</td><td>N/A</td><td>1.00x</td><td>N/A</td><td>45.17 KB</td>
+</tr><tr><td>&#39;EnumerableCapture | Hyperbee&#39;</td><td>853.35 &mu;s</td><td>54.758 &mu;s</td><td>69.251 &mu;s</td><td>0.54x</td><td>N/A</td><td>0.95x</td><td>N/A</td><td>43.05 KB</td>
+</tr><tr><td>&#39;NestedClosure | System&#39;</td><td>276.87 &mu;s</td><td>29.480 &mu;s</td><td>38.332 &mu;s</td><td>1.00x</td><td>N/A</td><td>1.00x</td><td>N/A</td><td>7.27 KB</td>
+</tr><tr><td>&#39;NestedClosure | Hyperbee&#39;</td><td>62.55 &mu;s</td><td>4.667 &mu;s</td><td>5.902 &mu;s</td><td>0.23x</td><td>N/A</td><td>0.47x</td><td>N/A</td><td>3.41 KB</td>
+</tr></tbody></table>
+</body>
+</html>

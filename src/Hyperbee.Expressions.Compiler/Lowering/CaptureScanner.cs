@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Hyperbee.Expressions;
 
 namespace Hyperbee.Expressions.Compiler.Lowering;
 
@@ -7,6 +8,11 @@ namespace Hyperbee.Expressions.Compiler.Lowering;
 /// by nested lambda expressions (closures). A captured variable is one
 /// declared in an outer scope but referenced inside a nested lambda.
 /// </summary>
+/// <remarks>
+/// Both passes are <see cref="ExpressionVisitor"/>-based so that every node type is
+/// traversed. A hand-rolled walk that misses a node type does not fail loudly — it
+/// under-reports captures, and the variable is then compiled as an unshared local.
+/// </remarks>
 public static class CaptureScanner
 {
     /// <summary>
@@ -15,436 +21,260 @@ public static class CaptureScanner
     /// </summary>
     public static HashSet<ParameterExpression> FindCapturedVariables( LambdaExpression rootLambda )
     {
-        var captured = new HashSet<ParameterExpression>();
-        var outerScope = new HashSet<ParameterExpression>( rootLambda.Parameters.Count + 4 );
+        // Pass 1: what the root frame declares. Closure boundaries are not entered —
+        // what they declare belongs to their own frame.
+        var rootScope = DeclarationScanner.Scan( rootLambda );
 
-        // The root lambda's own parameters are in scope for nested lambdas
-        foreach ( var param in rootLambda.Parameters )
-        {
-            outerScope.Add( param );
-        }
-
-        // Collect all variables declared in blocks within the root lambda body
-        CollectDeclaredVariables( rootLambda.Body, outerScope );
-
-        // Walk nested lambdas and find which outer-scope variables they reference
-        FindCapturesInNestedLambdas( rootLambda.Body, outerScope, captured );
-
-        // RuntimeVariables requires live read/write access, so variables must be in StrongBox
-        FindRuntimeVariablesCaptures( rootLambda.Body, captured );
-
-        return captured;
+        // Pass 2: root-frame variables referenced from inside a closure boundary, plus
+        // any variable a RuntimeVariables node needs live access to.
+        return ReferenceScanner.Scan( rootLambda, rootScope );
     }
 
     /// <summary>
-    /// Recursively collect all block-declared variables in the expression tree,
-    /// stopping at nested lambda boundaries.
+    /// A closure boundary is a construct compiled into its own frame: a nested lambda,
+    /// or a coroutine block, whose state-machine body becomes a lambda during Reduce().
+    /// Returns the variables the boundary declares, or null when the node is not one.
     /// </summary>
-    private static void CollectDeclaredVariables( Expression? node, HashSet<ParameterExpression> outerScope )
+    private static IReadOnlyList<ParameterExpression>? CoroutineVariables( Expression node )
     {
-        if ( node == null )
-            return;
-
-        switch ( node )
+        return node switch
         {
-            case BlockExpression block:
-                foreach ( var variable in block.Variables )
-                {
-                    outerScope.Add( variable );
-                }
-                foreach ( var expr in block.Expressions )
-                {
-                    CollectDeclaredVariables( expr, outerScope );
-                }
-                break;
+            AsyncBlockExpression asyncBlock => asyncBlock.Variables,
+            EnumerableBlockExpression enumerableBlock => enumerableBlock.Variables,
+            _ => null
+        };
+    }
 
-            case LambdaExpression:
-                // Stop at nested lambda boundaries
-                break;
+    private sealed class DeclarationScanner : ExpressionVisitor
+    {
+        private readonly HashSet<ParameterExpression> _declared = [];
 
-            case ConditionalExpression conditional:
-                CollectDeclaredVariables( conditional.Test, outerScope );
-                CollectDeclaredVariables( conditional.IfTrue, outerScope );
-                CollectDeclaredVariables( conditional.IfFalse, outerScope );
-                break;
+        public static HashSet<ParameterExpression> Scan( LambdaExpression rootLambda )
+        {
+            var scanner = new DeclarationScanner();
 
-            case BinaryExpression binary:
-                CollectDeclaredVariables( binary.Left, outerScope );
-                CollectDeclaredVariables( binary.Right, outerScope );
-                break;
+            foreach ( var parameter in rootLambda.Parameters )
+            {
+                scanner._declared.Add( parameter );
+            }
 
-            case UnaryExpression unary:
-                CollectDeclaredVariables( unary.Operand, outerScope );
-                break;
+            scanner.Visit( rootLambda.Body );
 
-            case MethodCallExpression methodCall:
-                CollectDeclaredVariables( methodCall.Object, outerScope );
-                foreach ( var arg in methodCall.Arguments )
-                {
-                    CollectDeclaredVariables( arg, outerScope );
-                }
-                break;
+            return scanner._declared;
+        }
 
-            case InvocationExpression invocation:
-                CollectDeclaredVariables( invocation.Expression, outerScope );
-                foreach ( var arg in invocation.Arguments )
-                {
-                    CollectDeclaredVariables( arg, outerScope );
-                }
-                break;
+        protected override Expression VisitBlock( BlockExpression node )
+        {
+            foreach ( var variable in node.Variables )
+            {
+                _declared.Add( variable );
+            }
 
-            case MemberExpression member:
-                CollectDeclaredVariables( member.Expression, outerScope );
-                break;
+            return base.VisitBlock( node );
+        }
 
-            case NewExpression newExpr:
-                foreach ( var arg in newExpr.Arguments )
-                {
-                    CollectDeclaredVariables( arg, outerScope );
-                }
-                break;
+        protected override CatchBlock VisitCatchBlock( CatchBlock node )
+        {
+            if ( node.Variable != null )
+                _declared.Add( node.Variable );
 
-            case TryExpression tryExpr:
-                CollectDeclaredVariables( tryExpr.Body, outerScope );
-                foreach ( var handler in tryExpr.Handlers )
-                {
-                    if ( handler.Variable != null )
-                    {
-                        outerScope.Add( handler.Variable );
-                    }
-                    CollectDeclaredVariables( handler.Filter, outerScope );
-                    CollectDeclaredVariables( handler.Body, outerScope );
-                }
-                CollectDeclaredVariables( tryExpr.Finally, outerScope );
-                CollectDeclaredVariables( tryExpr.Fault, outerScope );
-                break;
+            return base.VisitCatchBlock( node );
+        }
 
-            case GotoExpression gotoExpr:
-                CollectDeclaredVariables( gotoExpr.Value, outerScope );
-                break;
+        protected override Expression VisitLambda<T>( Expression<T> node )
+        {
+            return node; // closure boundary
+        }
 
-            case LabelExpression labelExpr:
-                CollectDeclaredVariables( labelExpr.DefaultValue, outerScope );
-                break;
+        protected override Expression VisitInvocation( InvocationExpression node )
+        {
+            // An invoked lambda is inlined, so it is not a boundary: its parameters become
+            // block variables of this frame and its body runs here.
 
-            case TypeBinaryExpression typeBinary:
-                CollectDeclaredVariables( typeBinary.Expression, outerScope );
-                break;
+            if ( !InvocationInliner.CanInline( node, out var lambda ) )
+                return base.VisitInvocation( node );
 
-            // ParameterExpression, ConstantExpression, DefaultExpression: no children
+            foreach ( var parameter in lambda!.Parameters )
+            {
+                _declared.Add( parameter );
+            }
+
+            foreach ( var argument in node.Arguments )
+            {
+                Visit( argument );
+            }
+
+            Visit( lambda.Body );
+
+            return node;
+        }
+
+        protected override Expression VisitExtension( Expression node )
+        {
+            return CoroutineVariables( node ) != null
+                ? node // closure boundary
+                : base.VisitExtension( node );
         }
     }
 
-    /// <summary>
-    /// Walk the tree looking for nested lambda expressions. For each nested lambda,
-    /// find variables it references that are in the outer scope.
-    /// </summary>
-    private static void FindCapturesInNestedLambdas(
-        Expression? node,
-        HashSet<ParameterExpression> outerScope,
-        HashSet<ParameterExpression> captured )
+    private sealed class ReferenceScanner : ExpressionVisitor
     {
-        if ( node == null )
-            return;
+        private readonly HashSet<ParameterExpression> _rootScope;
+        private readonly HashSet<ParameterExpression> _captured = [];
+        private readonly List<ParameterExpression> _shadowed = [];
 
-        switch ( node )
+        private int _boundaryDepth;
+
+        private ReferenceScanner( HashSet<ParameterExpression> rootScope )
         {
-            case LambdaExpression nestedLambda:
-                // Found a nested lambda -- scan its body for references to outer scope variables
-                var innerScope = new HashSet<ParameterExpression>( nestedLambda.Parameters );
-                FindReferencedOuterVariables( nestedLambda.Body, outerScope, innerScope, captured );
-                break;
-
-            case BlockExpression block:
-                foreach ( var expr in block.Expressions )
-                {
-                    FindCapturesInNestedLambdas( expr, outerScope, captured );
-                }
-                break;
-
-            case ConditionalExpression conditional:
-                FindCapturesInNestedLambdas( conditional.Test, outerScope, captured );
-                FindCapturesInNestedLambdas( conditional.IfTrue, outerScope, captured );
-                FindCapturesInNestedLambdas( conditional.IfFalse, outerScope, captured );
-                break;
-
-            case BinaryExpression binary:
-                FindCapturesInNestedLambdas( binary.Left, outerScope, captured );
-                FindCapturesInNestedLambdas( binary.Right, outerScope, captured );
-                break;
-
-            case UnaryExpression unary:
-                FindCapturesInNestedLambdas( unary.Operand, outerScope, captured );
-                break;
-
-            case MethodCallExpression methodCall:
-                FindCapturesInNestedLambdas( methodCall.Object, outerScope, captured );
-                foreach ( var arg in methodCall.Arguments )
-                {
-                    FindCapturesInNestedLambdas( arg, outerScope, captured );
-                }
-                break;
-
-            case InvocationExpression invocation:
-                FindCapturesInNestedLambdas( invocation.Expression, outerScope, captured );
-                foreach ( var arg in invocation.Arguments )
-                {
-                    FindCapturesInNestedLambdas( arg, outerScope, captured );
-                }
-                break;
-
-            case MemberExpression member:
-                FindCapturesInNestedLambdas( member.Expression, outerScope, captured );
-                break;
-
-            case NewExpression newExpr:
-                foreach ( var arg in newExpr.Arguments )
-                {
-                    FindCapturesInNestedLambdas( arg, outerScope, captured );
-                }
-                break;
-
-            case TryExpression tryExpr:
-                FindCapturesInNestedLambdas( tryExpr.Body, outerScope, captured );
-                foreach ( var handler in tryExpr.Handlers )
-                {
-                    FindCapturesInNestedLambdas( handler.Filter, outerScope, captured );
-                    FindCapturesInNestedLambdas( handler.Body, outerScope, captured );
-                }
-                FindCapturesInNestedLambdas( tryExpr.Finally, outerScope, captured );
-                FindCapturesInNestedLambdas( tryExpr.Fault, outerScope, captured );
-                break;
-
-            case GotoExpression gotoExpr:
-                FindCapturesInNestedLambdas( gotoExpr.Value, outerScope, captured );
-                break;
-
-            case LabelExpression labelExpr:
-                FindCapturesInNestedLambdas( labelExpr.DefaultValue, outerScope, captured );
-                break;
-
-            case TypeBinaryExpression typeBinary:
-                FindCapturesInNestedLambdas( typeBinary.Expression, outerScope, captured );
-                break;
-
-            // ParameterExpression, ConstantExpression, DefaultExpression: no children to walk
+            _rootScope = rootScope;
         }
-    }
 
-    /// <summary>
-    /// Recursively scan an expression (inside a nested lambda) for references to
-    /// outer-scope variables. Variables declared in the inner scope are excluded.
-    /// </summary>
-    private static void FindReferencedOuterVariables(
-        Expression? node,
-        HashSet<ParameterExpression> outerScope,
-        HashSet<ParameterExpression> innerScope,
-        HashSet<ParameterExpression> captured )
-    {
-        if ( node == null )
-            return;
-
-        switch ( node )
+        public static HashSet<ParameterExpression> Scan( LambdaExpression rootLambda, HashSet<ParameterExpression> rootScope )
         {
-            case ParameterExpression param:
-                if ( outerScope.Contains( param ) && !innerScope.Contains( param ) )
-                {
-                    captured.Add( param );
-                }
-                break;
+            var scanner = new ReferenceScanner( rootScope );
 
-            case BlockExpression block:
-                // Block can declare its own variables in the inner scope
-                foreach ( var variable in block.Variables )
-                {
-                    innerScope.Add( variable );
-                }
-                foreach ( var expr in block.Expressions )
-                {
-                    FindReferencedOuterVariables( expr, outerScope, innerScope, captured );
-                }
-                break;
+            scanner.Visit( rootLambda.Body );
 
-            case LambdaExpression nestedLambda:
-                // Even deeper nesting -- add its params to inner scope and scan body
-                var deeperScope = new HashSet<ParameterExpression>( innerScope );
-                foreach ( var param in nestedLambda.Parameters )
-                {
-                    deeperScope.Add( param );
-                }
-                FindReferencedOuterVariables( nestedLambda.Body, outerScope, deeperScope, captured );
-                break;
-
-            case ConditionalExpression conditional:
-                FindReferencedOuterVariables( conditional.Test, outerScope, innerScope, captured );
-                FindReferencedOuterVariables( conditional.IfTrue, outerScope, innerScope, captured );
-                FindReferencedOuterVariables( conditional.IfFalse, outerScope, innerScope, captured );
-                break;
-
-            case BinaryExpression binary:
-                FindReferencedOuterVariables( binary.Left, outerScope, innerScope, captured );
-                FindReferencedOuterVariables( binary.Right, outerScope, innerScope, captured );
-                break;
-
-            case UnaryExpression unary:
-                FindReferencedOuterVariables( unary.Operand, outerScope, innerScope, captured );
-                break;
-
-            case MethodCallExpression methodCall:
-                FindReferencedOuterVariables( methodCall.Object, outerScope, innerScope, captured );
-                foreach ( var arg in methodCall.Arguments )
-                {
-                    FindReferencedOuterVariables( arg, outerScope, innerScope, captured );
-                }
-                break;
-
-            case InvocationExpression invocation:
-                FindReferencedOuterVariables( invocation.Expression, outerScope, innerScope, captured );
-                foreach ( var arg in invocation.Arguments )
-                {
-                    FindReferencedOuterVariables( arg, outerScope, innerScope, captured );
-                }
-                break;
-
-            case MemberExpression member:
-                FindReferencedOuterVariables( member.Expression, outerScope, innerScope, captured );
-                break;
-
-            case NewExpression newExpr:
-                foreach ( var arg in newExpr.Arguments )
-                {
-                    FindReferencedOuterVariables( arg, outerScope, innerScope, captured );
-                }
-                break;
-
-            case TryExpression tryExpr:
-                FindReferencedOuterVariables( tryExpr.Body, outerScope, innerScope, captured );
-                foreach ( var handler in tryExpr.Handlers )
-                {
-                    if ( handler.Variable != null )
-                    {
-                        innerScope.Add( handler.Variable );
-                    }
-                    FindReferencedOuterVariables( handler.Filter, outerScope, innerScope, captured );
-                    FindReferencedOuterVariables( handler.Body, outerScope, innerScope, captured );
-                }
-                FindReferencedOuterVariables( tryExpr.Finally, outerScope, innerScope, captured );
-                FindReferencedOuterVariables( tryExpr.Fault, outerScope, innerScope, captured );
-                break;
-
-            case GotoExpression gotoExpr:
-                FindReferencedOuterVariables( gotoExpr.Value, outerScope, innerScope, captured );
-                break;
-
-            case LabelExpression labelExpr:
-                FindReferencedOuterVariables( labelExpr.DefaultValue, outerScope, innerScope, captured );
-                break;
-
-            case TypeBinaryExpression typeBinary:
-                FindReferencedOuterVariables( typeBinary.Expression, outerScope, innerScope, captured );
-                break;
-
-            case ConstantExpression:
-            case DefaultExpression:
-                // Leaf nodes -- nothing to scan
-                break;
+            return scanner._captured;
         }
-    }
 
-    /// <summary>
-    /// Recursively scan for RuntimeVariablesExpression nodes and force their
-    /// referenced variables into the captured set. RuntimeVariables requires
-    /// live read/write access, which is only possible through StrongBox.
-    /// </summary>
-    private static void FindRuntimeVariablesCaptures(
-        Expression? node,
-        HashSet<ParameterExpression> captured )
-    {
-        if ( node == null )
-            return;
-
-        switch ( node )
+        protected override Expression VisitParameter( ParameterExpression node )
         {
-            case RuntimeVariablesExpression runtimeVars:
-                foreach ( var variable in runtimeVars.Variables )
-                {
-                    captured.Add( variable );
-                }
-                break;
+            if ( _boundaryDepth > 0 && _rootScope.Contains( node ) && !_shadowed.Contains( node ) )
+                _captured.Add( node );
 
-            case BlockExpression block:
-                foreach ( var expr in block.Expressions )
-                {
-                    FindRuntimeVariablesCaptures( expr, captured );
-                }
-                break;
+            return node;
+        }
 
-            case ConditionalExpression conditional:
-                FindRuntimeVariablesCaptures( conditional.Test, captured );
-                FindRuntimeVariablesCaptures( conditional.IfTrue, captured );
-                FindRuntimeVariablesCaptures( conditional.IfFalse, captured );
-                break;
+        protected override Expression VisitRuntimeVariables( RuntimeVariablesExpression node )
+        {
+            // RuntimeVariables requires live read/write access, which only a StrongBox provides.
 
-            case BinaryExpression binary:
-                FindRuntimeVariablesCaptures( binary.Left, captured );
-                FindRuntimeVariablesCaptures( binary.Right, captured );
-                break;
+            foreach ( var variable in node.Variables )
+            {
+                _captured.Add( variable );
+            }
 
-            case UnaryExpression unary:
-                FindRuntimeVariablesCaptures( unary.Operand, captured );
-                break;
+            return node;
+        }
 
-            case MethodCallExpression methodCall:
-                FindRuntimeVariablesCaptures( methodCall.Object, captured );
-                foreach ( var arg in methodCall.Arguments )
-                {
-                    FindRuntimeVariablesCaptures( arg, captured );
-                }
-                break;
+        protected override Expression VisitLambda<T>( Expression<T> node )
+        {
+            var count = Shadow( node.Parameters );
+            _boundaryDepth++;
 
-            case InvocationExpression invocation:
-                FindRuntimeVariablesCaptures( invocation.Expression, captured );
-                foreach ( var arg in invocation.Arguments )
-                {
-                    FindRuntimeVariablesCaptures( arg, captured );
-                }
-                break;
+            try
+            {
+                return base.VisitLambda( node );
+            }
+            finally
+            {
+                _boundaryDepth--;
+                Unshadow( count );
+            }
+        }
 
-            case TryExpression tryExpr:
-                FindRuntimeVariablesCaptures( tryExpr.Body, captured );
-                foreach ( var handler in tryExpr.Handlers )
-                {
-                    FindRuntimeVariablesCaptures( handler.Filter, captured );
-                    FindRuntimeVariablesCaptures( handler.Body, captured );
-                }
-                FindRuntimeVariablesCaptures( tryExpr.Finally, captured );
-                FindRuntimeVariablesCaptures( tryExpr.Fault, captured );
-                break;
+        protected override Expression VisitInvocation( InvocationExpression node )
+        {
+            // An invoked lambda is inlined, so it is not a boundary. Its parameters shadow
+            // an enclosing variable of the same instance for the length of the body.
 
-            case LambdaExpression lambda:
-                FindRuntimeVariablesCaptures( lambda.Body, captured );
-                break;
+            if ( !InvocationInliner.CanInline( node, out var lambda ) )
+                return base.VisitInvocation( node );
 
-            case LoopExpression loop:
-                FindRuntimeVariablesCaptures( loop.Body, captured );
-                break;
+            foreach ( var argument in node.Arguments )
+            {
+                Visit( argument );
+            }
 
-            case SwitchExpression switchExpr:
-                FindRuntimeVariablesCaptures( switchExpr.SwitchValue, captured );
-                foreach ( var c in switchExpr.Cases )
-                {
-                    FindRuntimeVariablesCaptures( c.Body, captured );
-                }
-                FindRuntimeVariablesCaptures( switchExpr.DefaultBody, captured );
-                break;
+            var count = Shadow( lambda!.Parameters );
 
-            case GotoExpression gotoExpr:
-                FindRuntimeVariablesCaptures( gotoExpr.Value, captured );
-                break;
+            try
+            {
+                Visit( lambda.Body );
+                return node;
+            }
+            finally
+            {
+                Unshadow( count );
+            }
+        }
 
-            case LabelExpression labelExpr:
-                FindRuntimeVariablesCaptures( labelExpr.DefaultValue, captured );
-                break;
+        protected override Expression VisitExtension( Expression node )
+        {
+            var variables = CoroutineVariables( node );
+
+            if ( variables == null )
+                return base.VisitExtension( node );
+
+            var count = Shadow( variables );
+            _boundaryDepth++;
+
+            try
+            {
+                return base.VisitExtension( node );
+            }
+            finally
+            {
+                _boundaryDepth--;
+                Unshadow( count );
+            }
+        }
+
+        protected override Expression VisitBlock( BlockExpression node )
+        {
+            // Outside a boundary a block declaration is a root-frame declaration, already
+            // in scope. Inside one it shadows the root-frame variable of the same instance.
+
+            var count = _boundaryDepth > 0 ? Shadow( node.Variables ) : 0;
+
+            try
+            {
+                return base.VisitBlock( node );
+            }
+            finally
+            {
+                Unshadow( count );
+            }
+        }
+
+        protected override CatchBlock VisitCatchBlock( CatchBlock node )
+        {
+            var count = _boundaryDepth > 0 && node.Variable != null ? Shadow( [node.Variable] ) : 0;
+
+            try
+            {
+                return base.VisitCatchBlock( node );
+            }
+            finally
+            {
+                Unshadow( count );
+            }
+        }
+
+        private int Shadow( IReadOnlyList<ParameterExpression> variables )
+        {
+            var count = 0;
+
+            for ( var index = 0; index < variables.Count; index++ )
+            {
+                var variable = variables[index];
+
+                if ( !_rootScope.Contains( variable ) )
+                    continue;
+
+                _shadowed.Add( variable );
+                count++;
+            }
+
+            return count;
+        }
+
+        private void Unshadow( int count )
+        {
+            if ( count > 0 )
+                _shadowed.RemoveRange( _shadowed.Count - count, count );
         }
     }
 }
