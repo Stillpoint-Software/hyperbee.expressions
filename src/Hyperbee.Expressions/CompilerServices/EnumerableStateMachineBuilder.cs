@@ -254,12 +254,13 @@ internal class EnumerableStateMachineBuilder<TResult>
                 Label( exitLabel, defaultValue: Constant( false ) )
             );
 
-        // Close the body: an enclosing variable becomes a read of the field that carries it.
+        // The body is already closed: the hoisting pass turned each enclosing variable into
+        // a read of the field that carries it.
 
-        return context.ExternVariables?.Close( body, stateMachine, stateMachineType ) ?? body;
+        return body;
     }
 
-    private static IEnumerable<Expression> CreateBody( StateMachineContext context, params Expression[] antecedents )
+    private static List<Expression> CreateBody( StateMachineContext context, params Expression[] antecedents )
     {
         var stateMachineInfo = context.StateMachineInfo;
         var loweringInfo = context.LoweringInfo;
@@ -276,37 +277,24 @@ internal class EnumerableStateMachineBuilder<TResult>
             stateMachineInfo.StateField
         );
 
-        // hoist variables
+        // hoist variables, then the antecedents that close the body
 
-        var bodyExpressions = HoistVariables(
-            jumpTable,
-            firstScope.GetExpressions( context ),
-            context.VariableFields,
-            stateMachineInfo.StateMachine
-        );
+        var expressions = firstScope.GetExpressions( context );
+        var hoistingVisitor = new HoistingVisitor( stateMachineInfo.StateMachine, context.VariableFields, context.ExternVariables );
 
-        // return the body expressions
-
-        return bodyExpressions.Concat( antecedents );
-    }
-
-    private static IEnumerable<Expression> HoistVariables(
-        Expression jumpTable,
-        IReadOnlyList<Expression> expressions,
-        IReadOnlyDictionary<ParameterExpression, FieldInfo> variableFields,
-        ParameterExpression stateMachine )
-    {
-        var hoistingVisitor = new HoistingVisitor( stateMachine, variableFields );
-
-        return HoistingSource().Select( hoistingVisitor.Visit );
-
-        IEnumerable<Expression> HoistingSource()
+        var bodyExpressions = new List<Expression>( expressions.Count + antecedents.Length + 1 )
         {
-            yield return jumpTable;
+            hoistingVisitor.Visit( jumpTable )
+        };
 
-            foreach ( var expression in expressions )
-                yield return expression;
+        for ( var index = 0; index < expressions.Count; index++ )
+        {
+            bodyExpressions.Add( hoistingVisitor.Visit( expressions[index] ) );
         }
+
+        bodyExpressions.AddRange( antecedents );
+
+        return bodyExpressions;
     }
 
     private Type CreateStateMachineType( StateMachineContext context )

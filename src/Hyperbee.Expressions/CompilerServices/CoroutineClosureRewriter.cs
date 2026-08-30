@@ -46,7 +46,7 @@ public static class CoroutineClosureRewriter
         var rewriter = new Rewriter( boxes );
 
         var body = rewriter.Visit( lambda.Body );
-        var parameters = lambda.Parameters.Where( boxes.ContainsKey ).ToArray();
+        var parameters = Rewriter.Hoisted( lambda.Parameters, boxes );
 
         if ( parameters.Length > 0 )
             body = Rewriter.DeclareCells( parameters, boxes, body, seedFromVariable: true );
@@ -91,6 +91,76 @@ public static class CoroutineClosureRewriter
             return Block( body.Type, cells, expressions );
         }
 
+        // The variables that need a cell, and the ones that do not. Counted before anything
+        // is allocated, because most scopes contribute none and the common answer is empty.
+
+        public static ParameterExpression[] Hoisted(
+            IReadOnlyList<ParameterExpression> variables,
+            Dictionary<ParameterExpression, ParameterExpression> boxes )
+        {
+            var count = 0;
+
+            for ( var index = 0; index < variables.Count; index++ )
+            {
+                if ( boxes.ContainsKey( variables[index] ) )
+                    count++;
+            }
+
+            if ( count == 0 )
+                return [];
+
+            var hoisted = new ParameterExpression[count];
+            var next = 0;
+
+            for ( var index = 0; index < variables.Count; index++ )
+            {
+                if ( boxes.ContainsKey( variables[index] ) )
+                    hoisted[next++] = variables[index];
+            }
+
+            return hoisted;
+        }
+
+        private ParameterExpression[] Remaining( IReadOnlyList<ParameterExpression> variables, int hoistedCount )
+        {
+            if ( hoistedCount == variables.Count )
+                return [];
+
+            var remaining = new ParameterExpression[variables.Count - hoistedCount];
+            var next = 0;
+
+            for ( var index = 0; index < variables.Count; index++ )
+            {
+                if ( !boxes.ContainsKey( variables[index] ) )
+                    remaining[next++] = variables[index];
+            }
+
+            return remaining;
+        }
+
+        private Expression[] VisitAll( IReadOnlyList<Expression> expressions )
+        {
+            var visited = new Expression[expressions.Count];
+
+            for ( var index = 0; index < expressions.Count; index++ )
+            {
+                visited[index] = Visit( expressions[index] );
+            }
+
+            return visited;
+        }
+
+        private static bool Unchanged( Expression[] visited, IReadOnlyList<Expression> original )
+        {
+            for ( var index = 0; index < visited.Length; index++ )
+            {
+                if ( !ReferenceEquals( visited[index], original[index] ) )
+                    return false;
+            }
+
+            return true;
+        }
+
         protected override Expression VisitParameter( ParameterExpression node )
         {
             return boxes.TryGetValue( node, out var cell )
@@ -100,15 +170,15 @@ public static class CoroutineClosureRewriter
 
         protected override Expression VisitBlock( BlockExpression node )
         {
-            var hoisted = node.Variables.Where( boxes.ContainsKey ).ToArray();
+            var hoisted = Hoisted( node.Variables, boxes );
 
             if ( hoisted.Length == 0 )
                 return base.VisitBlock( node );
 
-            var remaining = node.Variables.Where( variable => !boxes.ContainsKey( variable ) );
-            var expressions = node.Expressions.Select( Visit ).ToArray();
+            var remaining = Remaining( node.Variables, hoisted.Length );
+            var expressions = VisitAll( node.Expressions );
 
-            var inner = expressions.Length == 1 && !remaining.Any()
+            var inner = expressions.Length == 1 && remaining.Length == 0
                 ? expressions[0]
                 : Block( node.Type, remaining, expressions );
 
@@ -130,7 +200,7 @@ public static class CoroutineClosureRewriter
 
         protected override Expression VisitLambda<T>( Expression<T> node )
         {
-            var hoisted = node.Parameters.Where( boxes.ContainsKey ).ToArray();
+            var hoisted = Hoisted( node.Parameters, boxes );
 
             if ( hoisted.Length == 0 )
                 return base.VisitLambda( node );
@@ -145,11 +215,11 @@ public static class CoroutineClosureRewriter
             switch ( node )
             {
                 case AsyncBlockExpression asyncBlock:
-                    return RewriteCoroutine( asyncBlock.Variables, asyncBlock.Expressions,
+                    return RewriteCoroutine( asyncBlock, asyncBlock.Variables, asyncBlock.Expressions,
                         ( variables, expressions ) => new AsyncBlockExpression( variables, expressions, asyncBlock.RuntimeOptions ) );
 
                 case EnumerableBlockExpression enumerableBlock:
-                    return RewriteCoroutine( enumerableBlock.Variables, enumerableBlock.Expressions,
+                    return RewriteCoroutine( enumerableBlock, enumerableBlock.Variables, enumerableBlock.Expressions,
                         ( variables, expressions ) => new EnumerableBlockExpression( variables, expressions, enumerableBlock.RuntimeOptions ) );
 
                 default:
@@ -158,33 +228,48 @@ public static class CoroutineClosureRewriter
         }
 
         private Expression RewriteCoroutine(
+            Expression node,
             System.Collections.ObjectModel.ReadOnlyCollection<ParameterExpression> variables,
             System.Collections.ObjectModel.ReadOnlyCollection<Expression> expressions,
             Func<System.Collections.ObjectModel.ReadOnlyCollection<ParameterExpression>,
                  System.Collections.ObjectModel.ReadOnlyCollection<Expression>, Expression> create )
         {
-            var hoisted = variables.Where( boxes.ContainsKey ).ToArray();
-            var remaining = variables.Where( variable => !boxes.ContainsKey( variable ) ).ToList();
+            var hoisted = Hoisted( variables, boxes );
+            var rewritten = VisitAll( expressions );
 
-            var rewritten = expressions.Select( Visit ).ToList();
+            // A block that shares nothing keeps its identity. Rebuilding it would discard the
+            // state machine it has already reduced to, and every block in the tree reaches
+            // here whenever any variable anywhere is shared.
 
-            if ( hoisted.Length > 0 )
+            if ( hoisted.Length == 0 && Unchanged( rewritten, expressions ) )
+                return node;
+
+            var remaining = new List<ParameterExpression>( variables.Count );
+
+            for ( var index = 0; index < variables.Count; index++ )
             {
-                // A cell declared by the block itself is initialized inside it, so the
-                // declaration order the block relies on is preserved.
-
-                remaining.AddRange( hoisted.Select( variable => boxes[variable] ) );
-
-                for ( var index = hoisted.Length - 1; index >= 0; index-- )
-                {
-                    var cell = boxes[hoisted[index]];
-                    rewritten.Insert( 0, Assign( cell, New( cell.Type.GetConstructor( Type.EmptyTypes )! ) ) );
-                }
+                if ( !boxes.ContainsKey( variables[index] ) )
+                    remaining.Add( variables[index] );
             }
+
+            var body = new List<Expression>( rewritten.Length + hoisted.Length );
+
+            // A cell declared by the block itself is initialized inside it, so the
+            // declaration order the block relies on is preserved.
+
+            for ( var index = 0; index < hoisted.Length; index++ )
+            {
+                var cell = boxes[hoisted[index]];
+
+                remaining.Add( cell );
+                body.Add( Assign( cell, New( cell.Type.GetConstructor( Type.EmptyTypes )! ) ) );
+            }
+
+            body.AddRange( rewritten );
 
             return create(
                 new System.Collections.ObjectModel.ReadOnlyCollection<ParameterExpression>( remaining ),
-                new System.Collections.ObjectModel.ReadOnlyCollection<Expression>( rewritten ) );
+                new System.Collections.ObjectModel.ReadOnlyCollection<Expression>( body ) );
         }
     }
 

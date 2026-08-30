@@ -172,9 +172,17 @@ internal sealed class StateContext
                 var expression = node.GetExpression( context );
 
                 if ( expression is BlockExpression innerBlock )
-                    expressions.AddRange( innerBlock.Expressions.Where( expr => !IsDefaultVoid( expr ) ) );
+                {
+                    for ( var inner = 0; inner < innerBlock.Expressions.Count; inner++ )
+                    {
+                        if ( !IsDefaultVoid( innerBlock.Expressions[inner] ) )
+                            expressions.Add( innerBlock.Expressions[inner] );
+                    }
+                }
                 else
+                {
                     expressions.Add( expression );
+                }
             }
 
             return expressions;

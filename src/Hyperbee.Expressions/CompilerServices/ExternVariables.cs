@@ -101,13 +101,20 @@ internal sealed class ExternVariables
     }
 
     /// <summary>
-    /// Rewrites references to the variables as reads of their state-machine fields, closing
-    /// the body.
+    /// Adds each variable to <paramref name="members"/> as a read of its state-machine
+    /// field, so the hoisting pass substitutes them along with the hoisted locals.
     /// </summary>
-    public Expression Close( Expression body, ParameterExpression stateMachine, Type stateMachineType )
+    /// <remarks>
+    /// This used to be a separate pass over the finished body. It is the same substitution
+    /// the hoisting visitor already performs, and every reference to an extern variable is
+    /// in the lowered user code that visitor covers -- what surrounds it is built here from
+    /// the state field, the success flag and the exit label, none of which are extern.
+    /// </remarks>
+    public void AddFieldMembers(
+        Dictionary<ParameterExpression, MemberExpression> members,
+        ParameterExpression stateMachine,
+        Type stateMachineType )
     {
-        var fields = new Dictionary<ParameterExpression, MemberExpression>( _variables.Length );
-
         for ( var index = 0; index < _variables.Length; index++ )
         {
             // A body emitted into a type that is still open resolves through the builders;
@@ -116,17 +123,7 @@ internal sealed class ExternVariables
                 ? _fields[index]
                 : (FieldInfo) stateMachineType.GetField( _fieldNames[index] )!;
 
-            fields[_variables[index]] = Field( stateMachine, field );
-        }
-
-        return new ExternRewriter( fields ).Visit( body );
-    }
-
-    private sealed class ExternRewriter( IReadOnlyDictionary<ParameterExpression, MemberExpression> fields ) : ExpressionVisitor
-    {
-        protected override Expression VisitParameter( ParameterExpression node )
-        {
-            return fields.TryGetValue( node, out var field ) ? field : node;
+            members[_variables[index]] = Field( stateMachine, field );
         }
     }
 }

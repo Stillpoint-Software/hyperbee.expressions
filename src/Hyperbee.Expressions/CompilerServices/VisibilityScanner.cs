@@ -95,12 +95,31 @@ internal sealed class VisibilityScanner : ExpressionVisitor
         _found = member switch
         {
             MethodInfo method => !method.IsPublic || !IsVisible( method.DeclaringType )
-                || method.GetGenericArguments().Any( argument => !IsVisible( argument ) ),
+                || HasNonPublicGenericArgument( method ),
             ConstructorInfo constructor => !constructor.IsPublic || !IsVisible( constructor.DeclaringType ),
             FieldInfo field => !field.IsPublic || !IsVisible( field.DeclaringType ),
             PropertyInfo property => !IsVisible( property.DeclaringType ),
             _ => !IsVisible( member.DeclaringType )
         };
+    }
+
+    private static bool HasNonPublicGenericArgument( MethodInfo method )
+    {
+        // Asking a non-generic method for its arguments is the common case, and it answers
+        // without allocating.
+
+        if ( !method.IsGenericMethod )
+            return false;
+
+        var arguments = method.GetGenericArguments();
+
+        for ( var index = 0; index < arguments.Length; index++ )
+        {
+            if ( !IsVisible( arguments[index] ) )
+                return true;
+        }
+
+        return false;
     }
 
     private static bool IsVisible( Type type )

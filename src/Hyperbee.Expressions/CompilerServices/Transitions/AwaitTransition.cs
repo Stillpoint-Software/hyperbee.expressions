@@ -56,11 +56,9 @@ internal class AwaitTransition : Transition
 
             var openStateMachineType = source.StateMachine.Type is System.Reflection.Emit.TypeBuilder;
 
-            var awaitUnsafeOnCompleted = source.BuilderField.Type
-                .GetMethods()
-                .Single( methodInfo => methodInfo.Name == "AwaitUnsafeOnCompleted"
-                    && methodInfo.IsGenericMethodDefinition
-                    && methodInfo.GetGenericArguments().Length == ( openStateMachineType ? 1 : 2 ) )
+            var awaitUnsafeOnCompleted = AwaitUnsafeOnCompletedDefinition(
+                    source.BuilderField.Type,
+                    openStateMachineType ? 1 : 2 )
                 .MakeGenericMethod( openStateMachineType
                     ? [AwaiterVariable.Type]
                     : [AwaiterVariable.Type, source.StateMachine.Type] );
@@ -128,6 +126,34 @@ internal class AwaitTransition : Transition
             return body;
 #endif
         }
+    }
+
+    // Cached because this runs once per await, and the lookup walks every method on the
+    // builder type to find one of two overloads that never change.
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type, int), System.Reflection.MethodInfo> AwaitUnsafeOnCompletedCache = new();
+
+    private static System.Reflection.MethodInfo AwaitUnsafeOnCompletedDefinition( Type builderType, int genericArgumentCount )
+    {
+        return AwaitUnsafeOnCompletedCache.GetOrAdd( (builderType, genericArgumentCount), static key =>
+        {
+            var methods = key.Item1.GetMethods();
+
+            for ( var index = 0; index < methods.Length; index++ )
+            {
+                var method = methods[index];
+
+                if ( method.Name == "AwaitUnsafeOnCompleted"
+                    && method.IsGenericMethodDefinition
+                    && method.GetGenericArguments().Length == key.Item2 )
+                {
+                    return method;
+                }
+            }
+
+            throw new InvalidOperationException(
+                $"{key.Item1} has no AwaitUnsafeOnCompleted with {key.Item2} generic arguments." );
+        } );
     }
 
     internal override void Optimize( HashSet<LabelTarget> references )

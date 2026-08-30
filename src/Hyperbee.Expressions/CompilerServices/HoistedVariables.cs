@@ -59,7 +59,12 @@ internal static class HoistedVariables
         Dictionary<ParameterExpression, FieldBuilder> defined,
         FieldInfo[] fields )
     {
-        var fieldsByName = fields.ToDictionary( field => field.Name, StringComparer.Ordinal );
+        var fieldsByName = new Dictionary<string, FieldInfo>( fields.Length, StringComparer.Ordinal );
+
+        for ( var index = 0; index < fields.Length; index++ )
+        {
+            fieldsByName[fields[index].Name] = fields[index];
+        }
         var variableFields = new Dictionary<ParameterExpression, FieldInfo>( defined.Count );
 
         foreach ( var (variable, field) in defined )
@@ -98,12 +103,23 @@ internal sealed class HoistingVisitor : ExpressionVisitor
     private readonly Dictionary<ParameterExpression, MemberExpression> _fieldMembers;
     private readonly List<ParameterExpression> _shadowed = [];
 
-    public HoistingVisitor( ParameterExpression stateMachine, IReadOnlyDictionary<ParameterExpression, FieldInfo> variableFields )
+    public HoistingVisitor(
+        ParameterExpression stateMachine,
+        IReadOnlyDictionary<ParameterExpression, FieldInfo> variableFields,
+        ExternVariables externVariables = null )
     {
-        _fieldMembers = variableFields.ToDictionary(
-            variableField => variableField.Key,
-            variableField => Field( stateMachine, variableField.Value )
-        );
+        _fieldMembers = new Dictionary<ParameterExpression, MemberExpression>(
+            variableFields.Count + ( externVariables?.Count ?? 0 ) );
+
+        foreach ( var (variable, field) in variableFields )
+        {
+            _fieldMembers[variable] = Field( stateMachine, field );
+        }
+
+        // Variables read from the enclosing scope substitute the same way, so they ride
+        // along here rather than in a second pass over the finished body.
+
+        externVariables?.AddFieldMembers( _fieldMembers, stateMachine, stateMachine.Type );
     }
 
     protected override Expression VisitParameter( ParameterExpression node )

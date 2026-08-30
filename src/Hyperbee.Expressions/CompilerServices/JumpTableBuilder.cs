@@ -34,8 +34,13 @@ internal static class JumpTableBuilder
 
         // Loop over scopes and flatten; nested by parent
 
-        foreach ( var childScope in scopes.Where( x => x.Parent == current ) )
+        for ( var index = 0; index < scopes.Count; index++ )
         {
+            var childScope = scopes[index];
+
+            if ( childScope.Parent != current )
+                continue;
+
             var testValues = GetNestedTestValues( childScope, scopes );
 
             if ( testValues.Count <= 0 )
@@ -63,14 +68,21 @@ internal static class JumpTableBuilder
 
     private static List<ConstantExpression> GetNestedTestValues( StateContext.Scope current, IReadOnlyList<StateContext.Scope> scopes )
     {
-        var testCases = current.JumpCases.Select( jumpCase => Constant( jumpCase.StateId ) ).ToList();
+        var testCases = new List<ConstantExpression>( current.JumpCases.Count );
+
+        for ( var index = 0; index < current.JumpCases.Count; index++ )
+        {
+            testCases.Add( Constant( current.JumpCases[index].StateId ) );
+        }
+
         var stack = new Stack<StateContext.Scope>();
 
         while ( true )
         {
-            foreach ( var child in scopes.Where( scope => scope.Parent == current ) )
+            for ( var index = 0; index < scopes.Count; index++ )
             {
-                stack.Push( child );
+                if ( scopes[index].Parent == current )
+                    stack.Push( scopes[index] );
             }
 
             if ( !stack.TryPop( out current ) )
