@@ -109,10 +109,10 @@ Execution, per call. 20 iterations, 8 warmup.
 
 | Expression | System | **HEC** |
 |------------|-------:|--------:|
-| `BlockAsync`, no captures | 1,039 ns / 232 B | **74 ns / 168 B** |
-| `BlockEnumerable`, no captures | 1,065 ns / 112 B | **56 ns / 48 B** |
-| `BlockAsync`, captures an enclosing variable | 1,068 ns / 240 B | **65 ns / 120 B** |
-| `BlockEnumerable`, captures an enclosing variable | 1,168 ns / 192 B | **64 ns / 72 B** |
+| `BlockAsync`, no captures | 1,105 ns / 232 B | **81 ns / 168 B** |
+| `BlockEnumerable`, no captures | 1,133 ns / 112 B | **36 ns / 48 B** |
+| `BlockAsync`, captures an enclosing variable | 1,129 ns / 240 B | **78 ns / 120 B** |
+| `BlockEnumerable`, captures an enclosing variable | 1,100 ns / 192 B | **53 ns / 72 B** |
 
 A coroutine body is compiled once and embedded as a constant delegate. A body that captures an
 enclosing variable used to be a lambda-as-value that had to be materialized on every call, which
@@ -125,21 +125,25 @@ machine carries by field, so such a body is compiled once as well.
 `MethodBuilder`. Its state machine holds MoveNext as a delegate in a field and invokes it on every
 resume. HEC can emit into one, so the body becomes the machine's own method:
 
-| `BlockAsync`, no captures | Execution | Cold compile |
-|---------------------------|----------:|-------------:|
-| MoveNext emitted into the type | **74 ns** | **1,422 us** |
-| MoveNext as a delegate field | 94 ns | 1,595 us |
+| MoveNext form | Execution | Cold compile |
+|---------------|----------:|-------------:|
+| `BlockEnumerable`, emitted into the type | **36 ns** | **667 us / 36.1 KB** |
+| `BlockEnumerable`, delegate field | 48 ns | 963 us / 41.5 KB |
+| `BlockAsync`, emitted into the type | **81 ns** | **1,212 us / 65.6 KB** |
+| `BlockAsync`, delegate field | 89 ns | 1,456 us / 63.4 KB |
 
-Allocation is identical either way -- the delegate is built once, not per call. The gain is the
-field and the indirection, worth about a fifth of a call whose awaits complete synchronously.
+Allocation per call is identical either way -- the delegate is built once, not per call. The gain
+is the field and the indirection.
 
-Two things bound this. MoveNext is entered once per *suspension*, not per await, so a body whose
-awaits complete synchronously enters it exactly once no matter how many awaits it has -- and a body
-that does suspend pays scheduling costs that dwarf an indirection. And a `DynamicMethod` is created
-with visibility checks skipped while a `MethodBuilder` is not, so a body reaching a non-public
-member keeps the delegate form. `ExpressionRuntimeOptions.EmitMoveNextIntoType` forces it off.
+Two things bound this. MoveNext is entered once per *suspension*, not per await, so an async body
+whose awaits complete synchronously enters it exactly once no matter how many awaits it has -- and
+a body that does suspend pays scheduling costs that dwarf an indirection, which is why the async
+gain is the smaller of the two. An enumerable re-enters MoveNext once per element, so it gains more.
 
-`BlockEnumerable` still takes the delegate path; only the async builder emits into the type.
+The other bound is visibility. A `DynamicMethod` is created with visibility checks skipped while a
+`MethodBuilder` is not, so a body reaching a non-public member keeps the delegate form. Emitting
+into the type is an optimization and must never narrow what compiles.
+`ExpressionRuntimeOptions.EmitMoveNextIntoType` forces it off.
 
 ### Coroutine compilation
 
@@ -148,11 +152,11 @@ compile of the same instance is not a compile.
 
 | Expression | System | **HEC** | vs System |
 |------------|-------:|--------:|----------:|
-| `BlockAsync`, no captures | 2,339 us / 67.1 KB | **1,422 us / 65.8 KB** | 0.61x / 0.98x |
-| `BlockAsync`, captures | 2,274 us / 67.8 KB | **1,437 us / 74.5 KB** | 0.63x / 1.10x |
-| `BlockEnumerable`, no captures | 1,593 us / 47.4 KB | **1,024 us / 45.5 KB** | 0.64x / 0.96x |
-| `BlockEnumerable`, captures | 1,503 us / 48.6 KB | **1,056 us / 52.8 KB** | 0.70x / 1.09x |
-| NestedClosure | 207 us / 7.3 KB | **59 us / 3.5 KB** | 0.29x / 0.48x |
+| `BlockAsync`, no captures | 2,049 us / 67.1 KB | **1,212 us / 65.6 KB** | 0.59x / 0.98x |
+| `BlockAsync`, captures | 2,120 us / 67.8 KB | **1,459 us / 74.4 KB** | 0.69x / 1.10x |
+| `BlockEnumerable`, no captures | 1,301 us / 43.4 KB | **667 us / 36.1 KB** | 0.51x / 0.83x |
+| `BlockEnumerable`, captures | 1,411 us / 44.6 KB | **785 us / 45.3 KB** | 0.56x / 1.02x |
+| NestedClosure | 192 us / 7.3 KB | **55 us / 3.5 KB** | 0.29x / 0.48x |
 
 Both compilers are dominated here by `TypeBuilder.CreateType()`, which is why these are milliseconds
 against microseconds everywhere else in this document.
@@ -162,7 +166,12 @@ allocation. Reducing a coroutine block builds a state machine type, and the pipe
 more than once -- `BlockAsync` cached that and `BlockEnumerable` did not, so one compile emitted
 three state machine types and used the last. It also lacked a `VisitChildren` override, so the base
 implementation reduced the block and visited the state machine rather than the block's own
-children: merely walking the tree built a type. Those two are what the numbers above reflect.
+children: merely walking the tree built a type.
+
+The generated enumerable type also derives from `EnumerableStateMachineBase<TResult>` rather than
+implementing `IEnumerable<T>`, `IEnumerator<T>` and `IDisposable` itself. Two `GetEnumerator`
+overloads, two `Current` accessors, `Reset` and `Dispose` were identical for every state machine
+and were emitted per machine.
 
 ---
 

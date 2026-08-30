@@ -28,6 +28,7 @@ public class CoroutineCompilationBenchmarks
 
     private Expression<Func<int, IEnumerable<int>>> _enumerableNoCapture_System = null!;
     private Expression<Func<int, IEnumerable<int>>> _enumerableNoCapture_Hyperbee = null!;
+    private Expression<Func<int, IEnumerable<int>>> _enumerableNoCaptureDelegate_Hyperbee = null!;
 
     private Expression<Func<int, IEnumerable<int>>> _enumerableCapture_System = null!;
     private Expression<Func<int, IEnumerable<int>>> _enumerableCapture_Hyperbee = null!;
@@ -47,6 +48,7 @@ public class CoroutineCompilationBenchmarks
 
         _enumerableNoCapture_System = CoroutineExpressions.EnumerableNoCapture();
         _enumerableNoCapture_Hyperbee = CoroutineExpressions.EnumerableNoCapture();
+        _enumerableNoCaptureDelegate_Hyperbee = CoroutineExpressions.EnumerableNoCapture( CoroutineExpressions.DelegateMoveNext() );
 
         _enumerableCapture_System = CoroutineExpressions.EnumerableCapture();
         _enumerableCapture_Hyperbee = CoroutineExpressions.EnumerableCapture();
@@ -75,6 +77,9 @@ public class CoroutineCompilationBenchmarks
 
     [Benchmark( Description = "EnumerableNoCapture | Hyperbee" )]
     public Delegate EnumerableNoCapture_Hyperbee() => HyperbeeCompiler.Compile( _enumerableNoCapture_Hyperbee );
+
+    [Benchmark( Description = "EnumerableNoCapture (delegate MoveNext) | Hyperbee" )]
+    public Delegate EnumerableNoCaptureDelegate_Hyperbee() => HyperbeeCompiler.Compile( _enumerableNoCaptureDelegate_Hyperbee );
 
     [Benchmark( Description = "EnumerableCapture | System" )]
     public Delegate EnumerableCapture_System() => _enumerableCapture_System.Compile();
@@ -106,6 +111,7 @@ public class CoroutineExecutionBenchmarks
 
     private Func<int, IEnumerable<int>> _enumerableNoCapture_System = null!;
     private Func<int, IEnumerable<int>> _enumerableNoCapture_Hyperbee = null!;
+    private Func<int, IEnumerable<int>> _enumerableNoCaptureDelegate_Hyperbee = null!;
 
     private Func<int, IEnumerable<int>> _enumerableCapture_System = null!;
     private Func<int, IEnumerable<int>> _enumerableCapture_Hyperbee = null!;
@@ -127,7 +133,8 @@ public class CoroutineExecutionBenchmarks
         _asyncCapture_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.AsyncCapture() );
 
         _enumerableNoCapture_System = CoroutineExpressions.EnumerableNoCapture().Compile();
-        _enumerableNoCapture_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.EnumerableNoCapture() );
+        _enumerableNoCapture_Hyperbee = CompileEnumerable( CoroutineExpressions.EnumerableNoCapture, emittedIntoType: true );
+        _enumerableNoCaptureDelegate_Hyperbee = CompileEnumerable( CoroutineExpressions.EnumerableNoCapture, emittedIntoType: false );
 
         _enumerableCapture_System = CoroutineExpressions.EnumerableCapture().Compile();
         _enumerableCapture_Hyperbee = HyperbeeCompiler.Compile( CoroutineExpressions.EnumerableCapture() );
@@ -166,6 +173,9 @@ public class CoroutineExecutionBenchmarks
     [Benchmark( Description = "EnumerableNoCapture | Hyperbee" )]
     public int EnumerableNoCapture_Hyperbee() => Sum( _enumerableNoCapture_Hyperbee( 3 ) );
 
+    [Benchmark( Description = "EnumerableNoCapture (delegate MoveNext) | Hyperbee" )]
+    public int EnumerableNoCaptureDelegate_Hyperbee() => Sum( _enumerableNoCaptureDelegate_Hyperbee( 3 ) );
+
     [Benchmark( Description = "EnumerableCapture | System" )]
     public int EnumerableCapture_System() => Sum( _enumerableCapture_System( 3 ) );
 
@@ -199,6 +209,32 @@ public class CoroutineExecutionBenchmarks
         var compiled = HyperbeeCompiler.Compile( factory( options ) );
 
         if ( source.Contains( delegateField ) == emittedIntoType )
+        {
+            throw new InvalidOperationException(
+                $"expected MoveNext {( emittedIntoType ? "emitted into the type" : "as a delegate" )}, got the other form." );
+        }
+
+        return compiled;
+    }
+
+    // As Compile, for an enumerable. The machine is the object handed back, so the form it
+    // took is a question about its type rather than about its debug view.
+
+    private static Func<int, IEnumerable<int>> CompileEnumerable(
+        Func<ExpressionRuntimeOptions, Expression<Func<int, IEnumerable<int>>>> factory,
+        bool emittedIntoType )
+    {
+        const string delegateField = "__moveNextDelegate<>";
+
+        var options = emittedIntoType
+            ? CoroutineExpressions.EmittedMoveNext()
+            : CoroutineExpressions.DelegateMoveNext();
+
+        var compiled = HyperbeeCompiler.Compile( factory( options ) );
+
+        var machineType = compiled( 0 ).GetType();
+
+        if ( ( machineType.GetField( delegateField ) != null ) == emittedIntoType )
         {
             throw new InvalidOperationException(
                 $"expected MoveNext {( emittedIntoType ? "emitted into the type" : "as a delegate" )}, got the other form." );

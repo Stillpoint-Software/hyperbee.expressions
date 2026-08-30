@@ -58,7 +58,8 @@ public class EnumerableBlockExpression : Expression
             EnumerableType,
             LoweringTransformer,
             RuntimeOptions,
-            ExternVariables.Create( Variables, Expressions ) );
+            ExternVariables.Create( Variables, Expressions ),
+            CanEmitIntoType() );
     }
 
     protected override Expression VisitChildren( ExpressionVisitor visitor )
@@ -79,6 +80,14 @@ public class EnumerableBlockExpression : Expression
             ScopedVariables = ScopedVariables
         };
     }
+
+    // The body may be emitted into the machine's own method unless it reaches a non-public
+    // member -- only a DynamicMethod is created with visibility checks skipped. The scan is a
+    // full walk, so the switch is read first and short-circuits it.
+
+    private bool CanEmitIntoType() =>
+        (RuntimeOptions?.EmitMoveNextIntoType ?? true)
+        && !VisibilityScanner.HasNonPublicReferences( Expressions );
 
     private EnumerableLoweringInfo LoweringTransformer()
     {

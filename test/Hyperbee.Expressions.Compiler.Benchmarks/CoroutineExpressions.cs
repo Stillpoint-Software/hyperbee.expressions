@@ -70,17 +70,21 @@ public static class CoroutineExpressions
     }
 
     // Enumerable block with no enclosing-scope references
-    public static Expression<Func<int, IEnumerable<int>>> EnumerableNoCapture()
+    public static Expression<Func<int, IEnumerable<int>>> EnumerableNoCapture( ExpressionRuntimeOptions options = null )
     {
         var input = Parameter( typeof( int ), "input" );
         var local = Variable( typeof( int ), "local" );
 
         return Lambda<Func<int, IEnumerable<int>>>(
             BlockEnumerable(
-                [local],
-                Assign( local, Constant( 7 ) ),
-                YieldReturn( local ),
-                YieldReturn( Add( local, Constant( 1 ) ) )
+                new[] { local },
+                new Expression[]
+                {
+                    Assign( local, Constant( 7 ) ),
+                    YieldReturn( local ),
+                    YieldReturn( Add( local, Constant( 1 ) ) )
+                },
+                options
             ),
             input );
     }
