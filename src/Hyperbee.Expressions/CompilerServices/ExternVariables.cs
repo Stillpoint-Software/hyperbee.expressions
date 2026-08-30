@@ -86,6 +86,15 @@ internal sealed class ExternVariables
     }
 
     /// <summary>
+    /// Adds the fields carrying the enclosing variables, so a copy of the machine can carry
+    /// them too.
+    /// </summary>
+    public void AddFields( List<FieldBuilder> fields )
+    {
+        fields.AddRange( _fields );
+    }
+
+    /// <summary>
     /// Assignments that copy each variable into its state-machine field. Emitted in the
     /// enclosing expression, where the variables are in scope.
     /// </summary>

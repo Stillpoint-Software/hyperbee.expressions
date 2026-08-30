@@ -10,19 +10,19 @@ Job=.NET 9  Runtime=.NET 9.0  IterationCount=20
 LaunchCount=1  WarmupCount=8  
 
 ```
-| Method                                               | Mean           | Error       | StdDev      | vs System | vs Fec | Alloc vs System | Alloc vs Fec | Gen0   | Allocated |
-|----------------------------------------------------- |---------------:|------------:|------------:|----------:|-------:|----------------:|-------------:|-------:|----------:|
-| &#39;AsyncSuspending x16 | Hyperbee&#39;                     | 12,674.8912 ns | 681.6304 ns | 784.9666 ns |       N/A |    N/A |             N/A |          N/A | 0.0153 |     152 B |
-| &#39;AsyncSuspending x16 (delegate MoveNext) | Hyperbee&#39; | 12,344.0385 ns | 340.6209 ns | 378.5992 ns |       N/A |    N/A |             N/A |          N/A | 0.0153 |     152 B |
-| &#39;AsyncNoCapture | System&#39;                            |  1,231.1994 ns |  28.9436 ns |  33.3315 ns |     1.00x |    N/A |           1.00x |          N/A | 0.0267 |     232 B |
-| &#39;AsyncNoCapture | Hyperbee&#39;                          |     94.3996 ns |   2.0093 ns |   2.2334 ns |     0.08x |    N/A |           0.72x |          N/A | 0.0200 |     168 B |
-| &#39;AsyncNoCapture (delegate MoveNext) | Hyperbee&#39;      |     99.7258 ns |   7.6052 ns |   8.7582 ns |       N/A |    N/A |             N/A |          N/A | 0.0200 |     168 B |
-| &#39;AsyncCapture | System&#39;                              |  1,117.2110 ns |  41.5884 ns |  47.8933 ns |     1.00x |    N/A |           1.00x |          N/A | 0.0286 |     240 B |
-| &#39;AsyncCapture | Hyperbee&#39;                            |     70.3835 ns |   1.6339 ns |   1.8161 ns |     0.06x |    N/A |           0.50x |          N/A | 0.0143 |     120 B |
-| &#39;EnumerableNoCapture | System&#39;                       |  1,086.6600 ns |  46.7781 ns |  53.8698 ns |     1.00x |    N/A |           1.00x |          N/A | 0.0134 |     112 B |
-| &#39;EnumerableNoCapture | Hyperbee&#39;                     |     35.8850 ns |   0.2489 ns |   0.2664 ns |     0.03x |    N/A |           0.43x |          N/A | 0.0057 |      48 B |
-| &#39;EnumerableNoCapture (delegate MoveNext) | Hyperbee&#39; |     46.9745 ns |   1.1071 ns |   1.2750 ns |       N/A |    N/A |             N/A |          N/A | 0.0057 |      48 B |
-| &#39;EnumerableCapture | System&#39;                         |  1,109.5802 ns |  28.6965 ns |  33.0469 ns |     1.00x |    N/A |           1.00x |          N/A | 0.0229 |     192 B |
-| &#39;EnumerableCapture | Hyperbee&#39;                       |     46.3851 ns |   1.2764 ns |   1.4699 ns |     0.04x |    N/A |           0.38x |          N/A | 0.0086 |      72 B |
-| &#39;NestedClosure | System&#39;                             |      0.5979 ns |   0.0720 ns |   0.0801 ns |     1.00x |    N/A |           1.00x |          N/A |      - |         - |
-| &#39;NestedClosure | Hyperbee&#39;                           |      1.4794 ns |   0.0740 ns |   0.0852 ns |     2.47x |    N/A |           1.00x |          N/A |      - |         - |
+| Method                                               | Mean           | Error         | StdDev        | vs System | vs Fec | Alloc vs System | Alloc vs Fec | Gen0   | Allocated |
+|----------------------------------------------------- |---------------:|--------------:|--------------:|----------:|-------:|----------------:|-------------:|-------:|----------:|
+| &#39;AsyncSuspending x16 | Hyperbee&#39;                     | 12,223.7678 ns | 1,141.8930 ns | 1,315.0057 ns |       N/A |    N/A |             N/A |          N/A | 0.0153 |     152 B |
+| &#39;AsyncSuspending x16 (delegate MoveNext) | Hyperbee&#39; | 15,141.9630 ns | 1,548.0387 ns | 1,782.7237 ns |       N/A |    N/A |             N/A |          N/A | 0.0153 |     152 B |
+| &#39;AsyncNoCapture | System&#39;                            |  1,148.5516 ns |    27.9577 ns |    32.1961 ns |     1.00x |    N/A |           1.00x |          N/A | 0.0267 |     232 B |
+| &#39;AsyncNoCapture | Hyperbee&#39;                          |     75.6103 ns |     2.3873 ns |     2.7492 ns |     0.07x |    N/A |           0.72x |          N/A | 0.0200 |     168 B |
+| &#39;AsyncNoCapture (delegate MoveNext) | Hyperbee&#39;      |     89.5014 ns |     1.9176 ns |     2.1314 ns |       N/A |    N/A |             N/A |          N/A | 0.0200 |     168 B |
+| &#39;AsyncCapture | System&#39;                              |  1,175.5694 ns |    36.6204 ns |    39.1834 ns |     1.00x |    N/A |           1.00x |          N/A | 0.0286 |     240 B |
+| &#39;AsyncCapture | Hyperbee&#39;                            |     88.0721 ns |     4.9136 ns |     5.6585 ns |     0.07x |    N/A |           0.50x |          N/A | 0.0143 |     120 B |
+| &#39;EnumerableNoCapture | System&#39;                       |  1,167.4224 ns |    65.3315 ns |    75.2359 ns |     1.00x |    N/A |           1.00x |          N/A | 0.0134 |     112 B |
+| &#39;EnumerableNoCapture | Hyperbee&#39;                     |     41.0146 ns |     0.8286 ns |     0.9542 ns |     0.04x |    N/A |           0.43x |          N/A | 0.0057 |      48 B |
+| &#39;EnumerableNoCapture (delegate MoveNext) | Hyperbee&#39; |     49.5635 ns |     1.8759 ns |     2.1603 ns |       N/A |    N/A |             N/A |          N/A | 0.0057 |      48 B |
+| &#39;EnumerableCapture | System&#39;                         |  1,101.4274 ns |    25.5283 ns |    29.3984 ns |     1.00x |    N/A |           1.00x |          N/A | 0.0229 |     192 B |
+| &#39;EnumerableCapture | Hyperbee&#39;                       |     48.9375 ns |     1.3367 ns |     1.3727 ns |     0.04x |    N/A |           0.38x |          N/A | 0.0086 |      72 B |
+| &#39;NestedClosure | System&#39;                             |      0.6010 ns |     0.0519 ns |     0.0598 ns |     1.00x |    N/A |           1.00x |          N/A |      - |         - |
+| &#39;NestedClosure | Hyperbee&#39;                           |      1.4178 ns |     0.0620 ns |     0.0689 ns |     2.36x |    N/A |           1.00x |          N/A |      - |         - |

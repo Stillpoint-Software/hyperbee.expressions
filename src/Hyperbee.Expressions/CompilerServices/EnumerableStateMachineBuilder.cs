@@ -150,6 +150,8 @@ internal class EnumerableStateMachineBuilder<TResult>
 
         typeBuilder.DefineMethodOverride( moveNextMethod, baseType.GetMethod( nameof( EnumerableStateMachineBase<TResult>.MoveNext ) )! );
 
+        ImplementClone( typeBuilder, baseType, context, constantsFieldBuilder );
+
         assignments = [];
 
         if ( constants.Length > 0 )
@@ -333,6 +335,7 @@ internal class EnumerableStateMachineBuilder<TResult>
         // Define: methods
 
         ImplementMoveNext( typeBuilder, baseType, moveNextDelegateField, moveNextDelegateType );
+        ImplementClone( typeBuilder, baseType, context, moveNextDelegateField );
 
         // Close the type builder
         var stateMachineType = typeBuilder.CreateType();
@@ -342,6 +345,51 @@ internal class EnumerableStateMachineBuilder<TResult>
             stateMachineType.GetFields( BindingFlags.Instance | BindingFlags.Public ) );
 
         return stateMachineType;
+    }
+
+    // A machine is its own enumerator, which it can be exactly once. Enumerating again needs
+    // a copy that carries the same enclosing values but starts with its own state and its own
+    // locals -- so the carried field is copied and everything else is left at its default.
+
+    private static void ImplementClone(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        StateMachineContext context,
+        FieldBuilder carried )
+    {
+        var constructor = typeBuilder.DefineDefaultConstructor( MethodAttributes.Public );
+
+        var fields = new List<FieldBuilder> { carried };
+
+        context.ExternVariables?.AddFields( fields );
+
+        var cloneMethod = typeBuilder.DefineMethod(
+            "Clone",
+            MethodAttributes.Family | MethodAttributes.Virtual | MethodAttributes.HideBySig,
+            baseType,
+            Type.EmptyTypes );
+
+        var ilGen = cloneMethod.GetILGenerator();
+
+        ilGen.DeclareLocal( typeBuilder );
+
+        ilGen.Emit( OpCodes.Newobj, constructor );
+        ilGen.Emit( OpCodes.Stloc_0 );
+
+        for ( var index = 0; index < fields.Count; index++ )
+        {
+            ilGen.Emit( OpCodes.Ldloc_0 );
+            ilGen.Emit( OpCodes.Ldarg_0 );
+            ilGen.Emit( OpCodes.Ldfld, fields[index] );
+            ilGen.Emit( OpCodes.Stfld, fields[index] );
+        }
+
+        ilGen.Emit( OpCodes.Ldloc_0 );
+        ilGen.Emit( OpCodes.Ret );
+
+        typeBuilder.DefineMethodOverride(
+            cloneMethod,
+            baseType.GetMethod( "Clone", BindingFlags.Instance | BindingFlags.NonPublic )! );
     }
 
     private static void ImplementMoveNext(
