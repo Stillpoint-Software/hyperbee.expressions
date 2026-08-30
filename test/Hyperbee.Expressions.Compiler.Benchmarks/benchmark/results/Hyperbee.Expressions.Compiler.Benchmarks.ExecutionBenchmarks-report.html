@@ -2,7 +2,7 @@
 <html lang='en'>
 <head>
 <meta charset='utf-8' />
-<title>Hyperbee.Expressions.Compiler.Benchmarks.ExecutionBenchmarks-20260830-101207</title>
+<title>Hyperbee.Expressions.Compiler.Benchmarks.ExecutionBenchmarks-20260830-130936</title>
 
 <style type="text/css">
 	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
@@ -24,26 +24,11 @@ LaunchCount=1  WarmupCount=3
 </code></pre>
 
 <table>
-<thead><tr><th>Method         </th><th>Mean</th><th>Error</th><th>StdDev</th><th>vs System</th><th>vs Fec</th><th>Alloc vs System</th><th>Alloc vs Fec</th><th>Gen0</th><th>Allocated</th>
+<thead><tr><th>Method     </th><th>Mean</th><th>Error</th><th>StdDev</th><th>vs System</th><th>vs Fec</th><th>Alloc vs System</th><th>Alloc vs Fec</th><th>Allocated</th>
 </tr>
-</thead><tbody><tr><td>&#39;Simple | System&#39;</td><td>0.9248 ns</td><td>0.3287 ns</td><td>0.0180 ns</td><td>1.00x</td><td>0.62x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Simple | FEC&#39;</td><td>1.5035 ns</td><td>2.2530 ns</td><td>0.1235 ns</td><td>1.63x</td><td>1.00x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Simple | Hyperbee&#39;</td><td>1.3591 ns</td><td>2.2444 ns</td><td>0.1230 ns</td><td>1.47x</td><td>0.90x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Closure | System&#39;</td><td>0.9001 ns</td><td>2.6865 ns</td><td>0.1473 ns</td><td>1.00x</td><td>0.63x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Closure | FEC&#39;</td><td>1.4379 ns</td><td>1.8169 ns</td><td>0.0996 ns</td><td>1.60x</td><td>1.00x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Closure | Hyperbee&#39;</td><td>1.6130 ns</td><td>1.1791 ns</td><td>0.0646 ns</td><td>1.79x</td><td>1.12x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;TryCatch | System&#39;</td><td>1.1478 ns</td><td>1.1516 ns</td><td>0.0631 ns</td><td>1.00x</td><td>0.73x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;TryCatch | FEC&#39;</td><td>1.5769 ns</td><td>2.5526 ns</td><td>0.1399 ns</td><td>1.37x</td><td>1.00x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;TryCatch | Hyperbee&#39;</td><td>1.7474 ns</td><td>1.0652 ns</td><td>0.0584 ns</td><td>1.52x</td><td>1.11x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Complex | System&#39;</td><td>53.1399 ns</td><td>13.6193 ns</td><td>0.7465 ns</td><td>1.00x</td><td>0.98x</td><td>1.00x</td><td>1.00x</td><td>0.0038</td><td>32 B</td>
-</tr><tr><td>&#39;Complex | FEC&#39;</td><td>54.3445 ns</td><td>32.0415 ns</td><td>1.7563 ns</td><td>1.02x</td><td>1.00x</td><td>1.00x</td><td>1.00x</td><td>0.0038</td><td>32 B</td>
-</tr><tr><td>&#39;Complex | Hyperbee&#39;</td><td>54.1479 ns</td><td>18.1129 ns</td><td>0.9928 ns</td><td>1.02x</td><td>1.00x</td><td>1.00x</td><td>1.00x</td><td>0.0038</td><td>32 B</td>
-</tr><tr><td>&#39;Loop | System&#39;</td><td>83.0859 ns</td><td>14.0211 ns</td><td>0.7685 ns</td><td>1.00x</td><td>?</td><td>1.00x</td><td>?</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Loop | FEC&#39;</td><td>NA</td><td>NA</td><td>NA</td><td>?</td><td>?</td><td>?</td><td>?</td><td>NA</td><td>NA</td>
-</tr><tr><td>&#39;Loop | Hyperbee&#39;</td><td>84.7570 ns</td><td>4.3596 ns</td><td>0.2390 ns</td><td>1.02x</td><td>?</td><td>1.00x</td><td>?</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Switch | System&#39;</td><td>4.5228 ns</td><td>3.8419 ns</td><td>0.2106 ns</td><td>1.00x</td><td>1.35x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Switch | FEC&#39;</td><td>3.3384 ns</td><td>2.3622 ns</td><td>0.1295 ns</td><td>0.74x</td><td>1.00x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
-</tr><tr><td>&#39;Switch | Hyperbee&#39;</td><td>3.5953 ns</td><td>1.3379 ns</td><td>0.0733 ns</td><td>0.79x</td><td>1.08x</td><td>1.00x</td><td>1.00x</td><td>-</td><td>-</td>
+</thead><tbody><tr><td>&#39;Loop | System&#39;</td><td>117.3 ns</td><td>32.65 ns</td><td>1.79 ns</td><td>1.00x</td><td>0.99x</td><td>1.00x</td><td>1.00x</td><td>-</td>
+</tr><tr><td>&#39;Loop | FEC&#39;</td><td>118.1 ns</td><td>54.65 ns</td><td>3.00 ns</td><td>1.01x</td><td>1.00x</td><td>1.00x</td><td>1.00x</td><td>-</td>
+</tr><tr><td>&#39;Loop | Hyperbee&#39;</td><td>106.1 ns</td><td>31.78 ns</td><td>1.74 ns</td><td>0.90x</td><td>0.90x</td><td>1.00x</td><td>1.00x</td><td>-</td>
 </tr></tbody></table>
 </body>
 </html>
