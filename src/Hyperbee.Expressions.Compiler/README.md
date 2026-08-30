@@ -1,7 +1,7 @@
 # Hyperbee Expression Compiler
 
 A high-performance, IR-based expression compiler for .NET. Drop-in replacement for `Expression.Compile()`
-that is **9-34x faster and allocates up to 50% less than the System compiler** and supports **all expression tree patterns**.
+that is **7-28x faster and allocates 31-52% less than the System compiler** and supports **all expression tree patterns**.
 
 ## Why Another Expression Compiler?
 
@@ -13,11 +13,13 @@ Hyperbee takes a middle ground: a **multi-pass IR pipeline** that lowers express
 
 ## Performance
 
-HEC is consistently **7-32x faster than the System Compiler** and within **1.19-1.54x of FEC** across all tiers - while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
+HEC is consistently **7-28x faster than the System Compiler** and within **1.20-1.66x of FEC** across all tiers - while producing correct IL for the sub-set of patterns FEC doesn't support (`NegateChecked` overflow, `NaN` comparisons, value-type instance calls, compound assignments in `TryCatch`, etc.).
+
+For `BlockAsync` and `BlockEnumerable`, which FEC does not support at all, HEC compiles about **twice as fast as the System compiler** and the compiled coroutines run **15-19x faster**.
 
 A lambda invoked in place (`Expression.Invoke( lambda, args )`) is inlined at the call site, so it needs no second compilation and captures nothing. See [Invoked lambdas](../../docs/site/compiler/performance.md#invoked-lambdas).
 
-The Complex tier standout (~34x vs System) is where the multi-pass IR architecture pays off against the System compiler's heavyweight compilation pipeline. The Switch tier at 1.54x is the widest gap vs FEC.
+The Complex tier standout (~28x vs System) is where the multi-pass IR architecture pays off against the System compiler's heavyweight compilation pipeline. The Switch tier at 1.66x is the widest gap vs FEC, and Simple at 1.20x the narrowest - the spread is the IR pipeline doing more work on the more complex trees, not fixed overhead.
 
 ### Compilation Benchmarks
 
@@ -96,10 +98,11 @@ interpreted as "roughly equivalent" rather than a meaningful performance gap.
 
 |                        | System (`Expression.Compile`)            | FEC (`CompileFast`)                                       | Hyperbee (`HyperbeeCompiler.Compile`)    |
 | ---------------------- | ---------------------------------------- | --------------------------------------------------------- | ---------------------------------------- |
-| **Speed**              | Baseline (slowest)                       | Fastest (10-43x vs System)                                | Fast (9-34x vs System)                   |
-| **Allocations**        | Highest                                  | Lowest                                                    | Middle (up to 50% less than System)      |
+| **Speed**              | Baseline (slowest)                       | Fastest (10-37x vs System)                                | Fast (7-28x vs System)                   |
+| **Allocations**        | Highest                                  | Lowest                                                    | Middle (31-52% less than System)         |
 | **Correctness**        | Reference (always correct)               | Most patterns correct; some edge cases produce invalid IL | All patterns correct                     |
 | **Architecture**       | Heavyweight runtime compilation pipeline | Single-pass IL emission                                   | Multi-pass IR pipeline with optimization |
+| **Coroutines**         | `BlockAsync` / `BlockEnumerable`         | Not supported                                             | 15-19x faster to run than System         |
 | **Exception handling** | Full support                             | Supported, some edge cases                                | Full support                             |
 | **Closures**           | Full support                             | Supported, some edge cases                                | Full support                             |
 | **Approach**           | Mature, battle-tested                    | Speed-optimized, pragmatic                                | Correctness + speed balanced             |

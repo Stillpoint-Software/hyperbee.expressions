@@ -8,7 +8,7 @@ namespace Hyperbee.Expressions.Compiler.Benchmarks;
 /// Measures time and allocations to go from LambdaExpression to a callable Delegate.
 /// Primary metric for the Hyperbee.Expressions.Compiler project.
 /// </summary>
-[Config( typeof( BenchmarkConfig.Config ) )]
+[Config( typeof( BenchmarkConfig.StableConfig ) )]
 [MemoryDiagnoser]
 public class CompilationBenchmarks
 {
