@@ -2,7 +2,7 @@
 <html lang='en'>
 <head>
 <meta charset='utf-8' />
-<title>Hyperbee.Expressions.Compiler.Benchmarks.CompilationBenchmarks-20260830-095852</title>
+<title>Hyperbee.Expressions.Compiler.Benchmarks.CompilationBenchmarks-20260830-131411</title>
 
 <style type="text/css">
 	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
@@ -26,24 +26,24 @@ LaunchCount=1  WarmupCount=8
 <table>
 <thead><tr><th>Method         </th><th>Mean</th><th>Error</th><th>StdDev</th><th>vs System</th><th>vs Fec</th><th>Alloc vs System</th><th>Alloc vs Fec</th><th>Gen0</th><th>Gen1</th><th>Allocated</th>
 </tr>
-</thead><tbody><tr><td>&#39;Simple | System&#39;</td><td>71.458 &mu;s</td><td>2.7600 &mu;s</td><td>3.0677 &mu;s</td><td>1.00x</td><td>12.20x</td><td>1.00x</td><td>4.80x</td><td>0.4883</td><td>0.3662</td><td>4335 B</td>
-</tr><tr><td>&#39;Simple | FEC&#39;</td><td>5.857 &mu;s</td><td>0.1393 &mu;s</td><td>0.1604 &mu;s</td><td>0.08x</td><td>1.00x</td><td>0.21x</td><td>1.00x</td><td>0.1068</td><td>0.0992</td><td>903 B</td>
-</tr><tr><td>&#39;Simple | Hyperbee&#39;</td><td>7.040 &mu;s</td><td>0.2933 &mu;s</td><td>0.3378 &mu;s</td><td>0.10x</td><td>1.20x</td><td>0.48x</td><td>2.32x</td><td>0.2441</td><td>0.2136</td><td>2095 B</td>
-</tr><tr><td>&#39;Closure | System&#39;</td><td>57.836 &mu;s</td><td>1.8715 &mu;s</td><td>2.1553 &mu;s</td><td>1.00x</td><td>10.30x</td><td>1.00x</td><td>6.35x</td><td>0.6104</td><td>0.4883</td><td>5678 B</td>
-</tr><tr><td>&#39;Closure | FEC&#39;</td><td>5.617 &mu;s</td><td>0.1148 &mu;s</td><td>0.1322 &mu;s</td><td>0.10x</td><td>1.00x</td><td>0.16x</td><td>1.00x</td><td>0.1068</td><td>0.0916</td><td>894 B</td>
-</tr><tr><td>&#39;Closure | Hyperbee&#39;</td><td>8.405 &mu;s</td><td>0.3341 &mu;s</td><td>0.3847 &mu;s</td><td>0.15x</td><td>1.50x</td><td>0.61x</td><td>3.87x</td><td>0.4120</td><td>0.3967</td><td>3456 B</td>
-</tr><tr><td>&#39;TryCatch | System&#39;</td><td>110.017 &mu;s</td><td>6.5188 &mu;s</td><td>7.5070 &mu;s</td><td>1.00x</td><td>13.39x</td><td>1.00x</td><td>3.89x</td><td>0.4883</td><td>0.2441</td><td>5897 B</td>
-</tr><tr><td>&#39;TryCatch | FEC&#39;</td><td>8.214 &mu;s</td><td>0.2514 &mu;s</td><td>0.2895 &mu;s</td><td>0.07x</td><td>1.00x</td><td>0.26x</td><td>1.00x</td><td>0.1526</td><td>0.1221</td><td>1516 B</td>
-</tr><tr><td>&#39;TryCatch | Hyperbee&#39;</td><td>13.089 &mu;s</td><td>0.3497 &mu;s</td><td>0.3886 &mu;s</td><td>0.12x</td><td>1.59x</td><td>0.69x</td><td>2.69x</td><td>0.4883</td><td>0.3662</td><td>4085 B</td>
-</tr><tr><td>&#39;Complex | System&#39;</td><td>263.574 &mu;s</td><td>4.9484 &mu;s</td><td>5.6986 &mu;s</td><td>1.00x</td><td>37.09x</td><td>1.00x</td><td>3.41x</td><td>0.4883</td><td>-</td><td>4741 B</td>
-</tr><tr><td>&#39;Complex | FEC&#39;</td><td>7.107 &mu;s</td><td>0.3571 &mu;s</td><td>0.4113 &mu;s</td><td>0.03x</td><td>1.00x</td><td>0.29x</td><td>1.00x</td><td>0.1526</td><td>0.1373</td><td>1390 B</td>
-</tr><tr><td>&#39;Complex | Hyperbee&#39;</td><td>9.306 &mu;s</td><td>0.4705 &mu;s</td><td>0.5418 &mu;s</td><td>0.04x</td><td>1.31x</td><td>0.52x</td><td>1.78x</td><td>0.2899</td><td>0.2747</td><td>2479 B</td>
-</tr><tr><td>&#39;Loop | System&#39;</td><td>147.152 &mu;s</td><td>6.6527 &mu;s</td><td>7.6613 &mu;s</td><td>1.00x</td><td>14.42x</td><td>1.00x</td><td>6.05x</td><td>0.7324</td><td>0.4883</td><td>6718 B</td>
-</tr><tr><td>&#39;Loop | FEC&#39;</td><td>10.206 &mu;s</td><td>0.4475 &mu;s</td><td>0.5154 &mu;s</td><td>0.07x</td><td>1.00x</td><td>0.17x</td><td>1.00x</td><td>0.1221</td><td>0.0610</td><td>1110 B</td>
-</tr><tr><td>&#39;Loop | Hyperbee&#39;</td><td>16.254 &mu;s</td><td>0.7790 &mu;s</td><td>0.8972 &mu;s</td><td>0.11x</td><td>1.59x</td><td>0.63x</td><td>3.83x</td><td>0.4883</td><td>0.3662</td><td>4255 B</td>
-</tr><tr><td>&#39;Switch | System&#39;</td><td>132.443 &mu;s</td><td>5.2211 &mu;s</td><td>6.0126 &mu;s</td><td>1.00x</td><td>18.14x</td><td>1.00x</td><td>4.64x</td><td>0.7324</td><td>0.4883</td><td>6272 B</td>
-</tr><tr><td>&#39;Switch | FEC&#39;</td><td>7.303 &mu;s</td><td>0.1932 &mu;s</td><td>0.2225 &mu;s</td><td>0.06x</td><td>1.00x</td><td>0.22x</td><td>1.00x</td><td>0.1602</td><td>0.1526</td><td>1352 B</td>
-</tr><tr><td>&#39;Switch | Hyperbee&#39;</td><td>12.120 &mu;s</td><td>0.3866 &mu;s</td><td>0.4452 &mu;s</td><td>0.09x</td><td>1.66x</td><td>0.61x</td><td>2.84x</td><td>0.4578</td><td>0.4425</td><td>3840 B</td>
+</thead><tbody><tr><td>&#39;Simple | System&#39;</td><td>75.665 &mu;s</td><td>3.4649 &mu;s</td><td>3.9902 &mu;s</td><td>1.00x</td><td>9.35x</td><td>1.00x</td><td>4.80x</td><td>0.4883</td><td>0.3662</td><td>4335 B</td>
+</tr><tr><td>&#39;Simple | FEC&#39;</td><td>8.094 &mu;s</td><td>0.1517 &mu;s</td><td>0.1747 &mu;s</td><td>0.11x</td><td>1.00x</td><td>0.21x</td><td>1.00x</td><td>0.1068</td><td>0.0992</td><td>903 B</td>
+</tr><tr><td>&#39;Simple | Hyperbee&#39;</td><td>7.785 &mu;s</td><td>1.1490 &mu;s</td><td>1.3232 &mu;s</td><td>0.10x</td><td>0.96x</td><td>0.48x</td><td>2.32x</td><td>0.2441</td><td>0.2289</td><td>2095 B</td>
+</tr><tr><td>&#39;Closure | System&#39;</td><td>63.798 &mu;s</td><td>2.9935 &mu;s</td><td>3.4473 &mu;s</td><td>1.00x</td><td>10.29x</td><td>1.00x</td><td>6.35x</td><td>0.6104</td><td>0.4883</td><td>5678 B</td>
+</tr><tr><td>&#39;Closure | FEC&#39;</td><td>6.197 &mu;s</td><td>0.2400 &mu;s</td><td>0.2464 &mu;s</td><td>0.10x</td><td>1.00x</td><td>0.16x</td><td>1.00x</td><td>0.1068</td><td>0.0916</td><td>894 B</td>
+</tr><tr><td>&#39;Closure | Hyperbee&#39;</td><td>8.299 &mu;s</td><td>0.0919 &mu;s</td><td>0.0944 &mu;s</td><td>0.13x</td><td>1.34x</td><td>0.61x</td><td>3.86x</td><td>0.3967</td><td>0.3662</td><td>3455 B</td>
+</tr><tr><td>&#39;TryCatch | System&#39;</td><td>103.308 &mu;s</td><td>3.7298 &mu;s</td><td>4.2953 &mu;s</td><td>1.00x</td><td>12.96x</td><td>1.00x</td><td>3.89x</td><td>0.4883</td><td>0.2441</td><td>5897 B</td>
+</tr><tr><td>&#39;TryCatch | FEC&#39;</td><td>7.971 &mu;s</td><td>0.2914 &mu;s</td><td>0.3356 &mu;s</td><td>0.08x</td><td>1.00x</td><td>0.26x</td><td>1.00x</td><td>0.1526</td><td>0.1221</td><td>1516 B</td>
+</tr><tr><td>&#39;TryCatch | Hyperbee&#39;</td><td>11.968 &mu;s</td><td>0.3546 &mu;s</td><td>0.3941 &mu;s</td><td>0.12x</td><td>1.50x</td><td>0.69x</td><td>2.69x</td><td>0.4883</td><td>0.3662</td><td>4085 B</td>
+</tr><tr><td>&#39;Complex | System&#39;</td><td>271.394 &mu;s</td><td>10.4922 &mu;s</td><td>11.6621 &mu;s</td><td>1.00x</td><td>37.35x</td><td>1.00x</td><td>3.41x</td><td>0.4883</td><td>-</td><td>4741 B</td>
+</tr><tr><td>&#39;Complex | FEC&#39;</td><td>7.267 &mu;s</td><td>0.3155 &mu;s</td><td>0.3633 &mu;s</td><td>0.03x</td><td>1.00x</td><td>0.29x</td><td>1.00x</td><td>0.1602</td><td>0.1526</td><td>1391 B</td>
+</tr><tr><td>&#39;Complex | Hyperbee&#39;</td><td>9.794 &mu;s</td><td>0.3508 &mu;s</td><td>0.4039 &mu;s</td><td>0.04x</td><td>1.35x</td><td>0.52x</td><td>1.78x</td><td>0.2899</td><td>0.2747</td><td>2479 B</td>
+</tr><tr><td>&#39;Loop | System&#39;</td><td>129.605 &mu;s</td><td>3.3193 &mu;s</td><td>3.6894 &mu;s</td><td>1.00x</td><td>14.64x</td><td>1.00x</td><td>6.05x</td><td>0.7324</td><td>0.4883</td><td>6718 B</td>
+</tr><tr><td>&#39;Loop | FEC&#39;</td><td>8.855 &mu;s</td><td>0.3517 &mu;s</td><td>0.4050 &mu;s</td><td>0.07x</td><td>1.00x</td><td>0.17x</td><td>1.00x</td><td>0.1221</td><td>0.0610</td><td>1110 B</td>
+</tr><tr><td>&#39;Loop | Hyperbee&#39;</td><td>13.528 &mu;s</td><td>0.4066 &mu;s</td><td>0.4519 &mu;s</td><td>0.10x</td><td>1.53x</td><td>0.63x</td><td>3.83x</td><td>0.4883</td><td>0.3662</td><td>4255 B</td>
+</tr><tr><td>&#39;Switch | System&#39;</td><td>121.508 &mu;s</td><td>2.5293 &mu;s</td><td>2.7063 &mu;s</td><td>1.00x</td><td>16.39x</td><td>1.00x</td><td>4.81x</td><td>0.7324</td><td>0.4883</td><td>6272 B</td>
+</tr><tr><td>&#39;Switch | FEC&#39;</td><td>7.412 &mu;s</td><td>0.4077 &mu;s</td><td>0.4695 &mu;s</td><td>0.06x</td><td>1.00x</td><td>0.21x</td><td>1.00x</td><td>0.1526</td><td>0.1450</td><td>1304 B</td>
+</tr><tr><td>&#39;Switch | Hyperbee&#39;</td><td>10.803 &mu;s</td><td>0.2128 &mu;s</td><td>0.2366 &mu;s</td><td>0.09x</td><td>1.46x</td><td>0.61x</td><td>2.94x</td><td>0.4578</td><td>0.4425</td><td>3840 B</td>
 </tr></tbody></table>
 </body>
 </html>
