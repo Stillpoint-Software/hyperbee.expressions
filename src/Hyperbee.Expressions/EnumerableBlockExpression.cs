@@ -9,11 +9,25 @@ namespace Hyperbee.Expressions;
 public class EnumerableBlockExpression : Expression
 {
     private Type _enumerableType;
+    private Expression _stateMachine;
     public ReadOnlyCollection<Expression> Expressions { get; }
     public ReadOnlyCollection<ParameterExpression> Variables { get; }
     public ExpressionRuntimeOptions RuntimeOptions { get; }
 
-    internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables { get; set; }
+    private LinkedDictionary<ParameterExpression, ParameterExpression> _scopedVariables;
+
+    internal LinkedDictionary<ParameterExpression, ParameterExpression> ScopedVariables
+    {
+        get => _scopedVariables;
+
+        // Reduce() caches, and this is an input to it, so a later assignment has to drop
+        // what was cached rather than leave a machine built from the old scope.
+        set
+        {
+            _scopedVariables = value;
+            _stateMachine = null;
+        }
+    }
 
     public EnumerableBlockExpression(
         ReadOnlyCollection<ParameterExpression> variables,
@@ -35,11 +49,35 @@ public class EnumerableBlockExpression : Expression
 
     public override Expression Reduce()
     {
-        return YieldStateMachineBuilder.Create(
+        // Cached because reducing builds a state machine type, and the compilation pipeline
+        // reduces a node more than once. Without this each pass emitted its own type,
+        // compiled its own MoveNext, and discarded all but the last -- three times over for
+        // a single compile, which was most of what BlockEnumerable cost to compile.
+
+        return _stateMachine ??= YieldStateMachineBuilder.Create(
             EnumerableType,
             LoweringTransformer,
             RuntimeOptions,
             ExternVariables.Create( Variables, Expressions ) );
+    }
+
+    protected override Expression VisitChildren( ExpressionVisitor visitor )
+    {
+        // Without this the base implementation reduces the block and visits the state
+        // machine instead of the block's own children -- so merely walking the tree built a
+        // state machine type, and a visitor rewriting a variable rewrote lowered code rather
+        // than the block. AsyncBlockExpression has always done this.
+
+        var newVariables = visitor.VisitAndConvert( Variables, nameof( VisitChildren ) );
+        var newExpressions = visitor.Visit( Expressions );
+
+        if ( AsyncBlockExpression.Compare( newVariables, Variables ) && AsyncBlockExpression.Compare( newExpressions, Expressions ) )
+            return this;
+
+        return new EnumerableBlockExpression( newVariables, newExpressions, RuntimeOptions )
+        {
+            ScopedVariables = ScopedVariables
+        };
     }
 
     private EnumerableLoweringInfo LoweringTransformer()

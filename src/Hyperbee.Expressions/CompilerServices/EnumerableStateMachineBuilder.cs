@@ -24,9 +24,13 @@ internal class EnumerableStateMachineBuilder<TResult>
     {
         // special names to prevent collisions with user identifiers
         public const string MoveNextDelegate = "__moveNextDelegate<>";
-        public const string State = "__state<>";
-        public const string Current = "__current<>";
+
+        // declared by EnumerableStateMachineBase<TResult>
+        public const string State = nameof( EnumerableStateMachineBase<TResult>.__state );
+        public const string Current = nameof( EnumerableStateMachineBase<TResult>.__current );
     }
+
+    private static Type BaseType => typeof( EnumerableStateMachineBase<> ).MakeGenericType( typeof( TResult ) );
 
     public EnumerableStateMachineBuilder( ModuleBuilder moduleBuilder, string typeName )
     {
@@ -62,13 +66,29 @@ internal class EnumerableStateMachineBuilder<TResult>
         var stateMachineType = CreateStateMachineType( context, out var fields );
         var moveNextLambda = CreateMoveNextBody( id, context, stateMachineType, fields );
 
+        // Compiler choice flows through the ambient context (CoroutineBuilderContext.Current),
+        // never through ExpressionRuntimeOptions. Null ambient = the System compiler handles
+        // MoveNext in the outer compilation context. Non-null ambient = compile the lambda
+        // once here and embed the delegate as a constant, so the outer compilation sees a
+        // constant rather than a nested lambda it has to compile itself.
+        //
+        // A body that reads a variable from the enclosing expression cannot be pre-compiled:
+        // compiled on its own it would lose the variable. Emit it inline instead, so the
+        // enclosing compiler shares the variable through its own closure mechanism.
+
+        var coroutineBuilder = CoroutineBuilderContext.Current;
+
+        Expression moveNextDelegate = coroutineBuilder == null || FreeVariableScanner.HasFreeVariables( moveNextLambda )
+            ? moveNextLambda
+            : Constant( coroutineBuilder.Create( moveNextLambda ), moveNextLambda.Type );
+
         var stateMachineVariable = Variable( stateMachineType, "stateMachine" );
 
         var bodyExpressions = new List<Expression>
         {
             Assign( stateMachineVariable, New( stateMachineType ) ),
             Assign( Field( stateMachineVariable, FieldName.State ), Constant( -1 ) ),
-            Assign( Field( stateMachineVariable, FieldName.MoveNextDelegate ), moveNextLambda ),
+            Assign( Field( stateMachineVariable, FieldName.MoveNextDelegate ), moveNextDelegate ),
             stateMachineVariable
         };
 
@@ -192,17 +212,12 @@ internal class EnumerableStateMachineBuilder<TResult>
 
     private Type CreateStateMachineType( StateMachineContext context, out FieldInfo[] fields )
     {
-        var typeBuilder = _moduleBuilder.DefineType(
-            _typeName, TypeAttributes.Public, typeof( object ),
-        [
-            typeof( IEnumerable<> ).MakeGenericType( typeof(TResult) ),
-            typeof( IEnumerator<> ).MakeGenericType( typeof(TResult) ),
-            typeof( IDisposable )
-        ] );
+        // The interfaces and their plumbing live on the base type, so only the fields and
+        // MoveNext are emitted here.
 
-        typeBuilder.AddInterfaceImplementation( typeof( IEnumerable<> ).MakeGenericType( typeof( TResult ) ) );
-        typeBuilder.AddInterfaceImplementation( typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ) );
-        typeBuilder.AddInterfaceImplementation( typeof( IDisposable ) );
+        var baseType = BaseType;
+
+        var typeBuilder = _moduleBuilder.DefineType( _typeName, TypeAttributes.Public, baseType );
 
         // Define: fields
 
@@ -212,18 +227,6 @@ internal class EnumerableStateMachineBuilder<TResult>
             FieldName.MoveNextDelegate,
             moveNextDelegateType,
             FieldAttributes.Public );
-
-        var stateField = typeBuilder.DefineField(
-            FieldName.State,
-            typeof( int ),
-            FieldAttributes.Public
-        );
-
-        var currentField = typeBuilder.DefineField(
-            FieldName.Current,
-            typeof( TResult ),
-            FieldAttributes.Public
-        );
 
         // local variables in the current scope for this state-machine
 
@@ -242,11 +245,7 @@ internal class EnumerableStateMachineBuilder<TResult>
 
         // Define: methods
 
-        ImplementIEnumerable( typeBuilder );
-        ImplementIEnumerableType( typeBuilder, stateField );
-        ImplementIEnumerator( typeBuilder, moveNextDelegateField, moveNextDelegateType, currentField );
-        ImplementIEnumeratorType( typeBuilder, currentField );
-        ImplementIDisposable( typeBuilder, stateField );
+        ImplementMoveNext( typeBuilder, baseType, moveNextDelegateField, moveNextDelegateType );
 
         // Close the type builder
         var stateMachineType = typeBuilder.CreateType();
@@ -258,138 +257,34 @@ internal class EnumerableStateMachineBuilder<TResult>
         return stateMachineType;
     }
 
-    private static void ImplementIEnumerable( TypeBuilder typeBuilder )
+    private static void ImplementMoveNext(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        FieldBuilder moveNextDelegateField,
+        Type moveNextDelegateType )
     {
-        var getEnumeratorMethod = typeBuilder.DefineMethod( "GetEnumerator",
-            MethodAttributes.Public | MethodAttributes.Virtual, typeof( IEnumerator ), Type.EmptyTypes );
-        var ilGen = getEnumeratorMethod.GetILGenerator();
+        var moveNextMethod = typeBuilder.DefineMethod(
+            "MoveNext",
+            MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig,
+            typeof( bool ),
+            Type.EmptyTypes );
 
-        // Get the GetEnumerator method from IEnumerable<TResult>
-        var genericGetEnumeratorMethod = typeof( IEnumerable<> )
-            .MakeGenericType( typeof( TResult ) )
-            .GetMethod( "GetEnumerator" )!;
+        var ilGen = moveNextMethod.GetILGenerator();
 
-        // IEnumerator IEnumerable.GetEnumerator()
-        // {
-        //   return (IEnumerator) ((IEnumerable<TResult>)this).GetEnumerator();
-        // }
-        ilGen.Emit( OpCodes.Ldarg_0 );
-        ilGen.Emit( OpCodes.Castclass, typeof( IEnumerable<> ).MakeGenericType( typeof( TResult ) ) );
-        ilGen.Emit( OpCodes.Callvirt, genericGetEnumeratorMethod );
-        ilGen.Emit( OpCodes.Castclass, typeof( IEnumerator ) );
-        ilGen.Emit( OpCodes.Ret );
-
-        typeBuilder.DefineMethodOverride( getEnumeratorMethod, typeof( IEnumerable ).GetMethod( "GetEnumerator" )! );
-    }
-    private static void ImplementIEnumerableType( TypeBuilder typeBuilder, FieldBuilder stateField )
-    {
-        var getEnumeratorMethod = typeBuilder
-            .DefineMethod( "GetEnumerator",
-                MethodAttributes.Public | MethodAttributes.Virtual,
-                typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ),
-                Type.EmptyTypes );
-
-        var ilGen = getEnumeratorMethod.GetILGenerator();
-
-        // TODO: this needs more logic for handling threads and multiple enumerators
-
-        //this.__state<> = 0;
-        ilGen.Emit( OpCodes.Ldarg_0 );
-        ilGen.Emit( OpCodes.Ldc_I4_0 );
-        ilGen.Emit( OpCodes.Stfld, stateField );
-
-        // var enumerator = this;
-        // return (IEnumerator<TResult>) enumerator;
-        var enumeratorLocal = ilGen.DeclareLocal( typeBuilder );
-        ilGen.Emit( OpCodes.Ldarg_0 );
-        ilGen.Emit( OpCodes.Stloc, enumeratorLocal );
-        ilGen.Emit( OpCodes.Ldloc, enumeratorLocal );
-        ilGen.Emit( OpCodes.Castclass, typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ) );
-        ilGen.Emit( OpCodes.Ret );
-
-        typeBuilder.DefineMethodOverride(
-            getEnumeratorMethod,
-            typeof( IEnumerable<> ).MakeGenericType( typeof( TResult ) ).GetMethod( "GetEnumerator" )! );
-    }
-    private static void ImplementIEnumerator( TypeBuilder typeBuilder, FieldBuilder moveNextDelegateField, Type moveNextDelegateType, FieldBuilder currentField )
-    {
-        var moveNextMethod = typeBuilder.DefineMethod( "MoveNext", MethodAttributes.Public | MethodAttributes.Virtual, typeof( bool ), Type.EmptyTypes );
-        var currentMethod = typeBuilder.DefineMethod( "get_Current", MethodAttributes.Public | MethodAttributes.Virtual, typeof( object ), Type.EmptyTypes );
-        var resetMethod = typeBuilder.DefineMethod( "Reset", MethodAttributes.Public | MethodAttributes.Virtual, typeof( void ), Type.EmptyTypes );
-
-        var ilGenMoveNext = moveNextMethod.GetILGenerator();
-        var ilGenCurrent = currentMethod.GetILGenerator();
-        var ilGenReset = resetMethod.GetILGenerator();
-
-        // MoveNext
-        //  bool IEnumerator.MoveNext()
+        //  public override bool MoveNext()
         //  {
         //    return __moveNextDelegate<>( this );
         //  }
-        ilGenMoveNext.Emit( OpCodes.Ldarg_0 );
-        ilGenMoveNext.Emit( OpCodes.Ldfld, moveNextDelegateField );
-        ilGenMoveNext.Emit( OpCodes.Ldarg_0 );
+        ilGen.Emit( OpCodes.Ldarg_0 );
+        ilGen.Emit( OpCodes.Ldfld, moveNextDelegateField );
+        ilGen.Emit( OpCodes.Ldarg_0 );
 
         var moveNextInvoke = typeof( YieldMoveNextDelegate<> ).GetMethod( "Invoke" )!;
-        var invokeMethod = TypeBuilder.GetMethod( moveNextDelegateType, moveNextInvoke );
 
-        ilGenMoveNext.Emit( OpCodes.Callvirt, invokeMethod );
-        ilGenMoveNext.Emit( OpCodes.Ret );
-
-        // Current
-        // object IEnumerator.Current
-        // {
-        //   get {
-        //     return (object) __current<>;
-        //   }
-        // }
-        ilGenCurrent.Emit( OpCodes.Ldarg_0 );
-        ilGenCurrent.Emit( OpCodes.Ldfld, currentField );
-        ilGenCurrent.Emit( OpCodes.Box, typeof( TResult ) );
-        ilGenCurrent.Emit( OpCodes.Ret );
-
-        // Reset
-        ilGenReset.Emit( OpCodes.Newobj, typeof( NotSupportedException ).GetConstructor( Type.EmptyTypes )! );
-        ilGenReset.Emit( OpCodes.Throw );
-
-        typeBuilder.DefineMethodOverride( moveNextMethod, typeof( IEnumerator ).GetMethod( "MoveNext" )! );
-        typeBuilder.DefineMethodOverride( currentMethod, typeof( IEnumerator ).GetProperty( "Current" )!.GetMethod! );
-        typeBuilder.DefineMethodOverride( resetMethod, typeof( IEnumerator ).GetMethod( "Reset" )! );
-    }
-    private static void ImplementIEnumeratorType( TypeBuilder typeBuilder, FieldBuilder currentField )
-    {
-        var currentMethod = typeBuilder.DefineMethod( "get_Current", MethodAttributes.Public | MethodAttributes.Virtual, typeof( TResult ), Type.EmptyTypes );
-
-        var ilGenCurrent = currentMethod.GetILGenerator();
-
-        // Current
-        // TResult IEnumerator<TResult>.Current
-        // {
-        //   get {
-        //     return __current<>;
-        //   }
-        // }
-        ilGenCurrent.Emit( OpCodes.Ldarg_0 );
-        ilGenCurrent.Emit( OpCodes.Ldfld, currentField );
-        ilGenCurrent.Emit( OpCodes.Ret );
-
-        typeBuilder.DefineMethodOverride( currentMethod, typeof( IEnumerator<> ).MakeGenericType( typeof( TResult ) ).GetProperty( "Current" )!.GetMethod! );
-    }
-    private static void ImplementIDisposable( TypeBuilder typeBuilder, FieldBuilder stateField )
-    {
-        var disposeMethod = typeBuilder.DefineMethod( "Dispose", MethodAttributes.Public | MethodAttributes.Virtual, typeof( void ), Type.EmptyTypes );
-        var ilGen = disposeMethod.GetILGenerator();
-
-        // TODO: Dispose all disposable fields
-        // TODO: NOTE: this could include nested IEnumerable<> state machines
-
-        //this.__state<> = -2;
-        ilGen.Emit( OpCodes.Ldarg_0 );
-        ilGen.Emit( OpCodes.Ldc_I4, -2 );
-        ilGen.Emit( OpCodes.Stfld, stateField );
+        ilGen.Emit( OpCodes.Callvirt, TypeBuilder.GetMethod( moveNextDelegateType, moveNextInvoke ) );
         ilGen.Emit( OpCodes.Ret );
 
-        typeBuilder.DefineMethodOverride( disposeMethod, typeof( IDisposable ).GetMethod( "Dispose" )! );
+        typeBuilder.DefineMethodOverride( moveNextMethod, baseType.GetMethod( nameof( EnumerableStateMachineBase<TResult>.MoveNext ) )! );
     }
 
 }

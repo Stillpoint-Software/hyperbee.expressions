@@ -109,10 +109,10 @@ Execution, per call. 20 iterations, 8 warmup.
 
 | Expression | System | **HEC** |
 |------------|-------:|--------:|
-| `BlockAsync`, no captures | 859 ns / 232 B | **54 ns / 168 B** |
-| `BlockEnumerable`, no captures | 816 ns / 112 B | **36 ns / 48 B** |
-| `BlockAsync`, captures an enclosing variable | 899 ns / 240 B | **56 ns / 120 B** |
-| `BlockEnumerable`, captures an enclosing variable | 919 ns / 192 B | **45 ns / 72 B** |
+| `BlockAsync`, no captures | 1,039 ns / 232 B | **74 ns / 168 B** |
+| `BlockEnumerable`, no captures | 1,065 ns / 112 B | **56 ns / 48 B** |
+| `BlockAsync`, captures an enclosing variable | 1,068 ns / 240 B | **65 ns / 120 B** |
+| `BlockEnumerable`, captures an enclosing variable | 1,168 ns / 192 B | **64 ns / 72 B** |
 
 A coroutine body is compiled once and embedded as a constant delegate. A body that captures an
 enclosing variable used to be a lambda-as-value that had to be materialized on every call, which
@@ -127,11 +127,11 @@ resume. HEC can emit into one, so the body becomes the machine's own method:
 
 | `BlockAsync`, no captures | Execution | Cold compile |
 |---------------------------|----------:|-------------:|
-| MoveNext emitted into the type | **54 ns** | **1,300 us** |
-| MoveNext as a delegate field | 64 ns | 1,518 us |
+| MoveNext emitted into the type | **74 ns** | **1,422 us** |
+| MoveNext as a delegate field | 94 ns | 1,595 us |
 
 Allocation is identical either way -- the delegate is built once, not per call. The gain is the
-field and the indirection, worth about 16% of a call whose awaits complete synchronously.
+field and the indirection, worth about a fifth of a call whose awaits complete synchronously.
 
 Two things bound this. MoveNext is entered once per *suspension*, not per await, so a body whose
 awaits complete synchronously enters it exactly once no matter how many awaits it has -- and a body
@@ -139,25 +139,30 @@ that does suspend pays scheduling costs that dwarf an indirection. And a `Dynami
 with visibility checks skipped while a `MethodBuilder` is not, so a body reaching a non-public
 member keeps the delegate form. `ExpressionRuntimeOptions.EmitMoveNextIntoType` forces it off.
 
+`BlockEnumerable` still takes the delegate path; only the async builder emits into the type.
+
 ### Coroutine compilation
 
 Cold compile, one invocation per iteration -- a coroutine block caches its reduction, so a second
 compile of the same instance is not a compile.
 
-| Expression | System | **HEC** |
-|------------|-------:|--------:|
-| `BlockAsync`, no captures | 1,955 us / 67.1 KB | **1,300 us / 65.7 KB** |
-| `BlockAsync`, captures | 1,979 us / 67.9 KB | **1,381 us / 74.5 KB** |
-| `BlockEnumerable`, no captures | 1,986 us / 60.6 KB | 3,598 us / 127.8 KB |
-| `BlockEnumerable`, captures | 2,108 us / 61.8 KB | 3,800 us / 135.2 KB |
+| Expression | System | **HEC** | vs System |
+|------------|-------:|--------:|----------:|
+| `BlockAsync`, no captures | 2,339 us / 67.1 KB | **1,422 us / 65.8 KB** | 0.61x / 0.98x |
+| `BlockAsync`, captures | 2,274 us / 67.8 KB | **1,437 us / 74.5 KB** | 0.63x / 1.10x |
+| `BlockEnumerable`, no captures | 1,593 us / 47.4 KB | **1,024 us / 45.5 KB** | 0.64x / 0.96x |
+| `BlockEnumerable`, captures | 1,503 us / 48.6 KB | **1,056 us / 52.8 KB** | 0.70x / 1.09x |
+| NestedClosure | 207 us / 7.3 KB | **59 us / 3.5 KB** | 0.29x / 0.48x |
 
 Both compilers are dominated here by `TypeBuilder.CreateType()`, which is why these are milliseconds
 against microseconds everywhere else in this document.
 
-The enumerable tiers are the outlier: HEC compiles them **1.8x slower** than SEC and allocates
-**2.1x** as much. Only the async builder emits MoveNext into the type; the enumerable builder still
-takes the delegate path, and its compile cost has not had the same attention. This is the clearest
-remaining target.
+`BlockEnumerable` used to be the outlier, at 2.0x the System compiler's time and 2.1x its
+allocation. Reducing a coroutine block builds a state machine type, and the pipeline reduces a node
+more than once -- `BlockAsync` cached that and `BlockEnumerable` did not, so one compile emitted
+three state machine types and used the last. It also lacked a `VisitChildren` override, so the base
+implementation reduced the block and visited the state machine rather than the block's own
+children: merely walking the tree built a type. Those two are what the numbers above reflect.
 
 ---
 
