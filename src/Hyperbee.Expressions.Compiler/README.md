@@ -29,35 +29,54 @@ Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
 .NET SDK 10.0.103 - .NET 9.0.12, X64 RyuJIT x86-64-v3
 ```
 
-| Tier         | Compiler     |        Mean |   Allocated | vs System (speed) | vs FEC (speed) |
-| ------------ | ------------ | ----------: | ----------: | ----------------: | -------------: |
-| **Simple**   | System       |    30.65 us |     4,335 B |                 - |              - |
-|              | FEC          |     2.96 us |       904 B |      10.3x faster |              - |
-|              | **Hyperbee** | **3.50 us** | **2,176 B** |   **8.8x faster** |      **1.18x** |
-| **Closure**  | System       |    40.32 us |     5,680 B |                 - |              - |
-|              | FEC          |     3.82 us |       895 B |      10.5x faster |              - |
-|              | **Hyperbee** | **5.90 us** | **3,111 B** |   **6.8x faster** |      **1.54x** |
-| **TryCatch** | System       |    49.59 us |     5,893 B |                 - |              - |
-|              | FEC          |     3.78 us |     1,518 B |      13.1x faster |              - |
-|              | **Hyperbee** | **5.54 us** | **4,023 B** |   **9.0x faster** |      **1.47x** |
-| **Complex**  | System       |   150.71 us |     4,741 B |                 - |              - |
-|              | FEC          |     3.51 us |     1,392 B |      42.9x faster |              - |
-|              | **Hyperbee** | **4.47 us** | **2,536 B** |  **33.7x faster** |      **1.27x** |
-| **Loop**     | System       |    65.29 us |     6,710 B |                 - |              - |
-|              | FEC          |     4.21 us |     1,110 B |      15.5x faster |              - |
-|              | **Hyperbee** | **5.77 us** | **4,855 B** |  **11.3x faster** |      **1.37x** |
-| **Switch**   | System       |    61.83 us |     6,264 B |                 - |              - |
-|              | FEC          |     3.61 us |     1,352 B |      17.1x faster |              - |
-|              | **Hyperbee** | **5.55 us** | **4,152 B** |  **11.2x faster** |      **1.54x** |
+| Tier         | Compiler     |         Mean |   Allocated | vs System (speed) | vs FEC (speed) |
+| ------------ | ------------ | -----------: | ----------: | ----------------: | -------------: |
+| **Simple**   | System       |     71.46 us |     4,335 B |                 - |              - |
+|              | FEC          |      5.86 us |       903 B |      12.2x faster |              - |
+|              | **Hyperbee** |  **7.04 us** | **2,095 B** |  **10.2x faster** |      **1.20x** |
+| **Closure**  | System       |     57.84 us |     5,678 B |                 - |              - |
+|              | FEC          |      5.62 us |       894 B |      10.3x faster |              - |
+|              | **Hyperbee** |  **8.41 us** | **3,456 B** |   **6.9x faster** |      **1.50x** |
+| **TryCatch** | System       |    110.02 us |     5,897 B |                 - |              - |
+|              | FEC          |      8.21 us |     1,516 B |      13.4x faster |              - |
+|              | **Hyperbee** | **13.09 us** | **4,085 B** |   **8.4x faster** |      **1.59x** |
+| **Complex**  | System       |    263.57 us |     4,741 B |                 - |              - |
+|              | FEC          |      7.11 us |     1,390 B |      37.1x faster |              - |
+|              | **Hyperbee** |  **9.31 us** | **2,479 B** |  **28.3x faster** |      **1.31x** |
+| **Loop**     | System       |    147.15 us |     6,718 B |                 - |              - |
+|              | FEC          |     10.21 us |     1,110 B |      14.4x faster |              - |
+|              | **Hyperbee** | **16.25 us** | **4,255 B** |   **9.1x faster** |      **1.59x** |
+| **Switch**   | System       |    132.44 us |     6,272 B |                 - |              - |
+|              | FEC          |      7.30 us |     1,352 B |      18.1x faster |              - |
+|              | **Hyperbee** | **12.12 us** | **3,840 B** |  **10.9x faster** |      **1.66x** |
+
+20 iterations, 8 warmup, one run.
+
+### Coroutines
+
+FEC does not support `BlockAsync` or `BlockEnumerable`. Against the System compiler:
+
+| Tier                          | Compile              | Execute                |
+| ----------------------------- | -------------------- | ---------------------- |
+| `BlockAsync`                  | **0.68x** (faster)   | **15.3x faster**       |
+| `BlockAsync`, captures        | **0.66x**            | **15.5x faster**       |
+| `BlockEnumerable`             | **0.51x**            | **18.7x faster**       |
+| `BlockEnumerable`, captures   | **0.54x**            | **19.3x faster**       |
 
 ### Allocation Profile
 
 The multi-pass IR pipeline allocates roughly **1.8–3.9× more than FEC** per compilation call but
-**30–50% less than the System Compiler**. The overhead is per-compilation, not per-execution -
-compiled delegates run at equivalent speed regardless of which compiler produced them. For hot paths
-that compile once and cache, the allocation difference is negligible. For workloads that re-compile
-frequently (dynamic LINQ providers, interpreted rule engines), prefer FEC when its patterns cover your
-use case.
+**31–52% less than the System Compiler**. The overhead is per-compilation, not per-execution: no
+compiler allocates per call.
+
+Compiled delegates do not all run at the same speed, though the difference is small. On a body of a
+few instructions HEC runs at FEC's speed and **1.13–1.42x** the System compiler's; larger bodies
+converge, because the body rather than the call dominates. See
+[Execution Speed](../../docs/site/compiler/performance.md#execution-speed).
+
+For hot paths that compile once and cache, the allocation difference is negligible. For workloads
+that re-compile frequently (dynamic LINQ providers, interpreted rule engines), prefer FEC when its
+patterns cover your use case -- unless you need coroutines, which FEC does not compile.
 
 ### Execution Benchmarks
 
