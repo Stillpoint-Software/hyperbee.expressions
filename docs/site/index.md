@@ -120,7 +120,7 @@ using Hyperbee.Expressions.Compiler;
 var fn = HyperbeeCompiler.Compile( lambda );
 ```
 
-**Compilation speed:** 7-28x faster than the System compiler. See [Compiler](compiler/compiler.md) for details.
+**Compilation speed:** 8-28x faster than the System compiler. See [Compiler](compiler/compiler.md) for details.
 
 ---
 

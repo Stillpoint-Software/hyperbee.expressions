@@ -125,7 +125,7 @@ public class ReportedIssues
         // exception come from the catch variable, so this fails if it lost its binding.
         foreach ( var compiled in new[] { system, hyperbee } )
         {
-            Exception thrown = null;
+            Exception? thrown = null;
 
             try
             {
