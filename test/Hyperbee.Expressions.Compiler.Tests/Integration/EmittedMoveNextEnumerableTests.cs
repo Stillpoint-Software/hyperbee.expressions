@@ -77,6 +77,29 @@ public class EmittedMoveNextEnumerableTests
     }
 
     [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void SourceHandler_ReceivesTheStateMachine( CompilerType compiler )
+    {
+        // Arrange: the async builder has always reported here; this one did not
+        var input = Parameter( typeof( int ), "input" );
+        var source = "";
+
+        var options = new ExpressionRuntimeOptions { SourceHandler = text => source = text };
+
+        var lambda = Lambda<Func<int, IEnumerable<int>>>(
+            BlockEnumerable( new Expression[] { YieldReturn( input ) }, options ),
+            input );
+
+        // Act
+        lambda.Compile( compiler );
+
+        // Assert
+        Assert.IsFalse( string.IsNullOrEmpty( source ), "the state machine should have been reported" );
+        StringAssert.Contains( source, "stateMachine" );
+    }
+
+    [TestMethod]
     public void EmitMoveNextIntoType_False_KeepsTheDelegate()
     {
         // Arrange
