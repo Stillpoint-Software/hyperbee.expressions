@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Hyperbee.Expressions.Compiler.Benchmarks.DelegateShapeBenchmarks-20260829-221034</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.9278/25H2/2025Update/HudsonValley2)
+Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores
+.NET SDK 10.0.111
+  [Host] : .NET 9.0.12 (9.0.12, 9.0.1225.60609), X64 RyuJIT x86-64-v3
+  .NET 9 : .NET 9.0.12 (9.0.12, 9.0.1225.60609), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 9  Runtime=.NET 9.0  IterationCount=3  
+LaunchCount=1  WarmupCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                         </th><th>Mean</th><th>Error</th><th>StdDev</th><th>vs System</th><th>vs Fec</th><th>Alloc vs System</th><th>Alloc vs Fec</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>&#39;a+b x1000 | open static delegate&#39;</td><td>4.300 &mu;s</td><td>0.7434 &mu;s</td><td>0.0407 &mu;s</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>-</td>
+</tr><tr><td>&#39;a+b x1000 | closed over leading arg&#39;</td><td>3.054 &mu;s</td><td>0.2356 &mu;s</td><td>0.0129 &mu;s</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>-</td>
+</tr></tbody></table>
+</body>
+</html>

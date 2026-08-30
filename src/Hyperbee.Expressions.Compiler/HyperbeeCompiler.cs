@@ -280,7 +280,10 @@ public static class HyperbeeCompiler
 
         var ir = new IRBuilder();
         var lowerer = new ExpressionLowerer( ir, capturedVariables, lambda => Compile( lambda ) );
-        var argOffset = needsConstantsArray ? 1 : 0;
+        // Arg 0 is always the constants array, even when the body has no constants to read
+        // from it. See EmitDelegate.
+
+        const int argOffset = 1;
 
         lowerer.Lower( lambda, argOffset );
 
@@ -299,7 +302,17 @@ public static class HyperbeeCompiler
     {
         BuildConstantsMapping( ir, needsConstantsArray, out var constantIndices, out var constantsArray );
 
-        var paramTypes = BuildParameterTypes( lambda, needsConstantsArray );
+        // The method always takes the constants array as its first parameter, and the
+        // delegate is always closed over it -- even when there are no constants.
+        //
+        // Delegate.Invoke passes a target in the first slot. A delegate over a static method
+        // with nothing bound has no target to put there, so the runtime inserts a thunk that
+        // shifts every argument down one on the way through, at about a nanosecond a call.
+        // Binding a leading parameter removes the thunk, which is why the System compiler
+        // gives every lambda a Closure parameter whether it needs one or not. An unused
+        // argument slot is cheaper than a thunk on every invocation.
+
+        var paramTypes = BuildParameterTypes( lambda, hasConstantsArray: true );
 
         var method = new DynamicMethod(
             string.Empty,
@@ -310,9 +323,7 @@ public static class HyperbeeCompiler
 
         ILEmissionPass.Run( ir, method.GetILGenerator(), needsConstantsArray, constantIndices );
 
-        return needsConstantsArray
-            ? method.CreateDelegate( lambda.Type, constantsArray )
-            : method.CreateDelegate( lambda.Type );
+        return method.CreateDelegate( lambda.Type, constantsArray ?? [] );
     }
 
     // --- Private helpers ---
