@@ -192,52 +192,66 @@ internal static class ReflectionHelper
         // This is an expensive operation. To minimize the performance impact, we will filter out as
         // many types as possible.
 
-        var methods = assembly.GetTypes()
-            .Where( t => t.IsClass && t.IsSealed && t.IsAbstract && !t.IsGenericType && !t.IsNested )
-            .SelectMany( t =>
-                t.GetMethods( BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic )
-                .Where( m => m.Name == methodName && m.IsDefined( typeof( ExtensionAttribute ), false )
-            ) );
+        const BindingFlags bindingAttr = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+        var types = assembly.GetTypes();
 
         MethodInfo openMatch = null;
 
-        foreach ( var method in methods )
+        for ( var typeIndex = 0; typeIndex < types.Length; typeIndex++ )
         {
-            var parameters = method.GetParameters();
+            var type = types[typeIndex];
 
-            if ( parameters.Length == 0 )
+            // A static class, which is how an extension method is declared
+
+            if ( !type.IsClass || !type.IsSealed || !type.IsAbstract || type.IsGenericType || type.IsNested )
                 continue;
 
-            var parameterType = parameters[0].ParameterType;
+            var methods = type.GetMethods( bindingAttr );
 
-            if ( !parameterType.IsGenericType && parameterType == targetType )
-                return method;
-
-            if ( openMatch == null && method.IsGenericMethodDefinition && parameterType.IsGenericType && targetType.IsGenericType )
+            for ( var methodIndex = 0; methodIndex < methods.Length; methodIndex++ )
             {
-                var parameterTypeDefinition = parameterType.GetGenericTypeDefinition();
-                var targetTypeDefinition = targetType.GetGenericTypeDefinition();
+                var method = methods[methodIndex];
 
-                if ( parameterTypeDefinition == targetTypeDefinition )
+                if ( method.Name != methodName || !method.IsDefined( typeof( ExtensionAttribute ), false ) )
+                    continue;
+
+                var parameters = method.GetParameters();
+
+                if ( parameters.Length == 0 )
+                    continue;
+
+                var parameterType = parameters[0].ParameterType;
+
+                if ( !parameterType.IsGenericType && parameterType == targetType )
+                    return method;
+
+                if ( openMatch == null && method.IsGenericMethodDefinition && parameterType.IsGenericType && targetType.IsGenericType )
                 {
-                    var targetGenericArguments = targetType.GetGenericArguments();
+                    var parameterTypeDefinition = parameterType.GetGenericTypeDefinition();
+                    var targetTypeDefinition = targetType.GetGenericTypeDefinition();
 
-                    try
+                    if ( parameterTypeDefinition == targetTypeDefinition )
                     {
-                        openMatch = method.MakeGenericMethod( targetGenericArguments );
-                        // keep searching for an exact match
-                    }
-                    catch
-                    {
-                        continue;
+                        var targetGenericArguments = targetType.GetGenericArguments();
+
+                        try
+                        {
+                            openMatch = method.MakeGenericMethod( targetGenericArguments );
+                            // keep searching for an exact match
+                        }
+                        catch
+                        {
+                            continue;
+                        }
                     }
                 }
+
+                if ( !parameterType.IsGenericType || !targetType.IsGenericType || parameterType != targetType )
+                    continue;
+
+                return method;
             }
-
-            if ( !parameterType.IsGenericType || !targetType.IsGenericType || parameterType != targetType )
-                continue;
-
-            return method;
         }
 
         return openMatch;
