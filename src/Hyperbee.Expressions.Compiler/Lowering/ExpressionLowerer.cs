@@ -2250,7 +2250,7 @@ public class ExpressionLowerer
             return false;
 
         // Collect all test values as integers and map to case labels
-        var valueToCase = new Dictionary<int, int>(); // value -> caseLabels index
+        var valueToCase = new Dictionary<int, int>( node.Cases.Count ); // value -> caseLabels index
 
         for ( var i = 0; i < node.Cases.Count; i++ )
         {

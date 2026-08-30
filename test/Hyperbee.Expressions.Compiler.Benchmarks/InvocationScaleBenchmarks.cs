@@ -18,7 +18,7 @@ namespace Hyperbee.Expressions.Compiler.Benchmarks;
 /// compiler on a small body, with FEC between them. That is worth an explanation this
 /// benchmark does not give -- it says the difference exists and is stable, not where it is.
 /// </remarks>
-[Config( typeof( BenchmarkConfig.Config ) )]
+[Config( typeof( BenchmarkConfig.StableConfig ) )]
 public class InvocationScaleBenchmarks
 {
     private const int Count = 1000;
