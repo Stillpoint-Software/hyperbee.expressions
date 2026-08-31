@@ -1,4 +1,5 @@
-﻿using Hyperbee.Expressions.Tests.TestSupport;
+﻿using System.Runtime.CompilerServices;
+using Hyperbee.Expressions.Tests.TestSupport;
 using static System.Linq.Expressions.Expression;
 
 using static Hyperbee.Expressions.ExpressionExtensions;
@@ -439,5 +440,184 @@ public class BlockYieldTryCatchTests
         Assert.AreEqual( 1, result[0] );
         Assert.AreEqual( 2, result[1] );
         Assert.AreEqual( 3, result[2] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldRethrowOriginal_WithBareRethrowInCatch( CompilerType compiler )
+    {
+        // Arrange: a bare `throw;` in a handler that lowering moves out of the try
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+
+        var block = BlockEnumerable(
+            TryCatch(
+                Block(
+                    typeof( void ),
+                    YieldReturn( Constant( 1 ) ),
+                    Throw( Constant( new InvalidOperationException( "Boom" ) ) )
+                ),
+                Catch( exceptionParam, Rethrow( typeof( void ) ) )
+            )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var exception = Assert.ThrowsExactly<InvalidOperationException>( () => compiledLambda().ToArray() );
+
+        // Assert
+        Assert.AreEqual( "Boom", exception.Message );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldRethrowOriginal_WithBareRethrowAndNoCatchVariable( CompilerType compiler )
+    {
+        // Arrange: the handler declares no variable, so the rewrite has to hoist one
+        var block = BlockEnumerable(
+            TryCatch(
+                Block(
+                    typeof( void ),
+                    YieldReturn( Constant( 1 ) ),
+                    Throw( Constant( new InvalidOperationException( "Boom" ) ) )
+                ),
+                Catch( typeof( InvalidOperationException ), Rethrow( typeof( void ) ) )
+            )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var exception = Assert.ThrowsExactly<InvalidOperationException>( () => compiledLambda().ToArray() );
+
+        // Assert
+        Assert.AreEqual( "Boom", exception.Message );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldYieldBeforeBareRethrow_InCatch( CompilerType compiler )
+    {
+        // Arrange: the handler suspends before rethrowing, so the rethrow runs in a later state
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+
+        var block = BlockEnumerable(
+            TryCatch(
+                Block(
+                    typeof( void ),
+                    Throw( Constant( new InvalidOperationException( "Boom" ) ) )
+                ),
+                Catch( exceptionParam,
+                    Block(
+                        typeof( void ),
+                        YieldReturn( Constant( 99 ) ),
+                        Rethrow( typeof( void ) )
+                    ) )
+            )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var yielded = new List<int>();
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>( () =>
+        {
+            foreach ( var value in compiledLambda() )
+                yielded.Add( value );
+        } );
+
+        // Assert
+        Assert.AreEqual( "Boom", exception.Message );
+        Assert.HasCount( 1, yielded );
+        Assert.AreEqual( 99, yielded[0] );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldRunFinally_WhenHandlerBareRethrows( CompilerType compiler )
+    {
+        // Arrange: a rethrowing handler must still run the finally on the way out
+        var exceptionParam = Parameter( typeof( Exception ), "ex" );
+
+        var ranFinally = new StrongBox<bool>( false );
+
+        var block = BlockEnumerable(
+            TryCatchFinally(
+                Block(
+                    typeof( void ),
+                    YieldReturn( Constant( 1 ) ),
+                    Throw( Constant( new InvalidOperationException( "Boom" ) ) )
+                ),
+                Assign( Field( Constant( ranFinally ), nameof( StrongBox<bool>.Value ) ), Constant( true ) ),
+                Catch( exceptionParam, Rethrow( typeof( void ) ) )
+            )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var yielded = new List<int>();
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>( () =>
+        {
+            foreach ( var value in compiledLambda() )
+                yielded.Add( value );
+        } );
+
+        // Assert
+        Assert.AreEqual( "Boom", exception.Message );
+        Assert.HasCount( 1, yielded );
+        Assert.AreEqual( 1, yielded[0] );
+        Assert.IsTrue( ranFinally.Value );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Interpret )]
+    public void YieldBlock_ShouldCatchBareRethrow_InEnclosingHandler( CompilerType compiler )
+    {
+        // Arrange: an inner handler rethrows, an outer handler catches the same exception
+        // and keeps the sequence going.
+        var inner = Parameter( typeof( Exception ), "inner" );
+        var outer = Parameter( typeof( Exception ), "outer" );
+
+        var block = BlockEnumerable(
+            TryCatch(
+                TryCatch(
+                    Block(
+                        typeof( void ),
+                        YieldReturn( Constant( 1 ) ),
+                        Throw( Constant( new InvalidOperationException( "Boom" ) ) )
+                    ),
+                    Catch( inner, Rethrow( typeof( void ) ) )
+                ),
+                Catch( outer, Block( typeof( void ), YieldReturn( Constant( 99 ) ) ) )
+            )
+        );
+
+        var lambda = Lambda<Func<IEnumerable<int>>>( block );
+        var compiledLambda = lambda.Compile( compiler );
+
+        // Act
+        var result = compiledLambda().ToArray();
+
+        // Assert: the outer handler saw the rethrown exception
+        Assert.HasCount( 2, result );
+        Assert.AreEqual( 1, result[0] );
+        Assert.AreEqual( 99, result[1] );
     }
 }

@@ -23,6 +23,12 @@ public class ReportedIssues
         return value + 1;
     }
 
+    private static async Task<int> ThrowIntAsync()
+    {
+        await Task.Yield();
+        throw new Exception( "Boom!" );
+    }
+
     private static async Task<object> ThrowAsync()
     {
         await Task.Yield();
@@ -139,6 +145,56 @@ public class ReportedIssues
             Assert.IsNotNull( thrown, "the handler should have rethrown" );
             Assert.AreEqual( "Boom", thrown.Message );
             Assert.IsInstanceOfType( thrown.InnerException, typeof( InvalidOperationException ) );
+        }
+    }
+
+    /// <summary>
+    /// Issue 159 (follow-up) -- a bare rethrow in a catch block that BlockAsync lowers. Reported
+    /// as InvalidOperationException at compile time: "Rethrow statement is valid only inside a
+    /// Catch block", because lowering moves the handler body out of the try.
+    /// </summary>
+    [TestMethod]
+    public async Task Issue159_BareRethrowInsideLoweredCatch()
+    {
+        var exception = Parameter( typeof( Exception ) );
+
+        var throwAsyncMethod = typeof( ReportedIssues )
+            .GetMethod(
+                nameof( ThrowIntAsync ),
+                BindingFlags.NonPublic |
+                BindingFlags.Static )!;
+
+        var lambda = Lambda<Func<Task<int>>>(
+            BlockAsync(
+                TryCatch(
+                    Await(
+                        Call( throwAsyncMethod ) ),
+                    Catch(
+                        exception,
+                        Rethrow( typeof( int ) ) ) ) ) );
+
+        // Reported failure was at compile time.
+        var system = lambda.Compile();
+        var hyperbee = HyperbeeCompiler.Compile( lambda );
+
+        // The rethrow must surface the original exception, with its stack trace intact.
+        foreach ( var compiled in new[] { system, hyperbee } )
+        {
+            Exception? thrown = null;
+
+            try
+            {
+                await compiled();
+            }
+            catch ( Exception ex )
+            {
+                thrown = ex;
+            }
+
+            Assert.IsNotNull( thrown, "the handler should have rethrown" );
+            Assert.AreEqual( "Boom!", thrown.Message );
+            Assert.IsNull( thrown.InnerException );
+            Assert.Contains( nameof( ThrowIntAsync ), thrown.StackTrace ?? string.Empty );
         }
     }
 }
