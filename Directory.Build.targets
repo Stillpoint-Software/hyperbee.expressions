@@ -1,0 +1,46 @@
+<Project>
+
+  <!--
+    This repo produces Hyperbee.Expressions, Hyperbee.Expressions.Compiler and
+    Hyperbee.Expressions.Lab as packages, and also consumes Hyperbee.Json, which depends on
+    two of them. That makes it possible for a project here to build against a published
+    copy of code that lives in this repo, pulled in transitively, while the rest of the
+    build uses local source.
+
+    That failure is silent. Nothing errors. A released binary simply lands in the output
+    folder beside freshly built assemblies it was never compiled against, and the mismatch
+    only shows up later as a missing member, or as a test that passes against the wrong
+    code. It happened: Hyperbee.Expressions.Tests ran a Hyperbee.Expressions.Compiler that
+    was months behind the source next to it.
+
+    The fix is always the same: add a ProjectReference to the local project, so the project
+    wins over the package. Use PrivateAssets="all" when the referencing project is packable
+    and does not actually use the reference, to keep it out of the published dependencies.
+  -->
+
+  <PropertyGroup>
+    <!-- Package ids this repository produces. Keep in sync with the PackageId of each packable project. -->
+    <SelfProducedPackageIds>Hyperbee.Expressions;Hyperbee.Expressions.Compiler;Hyperbee.Expressions.Lab</SelfProducedPackageIds>
+  </PropertyGroup>
+
+  <Target Name="ErrorOnSelfProducedPackageReference"
+          AfterTargets="ResolvePackageAssets"
+          Condition="'$(SkipSelfProducedPackageCheck)' != 'true'">
+
+    <ItemGroup>
+      <_SelfProducedPackageId Include="$(SelfProducedPackageIds)" />
+
+      <_SelfProducedPackageAsset
+          Include="@(ResolvedCompileFileDefinitions)"
+          Condition="'%(ResolvedCompileFileDefinitions.NuGetPackageId)' != '' AND
+                     '@(_SelfProducedPackageId)' != '' AND
+                     $([System.String]::new(';$(SelfProducedPackageIds);').Contains(';%(ResolvedCompileFileDefinitions.NuGetPackageId);'))" />
+    </ItemGroup>
+
+    <Error Condition="'@(_SelfProducedPackageAsset)' != ''"
+           Code="HBE001"
+           Text="$(MSBuildProjectName) resolves %(_SelfProducedPackageAsset.NuGetPackageId) %(_SelfProducedPackageAsset.NuGetPackageVersion) from NuGet, but this repository builds that package from source. It is almost certainly arriving transitively (Hyperbee.Json depends on Hyperbee.Expressions.Compiler). Add a ProjectReference to the local project so the project wins over the package -- with PrivateAssets=&quot;all&quot; if this project is packable and does not use it. See the comment in Directory.Build.targets." />
+
+  </Target>
+
+</Project>

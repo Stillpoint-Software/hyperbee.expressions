@@ -26,7 +26,14 @@
     <PackageReference Include="MSTest.TestFramework" />
   </ItemGroup>
 
+  <!--
+    Hyperbee.Json depends on the published Hyperbee.Expressions.Compiler, which depends on
+    the published Hyperbee.Expressions. Without a project reference of its own, the compiler
+    would come from the package while Hyperbee.Expressions is built from source here, putting
+    a released binary and local source in the same output folder.
+  -->
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Hyperbee.Expressions.Compiler\Hyperbee.Expressions.Compiler.csproj" />
     <ProjectReference Include="..\..\src\Hyperbee.Expressions.Lab\Hyperbee.Expressions.Lab.csproj" />
     <ProjectReference Include="..\..\src\Hyperbee.Expressions\Hyperbee.Expressions.csproj" />
   </ItemGroup>
