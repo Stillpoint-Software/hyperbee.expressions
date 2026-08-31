@@ -1185,4 +1185,118 @@ public class ExceptionHandlingTests
         Assert.AreEqual( "ok", fn( true ) );
         Assert.AreEqual( "caught", fn( false ) );
     }
+
+    // ================================================================
+    // Rethrow placement -- `rethrow` is only legal in the body of a catch
+    // handler (ECMA-335 III.4.24). A tree that puts one elsewhere is malformed,
+    // and must be refused at compile time rather than emitted as invalid IL.
+    // ================================================================
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Rethrow_OutsideCatch_IsRejected( CompilerType compilerType )
+    {
+        // { rethrow; 1 } -- no enclosing catch at all
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.Block(
+                typeof( int ),
+                Expression.Rethrow( typeof( void ) ),
+                Expression.Constant( 1 ) ) );
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>( () => lambda.Compile( compilerType ) );
+
+        Assert.AreEqual( "Rethrow statement is valid only inside a Catch block.", exception.Message );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Rethrow_InFinallyInsideCatch_IsRejected( CompilerType compilerType )
+    {
+        // try { throw } catch { try { 1 } finally { rethrow; } }
+        //
+        // The finally runs outside the handler that holds the exception, so a rethrow
+        // there has nothing to re-raise.
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.TryCatch(
+                Expression.Block(
+                    typeof( int ),
+                    Expression.Throw( Expression.Constant( new InvalidOperationException( "original" ) ) ),
+                    Expression.Constant( 0 ) ),
+                Expression.Catch(
+                    typeof( Exception ),
+                    Expression.TryFinally(
+                        Expression.Constant( 1 ),
+                        Expression.Rethrow( typeof( void ) ) ) ) ) );
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>( () => lambda.Compile( compilerType ) );
+
+        Assert.AreEqual( "Rethrow statement is valid only inside a Catch block.", exception.Message );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Rethrow_InNestedTryInsideCatch_PropagatesOriginalException( CompilerType compilerType )
+    {
+        // try { try { throw } catch { try { rethrow; } finally { } } } catch { 7 }
+        //
+        // A try nested inside a handler does not end the handler, so this rethrow is
+        // legal and must keep working. CompilerType.Fast is excluded: FEC emits invalid
+        // IL for this shape and fails with InvalidProgramException at run time.
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.TryCatch(
+                Expression.TryCatch(
+                    Expression.Block(
+                        typeof( int ),
+                        Expression.Throw( Expression.Constant( new InvalidOperationException( "original" ) ) ),
+                        Expression.Constant( 0 ) ),
+                    Expression.Catch(
+                        typeof( Exception ),
+                        Expression.TryFinally(
+                            Expression.Block(
+                                typeof( int ),
+                                Expression.Rethrow( typeof( void ) ),
+                                Expression.Constant( 0 ) ),
+                            Expression.Empty() ) ) ),
+                Expression.Catch( typeof( Exception ), Expression.Constant( 7 ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        Assert.AreEqual( 7, fn() );
+    }
+
+    [TestMethod]
+    [DataRow( CompilerType.System )]
+    [DataRow( CompilerType.Fast )]
+    [DataRow( CompilerType.Hyperbee )]
+    public void Rethrow_InExceptionFilter_DeclinesHandler( CompilerType compilerType )
+    {
+        // try { throw } catch when ( { rethrow; true } ) { 1 }
+        //
+        // A filter is not a handler body, but it belongs to its catch clause and a
+        // rethrow is accepted there. It resolves to the CLR rule that a filter which
+        // throws declines the handler, so the original exception keeps propagating.
+        var lambda = Expression.Lambda<Func<int>>(
+            Expression.TryCatch(
+                Expression.Block(
+                    typeof( int ),
+                    Expression.Throw( Expression.Constant( new InvalidOperationException( "original" ) ) ),
+                    Expression.Constant( 0 ) ),
+                Expression.MakeCatchBlock(
+                    typeof( Exception ),
+                    null,
+                    Expression.Constant( 1 ),
+                    Expression.Block(
+                        typeof( bool ),
+                        Expression.Rethrow( typeof( void ) ),
+                        Expression.Constant( true ) ) ) ) );
+
+        var fn = lambda.Compile( compilerType );
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>( () => fn() );
+
+        Assert.AreEqual( "original", exception.Message );
+    }
 }

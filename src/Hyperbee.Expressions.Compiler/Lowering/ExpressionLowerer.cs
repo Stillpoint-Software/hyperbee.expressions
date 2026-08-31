@@ -28,6 +28,60 @@ public class ExpressionLowerer
     private int _argOffset;
     private bool _discardResult;
 
+    // The exception-handling regions enclosing the expression being lowered, innermost
+    // last. Only a rethrow reads this, so the list is created on first use.
+
+    private List<RegionKind>? _regionStack;
+
+    private enum RegionKind
+    {
+        Try,
+        Catch,
+        Filter,
+        Finally,
+        Fault
+    }
+
+    private void PushRegion( RegionKind kind ) => (_regionStack ??= new( 4 )).Add( kind );
+
+    private void PopRegion() => _regionStack!.RemoveAt( _regionStack.Count - 1 );
+
+    // `rethrow` is only legal in the body of a catch handler (ECMA-335 III.4.24). Walking
+    // out, a catch makes it legal and a finally or fault makes it illegal, because those
+    // run outside the handler that holds the exception -- C# rejects the finally case
+    // outright as CS0724. A try is transparent: a rethrow nested in a try inside a catch
+    // still belongs to that catch.
+    //
+    // A filter counts as legal. It is not a handler body, but a filter belongs to its
+    // catch clause and the system compiler permits a rethrow there, where it resolves to
+    // the CLR rule that a filter which throws declines the handler. Rejecting it would
+    // refuse a tree the reference compiler accepts and no runtime rejects.
+    //
+    // This mirrors LambdaCompiler.CheckRethrow, so a malformed tree is refused the same
+    // way whichever compiler is used.
+
+    private bool InsideCatchHandler()
+    {
+        if ( _regionStack == null )
+            return false;
+
+        for ( var index = _regionStack.Count - 1; index >= 0; index-- )
+        {
+            switch ( _regionStack[index] )
+            {
+                case RegionKind.Catch:
+                case RegionKind.Filter:
+                    return true;
+
+                case RegionKind.Finally:
+                case RegionKind.Fault:
+                    return false;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>
     /// Creates a new expression lowerer targeting the given IR builder.
     /// </summary>
@@ -1879,7 +1933,9 @@ public class ExpressionLowerer
         _ir.Emit( IROp.BeginTry );
 
         // Lower try body
+        PushRegion( RegionKind.Try );
         LowerExpression( node.Body );
+        PopRegion();
 
         // Store result if non-void
         if ( !isVoid )
@@ -1918,7 +1974,9 @@ public class ExpressionLowerer
                 }
 
                 // Lower the filter expression (must evaluate to bool)
+                PushRegion( RegionKind.Filter );
                 LowerExpression( handler.Filter );
+                PopRegion();
 
                 // BeginFilteredCatch: transitions from filter to catch handler
                 _ir.Emit( IROp.BeginFilteredCatch );
@@ -1945,7 +2003,9 @@ public class ExpressionLowerer
             }
 
             // Lower handler body
+            PushRegion( RegionKind.Catch );
             LowerExpression( handler.Body );
+            PopRegion();
 
             // Store result if non-void
             if ( !isVoid )
@@ -1964,7 +2024,9 @@ public class ExpressionLowerer
         if ( node.Finally != null )
         {
             _ir.Emit( IROp.BeginFinally );
+            PushRegion( RegionKind.Finally );
             LowerExpression( node.Finally );
+            PopRegion();
             if ( node.Finally.Type != typeof( void ) )
             {
                 _ir.Emit( IROp.Pop );
@@ -1976,7 +2038,9 @@ public class ExpressionLowerer
         if ( node.Fault != null )
         {
             _ir.Emit( IROp.BeginFault );
+            PushRegion( RegionKind.Fault );
             LowerExpression( node.Fault );
+            PopRegion();
             if ( node.Fault.Type != typeof( void ) )
             {
                 _ir.Emit( IROp.Pop );
@@ -2005,7 +2069,12 @@ public class ExpressionLowerer
         }
         else
         {
-            // Rethrow (throw without operand inside catch)
+            // Rethrow (throw without operand inside catch). Emitting this anywhere else
+            // produces IL the runtime rejects, so refuse the tree rather than the JIT.
+
+            if ( !InsideCatchHandler() )
+                throw new InvalidOperationException( "Rethrow statement is valid only inside a Catch block." );
+
             _ir.Emit( IROp.Rethrow );
         }
     }
