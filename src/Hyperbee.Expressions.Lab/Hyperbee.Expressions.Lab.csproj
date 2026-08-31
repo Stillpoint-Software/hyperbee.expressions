@@ -39,6 +39,14 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <ProjectReference Include="..\Hyperbee.Expressions\Hyperbee.Expressions.csproj" />
+    <!--
+      Hyperbee.Json depends on the published Hyperbee.Expressions.Compiler. Reference the
+      local one so this project never builds against a released copy of code that lives in
+      this repo. PrivateAssets keeps it out of the package: nothing here uses the compiler,
+      and consumers already resolve it through Hyperbee.Json.
+    -->
+    <ProjectReference Include="..\Hyperbee.Expressions.Compiler\Hyperbee.Expressions.Compiler.csproj"
+                      PrivateAssets="all" />
     <PackageReference Update="Microsoft.SourceLink.GitHub">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

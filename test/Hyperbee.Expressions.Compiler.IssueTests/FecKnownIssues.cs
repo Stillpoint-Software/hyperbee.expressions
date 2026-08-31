@@ -322,4 +322,60 @@ public class FecKnownIssues
         try { hb( overflowValue ); } catch ( OverflowException ) { hbThrew = true; }
         Assert.IsTrue( hbThrew, "Hyperbee must throw OverflowException for uint > int.MaxValue." );
     }
+
+    // --- Pattern 28: Rethrow inside a try nested within a catch handler ---
+    //
+    // `rethrow` is legal anywhere in the body of a catch handler, and a try nested inside
+    // that handler does not end it (ECMA-335 III.4.24). The system compiler accepts this
+    // shape and runs it correctly.
+    //
+    // FEC emits IL the runtime refuses for it, and fails with InvalidProgramException when
+    // the delegate is first called -- not at compile time, so there is no compile-time
+    // signal that anything is wrong. The plain rethrow-in-catch shape, with no nested try,
+    // is handled correctly; it is the nesting that breaks it.
+
+    [TestMethod]
+    public void Pattern28_RethrowInNestedTryInsideCatch_FecBug()
+    {
+        var lambda = BuildRethrowInNestedTryInsideCatch();
+
+        // FEC: invalid IL, surfacing only when the delegate is invoked.
+        var fec = FastExpressionCompiler.ExpressionCompiler.CompileFast( lambda );
+
+        var fecThrew = false;
+        try { fec(); } catch ( InvalidProgramException ) { fecThrew = true; }
+
+        Assert.IsTrue( fecThrew, "FEC known bug: rethrow inside a try nested in a catch emits invalid IL." );
+
+        // System and Hyperbee both run it, and the rethrown exception reaches the outer handler.
+        Assert.AreEqual( 7, lambda.Compile()() );
+        Assert.AreEqual( 7, HyperbeeCompiler.Compile( lambda )() );
+    }
+
+    [TestMethod]
+    public void Pattern28_RethrowInNestedTryInsideCatch_FallbackReturnsCorrectResult()
+    {
+        Assert.AreEqual( 7, HyperbeeCompiler.CompileWithFallback<Func<int>>( BuildRethrowInNestedTryInsideCatch() )() );
+    }
+
+    // try { try { throw } catch { try { rethrow; } finally { } } } catch { 7 }
+    private static Expression<Func<int>> BuildRethrowInNestedTryInsideCatch()
+    {
+        return Expression.Lambda<Func<int>>(
+            Expression.TryCatch(
+                Expression.TryCatch(
+                    Expression.Block(
+                        typeof( int ),
+                        Expression.Throw( Expression.Constant( new InvalidOperationException( "original" ) ) ),
+                        Expression.Constant( 0 ) ),
+                    Expression.Catch(
+                        typeof( Exception ),
+                        Expression.TryFinally(
+                            Expression.Block(
+                                typeof( int ),
+                                Expression.Rethrow( typeof( void ) ),
+                                Expression.Constant( 0 ) ),
+                            Expression.Empty() ) ) ),
+                Expression.Catch( typeof( Exception ), Expression.Constant( 7 ) ) ) );
+    }
 }

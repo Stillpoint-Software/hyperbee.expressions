@@ -308,6 +308,12 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
 
         var joinState = States.EnterGroup( out var sourceState );
 
+        // A finally re-points joinState at the finally state, but the group still falls
+        // through to the state EnterGroup created, and ExitGroup makes that one the tail.
+        // Keep it so that it can be given the result as well.
+
+        var groupJoinState = joinState;
+
         var resultVariable = VariableResolver.GetResultVariable( node, sourceState.StateId );
         var tryStateVariable = VariableResolver.GetTryVariable( sourceState.StateId );
         var exceptionVariable = VariableResolver.GetExceptionVariable( sourceState.StateId );
@@ -382,6 +388,31 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
                 ? VariableResolver.AddLocalVariable( catchBlock.Variable )
                 : null;
 
+            // `throw;` is only valid inside a catch block, and the handler body is no
+            // longer one. Rewrite it to re-throw the caught exception, which needs a
+            // variable to read it from. Hoist one when the source handler declared none.
+
+            var caughtVariable = catchBlock.Variable;
+
+            var catchBody = RethrowRewriter.Rewrite( catchBlock.Body, () =>
+            {
+                if ( caughtVariable != null )
+                    return caughtVariable;
+
+                caughtVariable = Expression.Parameter( catchBlock.Test, "rethrow" );
+                catchVariable = VariableResolver.AddLocalVariable( caughtVariable );
+
+                return caughtVariable;
+            } );
+
+            // The handler runs in its own state, outside the generated try, so an exception
+            // it raises would leave the machine without running the finally. Give the body
+            // a try of its own that records the exception and falls through to the finally,
+            // which re-throws it once it has run.
+
+            if ( finalExpression != null )
+                catchBody = CaptureHandlerFault( catchBody, exceptionVariable );
+
             if ( catchBlock.Filter != null && RequiresLowering( catchBlock.Filter ) )
                 throw new LoweringException( "Await is not supported in an exception filter." );
 
@@ -393,16 +424,81 @@ internal abstract class BaseLoweringVisitor<TInfo> : ExpressionVisitor
                 catchBlock,
                 catchVariable,
                 catchFilter,
-                VisitBranch( catchBlock.Body, joinState, resultVariable ),
+                VisitBranch( catchBody, joinState, resultVariable ),
                 catchState );
         }
 
         sourceState.Result.Variable = resultVariable;
         joinState.Result.Value = resultVariable;
 
+        // Without this, a try that is the result-producing tail of the block has no value
+        // to hand back, and the final transition falls back to a void result.
+
+        groupJoinState.Result.Value = resultVariable;
+
         States.ExitGroup( sourceState, tryCatchTransition );
 
         return ConvertToExpression( sourceState );
+    }
+
+    // Records an exception raised by a catch handler so that the finally state can run and
+    // re-throw it, the way it already does for an exception no handler took. The handler
+    // value is unused on this path, because the capture always ends in a re-throw.
+
+    private static Expression CaptureHandlerFault( Expression handlerBody, Expression exceptionVariable )
+    {
+        var fault = Expression.Parameter( typeof( Exception ), "__fault<>" );
+
+        var capture = Expression.Assign(
+            exceptionVariable,
+            Expression.Call( ReflectionHelper.ExceptionDispatchInfoCapture, fault ) );
+
+        var handled = handlerBody.Type == typeof( void )
+            ? Expression.Block( typeof( void ), capture )
+            : Expression.Block( handlerBody.Type, capture, Expression.Default( handlerBody.Type ) );
+
+        return Expression.TryCatch( handlerBody, Expression.Catch( fault, handled ) );
+    }
+
+    // A bare `throw;` (Expression.Rethrow) is only valid inside a catch block. Lowering
+    // moves the handler body into its own state, outside of the try, so the rethrow must
+    // be rewritten to throw the caught exception explicitly. ExceptionDispatchInfo is used
+    // to preserve the original stack trace, which throwing the exception again would reset.
+
+    private sealed class RethrowRewriter( Func<ParameterExpression> caughtVariable ) : ExpressionVisitor
+    {
+        public static Expression Rewrite( Expression body, Func<ParameterExpression> caughtVariable )
+        {
+            return new RethrowRewriter( caughtVariable ).Visit( body );
+        }
+
+        protected override Expression VisitUnary( UnaryExpression node )
+        {
+            if ( node.NodeType != ExpressionType.Throw || node.Operand != null )
+                return base.VisitUnary( node );
+
+            var rethrow = Expression.Call(
+                Expression.Call( ReflectionHelper.ExceptionDispatchInfoCapture, caughtVariable() ),
+                ReflectionHelper.ExceptionDispatchInfoThrow );
+
+            // A rethrow carries the type of the expression it stands in for. The call is
+            // void, so the block needs a value of that type to stay well-typed. The value
+            // is never reached, because the line above it always throws.
+
+            return node.Type == typeof( void )
+                ? rethrow
+                : Expression.Block( node.Type, rethrow, Expression.Default( node.Type ) );
+        }
+
+        // A rethrow inside a nested handler belongs to that handler, not to this one. If
+        // that try is lowered too, its own visit rewrites it; if it is not, the handler
+        // survives as a real catch block and the rethrow is already valid.
+
+        protected override CatchBlock VisitCatchBlock( CatchBlock node ) => node;
+
+        // A lambda has an exception context of its own.
+
+        protected override Expression VisitLambda<T>( Expression<T> node ) => node;
     }
 
     protected sealed class ResultExpression( StateResult result ) : Expression
