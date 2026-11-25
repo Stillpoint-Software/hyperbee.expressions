@@ -50,9 +50,13 @@ public sealed class RatioToColumn : IColumn
 
         // Find the matching baseline benchmark in the same class
         var baselineMethodName = tierName + _baselineSuffix;
+        // The job has to be part of the match. With more than one runtime job the
+        // same tier appears once per runtime, and matching on name and type alone
+        // would divide one runtime's mean by another runtime's baseline.
         var baselineCase = summary.BenchmarksCases.FirstOrDefault( c =>
             c.Descriptor.WorkloadMethod.Name == baselineMethodName &&
-            c.Descriptor.Type == benchmarkCase.Descriptor.Type );
+            c.Descriptor.Type == benchmarkCase.Descriptor.Type &&
+            c.Job.Id == benchmarkCase.Job.Id );
 
         if ( baselineCase == null ) return "N/A";
 

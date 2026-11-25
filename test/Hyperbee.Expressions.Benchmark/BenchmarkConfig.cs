@@ -16,18 +16,16 @@ public class BenchmarkConfig
     {
         public Config()
         {
-            AddJob( Job.ShortRun
-                .WithRuntime( CoreRuntime.Core80 )
-                .WithId( ".NET 8" ) );
-
-            AddJob( Job.ShortRun
-             .WithRuntime( CoreRuntime.Core90 )
-             .WithId( ".NET 9" ) );
-
-
+            // net8.0 and net9.0 both reached end of support on 2026-11-10 and this
+            // repo no longer targets either, so they are no longer measured.
             AddJob( Job.ShortRun
                 .WithRuntime( CoreRuntime.Core10_0 )
                 .WithId( ".NET 10" ) );
+
+            // BenchmarkDotNet 0.15.8 has no CoreRuntime constant past Core10_0.
+            AddJob( Job.ShortRun
+                .WithRuntime( CoreRuntime.CreateForNewVersion( "net11.0", ".NET 11" ) )
+                .WithId( ".NET 11" ) );
 
 
             AddExporter( MarkdownExporter.GitHub );
