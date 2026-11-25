@@ -25,12 +25,19 @@ jobs:
     with:
       branch: ${{ github.event.release.target_commitish }}
       solution_name: ${{ vars.SOLUTION_NAME }}
+      # Keep in step with <TargetFrameworks> in Directory.Build.props.
+      # netstandard2.1 is built but not tested: it has no test host.
+      frameworks: '["net11.0", "net10.0"]'
   
   publish:
     needs: [set-config, tests]
     uses: Stillpoint-Software/shared-workflows/.github/workflows/pack_and_publish.yml@main
     with:
       build_configuration: ${{ needs.set-config.outputs.build_configuration }}
+      # The 11.0 SDK is required to pack the net11.0 target framework.
+      dotnet_version: |
+        11.0.x
+        10.0.x
     secrets:
       NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 

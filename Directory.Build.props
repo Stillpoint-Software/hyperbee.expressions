@@ -55,6 +55,16 @@
       Microsoft.Extensions 11.x no longer ships assets for either. netstandard2.1
       is the compatibility floor for consumers that cannot move yet.
     -->
-    <TargetFrameworks>net11.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net11.0;net10.0;netstandard2.1</TargetFrameworks>
   </PropertyGroup>
+
+  <!--
+    The SDK defaults netstandard2.1 to C# 8, which predates records and init
+    accessors, so the shared source fails to parse there. net10.0 and net11.0
+    already default to the SDK's latest, so this only affects netstandard.
+  -->
+  <PropertyGroup Condition="$(TargetFramework.StartsWith('netstandard'))">
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
 </Project>

@@ -2,6 +2,11 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
+// Enabled per file, not per project: this source is compiled into projects on
+// both sides of the <Nullable> setting, so the annotations below have to be
+// valid in either context.
+#nullable enable
+
 namespace Hyperbee.Expressions.Shared;
 
 /// <summary>
@@ -16,7 +21,7 @@ namespace Hyperbee.Expressions.Shared;
 internal static class ExpressionDebugView
 {
 #if NETSTANDARD
-    private static readonly MethodInfo Getter = typeof( Expression )
+    private static readonly MethodInfo? Getter = typeof( Expression )
         .GetProperty( "DebugView", BindingFlags.Instance | BindingFlags.NonPublic )
         ?.GetGetMethod( nonPublic: true );
 

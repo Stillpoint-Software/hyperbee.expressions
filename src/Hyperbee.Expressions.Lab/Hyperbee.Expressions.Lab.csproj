@@ -1,6 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!--
+      Pinned, not inherited. This project depends on Hyperbee.Json, which
+      ships no netstandard2.1 asset (net8.0/net9.0/net10.0 only), so it
+      cannot build for the netstandard2.1 target the other libraries add.
+    -->
+    <TargetFrameworks>net11.0;net10.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <Nullable>disable</Nullable>
     <IsPackable>true</IsPackable>
     <Authors>Stillpoint Software, Inc.</Authors>

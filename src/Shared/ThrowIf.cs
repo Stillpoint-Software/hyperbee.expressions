@@ -1,5 +1,10 @@
 ﻿using System.Runtime.CompilerServices;
 
+// Enabled per file, not per project: this source is compiled into projects on
+// both sides of the <Nullable> setting, so the annotations below have to be
+// valid in either context.
+#nullable enable
+
 namespace Hyperbee.Expressions.Shared;
 
 /// <summary>
@@ -32,7 +37,7 @@ internal static class ThrowIf
     /// </summary>
     public static void Null(
         object value,
-        [CallerArgumentExpression( nameof( value ) )] string paramName = null )
+        [CallerArgumentExpression( nameof( value ) )] string? paramName = null )
     {
 #if NETSTANDARD
         if ( value is null )
@@ -47,7 +52,7 @@ internal static class ThrowIf
     /// </summary>
     public static void Zero(
         int value,
-        [CallerArgumentExpression( nameof( value ) )] string paramName = null )
+        [CallerArgumentExpression( nameof( value ) )] string? paramName = null )
     {
 #if NETSTANDARD
         if ( value == 0 )
