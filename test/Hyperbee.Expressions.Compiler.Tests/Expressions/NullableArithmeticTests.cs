@@ -161,6 +161,9 @@ public class NullableArithmeticTests
     [DataRow( CompilerType.Hyperbee )]
     public void Add_NullableDecimal( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable decimal arithmetic." );
+
         var a = Expression.Parameter( typeof(decimal?), "a" );
         var b = Expression.Parameter( typeof(decimal?), "b" );
         var lambda = Expression.Lambda<Func<decimal?, decimal?, decimal?>>( Expression.Add( a, b ), a, b );
@@ -240,6 +243,9 @@ public class NullableArithmeticTests
     [DataRow( CompilerType.Hyperbee )]
     public void Multiply_NullableDecimal( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable decimal arithmetic." );
+
         var a = Expression.Parameter( typeof(decimal?), "a" );
         var b = Expression.Parameter( typeof(decimal?), "b" );
         var lambda = Expression.Lambda<Func<decimal?, decimal?, decimal?>>( Expression.Multiply( a, b ), a, b );
@@ -633,6 +639,9 @@ public class NullableArithmeticTests
     [DataRow( CompilerType.Hyperbee )]
     public void Divide_NullableDecimal( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable decimal arithmetic." );
+
         var a = Expression.Parameter( typeof(decimal?), "a" );
         var b = Expression.Parameter( typeof(decimal?), "b" );
         var lambda = Expression.Lambda<Func<decimal?, decimal?, decimal?>>( Expression.Divide( a, b ), a, b );
@@ -814,6 +823,9 @@ public class NullableArithmeticTests
     [DataRow( CompilerType.Hyperbee )]
     public void Modulo_NullableDecimal( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable decimal arithmetic." );
+
         var a = Expression.Parameter( typeof(decimal?), "a" );
         var b = Expression.Parameter( typeof(decimal?), "b" );
         var lambda = Expression.Lambda<Func<decimal?, decimal?, decimal?>>( Expression.Modulo( a, b ), a, b );

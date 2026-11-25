@@ -685,6 +685,9 @@ public class ExceptionHandlingTests
     [DataRow( CompilerType.Hyperbee )]
     public void TryCatch_FilterFalse_FallsToNextHandler( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Catch filters; FEC NotSupported 1010." );
+
         // try { throw new Exception(); }
         // catch (InvalidOperationException) when (false) { return "wrong"; }
         // catch (Exception) { return "right"; }
@@ -713,6 +716,9 @@ public class ExceptionHandlingTests
     [DataRow( CompilerType.Hyperbee )]
     public void TryCatch_MultipleFilterHandlers_FirstMatchWins( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Catch filters; FEC NotSupported 1010." );
+
         // try { throw new ArgumentException(); }
         // catch (ArgumentException ex) when (true) { return "first"; }
         // catch (Exception ex) { return "second"; }
@@ -1273,6 +1279,9 @@ public class ExceptionHandlingTests
     [DataRow( CompilerType.Hyperbee )]
     public void Rethrow_InExceptionFilter_DeclinesHandler( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Catch filters; FEC NotSupported 1010." );
+
         // try { throw } catch when ( { rethrow; true } ) { 1 }
         //
         // A filter is not a handler body, but it belongs to its catch clause and a

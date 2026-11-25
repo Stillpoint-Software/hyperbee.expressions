@@ -437,6 +437,9 @@ public class BlockTests
     [DataRow( CompilerType.Hyperbee )]
     public void Block_ExplicitVoidType_LastExprDiscarded( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Explicit void Block discarding a valued last expression." );
+
         // Explicit void block where last expression has a value — the value is discarded
         var x = Expression.Parameter( typeof(int), "x" );
         var body = Expression.Block(
@@ -602,9 +605,6 @@ public class BlockTests
     [DataRow( CompilerType.Hyperbee )]
     public void Block_WithTryCatch_CatchPathSetsVariable( CompilerType compilerType )
     {
-        if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC TryCatch+Assign produces incorrect IL. See FecKnownIssues.Pattern1." );
-
         var result = Expression.Variable( typeof(int), "result" );
         var body = Expression.Block(
             new[] { result },

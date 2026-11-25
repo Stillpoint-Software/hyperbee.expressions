@@ -453,20 +453,12 @@ public class BlockAsyncTryCatchTests
         // Return expressions get transformed to include assignment of a result variable before the goto,
         // creating patterns like Return(label, Assign(_result, value)).
         //
-        // FEC has documented error 1007 (NotSupported_Try_GotoReturnToTheFollowupLabel) for Return gotos
-        // from TryCatch, but the detection is incomplete - it misses compound expressions containing assignments.
-        // When FEC is fixed to detect these patterns, it should return null, allowing ExpressionCompilerExtensions
-        // to fallback to System compiler.
-        //
-        // Known issue: https://github.com/dadhi/FastExpressionCompiler/issues/495
-        // When FEC issue 495 is fixed, this test should pass for CompilerType.Fast as well.
-
-        if ( compiler == CompilerType.Fast )
-        {
-            // Skip this test for Fast compiler until FEC issue 495 is resolved
-            Assert.Inconclusive( "Skipping test for Fast compiler due to known issue with Return labels in TryCatch blocks." );
-            return;
-        }
+        // The Fast rows were skipped against FEC 5.x, which miscompiled this rather than
+        // declining it: FEC error 1007 covers Return gotos out of TryCatch, but its detection
+        // missed compound expressions containing assignments, so it emitted invalid IL instead
+        // of returning null. FEC 6.0.0 compiles it correctly, confirmed by re-running with the
+        // guard removed, so the Fast rows run again.
+        // Original issue: https://github.com/dadhi/FastExpressionCompiler/issues/495
 
         // Arrange
         var expected = new object();

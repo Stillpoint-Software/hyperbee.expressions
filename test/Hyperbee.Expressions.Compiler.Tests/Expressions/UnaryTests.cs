@@ -703,7 +703,7 @@ public class UnaryTests
     public void PostIncrementAssign_Double( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC PostIncrementAssign on double returns pre-increment value instead of post-increment." );
+            FecGap.MiscompilesSilently( "PostIncrementAssign on double returns the pre-increment value." );
 
         var i = Expression.Variable( typeof( double ), "i" );
         var body = Expression.Block(
@@ -808,7 +808,7 @@ public class UnaryTests
     public void IsFalse_NullableBool( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC Not(bool?) generates invalid IL. See FecKnownIssues.Pattern21." );
+            FecGap.MiscompilesThrows( "IsFalse( bool? ). See FecKnownIssues.Pattern21." );
 
         // IsFalse(bool?) returns bool? (lifted null semantics): null→null, false→true, true→false
         var a = Expression.Parameter( typeof( bool? ), "a" );
@@ -830,9 +830,6 @@ public class UnaryTests
     [DataRow( CompilerType.Hyperbee )]
     public void IsTrue_NullableBool( CompilerType compilerType )
     {
-        if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC Not(bool?) generates invalid IL. See FecKnownIssues.Pattern21." );
-
         // IsTrue(bool?) returns bool? (lifted null semantics): null→null, true→true, false→false
         var a = Expression.Parameter( typeof( bool? ), "a" );
         var lambda = Expression.Lambda<Func<bool?, bool?>>( Expression.IsTrue( a ), a );

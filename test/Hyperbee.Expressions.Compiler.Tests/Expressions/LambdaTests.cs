@@ -472,7 +472,8 @@ public class LambdaTests
     public void Lambda_InvokeWithMethodCallArg( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC fails on Invoke(lambda, MethodCall(param)) pattern." );
+            FecGap.MiscompilesSilently( "Invoke( lambda, MethodCall( param ) ) returns 0." );
+
         var absMethod = typeof(Math).GetMethod( "Abs", [typeof(int)] )!;
         var x = Expression.Parameter( typeof(int), "x" );
         var inner = Expression.Lambda<Func<int, int>>(

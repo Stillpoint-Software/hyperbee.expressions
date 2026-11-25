@@ -221,23 +221,19 @@ public class CompilerCompatibilityTests
 
 #if FAST_COMPILER
     [TestMethod]
-    public void CompileFast_ShouldReturnNull_ForReturnGotoFromTryCatchWithAssign()
+    public void CompileFast_ShouldCompile_ReturnGotoFromTryCatchWithAssign()
     {
-        // This test verifies that FEC correctly detects unsupported patterns and returns null,
-        // allowing the fallback mechanism in ExpressionCompilerExtensions to work.
+        // Return( label, Assign( ... ) ) out of a TryCatch. Against FEC 5.x this emitted invalid
+        // IL: FEC error 1007 covers Return gotos out of TryCatch, but its detection missed values
+        // that are compound expressions containing assignments, so it neither compiled the pattern
+        // nor declined it. This test used to assert that FEC returned null, on the expectation that
+        // issue 495 would be fixed by detection rather than by support.
         //
-        // FEC has documented error 1007 (NotSupported_Try_GotoReturnToTheFollowupLabel) for
-        // Return gotos from TryCatch blocks. When FEC detects this pattern, it should return
-        // null (when ifFastFailedReturnNull: true) or throw NotSupportedExpressionException.
-        //
-        // Known issue: https://github.com/dadhi/FastExpressionCompiler/issues/495
-        // FEC's detection is incomplete - it misses Return gotos where the value is a compound
-        // expression containing assignments (e.g., Return(label, Assign(...)). Instead of
-        // returning null, FEC generates invalid IL that throws InvalidProgramException at runtime.
-        //
-        // When FEC issue 495 is fixed, this test will pass.
-
-        Assert.Inconclusive( "This test is currently expected to fail due to incomplete detection of unsupported patterns in FEC." );
+        // FEC 6.0.0 compiles it, so the original assertion no longer describes anything. The test
+        // is kept as a regression guard in the shape that cannot go stale: compile with both and
+        // require them to agree. If FEC regresses to miscompiling, the values diverge; if it starts
+        // declining instead, the Fast delegate is null.
+        // Original issue: https://github.com/dadhi/FastExpressionCompiler/issues/495
 
         // Arrange: Build expression with Return(label, Assign(...)) inside TryCatch
         var variable = Variable( typeof( object ), "var" );
@@ -266,14 +262,18 @@ public class CompilerCompatibilityTests
 
         var lambda = Lambda<Func<object>>( block );
 
-        // Act: FEC should detect the unsupported pattern and return null
-        var compiled = lambda.CompileFast( ifFastFailedReturnNull: true );
+        // Act
+        var fast = lambda.CompileFast( ifFastFailedReturnNull: true );
+        var system = lambda.Compile();
 
-        // Assert: FEC should return null to trigger fallback mechanism
-        // Currently fails - FEC returns non-null with invalid IL
-        Assert.IsNull( compiled,
-            "FEC should return null for unsupported patterns to allow fallback to System compiler. " +
-            "See https://github.com/dadhi/FastExpressionCompiler/issues/495" );
+        // Assert
+        Assert.IsNotNull( fast,
+            "FEC 6.0.0 compiles this pattern. A null here means FEC now declines it, which is safe "
+            + "but changes what this test is guarding: record it as an FecGap.Declines instead." );
+
+        Assert.AreEqual( system(), fast(),
+            "FEC and the System compiler disagree on Return( label, Assign( ... ) ) out of a TryCatch. "
+            + "See https://github.com/dadhi/FastExpressionCompiler/issues/495" );
     }
 #endif
 }

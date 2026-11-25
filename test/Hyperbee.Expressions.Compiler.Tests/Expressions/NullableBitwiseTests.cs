@@ -250,7 +250,7 @@ public class NullableBitwiseTests
     public void OnesComplement_NullableInt( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC crashes (AccessViolationException) on OnesComplement(int?)." );
+            FecGap.AbortsProcess( "OnesComplement( int? ) raises an AccessViolationException." );
 
         var a = Expression.Parameter( typeof(int?), "a" );
         var lambda = Expression.Lambda<Func<int?, int?>>( Expression.OnesComplement( a ), a );
@@ -273,7 +273,7 @@ public class NullableBitwiseTests
     public void OnesComplement_NullableLong( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC crashes (InvalidProgramException) on OnesComplement(long?)." );
+            FecGap.MiscompilesThrows( "OnesComplement( long? )." );
 
         var a = Expression.Parameter( typeof(long?), "a" );
         var lambda = Expression.Lambda<Func<long?, long?>>( Expression.OnesComplement( a ), a );
@@ -294,6 +294,9 @@ public class NullableBitwiseTests
     [DataRow( CompilerType.Hyperbee )]
     public void Negate_NullableLong( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable Negate." );
+
         var a = Expression.Parameter( typeof(long?), "a" );
         var lambda = Expression.Lambda<Func<long?, long?>>( Expression.Negate( a ), a );
         var fn = lambda.Compile( compilerType );
@@ -314,6 +317,9 @@ public class NullableBitwiseTests
     [DataRow( CompilerType.Hyperbee )]
     public void Negate_NullableFloat( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable Negate." );
+
         var a = Expression.Parameter( typeof(float?), "a" );
         var lambda = Expression.Lambda<Func<float?, float?>>( Expression.Negate( a ), a );
         var fn = lambda.Compile( compilerType );
@@ -333,6 +339,9 @@ public class NullableBitwiseTests
     [DataRow( CompilerType.Hyperbee )]
     public void Negate_NullableDecimal( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable Negate." );
+
         var a = Expression.Parameter( typeof(decimal?), "a" );
         var lambda = Expression.Lambda<Func<decimal?, decimal?>>( Expression.Negate( a ), a );
         var fn = lambda.Compile( compilerType );
@@ -391,6 +400,9 @@ public class NullableBitwiseTests
     [DataRow( CompilerType.Hyperbee )]
     public void NegateChecked_NullableInt_InRange( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable NegateChecked." );
+
         var a = Expression.Parameter( typeof(int?), "a" );
         var lambda = Expression.Lambda<Func<int?, int?>>( Expression.NegateChecked( a ), a );
         var fn = lambda.Compile( compilerType );
@@ -411,6 +423,9 @@ public class NullableBitwiseTests
     [DataRow( CompilerType.Hyperbee )]
     public void NegateChecked_NullableInt_Overflow( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable NegateChecked." );
+
         var a = Expression.Parameter( typeof(int?), "a" );
         var lambda = Expression.Lambda<Func<int?, int?>>( Expression.NegateChecked( a ), a );
         var fn = lambda.Compile( compilerType );
@@ -450,7 +465,7 @@ public class NullableBitwiseTests
     public void And_NullableBool_ThreeValuedLogic( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC does not implement three-valued bool? & logic (false & null = false)." );
+            FecGap.MiscompilesSilently( "Three-valued bool? AND: returns null where false is correct." );
 
         var a = Expression.Parameter( typeof(bool?), "a" );
         var b = Expression.Parameter( typeof(bool?), "b" );
@@ -478,7 +493,7 @@ public class NullableBitwiseTests
     public void Or_NullableBool_ThreeValuedLogic( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC does not implement three-valued bool? | logic (true | null = true)." );
+            FecGap.MiscompilesSilently( "Three-valued bool? OR: returns null where true is correct." );
 
         var a = Expression.Parameter( typeof(bool?), "a" );
         var b = Expression.Parameter( typeof(bool?), "b" );
@@ -547,6 +562,9 @@ public class NullableBitwiseTests
     [DataRow( CompilerType.Hyperbee )]
     public void Negate_NullableInt( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable Negate." );
+
         var a = Expression.Parameter( typeof(int?), "a" );
         var lambda = Expression.Lambda<Func<int?, int?>>( Expression.Negate( a ), a );
         var fn = lambda.Compile( compilerType );
@@ -567,6 +585,9 @@ public class NullableBitwiseTests
     [DataRow( CompilerType.Hyperbee )]
     public void Negate_NullableDouble( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable Negate." );
+
         var a = Expression.Parameter( typeof(double?), "a" );
         var lambda = Expression.Lambda<Func<double?, double?>>( Expression.Negate( a ), a );
         var fn = lambda.Compile( compilerType );
@@ -626,7 +647,7 @@ public class NullableBitwiseTests
     public void NegateChecked_NullableLong_Overflow( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC emits bare neg instead of sub.ovf for NegateChecked. See FecKnownIssues.Pattern4." );
+            FecGap.Declines( "Nullable NegateChecked." );
 
         var a = Expression.Parameter( typeof(long?), "a" );
         var lambda = Expression.Lambda<Func<long?, long?>>( Expression.NegateChecked( a ), a );

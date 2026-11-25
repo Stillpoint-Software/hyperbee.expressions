@@ -13,6 +13,25 @@ public enum CompilerType
     Interpret
 }
 
+/// <summary>
+/// Compiles a test expression with the chosen compiler.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The Fast path falls back to the System compiler deliberately, unlike the helper of
+/// the same name in Hyperbee.Expressions.Compiler.Tests, which fails instead. The two
+/// projects want different things: that one tests FEC conformance, so a pattern FEC
+/// declines has to be recorded as a gap; this one tests the expression types, so a
+/// pattern FEC declines should still be exercised through whatever compiler can run it.
+/// </para>
+/// <para>
+/// ifFastFailedReturnNull has to be true for the fallback below to be the one that runs.
+/// Left at its default of false, CompileFast falls back to Expression.Compile() inside
+/// FEC and never returns null, which made the null check, the catch and the explicit
+/// fallback here unreachable and made it impossible to tell which compiler produced the
+/// delegate. Verified against FEC 6.0.0.
+/// </para>
+/// </remarks>
 public static class ExpressionCompilerExtensions
 {
     public static Action Compile( this Expression<Action> expression, CompilerType compilerType = CompilerType.System )
@@ -22,7 +41,7 @@ public static class ExpressionCompilerExtensions
         {
             try
             {
-                var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo );
+                var compiledExpression = expression.CompileFast( ifFastFailedReturnNull: true, CompilerFlags.EnableDelegateDebugInfo );
                 if ( compiledExpression != null )
                 {
                     var target = compiledExpression.Target; // keep for debugging
@@ -53,7 +72,7 @@ public static class ExpressionCompilerExtensions
         {
             try
             {
-                var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo );
+                var compiledExpression = expression.CompileFast( ifFastFailedReturnNull: true, CompilerFlags.EnableDelegateDebugInfo );
                 if ( compiledExpression != null )
                 {
                     var target = compiledExpression.Target; // keep for debugging
@@ -84,7 +103,7 @@ public static class ExpressionCompilerExtensions
         {
             try
             {
-                var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo );
+                var compiledExpression = expression.CompileFast( ifFastFailedReturnNull: true, CompilerFlags.EnableDelegateDebugInfo );
                 if ( compiledExpression != null )
                 {
                     var target = compiledExpression.Target; // keep for debugging
@@ -115,7 +134,7 @@ public static class ExpressionCompilerExtensions
         {
             try
             {
-                var compiledExpression = expression.CompileFast( false, CompilerFlags.EnableDelegateDebugInfo );
+                var compiledExpression = expression.CompileFast( ifFastFailedReturnNull: true, CompilerFlags.EnableDelegateDebugInfo );
                 if ( compiledExpression != null )
                 {
                     var target = compiledExpression.Target; // keep for debugging

@@ -362,10 +362,8 @@ public class CollectionInitTests
     [DataRow( CompilerType.Hyperbee )]
     public void ListInit_HashSet_NoOrder( CompilerType compilerType )
     {
-        // FEC known bug: FEC generates invalid IL for ListInit when the Add method returns a
-        // non-void value (HashSet<T>.Add returns bool). See FecKnownIssues.Pattern22.
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC generates invalid IL for ListInit with non-void Add method. See FecKnownIssues.Pattern22." );
+            FecGap.MiscompilesThrows( "ListInit with a non-void Add. See FecKnownIssues.Pattern22." );
 
         var ctor = typeof( HashSet<string> ).GetConstructor( Type.EmptyTypes )!;
         var addMethod = typeof( HashSet<string> ).GetMethod( "Add" )!;

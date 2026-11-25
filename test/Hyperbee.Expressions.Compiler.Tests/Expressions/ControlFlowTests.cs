@@ -300,11 +300,6 @@ public class ControlFlowTests
     [DataRow( CompilerType.Hyperbee )]
     public void Loop_BreakWithValue_AssignedToVariable( CompilerType compilerType )
     {
-        // FEC known bug: FEC generates invalid IL for Loop(break, typedLabel) — JIT rejects
-        // the stack layout for typed break labels. See FecKnownIssues.Pattern24.
-        if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC generates invalid IL for Loop with typed break label. See FecKnownIssues.Pattern24." );
-
         // var i = 0;
         // var result = loop { if (i == 3) break(99); i++; }
         // return result;

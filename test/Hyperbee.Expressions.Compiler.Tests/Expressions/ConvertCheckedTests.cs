@@ -163,11 +163,8 @@ public class ConvertCheckedTests
     [DataRow( CompilerType.Hyperbee )]
     public void ConvertChecked_ULongToLong_Overflow( CompilerType compilerType )
     {
-        // FEC known bug: FEC uses conv.ovf.i8 (signed source) instead of conv.ovf.i8.un
-        // (unsigned source) for ulong→long ConvertChecked, so overflow is not detected.
-        // See FecKnownIssues.Pattern25.
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC uses wrong conv opcode for ulong→long ConvertChecked, missing overflow. See FecKnownIssues.Pattern25." );
+            FecGap.MiscompilesSilently( "Wrong conv opcode; the overflow check is skipped. See FecKnownIssues.Pattern25." );
 
         var a = Expression.Parameter( typeof(ulong), "a" );
         var lambda = Expression.Lambda<Func<ulong, long>>( Expression.ConvertChecked( a, typeof(long) ), a );
@@ -648,11 +645,8 @@ public class ConvertCheckedTests
     [DataRow( CompilerType.Hyperbee )]
     public void ConvertChecked_UIntToInt_Overflow( CompilerType compilerType )
     {
-        // FEC known bug: FEC emits conv.ovf.i4 (signed source) instead of conv.ovf.i4.un
-        // (unsigned source) for uint→int ConvertChecked, so overflow is not detected.
-        // See FecKnownIssues.Pattern27.
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC uses wrong conv opcode for uint→int ConvertChecked, missing overflow. See FecKnownIssues.Pattern27." );
+            FecGap.MiscompilesSilently( "Wrong conv opcode; the overflow check is skipped. See FecKnownIssues.Pattern27." );
 
         var a = Expression.Parameter( typeof(uint), "a" );
         var lambda = Expression.Lambda<Func<uint, int>>( Expression.ConvertChecked( a, typeof(int) ), a );

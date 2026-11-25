@@ -156,6 +156,9 @@ public class NullableTests
     [DataRow( CompilerType.Hyperbee )]
     public void Negate_NullableInt( CompilerType compilerType )
     {
+        if ( compilerType == CompilerType.Fast )
+            FecGap.Declines( "Nullable Negate." );
+
         var a = Expression.Parameter( typeof(int?), "a" );
         var neg = Expression.Negate( a );
         var lambda = Expression.Lambda<Func<int?, int?>>( neg, a );
@@ -174,13 +177,8 @@ public class NullableTests
     [DataRow( CompilerType.Hyperbee )]
     public void Not_NullableBool( CompilerType compilerType )
     {
-        // FEC known bug: FEC generates incorrect IL for Not(bool?).
-        // Calling ANY value through the compiled delegate causes AccessViolationException
-        // (crashes the test host). Guard prevents delegate invocation to avoid process crash.
-        // See FecKnownIssues.Pattern21_Not_NullableBool_HyperbeeNative for Hyperbee verification.
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC Not(bool?) generates invalid IL that crashes " +
-                                 "the test host (AccessViolationException). See FecKnownIssues.Pattern21." );
+            FecGap.Declines( "Not( bool? )." );
 
         var a = Expression.Parameter( typeof(bool?), "a" );
         var not = Expression.Not( a );

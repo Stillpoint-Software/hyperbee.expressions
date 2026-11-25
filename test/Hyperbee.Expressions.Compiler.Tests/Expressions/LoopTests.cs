@@ -456,11 +456,6 @@ public class LoopTests
     [DataRow( CompilerType.Hyperbee )]
     public void Loop_MultipleBreakPoints_EarlyExitOnNegative( CompilerType compilerType )
     {
-        // FEC known bug: FEC generates invalid IL for Loop with multiple typed Break targets
-        // (JIT rejects the stack layout). See FecKnownIssues.Pattern26.
-        if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC generates invalid IL for Loop with multiple typed Break targets. See FecKnownIssues.Pattern26." );
-
         // Sums elements until hitting a negative value or count of 3
         var arr = Expression.Parameter( typeof( int[] ), "arr" );
         var sum = Expression.Variable( typeof( int ), "sum" );

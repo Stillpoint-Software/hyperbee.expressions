@@ -609,11 +609,8 @@ public class ComparisonTests
     [DataRow( CompilerType.Hyperbee )]
     public void LessThan_ULong_BoundaryValues( CompilerType compilerType )
     {
-        // FEC known bug: FEC uses signed clt instead of unsigned clt.un for ulong,
-        // returning wrong results at boundary values (e.g. 0 < ulong.MaxValue → false).
-        // See FecKnownIssues.Pattern23.
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for ulong, returning wrong results. See FecKnownIssues.Pattern23." );
+            FecGap.MiscompilesSilently( "Signed comparison for ulong. See FecKnownIssues.Pattern23." );
 
         var a = Expression.Parameter( typeof( ulong ), "a" );
         var b = Expression.Parameter( typeof( ulong ), "b" );
@@ -756,7 +753,7 @@ public class ComparisonTests
     public void GreaterThan_UInt( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for uint, returning wrong results. See FecKnownIssues.Pattern23." );
+            FecGap.MiscompilesSilently( "Signed comparison for uint. See FecKnownIssues.Pattern23." );
 
         var a = Expression.Parameter( typeof( uint ), "a" );
         var b = Expression.Parameter( typeof( uint ), "b" );
@@ -779,7 +776,7 @@ public class ComparisonTests
     public void LessThan_UInt( CompilerType compilerType )
     {
         if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for uint, returning wrong results. See FecKnownIssues.Pattern23." );
+            FecGap.MiscompilesSilently( "Signed comparison for uint. See FecKnownIssues.Pattern23." );
 
         var a = Expression.Parameter( typeof( uint ), "a" );
         var b = Expression.Parameter( typeof( uint ), "b" );
@@ -840,9 +837,6 @@ public class ComparisonTests
     [DataRow( CompilerType.Hyperbee )]
     public void LessThanOrEqual_UInt( CompilerType compilerType )
     {
-        if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for uint. See FecKnownIssues.Pattern23." );
-
         var a = Expression.Parameter( typeof( uint ), "a" );
         var b = Expression.Parameter( typeof( uint ), "b" );
         var lambda = Expression.Lambda<Func<uint, uint, bool>>( Expression.LessThanOrEqual( a, b ), a, b );
@@ -883,9 +877,6 @@ public class ComparisonTests
     [DataRow( CompilerType.Hyperbee )]
     public void GreaterThanOrEqual_UInt( CompilerType compilerType )
     {
-        if ( compilerType == CompilerType.Fast )
-            Assert.Inconclusive( "Suppressed: FEC uses signed comparison for uint. See FecKnownIssues.Pattern23." );
-
         var a = Expression.Parameter( typeof( uint ), "a" );
         var b = Expression.Parameter( typeof( uint ), "b" );
         var lambda = Expression.Lambda<Func<uint, uint, bool>>( Expression.GreaterThanOrEqual( a, b ), a, b );
