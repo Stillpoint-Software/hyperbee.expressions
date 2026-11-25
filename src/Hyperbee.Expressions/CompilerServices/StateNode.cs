@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.CompilerServices.Transitions;
-using static System.Linq.Expressions.Expression;
 using Hyperbee.Expressions.Shared;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices;
 

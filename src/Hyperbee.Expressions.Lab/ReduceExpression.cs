@@ -1,7 +1,6 @@
 ﻿using System.Linq.Expressions;
-
-using static Hyperbee.Expressions.ExpressionExtensions;
 using Hyperbee.Expressions.Shared;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Lab;
 

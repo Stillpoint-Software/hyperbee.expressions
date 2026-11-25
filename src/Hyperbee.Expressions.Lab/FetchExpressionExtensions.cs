@@ -1,8 +1,8 @@
 ﻿using System.Linq.Expressions;
 using System.Net.Http.Json;
+using Hyperbee.Expressions.Shared;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
-using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.Lab;
 

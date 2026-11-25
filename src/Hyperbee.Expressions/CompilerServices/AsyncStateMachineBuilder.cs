@@ -5,8 +5,8 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using Hyperbee.Collections;
-using static System.Linq.Expressions.Expression;
 using Hyperbee.Expressions.Shared;
+using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices;
 

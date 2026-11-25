@@ -1,10 +1,9 @@
 ﻿using System.Linq.Expressions;
 using System.Net.Http.Headers;
 using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
-
-using static Hyperbee.Expressions.ExpressionExtensions;
 using Hyperbee.Expressions.Shared;
+using Microsoft.Extensions.DependencyInjection;
+using static Hyperbee.Expressions.ExpressionExtensions;
 
 namespace Hyperbee.Expressions.Lab;
 

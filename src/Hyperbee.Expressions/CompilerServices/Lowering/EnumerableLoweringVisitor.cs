@@ -1,8 +1,8 @@
 ﻿using System.Linq.Expressions;
 using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices.Transitions;
-using Hyperbee.Expressions.Visitors;
 using Hyperbee.Expressions.Shared;
+using Hyperbee.Expressions.Visitors;
 
 namespace Hyperbee.Expressions.CompilerServices.Lowering;
 

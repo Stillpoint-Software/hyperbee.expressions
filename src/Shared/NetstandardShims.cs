@@ -1,4 +1,4 @@
-#if NETSTANDARD
+﻿#if NETSTANDARD
 using System.Reflection;
 
 // Everything netstandard2.1 needs from the compiler and from reflection that newer
