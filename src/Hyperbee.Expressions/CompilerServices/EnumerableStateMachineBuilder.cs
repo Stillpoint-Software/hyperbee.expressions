@@ -9,6 +9,7 @@ using System.Runtime.ExceptionServices;
 using Hyperbee.Collections;
 
 using static System.Linq.Expressions.Expression;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.CompilerServices;
 
@@ -429,11 +430,8 @@ public static class YieldStateMachineBuilder
         // which is why SourceHandler saw nothing for a BlockEnumerable.
 
         if ( options.SourceHandler != null )
-            options.SourceHandler( GetDebugView( stateMachineExpression ) );
+            options.SourceHandler( ExpressionDebugView.Get( stateMachineExpression ) );
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }
-
-    [UnsafeAccessor( UnsafeAccessorKind.Method, Name = "get_DebugView" )]
-    private static extern string GetDebugView( Expression expression );
 }

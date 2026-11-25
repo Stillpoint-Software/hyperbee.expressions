@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using Hyperbee.Expressions.CompilerServices.Transitions;
 using static System.Linq.Expressions.Expression;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.CompilerServices;
 
@@ -41,7 +42,7 @@ internal sealed class StateNode
 
     public Expression GetExpression( StateMachineContext context )
     {
-        ArgumentNullException.ThrowIfNull( context, nameof( context ) );
+        ThrowIf.Null( context, nameof( context ) );
 
         var expressions = new List<Expression>( 8 ) { Label( NodeLabel ) };
         expressions.AddRange( Expressions );

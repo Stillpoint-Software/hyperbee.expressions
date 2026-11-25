@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices;
 using Hyperbee.Expressions.CompilerServices.Lowering;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions;
 
@@ -154,7 +155,7 @@ public static partial class ExpressionExtensions
 {
     public static AsyncBlockExpression BlockAsync( params Expression[] expressions )
     {
-        return new AsyncBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ) );
+        return new AsyncBlockExpression( EmptyReadOnly<ParameterExpression>.Collection, new ReadOnlyCollection<Expression>( expressions ) );
     }
 
     public static AsyncBlockExpression BlockAsync( ParameterExpression[] variables, params Expression[] expressions )
@@ -164,7 +165,7 @@ public static partial class ExpressionExtensions
 
     public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<Expression> expressions )
     {
-        return new AsyncBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions );
+        return new AsyncBlockExpression( EmptyReadOnly<ParameterExpression>.Collection, expressions );
     }
 
     public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
@@ -174,7 +175,7 @@ public static partial class ExpressionExtensions
 
     public static AsyncBlockExpression BlockAsync( Expression[] expressions, ExpressionRuntimeOptions options )
     {
-        return new AsyncBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ), options );
+        return new AsyncBlockExpression( EmptyReadOnly<ParameterExpression>.Collection, new ReadOnlyCollection<Expression>( expressions ), options );
     }
 
     public static AsyncBlockExpression BlockAsync( ParameterExpression[] variables, Expression[] expressions, ExpressionRuntimeOptions options )
@@ -184,7 +185,7 @@ public static partial class ExpressionExtensions
 
     public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options )
     {
-        return new AsyncBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions, options );
+        return new AsyncBlockExpression( EmptyReadOnly<ParameterExpression>.Collection, expressions, options );
     }
 
     public static AsyncBlockExpression BlockAsync( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options )

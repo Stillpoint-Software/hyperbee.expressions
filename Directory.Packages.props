@@ -9,6 +9,9 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
+    <!-- netstandard2.1 support only; see src/Shared and the csproj conditions. -->
+    <PackageVersion Include="Polyfill" Version="12.0.0" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="11.0.0" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="DotNext.Metaprogramming" Version="6.13.0" />
     <PackageVersion Include="FastExpressionCompiler" Version="6.0.0" />

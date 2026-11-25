@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using static System.Linq.Expressions.Expression;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.CompilerServices;
 
@@ -27,7 +28,7 @@ public static class CoroutineClosureRewriter
     /// </summary>
     public static LambdaExpression Rewrite( LambdaExpression lambda )
     {
-        ArgumentNullException.ThrowIfNull( lambda );
+        ThrowIf.Null( lambda );
 
         var shared = SharedVariableScanner.Find( lambda );
 

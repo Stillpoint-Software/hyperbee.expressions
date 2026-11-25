@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions;
 
@@ -30,8 +31,8 @@ public class WhileExpression : Expression
     {
         ThrowIfInvalid( test, body );
 
-        ArgumentNullException.ThrowIfNull( breakLabel, nameof( breakLabel ) );
-        ArgumentNullException.ThrowIfNull( continueLabel, nameof( continueLabel ) );
+        ThrowIf.Null( breakLabel, nameof( breakLabel ) );
+        ThrowIf.Null( continueLabel, nameof( continueLabel ) );
 
         Test = test;
         Body = body;
@@ -42,8 +43,8 @@ public class WhileExpression : Expression
 
     private static void ThrowIfInvalid( Expression test, object body )
     {
-        ArgumentNullException.ThrowIfNull( test, nameof( test ) );
-        ArgumentNullException.ThrowIfNull( body, nameof( body ) );
+        ThrowIf.Null( test, nameof( test ) );
+        ThrowIf.Null( body, nameof( body ) );
 
         if ( test.Type != typeof( bool ) )
             throw new ArgumentException( "Test expression must return a boolean.", nameof( test ) );

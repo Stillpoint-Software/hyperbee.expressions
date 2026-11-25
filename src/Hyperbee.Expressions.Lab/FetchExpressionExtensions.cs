@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.Lab;
 
@@ -14,8 +15,8 @@ public static partial class ExpressionExtensions
 
     public static Expression ReadJson( Expression response, Type type )
     {
-        ArgumentNullException.ThrowIfNull( response, nameof( response ) );
-        ArgumentNullException.ThrowIfNull( type, nameof( type ) );
+        ThrowIf.Null( response, nameof( response ) );
+        ThrowIf.Null( type, nameof( type ) );
 
         if ( response.Type != typeof( HttpResponseMessage ) )
             throw new ArgumentException( "Response must be of type HttpResponseMessage.", nameof( response ) );
@@ -41,7 +42,7 @@ public static partial class ExpressionExtensions
 
     public static Expression ReadText( Expression response )
     {
-        ArgumentNullException.ThrowIfNull( response, nameof( response ) );
+        ThrowIf.Null( response, nameof( response ) );
 
         return Call(
             Property( response, nameof( HttpResponseMessage.Content ) ),
@@ -57,7 +58,7 @@ public static partial class ExpressionExtensions
 
     public static Expression ReadBytes( Expression response )
     {
-        ArgumentNullException.ThrowIfNull( response, nameof( response ) );
+        ThrowIf.Null( response, nameof( response ) );
 
         return Call(
             Property( response, nameof( HttpResponseMessage.Content ) ),
@@ -73,7 +74,7 @@ public static partial class ExpressionExtensions
 
     public static Expression ReadStream( Expression response )
     {
-        ArgumentNullException.ThrowIfNull( response, nameof( response ) );
+        ThrowIf.Null( response, nameof( response ) );
 
         return Call(
             Property( response, nameof( HttpResponseMessage.Content ) ),

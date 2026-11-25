@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Linq.Expressions;
 using System.Reflection;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions;
 
@@ -46,8 +47,8 @@ public class ForEachExpression : Expression
     {
         ThrowIfInvalid( collection, element, body );
 
-        ArgumentNullException.ThrowIfNull( breakLabel, nameof( breakLabel ) );
-        ArgumentNullException.ThrowIfNull( continueLabel, nameof( continueLabel ) );
+        ThrowIf.Null( breakLabel, nameof( breakLabel ) );
+        ThrowIf.Null( continueLabel, nameof( continueLabel ) );
 
         Collection = collection;
         Element = element;
@@ -58,9 +59,9 @@ public class ForEachExpression : Expression
 
     private static void ThrowIfInvalid( Expression collection, ParameterExpression element, object body )
     {
-        ArgumentNullException.ThrowIfNull( collection, nameof( collection ) );
-        ArgumentNullException.ThrowIfNull( element, nameof( element ) );
-        ArgumentNullException.ThrowIfNull( body, nameof( body ) );
+        ThrowIf.Null( collection, nameof( collection ) );
+        ThrowIf.Null( element, nameof( element ) );
+        ThrowIf.Null( body, nameof( body ) );
 
         if ( !typeof( IEnumerable ).IsAssignableFrom( collection.Type ) )
             throw new ArgumentException( $"Collection must implement {nameof( IEnumerable )}.", nameof( collection ) );

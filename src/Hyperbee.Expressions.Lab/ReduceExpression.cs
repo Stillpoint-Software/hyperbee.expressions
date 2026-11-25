@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 
 using static Hyperbee.Expressions.ExpressionExtensions;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.Lab;
 
@@ -21,8 +22,8 @@ public class ReduceExpression : Expression
 
     private ReduceExpression( Expression collection, Expression seed )
     {
-        ArgumentNullException.ThrowIfNull( collection );
-        ArgumentNullException.ThrowIfNull( seed );
+        ThrowIf.Null( collection );
+        ThrowIf.Null( seed );
 
         if ( !typeof( System.Collections.IEnumerable ).IsAssignableFrom( collection.Type ) )
             throw new ArgumentException( "Collection must be IEnumerable", nameof( collection ) );
@@ -42,7 +43,7 @@ public class ReduceExpression : Expression
 
     public ReduceExpression( Expression collection, Expression seed, ReduceBody body ) : this( collection, seed )
     {
-        ArgumentNullException.ThrowIfNull( body );
+        ThrowIf.Null( body );
         Body = body( Accumulator, Item );
     }
 
@@ -61,7 +62,7 @@ public class ReduceExpression : Expression
 
     public ReduceExpression( Expression collection, Expression seed, Expression body ) : this( collection, seed )
     {
-        ArgumentNullException.ThrowIfNull( body );
+        ThrowIf.Null( body );
         Body = body;
     }
 

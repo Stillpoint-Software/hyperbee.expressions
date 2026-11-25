@@ -4,6 +4,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
 using static Hyperbee.Expressions.ExpressionExtensions;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.Lab;
 
@@ -24,8 +25,8 @@ public class FetchExpression : Expression, IDependencyInjectionExpression
         Expression content = null,
         Expression clientName = null )
     {
-        ArgumentNullException.ThrowIfNull( url, nameof( url ) );
-        ArgumentNullException.ThrowIfNull( method, nameof( method ) );
+        ThrowIf.Null( url, nameof( url ) );
+        ThrowIf.Null( method, nameof( method ) );
 
         if ( url.Type != typeof( string ) )
             throw new ArgumentException( "Url must be of type string.", nameof( url ) );

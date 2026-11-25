@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using static Hyperbee.Expressions.ExpressionExtensions;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.Lab;
 
@@ -21,8 +22,8 @@ public class MapExpression : Expression
 
     private MapExpression( Expression collection, Type resultType )
     {
-        ArgumentNullException.ThrowIfNull( collection );
-        ArgumentNullException.ThrowIfNull( resultType );
+        ThrowIf.Null( collection );
+        ThrowIf.Null( resultType );
 
         if ( !typeof( System.Collections.IEnumerable ).IsAssignableFrom( collection.Type ) )
             throw new ArgumentException( "Collection must be IEnumerable", nameof( collection ) );
@@ -60,7 +61,7 @@ public class MapExpression : Expression
 
     public MapExpression( Expression collection, Type resultType, Expression body ) : this( collection, resultType )
     {
-        ArgumentNullException.ThrowIfNull( body );
+        ThrowIf.Null( body );
         Body = body;
     }
 

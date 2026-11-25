@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using Hyperbee.Collections;
 using static System.Linq.Expressions.Expression;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.CompilerServices;
 
@@ -37,7 +38,7 @@ internal class AsyncStateMachineBuilder<TResult> : CoroutineStateMachineBuilder<
 
     public Expression CreateStateMachine( AsyncLoweringTransformer loweringTransformer, int id, ExternVariables externVariables = null, bool canEmitIntoType = false )
     {
-        ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
+        ThrowIf.Null( loweringTransformer, nameof( loweringTransformer ) );
 
         return BuildStateMachine( () => loweringTransformer(), id, externVariables, canEmitIntoType );
     }
@@ -482,14 +483,11 @@ public static class AsyncStateMachineBuilder
 
         if ( options.SourceHandler != null )
         {
-            var debugView = GetDebugView( stateMachineExpression );
+            var debugView = ExpressionDebugView.Get( stateMachineExpression );
             options.SourceHandler( debugView );
         }
 
         return stateMachineExpression; // the-best expression breakpoint ever
     }
-
-    [UnsafeAccessor( UnsafeAccessorKind.Method, Name = "get_DebugView" )]
-    private static extern string GetDebugView( Expression expression );
 }
 

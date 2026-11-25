@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions;
 
@@ -10,8 +11,8 @@ public class DebugExpression : Expression
 
     public DebugExpression( Delegate debugDelegate, Expression condition, Expression[] arguments )
     {
-        ArgumentNullException.ThrowIfNull( debugDelegate, nameof( debugDelegate ) );
-        ArgumentNullException.ThrowIfNull( arguments, nameof( arguments ) );
+        ThrowIf.Null( debugDelegate, nameof( debugDelegate ) );
+        ThrowIf.Null( arguments, nameof( arguments ) );
 
         if ( condition != null && condition.Type != typeof( bool ) )
             throw new ArgumentException( "Condition must be a boolean expression.", nameof( condition ) );

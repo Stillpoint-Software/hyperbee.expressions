@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices;
 using Hyperbee.Expressions.CompilerServices.Lowering;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions;
 
@@ -168,7 +169,7 @@ public static partial class ExpressionExtensions
 {
     public static EnumerableBlockExpression BlockEnumerable( params Expression[] expressions )
     {
-        return new EnumerableBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ) );
+        return new EnumerableBlockExpression( EmptyReadOnly<ParameterExpression>.Collection, new ReadOnlyCollection<Expression>( expressions ) );
     }
 
     public static EnumerableBlockExpression BlockEnumerable( ParameterExpression[] variables, params Expression[] expressions )
@@ -178,7 +179,7 @@ public static partial class ExpressionExtensions
 
     public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<Expression> expressions )
     {
-        return new EnumerableBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions );
+        return new EnumerableBlockExpression( EmptyReadOnly<ParameterExpression>.Collection, expressions );
     }
 
     public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
@@ -188,7 +189,7 @@ public static partial class ExpressionExtensions
 
     public static EnumerableBlockExpression BlockEnumerable( Expression[] expressions, ExpressionRuntimeOptions options )
     {
-        return new EnumerableBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, new ReadOnlyCollection<Expression>( expressions ), options );
+        return new EnumerableBlockExpression( EmptyReadOnly<ParameterExpression>.Collection, new ReadOnlyCollection<Expression>( expressions ), options );
     }
 
     public static EnumerableBlockExpression BlockEnumerable( ParameterExpression[] variables, Expression[] expressions, ExpressionRuntimeOptions options )
@@ -198,7 +199,7 @@ public static partial class ExpressionExtensions
 
     public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options )
     {
-        return new EnumerableBlockExpression( ReadOnlyCollection<ParameterExpression>.Empty, expressions, options );
+        return new EnumerableBlockExpression( EmptyReadOnly<ParameterExpression>.Collection, expressions, options );
     }
 
     public static EnumerableBlockExpression BlockEnumerable( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions, ExpressionRuntimeOptions options )

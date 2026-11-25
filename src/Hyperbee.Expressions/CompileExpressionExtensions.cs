@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions;
 
@@ -9,7 +10,7 @@ public static partial class ExpressionExtensions
         IServiceProvider serviceProvider,
         bool preferInterpretation = false )
     {
-        ArgumentNullException.ThrowIfNull( serviceProvider, nameof( serviceProvider ) );
+        ThrowIf.Null( serviceProvider, nameof( serviceProvider ) );
 
         var setter = new ServiceSetter( serviceProvider );
 
@@ -23,7 +24,7 @@ public static partial class ExpressionExtensions
         IServiceProvider serviceProvider,
         bool preferInterpretation = false )
     {
-        ArgumentNullException.ThrowIfNull( serviceProvider, nameof( serviceProvider ) );
+        ThrowIf.Null( serviceProvider, nameof( serviceProvider ) );
 
         var setter = new ServiceSetter( serviceProvider );
 

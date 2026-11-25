@@ -2,6 +2,7 @@
 using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices.Transitions;
 using Hyperbee.Expressions.Visitors;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.CompilerServices.Lowering;
 
@@ -13,8 +14,8 @@ internal class EnumerableLoweringVisitor : BaseLoweringVisitor<EnumerableLowerin
         Expression[] expressions,
         LinkedDictionary<ParameterExpression, ParameterExpression> scopedVariables = null )
     {
-        ArgumentNullException.ThrowIfNull( expressions, nameof( expressions ) );
-        ArgumentOutOfRangeException.ThrowIfZero( expressions.Length, nameof( expressions ) );
+        ThrowIf.Null( expressions, nameof( expressions ) );
+        ThrowIf.Zero( expressions.Length, nameof( expressions ) );
 
         ExpressionMatcher = new ExpressionMatcher( expr => expr is YieldExpression or EnumerableBlockExpression );
         VariableResolver = new VariableResolver( localVariables, scopedVariables, States );

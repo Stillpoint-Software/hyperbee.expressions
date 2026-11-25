@@ -1,5 +1,6 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection.Emit;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.CompilerServices;
 
@@ -50,7 +51,7 @@ internal abstract class CoroutineStateMachineBuilder<TResult>
         ExternVariables externVariables,
         bool canEmitIntoType )
     {
-        ArgumentNullException.ThrowIfNull( loweringTransformer, nameof( loweringTransformer ) );
+        ThrowIf.Null( loweringTransformer, nameof( loweringTransformer ) );
 
         var context = new StateMachineContext
         {

@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using Hyperbee.Expressions.Compiler.Diagnostics;
@@ -7,6 +7,7 @@ using Hyperbee.Expressions.Compiler.IR;
 using Hyperbee.Expressions.Compiler.Lowering;
 using Hyperbee.Expressions.Compiler.Passes;
 using Hyperbee.Expressions.CompilerServices;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions.Compiler;
 
@@ -133,8 +134,8 @@ public static class HyperbeeCompiler
     /// </summary>
     public static void CompileToMethod( LambdaExpression lambda, MethodBuilder method )
     {
-        ArgumentNullException.ThrowIfNull( lambda );
-        ArgumentNullException.ThrowIfNull( method );
+        ThrowIf.Null( lambda );
+        ThrowIf.Null( method );
 
         if ( !method.IsStatic )
             throw new ArgumentException(
@@ -178,11 +179,11 @@ public static class HyperbeeCompiler
         MethodBuilder method,
         FieldInfo constantsField )
     {
-        ArgumentNullException.ThrowIfNull( parameters );
-        ArgumentNullException.ThrowIfNull( body );
-        ArgumentNullException.ThrowIfNull( returnType );
-        ArgumentNullException.ThrowIfNull( method );
-        ArgumentNullException.ThrowIfNull( constantsField );
+        ThrowIf.Null( parameters );
+        ThrowIf.Null( body );
+        ThrowIf.Null( returnType );
+        ThrowIf.Null( method );
+        ThrowIf.Null( constantsField );
 
         var ir = new IRBuilder();
         var lowerer = new ExpressionLowerer( ir, capturedVariables: null, lambda => Compile( lambda ) );
@@ -227,8 +228,8 @@ public static class HyperbeeCompiler
     /// </summary>
     public static void CompileToInstanceMethod( LambdaExpression lambda, MethodBuilder method )
     {
-        ArgumentNullException.ThrowIfNull( lambda );
-        ArgumentNullException.ThrowIfNull( method );
+        ThrowIf.Null( lambda );
+        ThrowIf.Null( method );
 
         if ( ScanForNonEmbeddableConstants( lambda.Body ) )
             throw new NotSupportedException(

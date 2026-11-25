@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
+using Hyperbee.Expressions.Shared;
 
 namespace Hyperbee.Expressions;
 
@@ -18,8 +19,8 @@ public class StringFormatExpression : Expression
 
     internal StringFormatExpression( Expression formatProvider, Expression format, Expression[] arguments )
     {
-        ArgumentNullException.ThrowIfNull( format, nameof( format ) );
-        ArgumentNullException.ThrowIfNull( arguments, nameof( arguments ) );
+        ThrowIf.Null( format, nameof( format ) );
+        ThrowIf.Null( arguments, nameof( arguments ) );
 
         if ( format.Type != typeof( string ) )
             throw new ArgumentException( "Format expression must be of type string.", nameof( format ) );

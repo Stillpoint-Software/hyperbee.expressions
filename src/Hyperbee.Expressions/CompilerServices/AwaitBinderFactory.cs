@@ -159,7 +159,7 @@ internal static class AwaitBinderFactory
         // ConfigureAwait belongs to the awaitable, as Task.ConfigureAwait does -- not to the
         // awaiter, which is where this used to look and so never found one.
 
-        var configureAwaitImplMethod = awaitableType.GetMethod( ConfigureAwaitName, bindingAttr, [typeof( bool )] );
+        var configureAwaitImplMethod = awaitableType.GetMethod( ConfigureAwaitName, bindingAttr, null, [typeof( bool )], null );
 
         var getAwaiterImplDelegate = CreateGetAwaiterImplDelegate( awaitableType, getAwaiterImplMethod, configureAwaitImplMethod );
         var getResultImplDelegate = CreateGetResultImplDelegate( awaiterType, getResultImplMethod );
@@ -333,7 +333,7 @@ internal static class AwaitBinderFactory
     {
         const BindingFlags bindingAttr = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-        var getAwaiterMethod = configureAwaitImplMethod?.ReturnType.GetMethod( GetAwaiterName, bindingAttr, [] );
+        var getAwaiterMethod = configureAwaitImplMethod?.ReturnType.GetMethod( GetAwaiterName, bindingAttr, null, [], null );
 
         return getAwaiterMethod?.ReturnType == awaiterType ? getAwaiterMethod : null;
     }
