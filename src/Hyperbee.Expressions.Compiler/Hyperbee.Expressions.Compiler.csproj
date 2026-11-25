@@ -54,7 +54,8 @@
     src/Shared/NetstandardShims.cs; see the note there on why not Polyfill.
   -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+    <!-- Pinned to match Hyperbee.Expressions; see the note on the same group there. -->
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" VersionOverride="8.0.0" />
   </ItemGroup>
 
 </Project>

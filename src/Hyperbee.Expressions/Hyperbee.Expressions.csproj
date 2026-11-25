@@ -51,9 +51,19 @@
     netstandard2.1 needs Microsoft.Bcl.AsyncInterfaces for IAsyncEnumerable.
     The compiler-required attributes and the reflection shim are hand-written in
     src/Shared/NetstandardShims.cs; see the note there on why not Polyfill.
+
+    The versions are pinned to 8.0.x on this target alone. The netstandard2.1 asset
+    exists to serve net8.0 and net9.0 consumers, and the 11.0.0 packages declare no
+    support for either, so a net8.0 consumer collected a support warning per package
+    on every build, which defeats the point of offering the target. 8.0.x supports
+    net8.0 upward and still ships a netstandard2.0 asset, so this costs no API that
+    the netstandard2.1 sources use.
   -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" VersionOverride="8.0.0" />
+    <PackageReference Update="Microsoft.Extensions.Configuration" VersionOverride="8.0.0" />
+    <PackageReference Update="Microsoft.Extensions.Configuration.Binder" VersionOverride="8.0.2" />
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection" VersionOverride="8.0.1" />
   </ItemGroup>
 
 </Project>
