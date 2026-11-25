@@ -6,6 +6,9 @@ using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
+using BenchmarkDotNet.Toolchains;
+using BenchmarkDotNet.Toolchains.CsProj;
+using BenchmarkDotNet.Toolchains.DotNetCli;
 using BenchmarkDotNet.Validators;
 
 namespace Hyperbee.Expressions.Compiler.Benchmarks;
@@ -18,10 +21,14 @@ public class BenchmarkConfig
         {
         }
 
-        // BenchmarkDotNet 0.15.8 is the latest stable and has no CoreRuntime constant
-        // past Core10_0, so .NET 11 goes through the factory for versions the package
-        // does not know yet. The 11.0 runtime and SDK must be installed locally.
-        private static readonly Runtime Net11 = CoreRuntime.CreateForNewVersion( "net11.0", ".NET 11" );
+        // BenchmarkDotNet 0.15.8 is the latest stable and has no CoreRuntime constant past
+        // Core10_0. CoreRuntime.CreateForNewVersion looks like the answer but is not: it
+        // yields RuntimeMoniker.NotRecognized, and DotNetSdkValidator.ValidateCoreSdks then
+        // throws NotImplementedException from GetRuntimeVersion before anything runs. A
+        // toolchain pinned to the moniker is the supported route for a framework the package
+        // does not know yet; the job's own Runtime is left alone so the validator stays happy.
+        private static readonly IToolchain Net11 =
+            CsProjCoreToolchain.From( new NetCoreAppSettings( "net11.0", null, ".NET 11" ) );
 
         protected Config( Job job )
         {
@@ -32,7 +39,7 @@ public class BenchmarkConfig
                 .WithId( ".NET 10" ) );
 
             AddJob( job
-                .WithRuntime( Net11 )
+                .WithToolchain( Net11 )
                 .WithId( ".NET 11" ) );
 
             AddExporter( MarkdownExporter.GitHub );

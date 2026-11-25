@@ -46,27 +46,27 @@ public class ExecutionBenchmarks
     public void Setup()
     {
         _simple_System   = BenchmarkExpressions.Simple.Compile();
-        _simple_Fec      = BenchmarkExpressions.Simple.CompileFast()!;
+        _simple_Fec      = Fec.Compile( BenchmarkExpressions.Simple );
         _simple_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.Simple );
 
         _closure_System   = BenchmarkExpressions.Closure.Compile();
-        _closure_Fec      = BenchmarkExpressions.Closure.CompileFast()!;
+        _closure_Fec      = Fec.Compile( BenchmarkExpressions.Closure );
         _closure_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.Closure );
 
         _tryCatch_System   = BenchmarkExpressions.TryCatch.Compile();
-        _tryCatch_Fec      = BenchmarkExpressions.TryCatch.CompileFast()!;
+        _tryCatch_Fec      = Fec.Compile( BenchmarkExpressions.TryCatch );
         _tryCatch_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.TryCatch );
 
         _complex_System   = BenchmarkExpressions.Complex.Compile();
-        _complex_Fec      = BenchmarkExpressions.Complex.CompileFast()!;
+        _complex_Fec      = Fec.Compile( BenchmarkExpressions.Complex );
         _complex_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.Complex );
 
         _loop_System   = BenchmarkExpressions.Loop.Compile();
-        _loop_Fec      = BenchmarkExpressions.Loop.CompileFast()!;
+        _loop_Fec      = Fec.Compile( BenchmarkExpressions.Loop );
         _loop_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.Loop );
 
         _switch_System   = BenchmarkExpressions.Switch.Compile();
-        _switch_Fec      = BenchmarkExpressions.Switch.CompileFast()!;
+        _switch_Fec      = Fec.Compile( BenchmarkExpressions.Switch );
         _switch_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.Switch );
     }
 

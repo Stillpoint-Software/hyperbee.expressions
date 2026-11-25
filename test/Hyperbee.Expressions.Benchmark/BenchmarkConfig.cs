@@ -6,6 +6,8 @@ using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
+using BenchmarkDotNet.Toolchains.CsProj;
+using BenchmarkDotNet.Toolchains.DotNetCli;
 using BenchmarkDotNet.Validators;
 
 namespace Hyperbee.Expressions.Benchmark;
@@ -22,9 +24,11 @@ public class BenchmarkConfig
                 .WithRuntime( CoreRuntime.Core10_0 )
                 .WithId( ".NET 10" ) );
 
-            // BenchmarkDotNet 0.15.8 has no CoreRuntime constant past Core10_0.
+            // BenchmarkDotNet 0.15.8 has no CoreRuntime constant past Core10_0, and
+            // CoreRuntime.CreateForNewVersion trips DotNetSdkValidator. A toolchain pinned
+            // to the moniker is the supported route; see the compiler benchmarks' config.
             AddJob( Job.ShortRun
-                .WithRuntime( CoreRuntime.CreateForNewVersion( "net11.0", ".NET 11" ) )
+                .WithToolchain( CsProjCoreToolchain.From( new NetCoreAppSettings( "net11.0", null, ".NET 11" ) ) )
                 .WithId( ".NET 11" ) );
 
 

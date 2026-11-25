@@ -39,15 +39,15 @@ public class InvocationScaleBenchmarks
     public void Setup()
     {
         _simple_System = BenchmarkExpressions.Simple.Compile();
-        _simple_Fec = BenchmarkExpressions.Simple.CompileFast()!;
+        _simple_Fec = Fec.Compile( BenchmarkExpressions.Simple );
         _simple_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.Simple );
 
         _tryCatch_System = BenchmarkExpressions.TryCatch.Compile();
-        _tryCatch_Fec = BenchmarkExpressions.TryCatch.CompileFast()!;
+        _tryCatch_Fec = Fec.Compile( BenchmarkExpressions.TryCatch );
         _tryCatch_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.TryCatch );
 
         _switch_System = BenchmarkExpressions.Switch.Compile();
-        _switch_Fec = BenchmarkExpressions.Switch.CompileFast()!;
+        _switch_Fec = Fec.Compile( BenchmarkExpressions.Switch );
         _switch_Hyperbee = HyperbeeCompiler.Compile( BenchmarkExpressions.Switch );
     }
 

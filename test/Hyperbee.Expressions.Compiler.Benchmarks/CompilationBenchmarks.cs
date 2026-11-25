@@ -18,7 +18,7 @@ public class CompilationBenchmarks
     public Delegate Simple_System() => BenchmarkExpressions.Simple.Compile();
 
     [Benchmark( Description = "Simple | FEC" )]
-    public Delegate Simple_Fec() => BenchmarkExpressions.Simple.CompileFast();
+    public Delegate Simple_Fec() => Fec.Compile( BenchmarkExpressions.Simple );
 
     [Benchmark( Description = "Simple | Hyperbee" )]
     public Delegate Simple_Hyperbee() => HyperbeeCompiler.Compile( BenchmarkExpressions.Simple );
@@ -29,7 +29,7 @@ public class CompilationBenchmarks
     public Delegate Closure_System() => BenchmarkExpressions.Closure.Compile();
 
     [Benchmark( Description = "Closure | FEC" )]
-    public Delegate Closure_Fec() => BenchmarkExpressions.Closure.CompileFast();
+    public Delegate Closure_Fec() => Fec.Compile( BenchmarkExpressions.Closure );
 
     [Benchmark( Description = "Closure | Hyperbee" )]
     public Delegate Closure_Hyperbee() => HyperbeeCompiler.Compile( BenchmarkExpressions.Closure );
@@ -40,7 +40,7 @@ public class CompilationBenchmarks
     public Delegate TryCatch_System() => BenchmarkExpressions.TryCatch.Compile();
 
     [Benchmark( Description = "TryCatch | FEC" )]
-    public Delegate TryCatch_Fec() => BenchmarkExpressions.TryCatch.CompileFast();
+    public Delegate TryCatch_Fec() => Fec.Compile( BenchmarkExpressions.TryCatch );
 
     [Benchmark( Description = "TryCatch | Hyperbee" )]
     public Delegate TryCatch_Hyperbee() => HyperbeeCompiler.Compile( BenchmarkExpressions.TryCatch );
@@ -51,7 +51,7 @@ public class CompilationBenchmarks
     public Delegate Complex_System() => BenchmarkExpressions.Complex.Compile();
 
     [Benchmark( Description = "Complex | FEC" )]
-    public Delegate Complex_Fec() => BenchmarkExpressions.Complex.CompileFast();
+    public Delegate Complex_Fec() => Fec.Compile( BenchmarkExpressions.Complex );
 
     [Benchmark( Description = "Complex | Hyperbee" )]
     public Delegate Complex_Hyperbee() => HyperbeeCompiler.Compile( BenchmarkExpressions.Complex );
@@ -62,7 +62,7 @@ public class CompilationBenchmarks
     public Delegate Loop_System() => BenchmarkExpressions.Loop.Compile();
 
     [Benchmark( Description = "Loop | FEC" )]
-    public Delegate Loop_Fec() => BenchmarkExpressions.Loop.CompileFast();
+    public Delegate Loop_Fec() => Fec.Compile( BenchmarkExpressions.Loop );
 
     [Benchmark( Description = "Loop | Hyperbee" )]
     public Delegate Loop_Hyperbee() => HyperbeeCompiler.Compile( BenchmarkExpressions.Loop );
@@ -73,7 +73,7 @@ public class CompilationBenchmarks
     public Delegate Switch_System() => BenchmarkExpressions.Switch.Compile();
 
     [Benchmark( Description = "Switch | FEC" )]
-    public Delegate Switch_Fec() => BenchmarkExpressions.Switch.CompileFast();
+    public Delegate Switch_Fec() => Fec.Compile( BenchmarkExpressions.Switch );
 
     [Benchmark( Description = "Switch | Hyperbee" )]
     public Delegate Switch_Hyperbee() => HyperbeeCompiler.Compile( BenchmarkExpressions.Switch );
