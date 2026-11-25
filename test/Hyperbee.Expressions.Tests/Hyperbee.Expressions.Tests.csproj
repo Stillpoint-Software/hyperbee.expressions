@@ -57,4 +57,35 @@
     </PackageReference>
   </ItemGroup>
 
+
+  <!--
+    Opt-in: run this suite against the netstandard2.1 build of the libraries
+    instead of the matching net10.0/net11.0 build. netstandard2.1 is not a
+    runtime and cannot host a test, so the tests still execute on net10.0 or
+    net11.0; only the library under test changes. This is what exercises the
+    #if NETSTANDARD branches and the hand-written shims in src/Shared.
+
+      dotnet test <project> -f net10.0 -p:UseNetstandardAsset=true
+  -->
+  <ItemGroup Condition="'$(UseNetstandardAsset)' == 'true'">
+    <ProjectReference Update="..\..\src\Hyperbee.Expressions\Hyperbee.Expressions.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.1" />
+    <ProjectReference Update="..\..\src\Hyperbee.Expressions.Compiler\Hyperbee.Expressions.Compiler.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.1" />
+
+    <!--
+      Hyperbee.Expressions.Lab has no netstandard2.1 build: it depends on
+      Hyperbee.Json, which depends in turn on the published
+      Hyperbee.Expressions.Compiler, so Lab can only follow once that package
+      ships a netstandard2.1 asset. Dropping the reference here would leave a
+      second build of Hyperbee.Expressions in the output under the same
+      assembly identity, so the Lab-dependent tests come out with it.
+    -->
+    <ProjectReference Remove="..\..\src\Hyperbee.Expressions.Lab\Hyperbee.Expressions.Lab.csproj" />
+    <Compile Remove="FetchExpressionTests.cs" />
+    <Compile Remove="JsonExpressionTests.cs" />
+    <Compile Remove="MapExpressionTests.cs" />
+    <Compile Remove="ReduceExpressionTests.cs" />
+  </ItemGroup>
+
 </Project>

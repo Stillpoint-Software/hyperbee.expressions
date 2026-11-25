@@ -41,4 +41,28 @@
     </PackageReference>
   </ItemGroup>
 
+
+  <!--
+    Opt-in: run this suite against the netstandard2.1 build of the libraries
+    instead of the matching net10.0/net11.0 build. netstandard2.1 is not a
+    runtime and cannot host a test, so the tests still execute on net10.0 or
+    net11.0; only the library under test changes. This is what exercises the
+    #if NETSTANDARD branches and the hand-written shims in src/Shared.
+
+      dotnet test <project> -f net10.0 -p:UseNetstandardAsset=true
+  -->
+  <ItemGroup Condition="'$(UseNetstandardAsset)' == 'true'">
+    <ProjectReference Update="..\..\src\Hyperbee.Expressions.Compiler\Hyperbee.Expressions.Compiler.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.1" />
+
+    <!--
+      SetTargetFramework only applies to the direct reference edge, so the
+      transitive Hyperbee.Expressions would still resolve from this project's
+      own framework and leave a net10.0 assembly under an ns2.1 compiler. A
+      direct edge pins it, so the whole graph under test is netstandard2.1.
+    -->
+    <ProjectReference Include="..\..\src\Hyperbee.Expressions\Hyperbee.Expressions.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.1" />
+  </ItemGroup>
+
 </Project>
