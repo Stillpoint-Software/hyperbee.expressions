@@ -1,5 +1,11 @@
 using System;
 
+// Enabled per file: this project sets <Nullable>disable</Nullable>, and the twin of this
+// file in Hyperbee.Expressions.Compiler.Tests compiles in a project that enables it. One
+// source shape has to be valid in both, so the annotation is turned on here rather than
+// dropped.
+#nullable enable
+
 namespace Hyperbee.Expressions.Tests.TestSupport;
 
 /// <summary>
