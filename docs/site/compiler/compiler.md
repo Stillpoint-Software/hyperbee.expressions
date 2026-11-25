@@ -46,10 +46,10 @@ services.AddSingleton<IExpressionCompiler>( HyperbeeExpressionCompiler.Instance 
 
 ## Highlights
 
-- **8-28x faster** compilation than the System compiler
-- **0.96-1.50x** of FastExpressionCompiler (FEC) compilation time
-- **31-52% fewer** allocations than the System compiler
-- **15-19x faster** coroutine execution than the System compiler; FEC does not support coroutines
+- **9.3-48x faster** compilation than the System compiler
+- **1.15-1.53x** of FastExpressionCompiler (FEC) compilation time
+- **29-57% fewer** allocations than the System compiler
+- **16-24x faster** coroutine execution than the System compiler; FEC does not support coroutines
 - Supports all expression patterns -- including those FEC does not support
 - Fully compatible with `AsyncBlockExpression` state machines via ambient context
 - `IExpressionCompiler` interface for DI-friendly injection

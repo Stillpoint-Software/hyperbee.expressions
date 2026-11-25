@@ -23,8 +23,8 @@ LambdaExpression
        |
        v
   [ 2. Transform ]      Optimization passes
-  StackSpillPass        -- eliminate unnecessary locals at branch merge-points
-  PeepholePass          -- constant folding, branch simplification, load/store elimination
+  StackSpillPass        -- empty the evaluation stack at exception boundaries
+  PeepholePass          -- nine local rewrites: load/store, box/unbox, dup/pop, branch fusion
   DeadCodePass          -- remove unreachable instructions
   IRValidator           -- structural correctness checks (debug builds)
        |
