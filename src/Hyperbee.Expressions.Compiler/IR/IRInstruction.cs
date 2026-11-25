@@ -14,6 +14,7 @@ public readonly struct IRInstruction
     /// <summary>
     /// Operand whose meaning depends on Op:
     ///   LoadConst       -> index into operand table
+    ///   LoadInt         -> the int value itself, not an index
     ///   LoadLocal       -> local variable index
     ///   StoreLocal      -> local variable index
     ///   LoadArg         -> argument index

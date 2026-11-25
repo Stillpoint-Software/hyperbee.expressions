@@ -500,13 +500,13 @@ public class ExpressionLowerer
         var underlyingType = Nullable.GetUnderlyingType( node.Type );
         if ( underlyingType != null )
         {
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Value, underlyingType ) );
+            _ir.EmitLoadConst( node.Value, underlyingType );
             var ctor = node.Type.GetConstructor( [underlyingType] )!;
             _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
             return;
         }
 
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Value, node.Type ) );
+        _ir.EmitLoadConst( node.Value, node.Type );
     }
 
     private void LowerParameter( ParameterExpression node )
@@ -615,7 +615,7 @@ public class ExpressionLowerer
             case ExpressionType.NotEqual:
                 // ceq + ldc.i4.0 + ceq (negate equality)
                 _ir.Emit( IROp.Ceq );
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                _ir.EmitLoadConst( 0 );
                 _ir.Emit( IROp.Ceq );
                 break;
             case ExpressionType.LessThan:
@@ -631,13 +631,13 @@ public class ExpressionLowerer
             case ExpressionType.LessThanOrEqual:
                 // cgt.un: for float (NaN returns false) and unsigned types
                 _ir.Emit( IsUnsignedOrFloat( leftType ) ? IROp.CgtUn : IROp.Cgt );
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                _ir.EmitLoadConst( 0 );
                 _ir.Emit( IROp.Ceq );
                 break;
             case ExpressionType.GreaterThanOrEqual:
                 // clt.un: for float (NaN returns false) and unsigned types
                 _ir.Emit( IsUnsignedOrFloat( leftType ) ? IROp.CltUn : IROp.Clt );
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                _ir.EmitLoadConst( 0 );
                 _ir.Emit( IROp.Ceq );
                 break;
             default:
@@ -741,13 +741,13 @@ public class ExpressionLowerer
 
             // mismatchLabel: one null one not → Equal:false, NotEqual:true
             _ir.MarkLabel( mismatchLabel );
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.NodeType == ExpressionType.NotEqual ? 1 : 0 ) );
+            _ir.EmitLoadConst( node.NodeType == ExpressionType.NotEqual ? 1 : 0 );
             _ir.Emit( IROp.StoreLocal, resultLocal );
             _ir.Emit( IROp.Branch, endLabel );
 
             // bothNullLabel: null==null → true, null!=null → false
             _ir.MarkLabel( bothNullLabel );
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.NodeType == ExpressionType.Equal ? 1 : 0 ) );
+            _ir.EmitLoadConst( node.NodeType == ExpressionType.Equal ? 1 : 0 );
             _ir.Emit( IROp.StoreLocal, resultLocal );
         }
         else
@@ -883,7 +883,7 @@ public class ExpressionLowerer
             _ir.Emit( IROp.BranchFalse, checkBLabel );
 
         // A is the dominating value → result = new bool?(dominatingBool)
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( isAnd ? 0 : 1 ) );
+        _ir.EmitLoadConst( isAnd ? 0 : 1 );
         _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
         _ir.Emit( IROp.StoreLocal, resultLocal );
         _ir.Emit( IROp.Branch, endLabel );
@@ -908,7 +908,7 @@ public class ExpressionLowerer
             _ir.Emit( IROp.BranchFalse, checkBothLabel );
 
         // B is the dominating value → result = new bool?(dominatingBool)
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( isAnd ? 0 : 1 ) );
+        _ir.EmitLoadConst( isAnd ? 0 : 1 );
         _ir.Emit( IROp.NewObj, _ir.AddOperand( ctor ) );
         _ir.Emit( IROp.StoreLocal, resultLocal );
         _ir.Emit( IROp.Branch, endLabel );
@@ -1031,7 +1031,7 @@ public class ExpressionLowerer
                 // The operand is already on the stack. Store to temp, push 0, reload, sub.ovf.
                 var temp = _ir.DeclareLocal( node.Type, "$neg_temp" );
                 _ir.Emit( IROp.StoreLocal, temp );
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetZeroForType( node.Type ) ) );
+                _ir.EmitLoadConst( GetZeroForType( node.Type ) );
                 _ir.Emit( IROp.LoadLocal, temp );
                 _ir.Emit( IROp.SubChecked );
                 break;
@@ -1041,7 +1041,7 @@ public class ExpressionLowerer
                 {
                     // Boolean Not: ldc.i4.0 + ceq (true→false, false→true)
                     // Bitwise 'not' on bool(1) gives 0xFFFFFFFE which is still truthy.
-                    _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                    _ir.EmitLoadConst( 0 );
                     _ir.Emit( IROp.Ceq );
                 }
                 else
@@ -1056,11 +1056,11 @@ public class ExpressionLowerer
                 // No-op: value is already on the stack
                 break;
             case ExpressionType.Increment:
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetOneForType( node.Type ) ) );
+                _ir.EmitLoadConst( GetOneForType( node.Type ) );
                 _ir.Emit( IROp.Add );
                 break;
             case ExpressionType.Decrement:
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetOneForType( node.Type ) ) );
+                _ir.EmitLoadConst( GetOneForType( node.Type ) );
                 _ir.Emit( IROp.Sub );
                 break;
             case ExpressionType.IsTrue:
@@ -1068,7 +1068,7 @@ public class ExpressionLowerer
                 break;
             case ExpressionType.IsFalse:
                 // Negate: false (0) → true (1), true (1) → false (0)
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                _ir.EmitLoadConst( 0 );
                 _ir.Emit( IROp.Ceq );
                 break;
             default:
@@ -1119,7 +1119,7 @@ public class ExpressionLowerer
                 {
                     var temp = _ir.DeclareLocal( underlyingType, "$neg_temp" );
                     _ir.Emit( IROp.StoreLocal, temp );
-                    _ir.Emit( IROp.LoadConst, _ir.AddOperand( GetZeroForType( underlyingType ) ) );
+                    _ir.EmitLoadConst( GetZeroForType( underlyingType ) );
                     _ir.Emit( IROp.LoadLocal, temp );
                     _ir.Emit( IROp.SubChecked );
                     break;
@@ -1127,7 +1127,7 @@ public class ExpressionLowerer
                 case ExpressionType.Not:
                     if ( underlyingType == typeof( bool ) )
                     {
-                        _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                        _ir.EmitLoadConst( 0 );
                         _ir.Emit( IROp.Ceq );
                     }
                     else
@@ -1146,7 +1146,7 @@ public class ExpressionLowerer
                     break;
                 case ExpressionType.IsFalse:
                     // Negate: false (0) → true (1), true (1) → false (0)
-                    _ir.Emit( IROp.LoadConst, _ir.AddOperand( 0 ) );
+                    _ir.EmitLoadConst( 0 );
                     _ir.Emit( IROp.Ceq );
                     break;
                 default:
@@ -2373,7 +2373,7 @@ public class ExpressionLowerer
 
         if ( min != 0 )
         {
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( min ) );
+            _ir.EmitLoadConst( min );
             _ir.Emit( IROp.Sub );
         }
 
@@ -2390,7 +2390,7 @@ public class ExpressionLowerer
         var elementType = node.Type.GetElementType()!;
 
         // Push array length
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Expressions.Count ) );
+        _ir.EmitLoadConst( node.Expressions.Count );
 
         // newarr elementType
         _ir.Emit( IROp.NewArray, _ir.AddOperand( elementType ) );
@@ -2399,7 +2399,7 @@ public class ExpressionLowerer
         for ( var i = 0; i < node.Expressions.Count; i++ )
         {
             _ir.Emit( IROp.Dup );
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( i ) );
+            _ir.EmitLoadConst( i );
             LowerExpression( node.Expressions[i] );
             _ir.Emit( IROp.StoreElement, _ir.AddOperand( elementType ) );
         }
@@ -2430,13 +2430,13 @@ public class ExpressionLowerer
             _ir.Emit( IROp.Call, _ir.AddOperand( getTypeFromHandle ) );
 
             // Create int[] for bounds
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( boundsCount ) );
+            _ir.EmitLoadConst( boundsCount );
             _ir.Emit( IROp.NewArray, _ir.AddOperand( typeof( int ) ) );
 
             for ( var i = 0; i < boundsCount; i++ )
             {
                 _ir.Emit( IROp.Dup );
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( i ) );
+                _ir.EmitLoadConst( i );
                 LowerExpression( node.Expressions[i] );
                 _ir.Emit( IROp.StoreElement, _ir.AddOperand( typeof( int ) ) );
             }
@@ -2686,7 +2686,7 @@ public class ExpressionLowerer
                 var delLocal = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
                 var valLocal = _ir.DeclareLocal( Nullable.GetUnderlyingType( leftType )!, "$coalesceVal" );
                 _ir.Emit( IROp.StoreLocal, valLocal );
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( convDelegate ) );
+                _ir.EmitLoadConst( convDelegate );
                 _ir.Emit( IROp.StoreLocal, delLocal );
                 _ir.Emit( IROp.LoadLocal, delLocal );
                 _ir.Emit( IROp.LoadLocal, valLocal );
@@ -2730,7 +2730,7 @@ public class ExpressionLowerer
                 var delLocal = _ir.DeclareLocal( convDelegate.GetType(), "$coalesceDel" );
                 var valLocal = _ir.DeclareLocal( node.Left.Type, "$coalesceVal" );
                 _ir.Emit( IROp.StoreLocal, valLocal );
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( convDelegate ) );
+                _ir.EmitLoadConst( convDelegate );
                 _ir.Emit( IROp.StoreLocal, delLocal );
                 _ir.Emit( IROp.LoadLocal, delLocal );
                 _ir.Emit( IROp.LoadLocal, valLocal );
@@ -2780,7 +2780,7 @@ public class ExpressionLowerer
     {
         // Quote wraps an expression tree as data.
         // Store the inner expression as a non-embeddable constant.
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( node.Operand, node.Type ) );
+        _ir.EmitLoadConst( node.Operand, node.Type );
     }
 
     // --- Power ---
@@ -2827,14 +2827,14 @@ public class ExpressionLowerer
         var count = variables.Count;
 
         // Create IStrongBox[] array
-        _ir.Emit( IROp.LoadConst, _ir.AddOperand( count ) );
+        _ir.EmitLoadConst( count );
         _ir.Emit( IROp.NewArray, _ir.AddOperand( typeof( IStrongBox ) ) );
 
         // Store each variable's StrongBox into the array
         for ( var i = 0; i < count; i++ )
         {
             _ir.Emit( IROp.Dup ); // keep array reference on stack
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( i ) );
+            _ir.EmitLoadConst( i );
 
             // Load the StrongBox local for this variable
             var boxLocal = _strongBoxLocalMap![variables[i]];
@@ -2911,7 +2911,7 @@ public class ExpressionLowerer
         {
             // No captures -- compile directly
             var compiledDelegate = _nestedCompiler != null ? _nestedCompiler( nestedLambda ) : nestedLambda.Compile();
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( compiledDelegate ) );
+            _ir.EmitLoadConst( compiledDelegate );
         }
         else
         {
@@ -2927,7 +2927,7 @@ public class ExpressionLowerer
             var binder = BuildClosureBinder( nestedLambda, closureInfo );
 
             // Load the binder delegate
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( binder ) );
+            _ir.EmitLoadConst( binder );
 
             // Load each StrongBox local as arguments to the binder
             foreach ( var capture in closureInfo.Captures )
@@ -3022,7 +3022,7 @@ public class ExpressionLowerer
             if ( closureInfo != null )
             {
                 // Closure lambda: load compiled delegate, args, and StrongBox locals
-                _ir.Emit( IROp.LoadConst, _ir.AddOperand( closureInfo.CompiledDelegate ) );
+                _ir.EmitLoadConst( closureInfo.CompiledDelegate );
 
                 // Lower the original arguments
                 foreach ( var arg in node.Arguments )
@@ -3045,7 +3045,7 @@ public class ExpressionLowerer
 
             // No captures -- compile the lambda directly and invoke
             var compiledDelegate = _nestedCompiler != null ? _nestedCompiler( lambdaExpr ) : lambdaExpr.Compile();
-            _ir.Emit( IROp.LoadConst, _ir.AddOperand( compiledDelegate ) );
+            _ir.EmitLoadConst( compiledDelegate );
 
             foreach ( var arg in node.Arguments )
             {

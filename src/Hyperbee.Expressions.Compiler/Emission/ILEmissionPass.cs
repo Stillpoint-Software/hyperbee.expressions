@@ -67,6 +67,39 @@ public static class ILEmissionPass
             exceptionEndLabels.Add( instructions[i].Operand );
         }
 
+        // When the constants array is reached through a field, every constant load repeats
+        // `ldarg.0; ldfld`. Hoisting the array into a local once replaces that pair with a
+        // single `ldloc` at each use, which is five bytes and one field load cheaper per
+        // load. Only worth it from the second load on.
+        //
+        // A static method is deliberately left alone: there arg 0 *is* the array, so
+        // `ldarg.0` is already a one-byte load and a local would only add a copy.
+        //
+        // The store goes in before any IR instruction, so the local is initialized on
+        // every path, including inside exception handlers. The extra LocalBuilder is
+        // declared after the IR's own locals, so it cannot disturb their indices.
+        var constantsLocalIndex = -1;
+
+        if ( constantsField != null && constantIndices is { Count: > 0 } )
+        {
+            var arrayLoads = 0;
+
+            foreach ( var inst in instructions )
+            {
+                if ( inst.Op == IROp.LoadConst && constantIndices.ContainsKey( inst.Operand ) && ++arrayLoads > 1 )
+                    break;
+            }
+
+            if ( arrayLoads > 1 )
+            {
+                constantsLocalIndex = ilg.DeclareLocal( constantsField.FieldType ).LocalIndex;
+
+                ilg.Emit( OpCodes.Ldarg_0 );
+                ilg.Emit( OpCodes.Ldfld, constantsField );
+                EmitStoreLocal( ilg, constantsLocalIndex );
+            }
+        }
+
         for ( var idx = 0; idx < instructions.Count; idx++ )
         {
             var inst = instructions[idx];
@@ -77,7 +110,11 @@ public static class ILEmissionPass
                     break;
 
                 case IROp.LoadConst:
-                    EmitLoadConstant( ilg, ir.Operands[inst.Operand], inst.Operand, hasConstantsArray, constantIndices, constantsField, ir.GetOperandType( inst.Operand ) );
+                    EmitLoadConstant( ilg, ir.Operands[inst.Operand], inst.Operand, hasConstantsArray, constantIndices, constantsField, ir.GetOperandType( inst.Operand ), constantsLocalIndex );
+                    break;
+
+                case IROp.LoadInt:
+                    EmitLoadInt( ilg, inst.Operand );
                     break;
 
                 case IROp.LoadNull:
@@ -538,7 +575,8 @@ public static class ILEmissionPass
         bool hasConstantsArray,
         Dictionary<int, int>? constantIndices,
         FieldInfo? constantsField,
-        Type? declaredType )
+        Type? declaredType,
+        int constantsLocalIndex )
     {
         switch ( value )
         {
@@ -596,14 +634,14 @@ public static class ILEmissionPass
 
             case decimal:
                 // Decimal is a value type that needs to be loaded from the constants array
-                EmitLoadFromConstantsArray( ilg, operandIndex, declaredType ?? value.GetType(), constantIndices!, constantsField );
+                EmitLoadFromConstantsArray( ilg, operandIndex, declaredType ?? value.GetType(), constantIndices!, constantsField, constantsLocalIndex );
                 break;
 
             default:
                 // Non-embeddable constant -- load from constants array
                 if ( hasConstantsArray && constantIndices != null && constantIndices.ContainsKey( operandIndex ) )
                 {
-                    EmitLoadFromConstantsArray( ilg, operandIndex, declaredType ?? value.GetType(), constantIndices, constantsField );
+                    EmitLoadFromConstantsArray( ilg, operandIndex, declaredType ?? value.GetType(), constantIndices, constantsField, constantsLocalIndex );
                 }
                 else
                 {
@@ -643,16 +681,25 @@ public static class ILEmissionPass
         int operandIndex,
         Type targetType,
         Dictionary<int, int> constantIndices,
-        FieldInfo? constantsField = null )
+        FieldInfo? constantsField = null,
+        int constantsLocalIndex = -1 )
     {
         var arrayIndex = constantIndices[operandIndex];
 
-        // Load the constants array. Arg 0 holds it directly in a static method; in an
-        // instance method arg 0 is `this` and the array lives in a field.
-        ilg.Emit( OpCodes.Ldarg_0 );
+        // Load the constants array. A hoisted local holds it when there was more than one
+        // load to pay for it. Otherwise arg 0 holds it directly in a static method, and in
+        // an instance method arg 0 is `this` and the array lives in a field.
+        if ( constantsLocalIndex >= 0 )
+        {
+            EmitLoadLocal( ilg, constantsLocalIndex );
+        }
+        else
+        {
+            ilg.Emit( OpCodes.Ldarg_0 );
 
-        if ( constantsField != null )
-            ilg.Emit( OpCodes.Ldfld, constantsField );
+            if ( constantsField != null )
+                ilg.Emit( OpCodes.Ldfld, constantsField );
+        }
         // Load array index
         EmitLoadInt( ilg, arrayIndex );
         // Load element reference

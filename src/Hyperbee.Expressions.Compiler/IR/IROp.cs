@@ -8,6 +8,7 @@ public enum IROp : byte
     // Constants and variables
     Nop,
     LoadConst,              // Push constant from operand table
+    LoadInt,                // Push an int constant carried in the instruction itself
     LoadNull,               // Push null
     LoadLocal,              // Push local variable
     StoreLocal,             // Pop and store to local variable

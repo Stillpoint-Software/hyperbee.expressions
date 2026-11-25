@@ -5,11 +5,16 @@ namespace Hyperbee.Expressions.Compiler.IR;
 /// </summary>
 public class IRBuilder
 {
+    // Only the instruction list is certain to be used. The three side tables are not:
+    // measured over the benchmark tiers, a two-parameter `a + b` body declares no local,
+    // defines no label and -- now that int constants ride in the instruction itself --
+    // fills no operand table either. Allocating all three up front cost every compile a
+    // List object and its backing array for tables that stayed empty.
     private readonly List<IRInstruction> _instructions = new( 16 );
-    private readonly List<object> _operands = new( 4 );
+    private List<object>? _operands;
     private Dictionary<int, Type>? _operandTypes;
-    private readonly List<LocalInfo> _locals = new( 2 );
-    private readonly List<LabelInfo> _labels = new( 2 );
+    private List<LocalInfo>? _locals;
+    private List<LabelInfo>? _labels;
 
     // --- Public read-only accessors ---
 
@@ -17,13 +22,13 @@ public class IRBuilder
     public IReadOnlyList<IRInstruction> Instructions => _instructions;
 
     /// <summary>The operand table (constants, MethodInfo, Type, etc.).</summary>
-    public IReadOnlyList<object> Operands => _operands;
+    public IReadOnlyList<object> Operands => _operands ?? (IReadOnlyList<object>) Array.Empty<object>();
 
     /// <summary>The local variable table.</summary>
-    public IReadOnlyList<LocalInfo> Locals => _locals;
+    public IReadOnlyList<LocalInfo> Locals => _locals ?? (IReadOnlyList<LocalInfo>) Array.Empty<LocalInfo>();
 
     /// <summary>The label table.</summary>
-    public IReadOnlyList<LabelInfo> Labels => _labels;
+    public IReadOnlyList<LabelInfo> Labels => _labels ?? (IReadOnlyList<LabelInfo>) Array.Empty<LabelInfo>();
 
     // --- Instruction emission ---
 
@@ -34,6 +39,26 @@ public class IRBuilder
     /// <summary>Emit an instruction with an integer operand.</summary>
     public void Emit( IROp op, int operand )
         => _instructions.Add( new IRInstruction( op, operand ) );
+
+    /// <summary>Emit a constant load, keeping int constants out of the operand table.</summary>
+    /// <remarks>
+    /// An int goes in the instruction's own operand field, which is already an int. Routing
+    /// it through the operand table boxes it -- once per constant per compile, for a value
+    /// the emitter embeds in the IL anyway and never reads back as an object. Only an int
+    /// whose declared type is int qualifies. A declared type drives the cast that the
+    /// constants-array path emits, so an int boxed as object, or one standing in for an
+    /// enum, has to keep going through the table.
+    /// </remarks>
+    public void EmitLoadConst( object? value, Type? declaredType = null )
+    {
+        if ( value is int i && ( declaredType == null || declaredType == typeof( int ) ) )
+        {
+            Emit( IROp.LoadInt, i );
+            return;
+        }
+
+        Emit( IROp.LoadConst, AddOperand( value!, declaredType ) );
+    }
 
     // --- Operand table ---
 
@@ -46,6 +71,8 @@ public class IRBuilder
     /// </param>
     public int AddOperand( object value, Type? declaredType = null )
     {
+        _operands ??= new( 4 );
+
         var index = _operands.Count;
         _operands.Add( value );
 
@@ -66,6 +93,8 @@ public class IRBuilder
     /// <summary>Declare a new local variable and return its index.</summary>
     public int DeclareLocal( Type type, string? name = null )
     {
+        _locals ??= new( 2 );
+
         var index = _locals.Count;
         _locals.Add( new LocalInfo( type, name ) );
         return index;
@@ -76,6 +105,8 @@ public class IRBuilder
     /// <summary>Define a new label and return its index.</summary>
     public int DefineLabel()
     {
+        _labels ??= new( 2 );
+
         var index = _labels.Count;
         _labels.Add( new LabelInfo() );
         return index;
@@ -84,7 +115,7 @@ public class IRBuilder
     /// <summary>Mark the label at the current instruction position.</summary>
     public void MarkLabel( int labelIndex )
     {
-        _labels[labelIndex] = _labels[labelIndex] with
+        _labels![labelIndex] = _labels[labelIndex] with
         {
             InstructionIndex = _instructions.Count
         };

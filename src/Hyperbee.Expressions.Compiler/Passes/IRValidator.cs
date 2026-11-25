@@ -42,6 +42,7 @@ public static class IRValidator
             {
                 // --- Stack pushes (+1) ---
                 case IROp.LoadConst:
+                case IROp.LoadInt:
                 case IROp.LoadNull:
                 case IROp.LoadLocal:
                 case IROp.LoadArg:

@@ -53,6 +53,9 @@ public static class IRFormatter
     {
         switch ( instr.Op )
         {
+            case IROp.LoadInt:
+                return instr.Operand.ToString();
+
             case IROp.LoadConst:
             {
                 var obj = operands[instr.Operand];

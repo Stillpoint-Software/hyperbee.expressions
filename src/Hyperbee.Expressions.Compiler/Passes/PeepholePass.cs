@@ -32,7 +32,7 @@ public static class PeepholePass
             }
 
             // Pattern 2: LoadConst; Pop -> remove both (dead constant load)
-            if ( a.Op == IROp.LoadConst && b.Op == IROp.Pop )
+            if ( ( a.Op == IROp.LoadConst || a.Op == IROp.LoadInt ) && b.Op == IROp.Pop )
             {
                 ir.RemoveAt( i );
                 ir.RemoveAt( i ); // b is now at position i
