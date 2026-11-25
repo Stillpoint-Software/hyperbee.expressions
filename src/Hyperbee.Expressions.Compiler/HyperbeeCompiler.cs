@@ -41,6 +41,17 @@ public static class HyperbeeCompiler
         {
             previous = CoroutineBuilderContext.Exchange( HyperbeeCoroutineDelegateBuilder.Instance );
 
+            // Drop branches a constant test proves unreachable, before the closure rewriter
+            // and before any coroutine block reduces. An await under Constant( false )
+            // otherwise gets a state and a result field of its own on the state machine --
+            // measured at 17.6 KB of a 45.7 KB compile for one dead await.
+            //
+            // This sits inside the gate deliberately. When the pre-scan is false there are
+            // provably no extension nodes, so a plain lambda never pays for the walk, and a
+            // plain lambda would gain nothing anyway: the JIT drops a constant-tested dead
+            // block by itself.
+            lambda = ConstantBranchEliminator.Eliminate( lambda );
+
             // Share enclosing variables with coroutine bodies through cells, so the bodies
             // stay closed and can be compiled once instead of materialized per call.
             lambda = CoroutineClosureRewriter.Rewrite( lambda );
