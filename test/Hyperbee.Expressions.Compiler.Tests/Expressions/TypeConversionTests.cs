@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Hyperbee.Expressions.Compiler.Tests.TestSupport;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -585,8 +585,20 @@ public class TypeConversionTests
         var lambda = Expression.Lambda<Func<double, decimal>>( convert, a );
         var fn = lambda.Compile( compilerType );
 
-        Assert.AreEqual( 3.14m, fn( 3.14 ) );
-        Assert.AreEqual( 0m, fn( 0.0 ) );
+        // Compare against the runtime's own double -> decimal cast, not a decimal
+        // literal. .NET 11 made these conversions correctly rounded: they now round
+        // the exact binary value once, where earlier runtimes kept only 15 significant
+        // digits, so (decimal) 3.14d is 3.14 on net10.0 and 3.140000000000000124344978758
+        // on net11.0. There is no compatibility switch. What this test asserts is that
+        // the compiler agrees with the language cast on whichever runtime it runs on.
+        // See https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/11/decimal-biginteger-floating-point-conversions
+        // The locals are deliberately not const: a const would be folded by the
+        // compiler and could disagree with the runtime conversion under test.
+        var pi = 3.14;
+        var zero = 0.0;
+
+        Assert.AreEqual( (decimal) pi, fn( pi ) );
+        Assert.AreEqual( (decimal) zero, fn( zero ) );
     }
 
     // --- Convert: decimal -> double ---
