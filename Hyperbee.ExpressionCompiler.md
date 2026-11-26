@@ -4,6 +4,13 @@ A high-performance, IR-based expression compiler for .NET that aims to match
 FastExpressionCompiler's compilation speed while maintaining the correctness
 and completeness of the System Expression Compiler.
 
+> **Status.** This is the original design and implementation-plan document, kept as a
+> record of how the compiler was built. Target frameworks and benchmark figures inside
+> it describe the state at the time each phase was written and are no longer current.
+> The shipped targets are `net11.0`, `net10.0` and `netstandard2.1`. For current
+> numbers see [docs/site/compiler/performance.md](docs/site/compiler/performance.md)
+> and the package README.
+
 ---
 
 ## Table of Contents

@@ -9,6 +9,22 @@ This repository contains libraries for extending and compiling C# expression tre
 | **Hyperbee.Expressions** | Extended expression tree nodes for async workflows, iterators, resource management, and looping constructs. |
 | **Hyperbee.Expressions.Compiler** | A high-performance, IR-based expression compiler that is 9.3-48x faster than the System compiler with correct IL across all expression tree patterns. |
 
+## Target frameworks
+
+| Package                          | Targets                          | Oldest consumer
+|:---------------------------------|:---------------------------------|:----------------
+| Hyperbee.Expressions             | `net11.0;net10.0;netstandard2.1` | net8.0
+| Hyperbee.Expressions.Compiler    | `net11.0;net10.0;netstandard2.1` | net8.0
+| Hyperbee.Expressions.Lab         | `net11.0;net10.0`                | net10.0
+
+`net8.0` and `net9.0` both reached end of support on 2026-11-10 and are no longer built
+directly. The first two packages add `netstandard2.1` in their place, so a `net8.0` or
+`net9.0` project resolves that asset and keeps working. `Hyperbee.Expressions.Lab` is
+runtime-only on `net10.0` and above.
+
+Building this repository requires the .NET 11 SDK; the older targeting packs come from
+NuGet, so one SDK covers every target.
+
 ## Hyperbee.Expressions
 
 `Hyperbee.Expressions` extends the capabilities of standard expression trees to handle asynchronous workflows and other 

@@ -221,11 +221,19 @@ Expression Tree
 | **DeadCodePass**   | Eliminates unreachable instructions after unconditional control transfers            |
 | **IRValidator**    | Structural validation - stack depth, label references, exception blocks (DEBUG only) |
 
-## Supported Frameworks
+## Target frameworks
 
-- .NET 8.0
-- .NET 9.0
-- .NET 10.0
+`net11.0`, `net10.0`, `netstandard2.1`.
+
+`net8.0` and `net9.0` both reached end of support on 2026-11-10 and are no longer
+built directly. `netstandard2.1` takes their place, so a `net8.0` or `net9.0` project
+resolves that asset and keeps working.
+
+The `netstandard2.1` asset is functionally complete. Every `NETSTANDARD` conditional
+in the repository lives in `src/Shared`, and all of it supplies types newer targets
+have in box: the compiler-required attributes, an empty-collection helper and two
+argument-check helpers. No compiler API is withheld on that target. The asset also
+pulls `Microsoft.Bcl.AsyncInterfaces` 8.0.0 for `IAsyncEnumerable`.
 
 ## Credits
 
