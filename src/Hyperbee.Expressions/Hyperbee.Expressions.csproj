@@ -47,25 +47,18 @@
 
 
   <!--
-    Shared internal helpers, linked into each project that needs them rather than
-    packaged, which is how dotnet/runtime shares its own internal helpers. Listed
-    per file, not globbed, so a project compiles only what it uses.
+    Internal helpers live in this project's Internal folder and compile like any
+    other source. NetstandardShims.cs is the exception: it is removed from every
+    target but netstandard2.1, the way dotnet/runtime conditions its polyfills.
   -->
-  <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)..\Shared\ThrowIf.cs"
-             Link="Shared\ThrowIf.cs" />
-  </ItemGroup>
-
-  <!-- netstandard2.1 polyfills only; see the note at the top of the file. -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <Compile Include="$(MSBuildThisFileDirectory)..\Shared\NetstandardShims.cs"
-             Link="Shared\NetstandardShims.cs" />
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.1'">
+    <Compile Remove="Internal\NetstandardShims.cs" />
   </ItemGroup>
 
   <!--
     netstandard2.1 needs Microsoft.Bcl.AsyncInterfaces for IAsyncEnumerable.
     The compiler-required attributes and the reflection shim are hand-written in
-    src/Shared/NetstandardShims.cs; see the note there on why not Polyfill.
+    Internal/NetstandardShims.cs; see the note there on why not Polyfill.
 
     The versions are pinned to 8.0.x on this target alone. The netstandard2.1 asset
     exists to serve net8.0 and net9.0 consumers, and the 11.0.0 packages declare no

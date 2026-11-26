@@ -27,8 +27,8 @@ public static class CoroutineClosureRewriter
     /// </summary>
     public static LambdaExpression Rewrite( LambdaExpression lambda )
     {
-        // Written out rather than routed through the shared ThrowIf helper. This package
-        // compiles none of src/Shared, so that an InternalsVisibleTo grant to
+        // Written out rather than routed through ThrowIf. This package carries none of
+        // the Internal helpers, so that its InternalsVisibleTo grant to
         // Hyperbee.Expressions cannot make a duplicated internal helper ambiguous there.
         if ( lambda is null )
             throw new ArgumentNullException( nameof( lambda ) );

@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
 using Hyperbee.Expressions.CompilerServices.Transitions;
-using Hyperbee.Expressions.Shared;
+using Hyperbee.Expressions.Internal;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices;

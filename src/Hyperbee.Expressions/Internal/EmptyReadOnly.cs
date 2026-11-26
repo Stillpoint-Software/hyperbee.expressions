@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace Hyperbee.Expressions.Shared;
+namespace Hyperbee.Expressions.Internal;
 
 /// <summary>
 /// An empty <see cref="ReadOnlyCollection{T}"/> singleton per element type.

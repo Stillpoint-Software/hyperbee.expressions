@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 using Hyperbee.Collections;
 using Hyperbee.Expressions.CompilerServices;
 using Hyperbee.Expressions.CompilerServices.Lowering;
-using Hyperbee.Expressions.Shared;
+using Hyperbee.Expressions.Internal;
 
 namespace Hyperbee.Expressions;
 

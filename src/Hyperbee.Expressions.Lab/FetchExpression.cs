@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Net.Http.Headers;
 using System.Reflection;
-using Hyperbee.Expressions.Shared;
+using Hyperbee.Expressions.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using static Hyperbee.Expressions.ExpressionExtensions;
 

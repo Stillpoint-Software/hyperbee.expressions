@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Net.Http.Json;
-using Hyperbee.Expressions.Shared;
+using Hyperbee.Expressions.Internal;
 using static System.Linq.Expressions.Expression;
 using static Hyperbee.Expressions.ExpressionExtensions;
 

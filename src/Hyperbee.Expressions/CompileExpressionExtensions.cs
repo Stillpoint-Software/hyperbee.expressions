@@ -1,5 +1,5 @@
 ﻿using System.Linq.Expressions;
-using Hyperbee.Expressions.Shared;
+using Hyperbee.Expressions.Internal;
 
 namespace Hyperbee.Expressions;
 

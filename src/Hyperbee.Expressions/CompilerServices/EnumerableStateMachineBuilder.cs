@@ -7,7 +7,7 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using Hyperbee.Collections;
-using Hyperbee.Expressions.Shared;
+using Hyperbee.Expressions.Internal;
 
 using static System.Linq.Expressions.Expression;
 

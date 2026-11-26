@@ -56,19 +56,9 @@
 
 
   <!--
-    Shared internal helpers, linked into each project that needs them rather than
-    packaged, which is how dotnet/runtime shares its own internal helpers. Listed
-    per file, not globbed, so a project compiles only what it uses.
-  -->
-  <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)..\Shared\ThrowIf.cs"
-             Link="Shared\ThrowIf.cs" />
-  </ItemGroup>
-
-  <!--
-    netstandard2.1 needs Microsoft.Bcl.AsyncInterfaces for IAsyncEnumerable.
-    The compiler-required attributes and the reflection shim are hand-written in
-    src/Shared/NetstandardShims.cs; see the note there on why not Polyfill.
+    Inert: this project targets net11.0 and net10.0 only (see TargetFrameworks
+    above), so no build of it is netstandard2.1 and this group never applies. For
+    the same reason Lab carries no netstandard2.1 shims of its own.
   -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />

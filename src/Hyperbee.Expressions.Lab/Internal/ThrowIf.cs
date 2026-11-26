@@ -5,7 +5,7 @@
 // valid in either context.
 #nullable enable
 
-namespace Hyperbee.Expressions.Shared;
+namespace Hyperbee.Expressions.Internal;
 
 /// <summary>
 /// Argument guards that keep the framework's own behavior on modern targets and

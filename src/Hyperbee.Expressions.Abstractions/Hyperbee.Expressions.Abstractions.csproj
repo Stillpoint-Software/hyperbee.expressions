@@ -43,16 +43,18 @@
   </ItemGroup>
 
   <!--
-    Deliberately does NOT link src/Shared, and this was measured rather than assumed.
+    Deliberately carries none of the Internal helpers (ThrowIf, NetstandardShims),
+    and this was measured rather than assumed.
 
-    Linking ThrowIf.cs alone fails: it carries [CallerArgumentExpression], which on
-    netstandard2.1 comes from NetstandardShims.cs, so that file has to come too. Linking
-    both then breaks Hyperbee.Expressions with CS0121 on its CreateDelegate calls: the
-    InternalsVisibleTo grant above puts this assembly's internal MethodInfoExtensions in
-    scope there alongside the copy it links itself, and the two are indistinguishable.
+    ThrowIf on its own fails here: it carries [CallerArgumentExpression], which on
+    netstandard2.1 comes from NetstandardShims.cs, so that file would have to come
+    too. With both, Hyperbee.Expressions fails with CS0121 on its CreateDelegate
+    calls: the InternalsVisibleTo grant above puts this assembly's internal
+    MethodInfoExtensions in scope there alongside Hyperbee.Expressions' own copy,
+    and the two are indistinguishable.
 
     The grant exists so Hyperbee.Expressions can use FreeVariableScanner, which lives
-    here with CoroutineClosureRewriter. So the choice is the grant or the linked helpers,
+    here with CoroutineClosureRewriter. So the choice is the grant or the helpers,
     not both, and the grant is worth more than saving one null check. That check is
     written out at its call site.
 

@@ -1,6 +1,6 @@
-﻿// Compiled only into the netstandard2.1 build. The including project conditions
-// this file on the target framework, the way dotnet/runtime conditions its own
-// polyfills, so the rule lives in the project file and not in a #if here.
+﻿// Compiled only into the netstandard2.1 build. This project removes the file from
+// every other target, the way dotnet/runtime conditions its own polyfills, so the
+// rule lives in the project file and not in a #if here.
 //
 // These stay per-assembly on purpose. IsExternalInit and
 // CallerArgumentExpressionAttribute have to be accessible to the compiler that is
@@ -43,7 +43,7 @@ namespace System.Runtime.CompilerServices
     }
 }
 
-namespace Hyperbee.Expressions.Shared
+namespace Hyperbee.Expressions.Internal
 {
     /// <summary>
     /// Stands in for the generic <c>MethodInfo.CreateDelegate&lt;T&gt;()</c> added in .NET 5.

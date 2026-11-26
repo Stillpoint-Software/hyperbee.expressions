@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 // valid in either context.
 #nullable enable
 
-namespace Hyperbee.Expressions.Shared;
+namespace Hyperbee.Expressions.Internal;
 
 /// <summary>
 /// Reads the internal <c>Expression.DebugView</c> property.
