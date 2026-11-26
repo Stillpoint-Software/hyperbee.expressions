@@ -1,4 +1,4 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
@@ -32,6 +32,7 @@
     <Project Path="test/Hyperbee.Expressions.Tests/Hyperbee.Expressions.Tests.csproj" />
     <Project Path="test/ILComparisonTool/ILComparisonTool.csproj" />
   </Folder>
+  <Project Path="src/Hyperbee.Expressions.Abstractions/Hyperbee.Expressions.Abstractions.csproj" />
   <Project Path="src/Hyperbee.Expressions.Compiler/Hyperbee.Expressions.Compiler.csproj" />
   <Project Path="src/Hyperbee.Expressions.Lab/Hyperbee.Expressions.Lab.csproj" />
   <Project Path="src/Hyperbee.Expressions/Hyperbee.Expressions.csproj" />

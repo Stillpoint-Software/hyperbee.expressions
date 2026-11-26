@@ -9,7 +9,7 @@ using Hyperbee.Expressions.Shared;
 namespace Hyperbee.Expressions;
 
 [DebuggerTypeProxy( typeof( AsyncBlockExpressionDebuggerProxy ) )]
-public class AsyncBlockExpression : Expression
+public class AsyncBlockExpression : Expression, ICoroutineBoundary
 {
     private Expression _stateMachine;
 
@@ -42,6 +42,19 @@ public class AsyncBlockExpression : Expression
         RuntimeOptions = options;
 
         Type = GetTaskType( Result.Type );
+    }
+
+    /// <summary>
+    /// Returns a block carrying the given variables and expressions, or this instance when
+    /// both are unchanged. <see cref="ScopedVariables"/> is deliberately not carried over:
+    /// the caller is rewriting the scope, so the old mapping no longer describes it.
+    /// </summary>
+    public Expression Update( ReadOnlyCollection<ParameterExpression> variables, ReadOnlyCollection<Expression> expressions )
+    {
+        if ( ReferenceEquals( variables, Variables ) && ReferenceEquals( expressions, Expressions ) )
+            return this;
+
+        return new AsyncBlockExpression( variables, expressions, RuntimeOptions );
     }
 
     public override bool CanReduce => true;

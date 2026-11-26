@@ -114,16 +114,8 @@ internal sealed class FreeVariableScanner : ExpressionVisitor
 
     protected override Expression VisitExtension( Expression node )
     {
-        switch ( node )
-        {
-            case AsyncBlockExpression asyncBlock:
-                Bind( asyncBlock.Variables );
-                break;
-
-            case EnumerableBlockExpression enumerableBlock:
-                Bind( enumerableBlock.Variables );
-                break;
-        }
+        if ( node is ICoroutineBoundary boundary )
+            Bind( boundary.Variables );
 
         return base.VisitExtension( node );
     }

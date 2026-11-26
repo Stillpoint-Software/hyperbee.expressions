@@ -1,6 +1,5 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
-using Hyperbee.Expressions.Shared;
 using static System.Linq.Expressions.Expression;
 
 namespace Hyperbee.Expressions.CompilerServices;
@@ -28,7 +27,11 @@ public static class CoroutineClosureRewriter
     /// </summary>
     public static LambdaExpression Rewrite( LambdaExpression lambda )
     {
-        ThrowIf.Null( lambda );
+        // Written out rather than routed through the shared ThrowIf helper. This package
+        // compiles none of src/Shared, so that an InternalsVisibleTo grant to
+        // Hyperbee.Expressions cannot make a duplicated internal helper ambiguous there.
+        if ( lambda is null )
+            throw new ArgumentNullException( nameof( lambda ) );
 
         var shared = SharedVariableScanner.Find( lambda );
 
@@ -213,19 +216,14 @@ public static class CoroutineClosureRewriter
 
         protected override Expression VisitExtension( Expression node )
         {
-            switch ( node )
-            {
-                case AsyncBlockExpression asyncBlock:
-                    return RewriteCoroutine( asyncBlock, asyncBlock.Variables, asyncBlock.Expressions,
-                        ( variables, expressions ) => new AsyncBlockExpression( variables, expressions, asyncBlock.RuntimeOptions ) );
+            // Matched through ICoroutineBoundary rather than the concrete node types, so this
+            // rewriter does not need to reference Hyperbee.Expressions. Update is the node's
+            // own job because not every coroutine node has a public constructor.
 
-                case EnumerableBlockExpression enumerableBlock:
-                    return RewriteCoroutine( enumerableBlock, enumerableBlock.Variables, enumerableBlock.Expressions,
-                        ( variables, expressions ) => new EnumerableBlockExpression( variables, expressions, enumerableBlock.RuntimeOptions ) );
+            if ( node is ICoroutineBoundary boundary )
+                return RewriteCoroutine( node, boundary.Variables, boundary.Expressions, boundary.Update );
 
-                default:
-                    return base.VisitExtension( node );
-            }
+            return base.VisitExtension( node );
         }
 
         private Expression RewriteCoroutine(
@@ -334,17 +332,10 @@ public static class CoroutineClosureRewriter
 
         protected override Expression VisitExtension( Expression node )
         {
-            switch ( node )
+            if ( node is ICoroutineBoundary boundary )
             {
-                case AsyncBlockExpression asyncBlock:
-                    Declare( asyncBlock.Variables );
-                    Collect( asyncBlock.Variables, asyncBlock.Expressions );
-                    break;
-
-                case EnumerableBlockExpression enumerableBlock:
-                    Declare( enumerableBlock.Variables );
-                    Collect( enumerableBlock.Variables, enumerableBlock.Expressions );
-                    break;
+                Declare( boundary.Variables );
+                Collect( boundary.Variables, boundary.Expressions );
             }
 
             return base.VisitExtension( node );

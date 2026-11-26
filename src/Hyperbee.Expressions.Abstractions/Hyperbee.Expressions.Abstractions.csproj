@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Nullable>disable</Nullable>
+
+    <Authors>Stillpoint Software, Inc.</Authors>
+    <PackageId>Hyperbee.Expressions.Abstractions</PackageId>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>expression-tree;expressions;abstractions;compiler;coroutine</PackageTags>
+    <IsPackable>true</IsPackable>
+    <Copyright>Stillpoint Software, Inc.</Copyright>
+    <Title>Hyperbee Expressions Abstractions</Title>
+    <Description>Compiler and coroutine contracts shared by Hyperbee.Expressions and its compilers.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="$(MSBuildProjectName).csproj.DotSettings" Visible="false" />
+  </ItemGroup>
+
+  <!--
+    FreeVariableScanner lives here because CoroutineClosureRewriter needs it, but it is
+    not part of this package's contract, so it stays internal. Hyperbee.Expressions uses
+    it in three places of its own and reaches it through this grant.
+  -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Hyperbee.Expressions</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!--
+    This package exists so a compiler can implement the coroutine contract without
+    depending on Hyperbee.Expressions itself, and on the four packages that library
+    brings with it. It holds contracts plus the one rewriter a compiler has to run
+    before it emits, and takes no package dependencies of its own.
+  -->
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.SourceLink.GitHub">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    Deliberately does NOT compile src/Shared. Those helpers are internal and are compiled
+    into every project that uses them, so compiling them here too would put a second copy
+    of each in scope inside Hyperbee.Expressions through the InternalsVisibleTo grant
+    above, and its calls to them would no longer resolve. The one guard this package
+    needed is written out at its call site instead.
+
+    Nothing here needs IAsyncEnumerable either, so netstandard2.1 takes no package
+    dependency and this package ships with none on any target.
+  -->
+
+</Project>
