@@ -55,9 +55,14 @@
   </ItemGroup>
 
 
-  <!-- Shared internal helpers, compiled into each project so they stay off the public surface. -->
+  <!--
+    Shared internal helpers, linked into each project that needs them rather than
+    packaged, which is how dotnet/runtime shares its own internal helpers. Listed
+    per file, not globbed, so a project compiles only what it uses.
+  -->
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)..\Shared\*.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Shared\ThrowIf.cs"
+             Link="Shared\ThrowIf.cs" />
   </ItemGroup>
 
   <!--

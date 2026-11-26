@@ -1,4 +1,13 @@
-﻿#if NETSTANDARD
+﻿// Compiled only into the netstandard2.1 build. The including project conditions
+// this file on the target framework, the way dotnet/runtime conditions its own
+// polyfills, so the rule lives in the project file and not in a #if here.
+//
+// These stay per-assembly on purpose. IsExternalInit and
+// CallerArgumentExpressionAttribute have to be accessible to the compiler that is
+// building the assembly, and publishing them as public types in a package risks a
+// CS0433 collision for any consumer that also references another package defining
+// them. Every polyfill package declares them internal for the same reason.
+
 using System.Reflection;
 
 // Everything netstandard2.1 needs from the compiler and from reflection that newer
@@ -51,4 +60,3 @@ namespace Hyperbee.Expressions.Shared
             => (T) method.CreateDelegate( typeof( T ) );
     }
 }
-#endif

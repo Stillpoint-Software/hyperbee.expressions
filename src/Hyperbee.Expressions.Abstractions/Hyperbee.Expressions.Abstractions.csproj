@@ -43,11 +43,18 @@
   </ItemGroup>
 
   <!--
-    Deliberately does NOT compile src/Shared. Those helpers are internal and are compiled
-    into every project that uses them, so compiling them here too would put a second copy
-    of each in scope inside Hyperbee.Expressions through the InternalsVisibleTo grant
-    above, and its calls to them would no longer resolve. The one guard this package
-    needed is written out at its call site instead.
+    Deliberately does NOT link src/Shared, and this was measured rather than assumed.
+
+    Linking ThrowIf.cs alone fails: it carries [CallerArgumentExpression], which on
+    netstandard2.1 comes from NetstandardShims.cs, so that file has to come too. Linking
+    both then breaks Hyperbee.Expressions with CS0121 on its CreateDelegate calls: the
+    InternalsVisibleTo grant above puts this assembly's internal MethodInfoExtensions in
+    scope there alongside the copy it links itself, and the two are indistinguishable.
+
+    The grant exists so Hyperbee.Expressions can use FreeVariableScanner, which lives
+    here with CoroutineClosureRewriter. So the choice is the grant or the linked helpers,
+    not both, and the grant is worth more than saving one null check. That check is
+    written out at its call site.
 
     Nothing here needs IAsyncEnumerable either, so netstandard2.1 takes no package
     dependency and this package ships with none on any target.

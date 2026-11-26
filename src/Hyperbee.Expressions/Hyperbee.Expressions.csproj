@@ -46,9 +46,20 @@
   </ItemGroup>
 
 
-  <!-- Shared internal helpers, compiled into each project so they stay off the public surface. -->
+  <!--
+    Shared internal helpers, linked into each project that needs them rather than
+    packaged, which is how dotnet/runtime shares its own internal helpers. Listed
+    per file, not globbed, so a project compiles only what it uses.
+  -->
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)..\Shared\*.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Shared\ThrowIf.cs"
+             Link="Shared\ThrowIf.cs" />
+  </ItemGroup>
+
+  <!-- netstandard2.1 polyfills only; see the note at the top of the file. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <Compile Include="$(MSBuildThisFileDirectory)..\Shared\NetstandardShims.cs"
+             Link="Shared\NetstandardShims.cs" />
   </ItemGroup>
 
   <!--
