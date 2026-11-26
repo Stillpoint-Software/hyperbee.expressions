@@ -139,4 +139,5 @@ same resolution pattern.
   safe to register as `Singleton` in the container.
 - See [Inject](../expressions/inject.md) for `InjectExpression` factory methods.
 - See [Configuration Value](../expressions/configuration-value.md) for `ConfigurationExpression`.
-- See [Compiler](../compiler/compiler.md) for `HyperbeeExpressionCompiler` details.
+- See the [Hyperbee Expression Compiler](https://github.com/Stillpoint-Software/hyperbee.expressions.compiler)
+  repository for `HyperbeeExpressionCompiler` details.

@@ -12,7 +12,8 @@ structured loops, resource disposal, string formatting, and dependency injection
 
 All custom expression types reduce to standard expression trees, so they work with any compiler that
 accepts `LambdaExpression` -- including the System compiler, [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler),
-and the included [Hyperbee Expression Compiler](compiler/compiler.md).
+and the [Hyperbee Expression Compiler](https://github.com/Stillpoint-Software/hyperbee.expressions.compiler),
+which these expressions are designed to pair with.
 
 ---
 
@@ -21,8 +22,11 @@ and the included [Hyperbee Expression Compiler](compiler/compiler.md).
 | Package | Description | NuGet |
 |---------|-------------|-------|
 | `Hyperbee.Expressions` | Core expression extensions | [![NuGet](https://img.shields.io/nuget/v/Hyperbee.Expressions.svg)](https://www.nuget.org/packages/Hyperbee.Expressions) |
-| `Hyperbee.Expressions.Compiler` | High-performance IR-based compiler | [![NuGet](https://img.shields.io/nuget/v/Hyperbee.Expressions.Compiler.svg)](https://www.nuget.org/packages/Hyperbee.Expressions.Compiler) |
+| `Hyperbee.Expressions.Abstractions` | Compiler and coroutine contracts | [![NuGet](https://img.shields.io/nuget/v/Hyperbee.Expressions.Abstractions.svg)](https://www.nuget.org/packages/Hyperbee.Expressions.Abstractions) |
 | `Hyperbee.Expressions.Lab` | Experimental expressions (fetch, JSON, map/reduce) | [![NuGet](https://img.shields.io/nuget/v/Hyperbee.Expressions.Lab.svg)](https://www.nuget.org/packages/Hyperbee.Expressions.Lab) |
+
+The expression compiler is built and documented in its own repository,
+[hyperbee.expressions.compiler](https://github.com/Stillpoint-Software/hyperbee.expressions.compiler).
 
 ---
 
@@ -107,20 +111,24 @@ var value = await fn();
 
 ## Compiler
 
-`Hyperbee.Expressions.Compiler` is a high-performance IR-based compiler that replaces `Expression.Compile()`.
-It emits IL directly without the overhead of the System expression interpreter.
+These expressions are designed to pair with the
+[Hyperbee Expression Compiler](https://github.com/Stillpoint-Software/hyperbee.expressions.compiler) (HEC),
+an IR-based compiler that emits IL directly in place of `Expression.Compile()`.
+
+Speed is the reason. HEC compiles 9.3-48x faster than the System compiler and allocates 29-57%
+less. Coroutines gain most: `BlockAsync` and `BlockEnumerable` compile about twice as fast and
+the compiled state machines run 16-24x faster, because HEC emits the `MoveNext` body into the
+state machine type rather than leaving a delegate to invoke on each resume.
+
+It is optional. HEC plugs in through the contracts in `Hyperbee.Expressions.Abstractions`, so
+nothing here depends on it.
 
 ```
 dotnet add package Hyperbee.Expressions.Compiler
 ```
 
-```csharp
-using Hyperbee.Expressions.Compiler;
-
-var fn = HyperbeeCompiler.Compile( lambda );
-```
-
-**Compilation speed:** 9.3-48x faster than the System compiler. See [Compiler](compiler/compiler.md) for details.
+Its documentation, benchmarks and architecture live in
+[its own repository](https://github.com/Stillpoint-Software/hyperbee.expressions.compiler).
 
 ---
 

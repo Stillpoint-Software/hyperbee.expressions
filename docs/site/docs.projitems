@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
@@ -32,12 +32,6 @@
     <None Include="$(MSBuildThisFileDirectory)configuration\runtime-options.md" />
     <None Include="$(MSBuildThisFileDirectory)configuration\module-providers.md" />
     <None Include="$(MSBuildThisFileDirectory)configuration\dependency-injection.md" />
-    <!-- Compiler -->
-    <None Include="$(MSBuildThisFileDirectory)compiler\compiler.md" />
-    <None Include="$(MSBuildThisFileDirectory)compiler\overview.md" />
-    <None Include="$(MSBuildThisFileDirectory)compiler\api.md" />
-    <None Include="$(MSBuildThisFileDirectory)compiler\diagnostics.md" />
-    <None Include="$(MSBuildThisFileDirectory)compiler\performance.md" />
     <!-- Lab -->
     <None Include="$(MSBuildThisFileDirectory)lab\lab.md" />
     <None Include="$(MSBuildThisFileDirectory)lab\fetch.md" />

@@ -7,15 +7,18 @@ This repository contains libraries for extending and compiling C# expression tre
 | Package | Description |
 | ------- | ----------- |
 | **Hyperbee.Expressions** | Extended expression tree nodes for async workflows, iterators, resource management, and looping constructs. |
-| **Hyperbee.Expressions.Compiler** | A high-performance, IR-based expression compiler that is 9.3-48x faster than the System compiler with correct IL across all expression tree patterns. |
+| **Hyperbee.Expressions.Abstractions** | The compiler and coroutine contracts, so a compiler can plug in without depending on this library. |
+| **Hyperbee.Expressions.Lab** | Experimental expression types: HTTP fetch, JSON parsing, collection map and reduce. |
+
+The expression compiler lives in its own repository, [hyperbee.expressions.compiler](https://github.com/Stillpoint-Software/hyperbee.expressions.compiler).
 
 ## Target frameworks
 
-| Package                          | Targets                          | Oldest consumer
-|:---------------------------------|:---------------------------------|:----------------
-| Hyperbee.Expressions             | `net11.0;net10.0;netstandard2.1` | net8.0
-| Hyperbee.Expressions.Compiler    | `net11.0;net10.0;netstandard2.1` | net8.0
-| Hyperbee.Expressions.Lab         | `net11.0;net10.0`                | net10.0
+| Package                              | Targets                          | Oldest consumer
+|:-------------------------------------|:---------------------------------|:----------------
+| Hyperbee.Expressions                 | `net11.0;net10.0;netstandard2.1` | net8.0
+| Hyperbee.Expressions.Abstractions    | `net11.0;net10.0;netstandard2.1` | net8.0
+| Hyperbee.Expressions.Lab             | `net11.0;net10.0`                | net10.0
 
 `net8.0` and `net9.0` both reached end of support on 2026-11-10 and are no longer built
 directly. The first two packages add `netstandard2.1` in their place, so a `net8.0` or
@@ -183,33 +186,26 @@ public class Example
 }
 ```
 
-## Hyperbee.Expressions.Compiler
+## Works with the Hyperbee Expression Compiler
 
-A high-performance, IR-based expression compiler for .NET. Drop-in replacement for `Expression.Compile()` 
-that is **9.3-48x faster and allocates 29-57% less than the System compiler** and supports **all expression 
-tree patterns**.
+Everything here reduces to standard expression trees, so any compiler that accepts a
+`LambdaExpression` can run it, the System compiler included. These expressions are designed to
+pair with the [Hyperbee Expression Compiler](https://github.com/Stillpoint-Software/hyperbee.expressions.compiler)
+(HEC), which is where they perform best.
 
-### Quick Start
+- **Compilation is 9.3-48x faster** than the System compiler, with 29-57% fewer allocations.
+- **Coroutines gain the most.** `BlockAsync` and `BlockEnumerable` compile about twice as fast,
+  and the compiled state machines run 16-24x faster, because HEC emits the `MoveNext` body
+  directly into the state machine type instead of leaving a delegate to invoke on every resume.
+- **Nothing here requires it.** HEC plugs in through the contracts in
+  `Hyperbee.Expressions.Abstractions`, so the dependency is optional and one-directional.
 
 ```
 dotnet add package Hyperbee.Expressions.Compiler
 ```
 
-```csharp
-using Hyperbee.Expressions.Compiler;
-
-// Direct compilation -- drop-in replacement for Expression.Compile()
-var lambda = Expression.Lambda<Func<int, int, int>>(
-    Expression.Add( a, b ), a, b );
-
-var fn = HyperbeeCompiler.Compile( lambda );
-var result = fn( 1, 2 ); // 3
-
-// Or use the extension method
-var fn = lambda.CompileHyperbee();
-```
-
-For benchmarks, architecture details, and advanced usage, see the full [Hyperbee.Expressions.Compiler README](src/Hyperbee.Expressions.Compiler/README.md).
+See the [compiler repository](https://github.com/Stillpoint-Software/hyperbee.expressions.compiler)
+for its documentation, benchmarks and architecture.
 
 ## Credits
 
