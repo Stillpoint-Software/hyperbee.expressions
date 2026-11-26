@@ -28,7 +28,7 @@
     <PackageProjectUrl>https://github.com/Stillpoint-Software/hyperbee.expressions</PackageProjectUrl>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsPackable)' == 'true' AND '$(MSBuildProjectName)' != 'Hyperbee.Expressions.Compiler'">
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)README.md"
           Pack="true"
           PackagePath=""

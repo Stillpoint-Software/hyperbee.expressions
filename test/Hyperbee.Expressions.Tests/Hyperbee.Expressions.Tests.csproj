@@ -35,13 +35,16 @@
   </ItemGroup>
 
   <!--
-    Hyperbee.Json depends on the published Hyperbee.Expressions.Compiler, which depends on
-    the published Hyperbee.Expressions. Without a project reference of its own, the compiler
-    would come from the package while Hyperbee.Expressions is built from source here, putting
-    a released binary and local source in the same output folder.
+    The compiler is built and released from the hyperbee.expressions.compiler repository,
+    so it arrives here as a package. These tests keep the compiled-by-HEC path covered and,
+    because the published compiler was built when the coroutine contracts still lived in
+    Hyperbee.Expressions, they also exercise the type forwards in TypeForwards.cs.
+
+    The trade is that this suite runs against the last published compiler rather than that
+    repository HEAD. The compiler's own suite covers its source.
   -->
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hyperbee.Expressions.Compiler\Hyperbee.Expressions.Compiler.csproj" />
+    <PackageReference Include="Hyperbee.Expressions.Compiler" />
     <ProjectReference Include="..\..\src\Hyperbee.Expressions.Lab\Hyperbee.Expressions.Lab.csproj" />
     <ProjectReference Include="..\..\src\Hyperbee.Expressions\Hyperbee.Expressions.csproj" />
   </ItemGroup>
@@ -70,8 +73,11 @@
   <ItemGroup Condition="'$(UseNetstandardAsset)' == 'true'">
     <ProjectReference Update="..\..\src\Hyperbee.Expressions\Hyperbee.Expressions.csproj"
                       SetTargetFramework="TargetFramework=netstandard2.1" />
-    <ProjectReference Update="..\..\src\Hyperbee.Expressions.Compiler\Hyperbee.Expressions.Compiler.csproj"
-                      SetTargetFramework="TargetFramework=netstandard2.1" />
+    <!--
+      The compiler is a package now, so its asset follows this project's framework and
+      cannot be pinned here. This mode therefore exercises the netstandard2.1 build of
+      Hyperbee.Expressions only. The compiler repository tests its own ns2.1 asset.
+    -->
 
     <!--
       Hyperbee.Expressions.Lab has no netstandard2.1 build: it depends on

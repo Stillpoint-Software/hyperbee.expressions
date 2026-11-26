@@ -20,7 +20,7 @@
 
   <PropertyGroup>
     <!-- Package ids this repository produces. Keep in sync with the PackageId of each packable project. -->
-    <SelfProducedPackageIds>Hyperbee.Expressions;Hyperbee.Expressions.Abstractions;Hyperbee.Expressions.Compiler;Hyperbee.Expressions.Lab</SelfProducedPackageIds>
+    <SelfProducedPackageIds>Hyperbee.Expressions;Hyperbee.Expressions.Abstractions;Hyperbee.Expressions.Lab</SelfProducedPackageIds>
   </PropertyGroup>
 
   <Target Name="ErrorOnSelfProducedPackageReference"
