@@ -36,9 +36,9 @@
 
   <!--
     The compiler is built and released from the hyperbee.expressions.compiler repository,
-    so it arrives here as a package. These tests keep the compiled-by-HEC path covered and,
-    because the published compiler was built when the coroutine contracts still lived in
-    Hyperbee.Expressions, they also exercise the type forwards in TypeForwards.cs.
+    so it arrives here as a package. These tests keep the compiled-by-HEC path covered.
+    The type forwards in AbstractionsForwards.cs have their own test,
+    AbstractionsForwardsTests, so they stay covered whichever compiler version is pinned.
 
     The trade is that this suite runs against the last published compiler rather than that
     repository HEAD. The compiler's own suite covers its source.

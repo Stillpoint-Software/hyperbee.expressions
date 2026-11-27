@@ -46,6 +46,10 @@
   </ItemGroup>
 
 
+  <ItemGroup>
+    <PackageReference Include="PolySharp" PrivateAssets="all" />
+  </ItemGroup>
+
   <!--
     Internal helpers live in this project's Internal folder and compile like any
     other source. NetstandardShims.cs is the exception: it is removed from every
@@ -57,8 +61,8 @@
 
   <!--
     netstandard2.1 needs Microsoft.Bcl.AsyncInterfaces for IAsyncEnumerable.
-    The compiler-required attributes and the reflection shim are hand-written in
-    Internal/NetstandardShims.cs; see the note there on why not Polyfill.
+    The reflection shim is in Internal/NetstandardShims.cs. The compiler-required
+    types come from PolySharp; see Directory.Build.props.
 
     The versions are pinned to 8.0.x on this target alone. The netstandard2.1 asset
     exists to serve net8.0 and net9.0 consumers, and the 11.0.0 packages declare no
