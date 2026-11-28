@@ -12,7 +12,6 @@
     <!-- Root -->
     <None Include="$(MSBuildThisFileDirectory)index.md" />
     <None Include="$(MSBuildThisFileDirectory)_config.yml" />
-    <None Include="$(MSBuildThisFileDirectory).todo.md" />
     <!-- Expressions -->
     <None Include="$(MSBuildThisFileDirectory)expressions\expressions.md" />
     <None Include="$(MSBuildThisFileDirectory)expressions\async-block.md" />

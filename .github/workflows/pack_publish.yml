@@ -1,4 +1,4 @@
-﻿name: Pack and Publish
+name: Pack and Publish
 
 on:
   release:
@@ -16,9 +16,9 @@ jobs:
     with:
       trigger: release
       target_branch: ${{ github.event.release.target_commitish }}
-      override_build_configuration: ''                 
+      override_build_configuration: ''
       prerelease: ${{ github.event.release.prerelease }} # true/false from the release
-  
+
   tests:
     needs: set-config
     uses: Stillpoint-Software/shared-workflows/.github/workflows/run_tests.yml@main
@@ -28,7 +28,7 @@ jobs:
       # Keep in step with <TargetFrameworks> in Directory.Build.props.
       # netstandard2.1 is built but not tested: it has no test host.
       frameworks: '["net11.0", "net10.0"]'
-  
+
   publish:
     needs: [set-config, tests]
     runs-on: ubuntu-latest
