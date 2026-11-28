@@ -1,15 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!--
-      Pinned, not inherited. This project depends on Hyperbee.Json, which
-      ships no netstandard2.1 asset (net8.0/net9.0/net10.0 only), so it
-      cannot build for the netstandard2.1 target the other libraries add.
-    -->
-    <TargetFrameworks>net11.0;net10.0</TargetFrameworks>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <Nullable>disable</Nullable>
     <IsPackable>true</IsPackable>
     <Authors>Stillpoint Software, Inc.</Authors>
@@ -54,14 +45,27 @@
     </PackageReference>
   </ItemGroup>
 
-
   <!--
-    Inert: this project targets net11.0 and net10.0 only (see TargetFrameworks
-    above), so no build of it is netstandard2.1 and this group never applies. For
-    the same reason Lab carries no netstandard2.1 shims of its own.
+    Targets inherit net11.0;net10.0;netstandard2.1 from Directory.Build.props. Lab
+    gained netstandard2.1 once Hyperbee.Json shipped a netstandard2.1 asset (3.4.0).
+
+    netstandard2.1: the compiler-required types come from PolySharp (see
+    Directory.Build.props), Microsoft.Bcl.AsyncInterfaces supplies IAsyncEnumerable,
+    and System.Net.Http.Json supplies the HttpClient JSON extensions that are part of
+    the framework on net10.0 and net11.0. The Microsoft.Extensions packages are pinned
+    to 8.0.x on this target alone, as in Hyperbee.Expressions.csproj: the
+    netstandard2.1 asset serves net8.0 and net9.0 consumers, and the 11.0.0 packages
+    declare no support for either.
   -->
+  <ItemGroup>
+    <PackageReference Include="PolySharp" PrivateAssets="all" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" VersionOverride="8.0.0" />
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection" VersionOverride="8.0.1" />
+    <PackageReference Update="Microsoft.Extensions.Http" VersionOverride="8.0.1" />
+    <PackageReference Include="System.Net.Http.Json" VersionOverride="8.0.1" />
   </ItemGroup>
 
 </Project>

@@ -80,19 +80,29 @@
       Hyperbee.Expressions only. The compiler repository tests its own ns2.1 asset.
     -->
 
-    <!--
-      Hyperbee.Expressions.Lab has no netstandard2.1 build: it depends on
-      Hyperbee.Json, which depends in turn on the published
-      Hyperbee.Expressions.Compiler, so Lab can only follow once that package
-      ships a netstandard2.1 asset. Dropping the reference here would leave a
-      second build of Hyperbee.Expressions in the output under the same
-      assembly identity, so the Lab-dependent tests come out with it.
-    -->
-    <ProjectReference Remove="..\..\src\Hyperbee.Expressions.Lab\Hyperbee.Expressions.Lab.csproj" />
-    <Compile Remove="FetchExpressionTests.cs" />
-    <Compile Remove="JsonExpressionTests.cs" />
-    <Compile Remove="MapExpressionTests.cs" />
-    <Compile Remove="ReduceExpressionTests.cs" />
+    <ProjectReference Update="..\..\src\Hyperbee.Expressions.Lab\Hyperbee.Expressions.Lab.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.1" />
+  </ItemGroup>
+
+  <!--
+    Opt-in: run the suite on the .NET 8 runtime, the way a net8.0 application uses
+    the packages. Hyperbee.Expressions and Hyperbee.Expressions.Lab resolve their
+    netstandard2.1 builds, as do the Hyperbee.Json and Hyperbee.Expressions.Compiler
+    packages. The Microsoft.Extensions packages drop to 8.0.x, as a net8.0 application
+    would reference them. It needs the .NET 8 runtime; CI does not run it.
+
+      dotnet test test/Hyperbee.Expressions.Tests -p:TestOnNet8=true
+  -->
+  <PropertyGroup Condition="'$(TestOnNet8)' == 'true'">
+    <TargetFrameworks>net8.0</TargetFrameworks>
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TestOnNet8)' == 'true'">
+    <PackageReference Update="Microsoft.Extensions.Configuration" VersionOverride="8.0.0" />
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection" VersionOverride="8.0.1" />
+    <PackageReference Update="Microsoft.Extensions.Hosting" VersionOverride="8.0.1" />
+    <PackageReference Update="Microsoft.Extensions.Http" VersionOverride="8.0.1" />
   </ItemGroup>
 
 </Project>
